@@ -4,8 +4,6 @@ REST server is configured with cluster name and/or monitor
 addresses; in the former case, looks up /etc/ceph/<name>.conf
 for monitor addresses.
 
-Would we then have endpoints admin/{cluster-UUID}/...?)
-
 Read endpoints:
 
 /cluster/
