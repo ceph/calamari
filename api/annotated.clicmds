@@ -1,0 +1,328 @@
+REST server is configured with cluster name and/or monitor
+addresses; in the former case, looks up /etc/ceph/<name>.conf
+for monitor addresses.
+
+Would we then have endpoints admin/{cluster-UUID}/...?)
+
+Endpoints:
+
+admin/
+	GET: No parms: return HTML description of API at this level
+		
+admin/cluster.{xml,json}
+	GET: return cluster info as in mon dump (epoch, fsid, create/modified
+	times, mon addr/name/rank list, quorum)
+	
+admin/osd
+admin/osd/N
+admin/mds
+admin/mds/N
+admin/mon
+admin/mon/N
+
+
+CLI commands as of 14 Jun 2013:
+
+W auth add <entity> <caps> [<caps>...]
+W auth caps <entity> <caps> [<caps>...]
+W auth del <entity>
+R auth export {<entity>}
+R auth get <entity>
+R auth get-key <entity>
+W auth get-or-create <entity> {<caps> [<caps>...]}
+W auth get-or-create-key <entity> {<caps> [<caps>...]}
+W auth import
+R auth list
+R auth print_key <entity>
+R auth print-key <entity>
+W compact
+W config-key del <key>
+W config-key exists <key>
+W config-key get <key>
+W config-key list
+W config-key put <key> {<val>}
+R df {detail}
+R fsid
+R health {detail}
+R heap dump|start_profiler|stop_profiler|release|stats
+W injectargs <injected_args> [<injected_args>...]
+W log <logtext> [<logtext>...]
+W mds add_data_pool <int[0-]>
+W mds cluster_down
+W mds cluster_up
+W mds compat rm_compat <int[0-]>
+W mds compat rm_incompat <int[0-]>
+W mds compat show
+W mds deactivate <who>
+R mds dump {<int[0-]>}
+W mds fail <who>
+R mds getmap {<int[0-]>}
+W mds newfs <int[0-]> <int[0-]> --yes-i-really-mean-it
+W mds remove_data_pool <int[0-]>
+W mds rmfailed <int[0-]>
+W mds rm <int[0-]> <name (type.id)>
+W mds setmap <int[0-]>
+W mds set_max_mds <int[0-]>
+W mds set_state <int[0-]> <int[0-20]>
+R mds stat
+W mds stop <who>
+W mds tell <who> <args> [<args>...]
+W mon add <name> <IPaddr[:port]>
+R mon dump {<int>}
+R mon getmap {<int[0-]>}
+W mon remove <name>
+R mon stat
+R mon_status
+W osd blacklist add|rm <EntityAddr> {<float[0.0-]>}
+R osd blacklist ls
+D osd cluster_snap
+W osd create {<uuid>}
+W osd crush add-bucket <name> <type>
+W osd crush add <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+W osd crush create-or-move <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+R osd crush dump
+W osd crush link <name> <args> [<args>...]
+W osd crush move <osdname (id|osd.id)> <args> [<args>...]
+W osd crush remove <name>
+W osd crush reweight <name> <float[0.0-]>
+W osd crush rm <name>
+W osd crush rule create-simple <name> <root> <type>
+R osd crush rule dump
+R osd crush rule list
+R osd crush rule ls
+W osd crush rule rm <name>
+W osd crush set
+W osd crush set <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+W osd crush tunables legacy|argonaut|bobtail|optimal|default
+W osd crush unlink <name> {<ancestor>}
+W osd deep-scrub <who>
+W osd down <ids> [<ids>...]
+R osd dump
+R osd find <int[0-]>
+R osd getcrushmap {<int[0-]>}
+R osd getmap {<int[0-]>}
+R osd getmaxosd
+W osd in <ids> [<ids>...]
+W osd lost <int[0-]> --yes-i-really-mean-it
+R osd ls {<int[0-]>}
+R osd lspools {<int>}
+R osd map <poolname> <objectname>
+W osd out <ids> [<ids>...]
+W osd pause
+W osd pool create <poolname> <int[0-]> {<int[0-]>}
+W osd pool delete <poolname> <poolname> --yes-i-really-really-mean-it
+R osd pool get <poolname> size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset
+W osd pool mksnap <poolname> <snap>
+W osd pool rename <poolname> <poolname>
+W osd pool rmsnap <poolname> <snap>
+W osd pool set <poolname> size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset <int> {--allow-experimental-feature}
+W osd pool set-quota <poolname> max_objects|max_bytes <val>
+W osd repair <who>
+W osd reweight-by-utilization {<int[100-]>}
+W osd reweight <int[0-]> <float[0.0-1.0]>
+W osd rm <ids> [<ids>...]
+W osd scrub <who>
+W osd setcrushmap
+W osd setmaxosd <int[0-]>
+W osd set pause|noup|nodown|noout|noin|nobackfile|norecover
+R osd stat
+W osd thrash <int[0-]>
+R osd tree {<int[0-]>}
+W osd unpause
+W osd unset pause|noup|nodown|noout|noin|nobackfile|norecover
+R pg debug unfound_objects_exist|degraded_pgs_exist
+W pg deep-scrub <pgid>
+R pg dump {all|summary|sum|pools|osds|pgs [all|summary|sum|pools|osds|pgs...]}
+R pg dump_json {all|summary|sum|pools|osds|pgs [all|summary|sum|pools|osds|pgs...]}
+R pg dump_pools_json
+R pg dump_stuck {inactive|unclean|stale [inactive|unclean|stale...]} {<int>}
+w pg force_create_pg <pgid>
+R pg getmap
+R pg map <pgid>
+W pg repair <pgid>
+W pg scrub <pgid>
+W pg send_pg_creates
+W pg set_full_ratio <float[0.0-1.0]>
+W pg set_nearfull_ratio <float[0.0-1.0]>
+R pg stat
+W quorum enter|exit
+W quorum_status
+R report {<tags> [<tags>...]}
+R status
+W stop_cluster
+W sync force --yes-i-really-mean-it --i-know-what-i-am-doing
+W sync status
+W tell <name (type.id)> <args> [<args>...]
+
+Mon admin-socket commands:
+
+W add_bootstrap_peer_hint <IPaddr[:port]> 
+R config get <var>
+W config set <var> <val>
+R config show
+R get_command_descriptions
+R git_version
+R help
+R log dump
+W log flush
+W log reopen
+R mon_status
+R perf dump
+R perf schema
+R quorum_status
+R sync_status
+R version
+
+===================
+Sorted by read vs. write:
+
+R auth export {<entity>}
+R auth get <entity>
+R auth get-key <entity>
+R auth list
+R auth print_key <entity>
+R auth print-key <entity>
+R df {detail}
+R fsid
+R health {detail}
+R heap dump|start_profiler|stop_profiler|release|stats
+R mds dump {<int[0-]>}
+R mds getmap {<int[0-]>}
+R mds stat
+R mon dump {<int>}
+R mon getmap {<int[0-]>}
+R mon stat
+R mon_status
+R osd blacklist ls
+R osd crush dump
+R osd crush rule dump
+R osd crush rule list
+R osd crush rule ls
+R osd dump
+R osd find <int[0-]>
+R osd getcrushmap {<int[0-]>}
+R osd getmap {<int[0-]>}
+R osd getmaxosd
+R osd ls {<int[0-]>}
+R osd lspools {<int>}
+R osd map <poolname> <objectname>
+R osd pool get <poolname> size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset
+R osd stat
+R osd tree {<int[0-]>}
+R pg debug unfound_objects_exist|degraded_pgs_exist
+R pg dump {all|summary|sum|pools|osds|pgs [all|summary|sum|pools|osds|pgs...]}
+R pg dump_json {all|summary|sum|pools|osds|pgs [all|summary|sum|pools|osds|pgs...]}
+R pg dump_pools_json
+R pg dump_stuck {inactive|unclean|stale [inactive|unclean|stale...]} {<int>}
+R pg getmap
+R pg map <pgid>
+R pg stat
+R report {<tags> [<tags>...]}
+R status
+
+W auth add <entity> <caps> [<caps>...]
+W auth caps <entity> <caps> [<caps>...]
+W auth del <entity>
+W auth get-or-create <entity> {<caps> [<caps>...]}
+W auth get-or-create-key <entity> {<caps> [<caps>...]}
+W auth import
+W compact
+W config-key del <key>
+W config-key exists <key>
+W config-key get <key>
+W config-key list
+W config-key put <key> {<val>}
+W injectargs <injected_args> [<injected_args>...]
+W log <logtext> [<logtext>...]
+W mds add_data_pool <int[0-]>
+W mds cluster_down
+W mds cluster_up
+W mds compat rm_compat <int[0-]>
+W mds compat rm_incompat <int[0-]>
+W mds compat show
+W mds deactivate <who>
+W mds fail <who>
+W mds newfs <int[0-]> <int[0-]> --yes-i-really-mean-it
+W mds remove_data_pool <int[0-]>
+W mds rmfailed <int[0-]>
+W mds rm <int[0-]> <name (type.id)>
+W mds setmap <int[0-]>
+W mds set_max_mds <int[0-]>
+W mds set_state <int[0-]> <int[0-20]>
+W mds stop <who>
+W mds tell <who> <args> [<args>...]
+W mon add <name> <IPaddr[:port]>
+W mon remove <name>
+W osd blacklist add|rm <EntityAddr> {<float[0.0-]>}
+W osd create {<uuid>}
+W osd crush add-bucket <name> <type>
+W osd crush add <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+W osd crush create-or-move <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+W osd crush link <name> <args> [<args>...]
+W osd crush move <osdname (id|osd.id)> <args> [<args>...]
+W osd crush remove <name>
+W osd crush reweight <name> <float[0.0-]>
+W osd crush rm <name>
+W osd crush rule create-simple <name> <root> <type>
+W osd crush rule rm <name>
+W osd crush set
+W osd crush set <osdname (id|osd.id)> <float[0.0-]> <args> [<args>...]
+W osd crush tunables legacy|argonaut|bobtail|optimal|default
+W osd crush unlink <name> {<ancestor>}
+W osd deep-scrub <who>
+W osd down <ids> [<ids>...]
+W osd in <ids> [<ids>...]
+W osd lost <int[0-]> --yes-i-really-mean-it
+W osd out <ids> [<ids>...]
+W osd pause
+W osd pool create <poolname> <int[0-]> {<int[0-]>}
+W osd pool delete <poolname> <poolname> --yes-i-really-really-mean-it
+W osd pool mksnap <poolname> <snap>
+W osd pool rename <poolname> <poolname>
+W osd pool rmsnap <poolname> <snap>
+W osd pool set <poolname> size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset <int> {--allow-experimental-feature}
+W osd pool set-quota <poolname> max_objects|max_bytes <val>
+W osd repair <who>
+W osd reweight-by-utilization {<int[100-]>}
+W osd reweight <int[0-]> <float[0.0-1.0]>
+W osd rm <ids> [<ids>...]
+W osd scrub <who>
+W osd setcrushmap
+W osd setmaxosd <int[0-]>
+W osd set pause|noup|nodown|noout|noin|nobackfile|norecover
+W osd thrash <int[0-]>
+W osd unpause
+W osd unset pause|noup|nodown|noout|noin|nobackfile|norecover
+W pg deep-scrub <pgid>
+w pg force_create_pg <pgid>
+W pg repair <pgid>
+W pg scrub <pgid>
+W pg send_pg_creates
+W pg set_full_ratio <float[0.0-1.0]>
+W pg set_nearfull_ratio <float[0.0-1.0]>
+W quorum enter|exit
+W quorum_status
+W stop_cluster
+W sync force --yes-i-really-mean-it --i-know-what-i-am-doing
+W sync status
+W tell <name (type.id)> <args> [<args>...]
+
+Mon admin-socket commands:
+
+R config get <var>
+R config show
+R get_command_descriptions
+R git_version
+R help
+R log dump
+R mon_status
+R perf dump
+R perf schema
+R quorum_status
+R sync_status
+R version
+
+W add_bootstrap_peer_hint <IPaddr[:port]> 
+W config set <var> <val>
+W log flush
+W log reopen

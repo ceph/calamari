@@ -1,0 +1,131 @@
+# vim: ts=4 sw=4 smarttab expandtab
+
+REST server is configured with cluster name and/or monitor
+addresses; in the former case, looks up /etc/ceph/<name>.conf
+for monitor addresses.
+
+Would we then have endpoints admin/{cluster-UUID}/...?)
+
+Read endpoints:
+
+/cluster/
+GET: help
+
+    auth/
+    GET: help
+
+        entity/
+        GET:  "auth export" (all entities, keys, caps)
+            <entity-name>
+            GET "auth get <entity-name>" (<entity>'s key and caps)
+
+    space/
+    GET: "df"
+        detail/
+        GET: "df detail"
+
+    report/
+    GET: "report". Virtually everything about the cluster.
+        version, health detail, monmap, osdmap, crushmap, mdsmap, 
+        pgmap, pool_stats, osd_stats
+
+    heap/
+    GET: help
+
+        dump/
+        GET: "heap dump"
+
+        stats/
+        GET: "heap stats"
+
+    mds/
+    GET: help
+
+        dump/
+        GET: "mds dump" Everything about MDSes: flags, root, timeouts,
+            compat flags, lists of in/up/failed/stopped, info (name,
+            rank, addr, etc.), poolnums
+
+            <epochnum>/
+            GET: mds map at epoch
+
+        getmap/
+        GET: "mds getmap"
+            <name/rank>:
+            GET: mds getmap <name/rank> binary mdsmap
+
+            <epochnum>/
+            GET: mds map at epoch
+   
+    mon/
+    GET: help
+
+        dump/
+        GET: monmap dump (epoch, fsid, times, mons (rank name addr), quorum
+            <epoch>/
+            GET: monmap from that epoch
+        
+        status/
+        GET: status of random monitor (XXX probably leader?...)
+            <name>
+            GET: status of named monitor (mon status with mon_host = <name>)
+                                          XXX can mon_host have port too?
+    osd/
+    GET: help 
+        
+        blacklist/
+        GET: "osd blacklist ls": list of blacklisted clients
+        
+        crush/
+        GET: "crush dump"
+            crushmap (same as in /cluster/report/; XXX so redundant?)
+
+        dump/
+        GET: "osd dump", again as in report 
+
+        getmap/
+        GET: binary osdmap
+            <epoch>
+            GET: binary osdmap from <epoch>
+        
+        map_object/
+        GET: help
+            <poolname>/
+            GET: help
+                <objectname>
+                GET: osd map <poolname> <objectname>: run crush on
+                    input and show pg info, up/acting sets
+        
+    pool/
+    GET: dump pools ("pg dump pools" unified with "osd lspools" for names?)
+        pool stats include object counts, read/write/error/recovery counts
+
+        <poolname>/
+        GET: osd pool get <all vars>: currently size, min_size, etc.
+    
+    pg/
+    GET: help
+
+        debug/
+        GET: "pg debug unfound_objects_exist/degraded_pgs_exist" in one
+            two-bool struct
+        
+        dump/
+        GET: "pg dump all"
+
+            stuck/
+            GET: help
+                inactive/
+                    "pg dump_stuck inactive"
+                unclean/
+                    "pg dump_stuck unclean"
+                stale/
+                    "pg dump_stuck stale"
+        getmap/
+        GET: binary pg map
+        
+        map/
+        GET: pg map dump
+            <pgid>/
+            pg dump for pgid
+        
