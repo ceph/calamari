@@ -126,4 +126,34 @@ GET: help
         GET: pg map dump
             <pgid>/
             pg dump for pgid
-        
+
+    daemon/
+    GET: list of local daemon names (possibly empty)
+
+        <daemon-name>/
+        GET: 'daemon help' output
+
+            config/
+            GET: 'config show' output (everything)
+
+                <varname>
+                GET: <varname> value
+
+            version/
+            GET: git_version + version
+
+            mon_status/
+            GET: (if mon): local mon status, same as global ceph mon_status but
+            without contacting mon cluster first.
+
+            perf/
+            GET: help (include schema type defs)
+
+            dump/
+            GET: all perf counters
+
+            schema/
+            GET: perf counter schema
+
+            sync_status/
+            GET: sync_status
