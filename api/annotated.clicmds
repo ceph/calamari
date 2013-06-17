@@ -1,3 +1,26 @@
+REST server is configured with cluster name and/or monitor
+addresses; in the former case, looks up /etc/ceph/<name>.conf
+for monitor addresses.
+
+Would we then have endpoints admin/{cluster-UUID}/...?)
+
+Endpoints:
+
+admin/
+	GET: No parms: return HTML description of API at this level
+		
+admin/cluster.{xml,json}
+	GET: return cluster info as in mon dump (epoch, fsid, create/modified
+	times, mon addr/name/rank list, quorum)
+	
+admin/osd
+admin/osd/N
+admin/mds
+admin/mds/N
+admin/mon
+admin/mon/N
+
+
 CLI commands as of 14 Jun 2013:
 
 W auth add <entity> <caps> [<caps>...]
@@ -140,7 +163,7 @@ R config show
 R get_command_descriptions
 R git_version
 R help
-R log dump
+W log dump
 W log flush
 W log reopen
 R mon_status
@@ -291,7 +314,6 @@ R config show
 R get_command_descriptions
 R git_version
 R help
-R log dump
 R mon_status
 R perf dump
 R perf schema
@@ -301,5 +323,6 @@ R version
 
 W add_bootstrap_peer_hint <IPaddr[:port]> 
 W config set <var> <val>
+W log dump
 W log flush
 W log reopen
