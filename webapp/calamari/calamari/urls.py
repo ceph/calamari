@@ -5,6 +5,9 @@ from django.conf.urls import patterns, include, url
 # admin.autodiscover()
 
 urlpatterns = patterns('',
+    url(r'^api/v1/', include('ceph.urls')),
+    url(r'^api/v1/auth/', include('rest_framework.urls', namespace='rest_framework')),
+
     # Examples:
     # url(r'^$', 'calamari.views.home', name='home'),
     # url(r'^calamari/', include('calamari.foo.urls')),
