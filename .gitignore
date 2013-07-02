@@ -1,1 +1,5 @@
 .vagrant
+*.pyc
+env
+venv
+virtualenv
