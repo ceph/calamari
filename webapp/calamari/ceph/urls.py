@@ -1,10 +1,7 @@
 from django.conf.urls import patterns, url
-from rest_framework.urlpatterns import format_suffix_patterns
-from ceph import views
+from rest_framework import routers
+from ceph.views import ClusterViewSet
 
-urlpatterns = patterns('',
-    url(r'^clusters/$', views.ClusterList.as_view()),
-    url(r'^clusters/(?P<pk>[0-9]+)/$', views.ClusterDetail.as_view()),
-)
-
-urlpatterns = format_suffix_patterns(urlpatterns)
+router = routers.DefaultRouter()
+router.register(r'clusters', ClusterViewSet)
+urlpatterns = router.urls
