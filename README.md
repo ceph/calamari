@@ -48,10 +48,13 @@ Start the development server and then navigate to `http://localhost:8000`.
 The REST API
 =====
 
-The REST framework provides automatic navigation of the API. Access the API
-documentation for a particular resource by loading it via a standard web
-browser. For example, to view the cluster resource and its API navigate to
-`http://localhost:8000/api/v1/clusters/`.
+The REST framework provides automatic navigation / documentation of the API.
+Browse the API by loading http://localhost:8000/api/v1/.
+
+User Management
+-----
+
+    /api/v1/users/
 
 Authentication
 -----
