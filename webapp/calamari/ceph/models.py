@@ -6,7 +6,13 @@ class Cluster(models.Model):
     def __unicode__(self):
         return self.name
 
-class SpaceUsage(models.Model):
+class ClusterSpace(models.Model):
     cluster = models.ForeignKey(Cluster)
-    inserted = models.DateTimeField(auto_now_add=True)
-    json_str = models.TextField()
+    # FIXME: make added_date not be auto-add; rather sample time
+    added_date = models.DateTimeField(auto_now_add=True)
+    total_space = models.BigIntegerField()
+    total_avail = models.BigIntegerField()
+    total_used = models.BigIntegerField()
+
+    class Meta:
+        get_latest_by = "added_date"

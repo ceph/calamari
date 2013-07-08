@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from ceph.models import Cluster
+from ceph.models import Cluster, ClusterSpace
 
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,3 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
         if user:
             user.set_password(attrs['password'])
         return user
+
+class ClusterSpaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClusterSpace
