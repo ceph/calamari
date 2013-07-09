@@ -2,6 +2,7 @@ from django.db import models
 
 class Cluster(models.Model):
     name = models.CharField(max_length=256)
+    api_base_url = models.CharField(max_length=200)
 
     def __unicode__(self):
         return self.name

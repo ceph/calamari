@@ -5,7 +5,6 @@ from ceph.models import Cluster, ClusterSpace
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
-        fields = ('id', 'name')
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
