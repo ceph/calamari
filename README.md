@@ -44,6 +44,20 @@ Start Web Server
 Start the development server and then navigate to `http://localhost:8000`.
 
     python manage.py runserver
+
+Refreshing Cluster Stats
+=====
+
+The *Kraken* component of Calamari is responsible for contacting each
+registered cluster and pulling in fresh statistics to the database. Currently
+Kraken is implemented as a custom Django administrative command. It can be run
+from the command line as follows:
+
+    python manage.py ceph_refresh
+
+A short daemonized system service will need to be built to control how often
+this is run. For now it can be called from a simple bash loop.
+
     
 The REST API
 =====
