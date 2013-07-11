@@ -15,7 +15,7 @@ class Command(BaseCommand):
     """
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
-        self._last_response = None
+        self._last_response = None    # last cluster query response
 
     def handle(self, *args, **options):
         """
@@ -28,6 +28,7 @@ class Command(BaseCommand):
             try:
                 self._refresh_cluster_space(cluster)
             except Exception as e:
+                # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
                 self.stderr.write(traceback.format_exc())
 
@@ -51,7 +52,7 @@ class Command(BaseCommand):
             url_base.append('/')
         hdr = {'accept': 'application/json'}
         r = requests.get(url_base + url, headers = hdr)
-        self._last_response = r # save for error message
+        self._last_response = r
         return r.json()
 
     def _refresh_cluster_space(self, cluster):
