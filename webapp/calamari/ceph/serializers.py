@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from ceph.models import Cluster, ClusterSpace
+import sys
 
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,10 +12,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'password')
 
-    def convert_object(self, obj):
+    def to_native(self, obj):
         if 'password' in self.fields:
             del self.fields['password']
-        return super(UserSerializer, self).convert_object(obj)
+        return super(UserSerializer, self).to_native(obj)
 
     def restore_object(self, attrs, instance=None):
         user = super(UserSerializer, self).restore_object(attrs, instance)
