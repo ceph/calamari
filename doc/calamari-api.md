@@ -8,15 +8,15 @@ Calamari depends.
 Authentication
 -----
 
-    auth/login/
-    auth/logout/
+    auth/login
+    auth/logout
 
 User Management
 -----
 
 ### User List
 
-* **URL**: `user/`
+* **URL**: `user`
 * **Method**: `GET`
 
 #### Example Response
@@ -38,7 +38,7 @@ User Management
 
 ### User Detail
 
-* **URL**: `user/{id}/`
+* **URL**: `user/{id}`
 * **Method**: `GET`
 
 #### Example Response
@@ -56,7 +56,7 @@ Cluster Management
 
 ### Cluster List
 
-* **URL**: `cluster/`
+* **URL**: `cluster`
 * **Method**: `GET`
 
 #### Example Response
@@ -96,7 +96,7 @@ Cluster Space
 
 ### Latest Report
 
-* **URL**: `cluster/{id}/space/`
+* **URL**: `cluster/{id}/space`
 * **Method**: `GET`
 
 #### Example Response
