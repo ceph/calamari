@@ -62,7 +62,7 @@ class Command(BaseCommand):
         """
         result = self._cluster_query(cluster, "df")
         cluster_stats = result['output']['stats']
-        ClusterSpace(cluster=cluster, space=cluster_stats).save()
+        ClusterSpace(cluster=cluster, report=cluster_stats).save()
         self.stdout.write("(%s): updated cluster space stats" % (cluster.name,))
 
     def _refresh_cluster_health(self, cluster):
@@ -70,5 +70,5 @@ class Command(BaseCommand):
         Update cluster health.
         """
         result = self._cluster_query(cluster, "health")
-        ClusterHealth(cluster=cluster, health=result['output']).save()
+        ClusterHealth(cluster=cluster, report=result['output']).save()
         self.stdout.write("(%s): updated cluster health" % (cluster.name,))

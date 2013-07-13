@@ -30,7 +30,7 @@ class ClusterSpace(models.Model):
     added_date = models.DateTimeField(auto_now_add=True)
 
     # Raw report
-    space = jsonfield.JSONField()
+    report = jsonfield.JSONField()
 
     class Meta:
         get_latest_by = "added_date"
@@ -41,7 +41,7 @@ class ClusterHealth(models.Model):
     """
     cluster = models.ForeignKey(Cluster)
     added_date = models.DateTimeField(auto_now_add=True)
-    health = jsonfield.JSONField()
+    report = jsonfield.JSONField()
 
     class Meta:
         get_latest_by = "added_date"
