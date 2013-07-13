@@ -111,3 +111,11 @@ Cluster Space
     "total_used": 8832356
 }
 ```
+
+Cluster Health
+-----
+
+### Latest Report
+
+* **URL**: `cluster/{id}/health`
+* **Method**: `GET`
