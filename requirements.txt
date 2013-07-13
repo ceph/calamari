@@ -1,6 +1,9 @@
 Django==1.5.1
 Markdown==2.3.1
+argparse==1.2.1
+distribute==0.6.24
 django-filter==0.6
+django-jsonfield==0.9.10
 djangorestframework==2.3.6
 requests==1.2.3
 wsgiref==0.1.2

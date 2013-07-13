@@ -1,4 +1,5 @@
 from django.db import models
+import jsonfield
 
 class Cluster(models.Model):
     """
@@ -32,6 +33,17 @@ class ClusterSpace(models.Model):
     total_space = models.BigIntegerField()
     total_avail = models.BigIntegerField()
     total_used = models.BigIntegerField()
+
+    class Meta:
+        get_latest_by = "added_date"
+
+class ClusterHealth(models.Model):
+    """
+    A snapshot of cluster health.
+    """
+    cluster = models.ForeignKey(Cluster)
+    added_date = models.DateTimeField(auto_now_add=True)
+    health = jsonfield.JSONField()
 
     class Meta:
         get_latest_by = "added_date"

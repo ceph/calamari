@@ -1,7 +1,7 @@
 import traceback
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from ceph.models import Cluster, ClusterSpace
+from ceph.models import Cluster, ClusterSpace, ClusterHealth
 
 class Command(BaseCommand):
     """
@@ -27,6 +27,7 @@ class Command(BaseCommand):
                     (cluster.name, cluster.api_base_url))
             try:
                 self._refresh_cluster_space(cluster)
+                self._refresh_cluster_health(cluster)
             except Exception as e:
                 # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
@@ -64,3 +65,11 @@ class Command(BaseCommand):
         space = ClusterSpace(cluster=cluster, **cluster_stats)
         space.save()
         self.stdout.write("(%s): updated cluster space stats" % (cluster.name,))
+
+    def _refresh_cluster_health(self, cluster):
+        """
+        Update cluster health.
+        """
+        result = self._cluster_query(cluster, "health")
+        ClusterHealth(cluster=cluster, health=result['output']).save()
+        self.stdout.write("(%s): updated cluster health" % (cluster.name,))

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from ceph.models import Cluster, ClusterSpace
+from ceph.models import Cluster, ClusterSpace, ClusterHealth
 import sys
 
 class ClusterSerializer(serializers.ModelSerializer):
@@ -34,3 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ClusterSpaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClusterSpace
+
+class ClusterHealthSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClusterHealth
