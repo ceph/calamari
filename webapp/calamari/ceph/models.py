@@ -29,10 +29,8 @@ class ClusterSpace(models.Model):
     #
     added_date = models.DateTimeField(auto_now_add=True)
 
-    # Tracked statistics in bytes
-    total_space = models.BigIntegerField()
-    total_avail = models.BigIntegerField()
-    total_used = models.BigIntegerField()
+    # Raw report
+    space = jsonfield.JSONField()
 
     class Meta:
         get_latest_by = "added_date"
