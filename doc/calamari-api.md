@@ -26,12 +26,10 @@ User Management
     {
         "id": 1, 
         "username": "admin", 
-        "password": "pbkdf2_sha256$10000$r9rj3Q0x1dQY$7QIH/3eGAe52R/xdobwaUN92WsyB4JgkC9x0M6Yfflw="
     }, 
     {
         "id": 2, 
         "username": "noah", 
-        "password": "pbkdf2_sha256$10000$ghVVq1Q2fwmG$IU2F9E+x1oTDmciXOG9sEy/0KzB9PlPieGPQi3AWgxM="
     }
 ]
 ```
@@ -47,7 +45,6 @@ User Management
 {
     "id": 1, 
     "username": "admin", 
-    "password": "pbkdf2_sha256$10000$r9rj3Q0x1dQY$7QIH/3eGAe52R/xdobwaUN92WsyB4JgkC9x0M6Yfflw="
 }
 ```
 
@@ -103,12 +100,14 @@ Cluster Space
 
 ```json
 {
-    "id": 2, 
-    "cluster": 2, 
-    "added_date": "2013-07-11T18:46:13.465Z", 
-    "total_space": 982739, 
-    "total_avail": 9849030, 
-    "total_used": 8832356
+    "id": 1, 
+    "cluster": 1, 
+    "added_date": "2013-07-13T22:59:44.633Z", 
+    "report": {
+        "total_used": 53117004, 
+        "total_space": 468345368, 
+        "total_avail": 391437724
+    }
 }
 ```
 
@@ -119,3 +118,45 @@ Cluster Health
 
 * **URL**: `cluster/{id}/health`
 * **Method**: `GET`
+
+#### Example Response (Simple, HEALTH_WARN)
+
+```json
+{
+    "id": 1, 
+    "cluster": 1, 
+    "added_date": "2013-07-13T22:59:44.710Z", 
+    "report": {
+        "timechecks": {
+            "round_status": "finished", 
+            "epoch": 2, 
+            "round": 0
+        }, 
+        "summary": [
+            {
+                "severity": "HEALTH_WARN", 
+                "summary": "24 pgs degraded"
+            }
+        ], 
+        "health": {
+            "health_services": [
+                {
+                    "mons": [
+                        {
+                            "last_updated": "2013-07-13 15:58:15.581195", 
+                            "name": "a", 
+                            "avail_percent": 83, 
+                            "kb_total": 468345368, 
+                            "kb_avail": 391437748, 
+                            "health": "HEALTH_OK", 
+                            "kb_used": 53116980
+                        }
+                    ]
+                }
+            ]
+        }, 
+        "overall_status": "HEALTH_WARN", 
+        "detail": []
+    }
+}
+```
