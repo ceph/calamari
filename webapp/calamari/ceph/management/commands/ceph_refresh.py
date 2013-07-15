@@ -22,6 +22,7 @@ class Command(BaseCommand):
         Update statistics for each registered cluster.
         """
         clusters = Cluster.objects.all()
+        self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
             self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                     (cluster.name, cluster.api_base_url))
@@ -32,6 +33,7 @@ class Command(BaseCommand):
                 # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
                 self.stderr.write(traceback.format_exc())
+        self.stdout.write("Update completed!")
 
     def _print_response(self, out, r):
         """
