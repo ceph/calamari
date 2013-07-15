@@ -27,21 +27,21 @@ class ClusterSpace(models.Model):
     # into the db. We could be really pedantic and have the cluster report to
     # us the time it was sampled.
     #
-    added_date = models.DateTimeField(auto_now_add=True)
+    added = models.DateTimeField(auto_now_add=True)
 
     # Raw report
     report = jsonfield.JSONField()
 
     class Meta:
-        get_latest_by = "added_date"
+        get_latest_by = "added"
 
 class ClusterHealth(models.Model):
     """
     A snapshot of cluster health.
     """
     cluster = models.ForeignKey(Cluster)
-    added_date = models.DateTimeField(auto_now_add=True)
+    added = models.DateTimeField(auto_now_add=True)
     report = jsonfield.JSONField()
 
     class Meta:
-        get_latest_by = "added_date"
+        get_latest_by = "added"

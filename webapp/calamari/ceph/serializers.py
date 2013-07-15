@@ -1,7 +1,8 @@
+import sys
+import time
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
-import sys
 
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,9 +33,19 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class ClusterSpaceSerializer(serializers.ModelSerializer):
+    added_ms = serializers.SerializerMethodField('get_added_ms')
+
     class Meta:
         model = ClusterSpace
 
+    def get_added_ms(self, obj):
+        return int(time.mktime(obj.added.timetuple())*1000)
+
 class ClusterHealthSerializer(serializers.ModelSerializer):
+    added_ms = serializers.SerializerMethodField('get_added_ms')
+
     class Meta:
         model = ClusterHealth
+
+    def get_added_ms(self, obj):
+        return int(time.mktime(obj.added.timetuple())*1000)
