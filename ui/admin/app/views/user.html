@@ -7,7 +7,44 @@
             <li class='{{entry.clazz}}' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
-            content goes here
+            <form class='form-horizontal' name="user-form">
+                <div class="control-group">
+                    <label class="control-label">Username</label>
+                    <div class="controls">
+                        <input type="text" name="userName" readonly="true" ng-model="user.name"></input>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Email</label>
+                    <div class="controls">
+                        <input type="text" name="userEmail" ng-model="user.email"></input>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Display Name</label>
+                    <div class="controls">
+                        <input type="text" name="userDisplayName" ng-model="user.displayName"></input>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Password</label>
+                    <div class="controls">
+                        <input type="password" name="userPassword" ng-model="user.password"></input>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Confirm Password</label>
+                    <div class="controls">
+                        <input type="password" name="userConfirmPassword" ng-model="user.confirm"></input>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="controls">
+                        <button type="submit" class="btn">Update</button>
+                        <button type="submit" ng-click="clear()" class="btn">Clear</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>

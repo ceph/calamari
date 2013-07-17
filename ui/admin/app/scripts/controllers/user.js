@@ -14,4 +14,17 @@ angular.module('adminApp').controller('UserCtrl', function($scope) {
         clazz: 'active',
         url: '#/user'
     }];
+    $scope.clear = function() {
+        $scope.user.email = 'calamari@inktank.com';
+        $scope.user.password = '';
+        $scope.user.displayName = 'Calamari Admin';
+        $scope.user.confirm = '';
+    };
+    $scope.user = {
+        name: 'admin',
+        email: 'calamari@inktank.com',
+        displayName: 'Calamari Admin',
+        password: '',
+        confirm: ''
+    };
 });
