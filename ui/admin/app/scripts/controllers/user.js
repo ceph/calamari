@@ -1,19 +1,8 @@
 'use strict';
 
-angular.module('adminApp').controller('UserCtrl', function($scope) {
-    $scope.menus = [{
-        label: 'General',
-        clazz: '',
-        url: '#/general'
-    }, {
-        label: 'Cluster',
-        clazz: '',
-        url: '#/cluster'
-    }, {
-        label: 'User',
-        clazz: 'active',
-        url: '#/user'
-    }];
+angular.module('adminApp').controller('UserCtrl', function($scope, menus) {
+    $scope.title = 'User';
+    $scope.menus = menus.menu('user');
     $scope.clear = function() {
         $scope.user.email = 'calamari@inktank.com';
         $scope.user.password = '';
