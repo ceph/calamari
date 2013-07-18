@@ -127,6 +127,27 @@ Cluster Space
 }
 ```
 
+Health Counters
+-----
+
+### Latest Report
+
+* **URL**: `cluster/{id}/health_counters`
+* **Method**: `GET`
+
+#### Example Response
+
+```json
+{
+    "osd": {
+        "up_not_in": 1, 
+        "not_up_not_in": 1, 
+        "total": 70, 
+        "up_in": 68
+    }
+}
+```
+
 Cluster Health
 -----
 
