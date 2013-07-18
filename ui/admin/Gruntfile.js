@@ -1,3 +1,4 @@
+/* jshint -W015 */
 // Generated on 2013-07-17 using generator-angular 0.3.0
 'use strict';
 var LIVERELOAD_PORT = 35729;
