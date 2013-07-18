@@ -4,9 +4,27 @@
 <div class="row well span12">
     <div class="tabbable tabs-left">
         <ul class="nav nav-tabs">
-            <li ng-class='entry.clazz' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
+            <li ng-class="entry.clazz" ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
+            <h3>Users</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox"/></th>
+                        <th>Username</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="user in users">
+                        <td><input type="checkbox" value="{{user.id}}"/></td>
+                        <td>{{user.username}}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <button class="btn" type="button">Add</button>
+            <button class="btn" type="button">Edit</button>
+            <button class="btn" type="button">Remove</button>
         </div>
     </div>
 </div>
