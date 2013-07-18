@@ -10,7 +10,13 @@ Authenticate
  
 1. Perform a 'GET'. This will set your session and csrf cookie values which are used to verify the header token.
   
- 		http -v --form --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/auth/login/
+ 		http -v --form --session mira022 GET mira022.front.sepia.ceph.com:8000/api/v1/auth/login/
+
+		Accept: */*
+		Accept-Encoding: gzip, deflate, compress
+		Cookie: csrftoken=EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu; sessionid=ke9fl9jqwfxjurf5oaejotm58bupiqia
+		Host: mira022.front.sepia.ceph.com:8000
+		User-Agent: HTTPie/0.6.0
 
 2. This will return a cookie containing the CSRF `csrftoken` cookie in the header. Use this as the input to a form POST to the same URL: 			
 
