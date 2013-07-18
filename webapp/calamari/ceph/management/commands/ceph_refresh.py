@@ -72,7 +72,7 @@ class Command(BaseCommand):
         """
         Update cluster health.
         """
-        result = self._cluster_query(cluster, "health")
+        result = self._cluster_query(cluster, "health?detail")
         ClusterHealth(cluster=cluster, report=result['output']).save()
         self.stdout.write("(%s): updated cluster health" % (cluster.name,))
 
