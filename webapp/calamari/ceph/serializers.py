@@ -1,5 +1,6 @@
 import sys
 import time
+from django.utils.dateformat import format
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
@@ -48,4 +49,4 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
         model = ClusterHealth
 
     def get_added_ms(self, obj):
-        return int(time.mktime(obj.added.timetuple())*1000)
+        return format(obj.added, 'U')
