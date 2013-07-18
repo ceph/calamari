@@ -1,9 +1,11 @@
 import json
+from itertools import imap
 from collections import defaultdict
 from django.contrib.auth.models import User
 from django.http import Http404
+from django.utils import dateformat
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
-from ceph.models import OSDDump
+from ceph.models import OSDDump, PGPoolDump
 from ceph.serializers import ClusterSerializer
 from ceph.serializers import ClusterSpaceSerializer
 from ceph.serializers import ClusterHealthSerializer
@@ -32,10 +34,30 @@ class ClusterViewSet(viewsets.ModelViewSet):
     def health_counters(self, request, pk=None):
         cluster = self.get_object()
         osdump = OSDDump.objects.filter(cluster=cluster).latest()
-        osd_counters = self._count_osds(osdump.report['osds'])
+        pooldump = PGPoolDump.objects.filter(cluster=cluster).latest()
+        oldest_update = min([osdump.added, pooldump.added])
         return Response({
-            'osd': osd_counters,
+            'added': oldest_update,
+            'added_ms': dateformat.format(oldest_update, 'U'),
+            'osd': self._count_osds(osdump.report['osds']),
+            'pool': self._count_pools(pooldump.report)
         })
+
+    def _count_pools(self, pools):
+        """
+        Group and count pools by their status.
+        """
+        fields = ['num_objects_unfound', 'num_objects_missing_on_primary',
+            'num_deep_scrub_errors', 'num_shallow_scrub_errors',
+            'num_scrub_errors', 'num_objects_degraded']
+        counts = defaultdict(lambda: 0)
+        for pool in imap(lambda p: p['stat_sum'], pools):
+            for key, value in pool.items():
+                counts[key] += min(value, 1)
+        for delkey in set(counts.keys()) - set(fields):
+            del counts[delkey]
+        counts['total'] = len(pools)
+        return counts
 
     def _count_osds(self, osds):
         """

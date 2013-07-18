@@ -62,3 +62,14 @@ class OSDDump(models.Model):
 
     class Meta:
         get_latest_by = "added"
+
+class PGPoolDump(models.Model):
+    """
+    A pg pools dump snapshot.
+    """
+    cluster = models.ForeignKey(Cluster)
+    added = models.DateTimeField(auto_now_add=True)
+    report = jsonfield.JSONField()
+
+    class Meta:
+        get_latest_by = "added"
