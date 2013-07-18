@@ -1,6 +1,8 @@
 'use strict';
 
-angular.module('adminApp').controller('GeneralCtrl', function($scope, menus) {
-    $scope.title = 'General';
-    $scope.menus = menus.menu('general');
-});
+var generalController = function($scope, menus) {
+        $scope.title = 'General';
+        $scope.menus = menus.menu('general');
+    };
+generalController.$inject = ['$scope', 'menus'];
+angular.module('adminApp').controller('GeneralCtrl', generalController);
