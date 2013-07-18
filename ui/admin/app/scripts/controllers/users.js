@@ -1,8 +1,10 @@
 'use strict';
 
-var usersController = function($scope, menus) {
+var usersController = function($scope, $http, menus) {
         $scope.title = 'Users';
         $scope.menus = menus.menu('users');
+        $http.get('api/v1/user').success(function(data) {
+            $scope.users = data;
+        });
     };
-usersController.$inject = ['$scope', 'menus'];
-angular.module('adminApp').controller('UsersCtrl', usersController);
+angular.module('adminApp').controller('UsersCtrl', ['$scope', '$http', 'menus', usersController]);
