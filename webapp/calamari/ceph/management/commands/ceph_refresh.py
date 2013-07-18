@@ -2,6 +2,7 @@ import traceback
 import requests
 from django.core.management.base import BaseCommand, CommandError
 from ceph.models import Cluster, ClusterSpace, ClusterHealth, OSDDump
+from ceph.models import PGPoolDump
 
 class Command(BaseCommand):
     """
@@ -30,6 +31,7 @@ class Command(BaseCommand):
                 self._refresh_cluster_space(cluster)
                 self._refresh_cluster_health(cluster)
                 self._refresh_osd_dump(cluster)
+                self._refresh_pg_pool_dump(cluster)
             except Exception as e:
                 # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
@@ -83,3 +85,11 @@ class Command(BaseCommand):
         result = self._cluster_query(cluster, "osd/dump")
         OSDDump(cluster=cluster, report=result['output']).save()
         self.stdout.write("(%s): updated osd dump" % (cluster.name,))
+
+    def _refresh_pg_pool_dump(self, cluster):
+        """
+        Update pg pools dump.
+        """
+        result = self._cluster_query(cluster, "pg/dump?dumpcontents=pools")
+        PGPoolDump(cluster=cluster, report=result['output']).save()
+        self.stdout.write("(%s): updated pg pools dump" % (cluster.name,))
