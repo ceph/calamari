@@ -12,7 +12,7 @@ Authenticate
   
  		http -v --form --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/auth/login/
 
-2. This will return a cookie containing the CSRF token in the header. Use this as the input to a form POST to the same URL: 			
+2. This will return a cookie containing the CSRF `csrftoken` cookie in the header. Use this as the input to a form POST to the same URL: 			
 
 		http -v --form --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/auth/login/ X-CSRFToken:EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu username=admin password=admin submit="Log in"
 		
