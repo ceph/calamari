@@ -5,6 +5,22 @@ Documentation of the Calamari REST API exposed by the Calamari web service.
 This is distinct from the Ceph REST API, a Ceph core service upon which
 Calamari depends.
 
+Calamari Information
+-----
+
+* **URL**: `info`
+* **Method**: `GET`
+
+```json
+{
+    "registered": "Inktank, Inc.", 
+    "version": "0.1", 
+    "ipaddr": "10.10.2.3", 
+    "hostname": "calamari.inktank.com", 
+    "license": "trial"
+}
+```
+
 Authentication
 -----
 
