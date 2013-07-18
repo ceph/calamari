@@ -1,6 +1,12 @@
 from django.db import models
 import jsonfield
 
+#
+# Note that we can use inheritence with Django models. If we keep building our
+# models this way, it'd be a good idea to use the feature, as all the snapshot
+# models are the same.
+#
+
 class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
@@ -38,6 +44,17 @@ class ClusterSpace(models.Model):
 class ClusterHealth(models.Model):
     """
     A snapshot of cluster health.
+    """
+    cluster = models.ForeignKey(Cluster)
+    added = models.DateTimeField(auto_now_add=True)
+    report = jsonfield.JSONField()
+
+    class Meta:
+        get_latest_by = "added"
+
+class OSDDump(models.Model):
+    """
+    An OSD dump snapshot.
     """
     cluster = models.ForeignKey(Cluster)
     added = models.DateTimeField(auto_now_add=True)
