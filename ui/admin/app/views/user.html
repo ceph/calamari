@@ -4,7 +4,7 @@
 <div class="row well span12">
     <div class="tabbable tabs-left">
         <ul class="nav nav-tabs">
-            <li class='{{entry.clazz}}' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
+            <li ng-class='entry.clazz' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
             <form class='form-horizontal' name="user-form">
