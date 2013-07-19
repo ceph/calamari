@@ -19,12 +19,13 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
             evt.preventDefault();
             evt.stopPropagation();
             var d = $.ajax('/api/v1/auth/login/');
+            var self = this;
             d.then(function() {
                 var csrf = $.cookie('csrftoken');
                 return $.ajax('/api/v1/auth/login/', {
                     data: {
-                        username: this.ui.username.val(),
-                        password: this.ui.password.val(),
+                        username: self.ui.username.val(),
+                        password: self.ui.password.val(),
                     },
                     type: 'POST',
                     headers: {
