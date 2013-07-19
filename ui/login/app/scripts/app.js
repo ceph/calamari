@@ -22,8 +22,12 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
             d.then(function() {
                 var csrf = $.cookie('csrftoken');
                 return $.ajax('/api/v1/auth/login/', {
+                    data: {
+                        username: this.ui.username.val(),
+                        password: this.ui.password.val(),
+                    },
                     type: 'POST',
-                    header: {
+                    headers: {
                         'X-CSRFToken': csrf
                     },
                     statusCode: {
