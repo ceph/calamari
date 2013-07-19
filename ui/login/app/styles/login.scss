@@ -37,6 +37,9 @@ body {
 input[type='text'] {
 	@extend .input-common-style;
 }
+input[type='password'] {
+	@extend .input-common-style;
+}
 input[type='submit'] {
 	width: 220px;
 	line-height: 2.4;

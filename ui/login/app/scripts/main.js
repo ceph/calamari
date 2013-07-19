@@ -1,7 +1,7 @@
 require.config({
     paths: {
         jquery: '../bower_components/jquery/jquery',
-        underscore: '../bower_components/underscore/underscore',
+        underscore: '../bower_components/underscore-amd/underscore',
         backbone: '../bower_components/backbone/backbone',
         bootstrap: 'vendor/bootstrap'
     },
@@ -17,10 +17,8 @@ require.config({
     }
 });
 
-require(['app', 'underscore', 'jquery', 'backbone', 'bootstrap'], function(app, _, $, Backbone) {
+require(['app'], function(app) {
     'use strict';
-    console.log(Backbone);
     // use app here
-    console.log(app);
-    console.log('Running jQuery %s', $().jquery);
+    window.app = app;
 });
