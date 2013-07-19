@@ -1,5 +1,5 @@
 /*global define */
-define(['underscore', 'jquery', 'backbone'], function(_, $, Backbone) {
+define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Backbone) {
     'use strict';
 
     var LoginBox = Backbone.View.extend({
@@ -18,14 +18,37 @@ define(['underscore', 'jquery', 'backbone'], function(_, $, Backbone) {
         loginHandler: function(evt) {
             evt.preventDefault();
             evt.stopPropagation();
+            var d = $.ajax('/api/v1/auth/login/');
+            d.then(function() {
+                var csrf = $.cookie('csrftoken');
+                return $.ajax('/api/v1/auth/login/', {
+                    type: 'POST',
+                    header: {
+                        'X-CSRFToken': csrf
+                    },
+                    statusCode: {
+                        403: function() {
+                            console.log('authentication failed');
+                        },
+                        302: function() {
+                            console.log('authentication successful');
+                        }
+                    }
+                });
+            }, function(error) {
+                console.log('error ', error);
+            });
             return false;
         },
         loginToggle: function() {
-            if (this.ui.username.val().length > 0 && this.ui.password.val().length > 0) {
-                this.ui.submit.removeAttr('disabled');
+            var submit = this.ui.submit,
+                username = this.ui.username,
+                password = this.ui.password;
+            if (username.val().length > 0 && password.val().length > 0) {
+                submit.removeAttr('disabled');
                 return;
             }
-            this.ui.submit.attr('disabled','disabled');
+            submit.attr('disabled', 'disabled');
         }
     });
     var loginBox = new LoginBox({
