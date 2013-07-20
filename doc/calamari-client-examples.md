@@ -14,28 +14,28 @@ Authenticate
 
 		Accept: */*
 		Accept-Encoding: gzip, deflate, compress
-		Cookie: csrftoken=EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu; sessionid=ke9fl9jqwfxjurf5oaejotm58bupiqia
+		Cookie: XSRF-TOKEN=EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu; sessionid=ke9fl9jqwfxjurf5oaejotm58bupiqia
 		Host: mira022.front.sepia.ceph.com:8000
 		User-Agent: HTTPie/0.6.0
 
 2. This will return a cookie containing the CSRF `csrftoken` cookie in the header. Use this as the input to a form POST to the same URL: 			
 
-		http -v --form --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/auth/login/ X-CSRFToken:EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu username=admin password=admin submit="Log in"
+		http -v --form --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/auth/login/ X-XSRF-TOKEN:EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu username=admin password=admin
 		
 3. This will return a `302` redirect to accounts/profile by default, but you can easily set the location by setting the parameter `next`. e.g. next=/dashboard
 
-4. You should now be logged in. You can use authenticated APIs now like POSTs to /api/v1/user by supplying the token `X-CSRFToken` in the header. This is what an authenticated POST would look like:
+4. You should now be logged in. You can use authenticated APIs now like POSTs to /api/v1/user by supplying the token `X-CSRF-TOKEN` in the header. This is what an authenticated POST would look like:
 
-		http -v --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/user X-CSRFToken:EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu
+		http -v --session mira022 POST mira022.front.sepia.ceph.com:8000/api/v1/user
 
 		POST /api/v1/user HTTP/1.1
 		Accept: */*
 		Accept-Encoding: gzip, deflate, compress
 		Content-Length: 0
-		Cookie: csrftoken=EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu; sessionid=ke9fl9jqwfxjurf5oaejotm58bupiqia
+		Cookie: X-XSRF-TOKEN=EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu; sessionid=ke9fl9jqwfxjurf5oaejotm58bupiqia
 		Host: mira022.front.sepia.ceph.com:8000
 		User-Agent: HTTPie/0.6.0
-		X-CSRFToken: EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu
+		X-XSRF-TOKEN: EUCXsEf2NMZfVAkpjErZExhmmdtFNsAu
 
 		HTTP/1.0 400 BAD REQUEST
 		Allow: GET, POST, HEAD, OPTIONS
