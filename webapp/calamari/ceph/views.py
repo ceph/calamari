@@ -48,7 +48,7 @@ class ClusterViewSet(viewsets.ModelViewSet):
         oldest_update = min([osdump.added, pooldump.added])
         return Response({
             'added': oldest_update,
-            'added_ms': dateformat.format(oldest_update, 'U'),
+            'added_ms': int(dateformat.format(oldest_update, 'U')) * 1000,
             'osd': self._count_osds(osdump.report['osds']),
             'pool': self._count_pools(pooldump.report)
         })

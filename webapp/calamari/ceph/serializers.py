@@ -40,7 +40,7 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
         model = ClusterSpace
 
     def get_added_ms(self, obj):
-        return format(obj.added, 'U')
+        return int(format(obj.added, 'U')) * 1000
 
 class ClusterHealthSerializer(serializers.ModelSerializer):
     added_ms = serializers.SerializerMethodField('get_added_ms')
@@ -49,4 +49,4 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
         model = ClusterHealth
 
     def get_added_ms(self, obj):
-        return format(obj.added, 'U')
+        return int(format(obj.added, 'U')) * 1000
