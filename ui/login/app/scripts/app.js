@@ -9,39 +9,51 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
         },
         ui: {},
         initialize: function() {
+            _.bindAll(this, 'loginHandler', 'loginToggle');
+        },
+        render: function() {
             this.ui.username = this.$('input[name="username"]');
             this.ui.password = this.$('input[name="password"]');
             this.ui.submit = this.$('input[type="submit"]');
-            _.bindAll(this, 'loginHandler', 'loginToggle');
+            if (this.ui.username.val().length > 0 || this.ui.password.val().length > 0) {
+                this.ui.submit.removeAttr('disabled');
+            }
         },
-        render: function() {},
+        cookieName: 'XSRF-TOKEN',
+        headerName: 'X-XSRF-TOKEN',
+        loginUrl: '/api/v1/auth/login/',
+        nextUrl: '/static/index.html',
         loginHandler: function(evt) {
             evt.preventDefault();
             evt.stopPropagation();
-            var d = $.ajax('/api/v1/auth/login/');
+            var d = $.ajax(this.loginUrl);
             var self = this;
             d.then(function() {
-                var csrf = $.cookie('csrftoken');
-                return $.ajax('/api/v1/auth/login/', {
+                var csrf = $.cookie(self.cookieName);
+                var headers = {};
+                headers[self.headerName] = csrf;
+                return $.ajax(self.loginUrl, {
                     data: {
                         username: self.ui.username.val(),
                         password: self.ui.password.val(),
+                        // TODO we need a protected URL to test auth
+                        next: self.nextUrl
                     },
                     type: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrf
-                    },
+                    headers: headers,
                     statusCode: {
-                        403: function() {
+                        400: function() {
+                            // place holder
                             console.log('authentication failed');
                         },
-                        302: function() {
+                        200: function() {
+                            // place holder
                             console.log('authentication successful');
                         }
                     }
                 });
             }, function(error) {
-                console.log('error ', error);
+                console.log('error during auth ', error);
             });
             return false;
         },
@@ -56,6 +68,7 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
             submit.attr('disabled', 'disabled');
         }
     });
+
     var loginBox = new LoginBox({
         el: '.loginBox'
     });
