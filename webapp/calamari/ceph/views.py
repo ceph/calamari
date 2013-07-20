@@ -31,6 +31,16 @@ class ClusterViewSet(viewsets.ModelViewSet):
         return Response(ClusterHealthSerializer(health).data)
 
     @link()
+    def osd(self, request, pk=None):
+        cluster = self.get_object()
+        osdump = OSDDump.objects.filter(cluster=cluster).latest()
+        return Response({
+            'added': osdump.added,
+            'added_ms': int(dateformat.format(osdump.added, 'U')) * 1000,
+            'osds': osdump.report['osds'],
+        })
+
+    @link()
     def health_counters(self, request, pk=None):
         cluster = self.get_object()
         osdump = OSDDump.objects.filter(cluster=cluster).latest()
