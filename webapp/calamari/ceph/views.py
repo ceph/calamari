@@ -4,6 +4,7 @@ from collections import defaultdict
 from django.contrib.auth.models import User
 from django.http import Http404
 from django.utils import dateformat
+from django.core.exceptions import ObjectDoesNotExist
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
 from ceph.models import OSDDump, PGPoolDump
 from ceph.serializers import ClusterSerializer
@@ -24,6 +25,7 @@ class OSDList(APIView):
             'added': dump.added,
             'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
             'osds': dump.report['osds'],
+            'epoch': dump.pk,
         })
 
 class OSDDetail(APIView):
@@ -44,6 +46,65 @@ class OSDDetail(APIView):
             'added': dump.added,
             'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
             'osd': osd,
+        })
+
+class OSDListDelta(APIView):
+    model = OSDDump
+
+    def _get_dump(self, cluster_pk, pk=None):
+        dump = OSDDump.objects.filter(cluster__pk=cluster_pk)
+        try:
+            if pk:
+                return dump.get(pk=pk)
+            else:
+                return dump.latest()
+        except ObjectDoesNotExist:
+            raise Http404
+
+    def _osds_equal(self, a, b):
+        """
+        Simple single-level dictionary comparison.
+        """
+        if a.keys() != b.keys():
+            return False
+        for key, value in a.items():
+            if b[key] != value:
+                return False
+        return True
+
+    def _calc_delta(self, latest, old):
+        # look-up table by osd-id
+        old_by_id = {}
+        for osd in old:
+            old_by_id[osd['osd']] = osd
+
+        # build the delta
+        new, changed = [], []
+        for osd in latest:
+            id = osd['osd']
+            if old_by_id.has_key(id):
+                other = old_by_id[id]
+                if not self._osds_equal(osd, other):
+                    changed.append(osd)
+                del old_by_id[id]
+            else:
+                new.append(osd)
+
+        # new, removed, changed
+        return new, old_by_id.values(), changed
+
+    def get(self, request, cluster_pk, epoch):
+        latest_dump = self._get_dump(cluster_pk)
+        old_dump = self._get_dump(cluster_pk, epoch)
+        new, removed, changed = self._calc_delta(
+                latest_dump.report['osds'], old_dump.report['osds'])
+        return Response({
+            'added': latest_dump.added,
+            'added_ms': int(dateformat.format(latest_dump.added, 'U')) * 1000,
+            'new': new,
+            'removed': removed,
+            'changed': changed,
+            'epoch': latest_dump.pk,
         })
 
 class ClusterViewSet(viewsets.ModelViewSet):
