@@ -11,8 +11,40 @@ from ceph.serializers import ClusterSpaceSerializer
 from ceph.serializers import ClusterHealthSerializer
 from ceph.serializers import UserSerializer
 from rest_framework import viewsets, generics
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, link
+
+class OSDList(APIView):
+    model = OSDDump
+
+    def get(self, request, cluster_pk):
+        dump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
+        return Response({
+            'added': dump.added,
+            'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
+            'osds': dump.report['osds'],
+        })
+
+class OSDDetail(APIView):
+    model = OSDDump
+
+    def _get_osd(self, osds, id):
+        for osd in osds:
+            if osd['osd'] == int(id):
+                return osd
+        return None
+
+    def get(self, request, cluster_pk, osd_id):
+        dump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
+        osd = self._get_osd(dump.report['osds'], osd_id)
+        if not osd:
+            raise Http404
+        return Response({
+            'added': dump.added,
+            'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
+            'osd': osd,
+        })
 
 class ClusterViewSet(viewsets.ModelViewSet):
     queryset = Cluster.objects.all()
@@ -29,16 +61,6 @@ class ClusterViewSet(viewsets.ModelViewSet):
         cluster = self.get_object()
         health = ClusterHealth.objects.filter(cluster=cluster).latest()
         return Response(ClusterHealthSerializer(health).data)
-
-    @link()
-    def osd(self, request, pk=None):
-        cluster = self.get_object()
-        osdump = OSDDump.objects.filter(cluster=cluster).latest()
-        return Response({
-            'added': osdump.added,
-            'added_ms': int(dateformat.format(osdump.added, 'U')) * 1000,
-            'osds': osdump.report['osds'],
-        })
 
     @link()
     def health_counters(self, request, pk=None):
