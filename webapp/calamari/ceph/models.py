@@ -65,6 +65,13 @@ class OSDDump(Dump):
     Snapshot of the state of object storage devices.
     """
 
+    def get_osd(self, id):
+        "Find a specific OSD in the raw dump"
+        for osd in self.osds:
+            if osd['osd'] == int(id):
+                return osd
+        return None
+
     def _get_osds(self):
         "Select the OSD list from the raw JSON"
         return self.report['osds']
