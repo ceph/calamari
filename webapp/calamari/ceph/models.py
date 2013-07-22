@@ -1,11 +1,6 @@
+from django.utils import dateformat
 from django.db import models
 import jsonfield
-
-#
-# Note that we can use inheritence with Django models. If we keep building our
-# models this way, it'd be a good idea to use the feature, as all the snapshot
-# models are the same.
-#
 
 class Cluster(models.Model):
     """
@@ -19,57 +14,49 @@ class Cluster(models.Model):
     def __unicode__(self):
         return self.name
 
-class ClusterSpace(models.Model):
+class Dump(models.Model):
+    """
+    Base class for JSON snapshots retrieved from querying a cluster.
+    Subclasses may pre-process a raw dump to record derived data.
+
+    Each dump originates from a specific `cluster`. The `added` field records
+    the time the record was inserted into the database, and is used to
+    calculate the age/freshness of data. The `report` field stores the JSON
+    dump, and is automagically serialized/deserialized.
+    """
+    cluster = models.ForeignKey(Cluster)
+    added = models.DateTimeField(auto_now_add=True)
+    report = jsonfield.JSONField()
+
+    class Meta:
+        abstract = True
+        get_latest_by = "added"
+
+    def _get_added_ms(self):
+        "Convert `added` into Unix time."
+        return int(dateformat.format(self.added, 'U')) * 1000
+
+    added_ms = property(_get_added_ms)
+
+class ClusterSpace(Dump):
     """
     A snapshot of cluster space statistics.
 
     This roughly corresponds to `ceph df` without the per-pool statistics.
     """
-    cluster = models.ForeignKey(Cluster)
+    pass
 
-    # Timestamp of collected statistics
-    #
-    # FIXME: Currently this corresponds to the time at which inserted the data
-    # into the db. We could be really pedantic and have the cluster report to
-    # us the time it was sampled.
-    #
-    added = models.DateTimeField(auto_now_add=True)
-
-    # Raw report
-    report = jsonfield.JSONField()
-
-    class Meta:
-        get_latest_by = "added"
-
-class ClusterHealth(models.Model):
+class ClusterHealth(Dump):
     """
     A snapshot of cluster health.
     """
-    cluster = models.ForeignKey(Cluster)
-    added = models.DateTimeField(auto_now_add=True)
-    report = jsonfield.JSONField()
+    pass
 
-    class Meta:
-        get_latest_by = "added"
+class OSDDump(Dump):
+    pass
 
-class OSDDump(models.Model):
-    """
-    An OSD dump snapshot.
-    """
-    cluster = models.ForeignKey(Cluster)
-    added = models.DateTimeField(auto_now_add=True)
-    report = jsonfield.JSONField()
-
-    class Meta:
-        get_latest_by = "added"
-
-class PGPoolDump(models.Model):
+class PGPoolDump(Dump):
     """
     A pg pools dump snapshot.
     """
-    cluster = models.ForeignKey(Cluster)
-    added = models.DateTimeField(auto_now_add=True)
-    report = jsonfield.JSONField()
-
-    class Meta:
-        get_latest_by = "added"
+    pass
