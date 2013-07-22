@@ -19,7 +19,7 @@ class OSDList(APIView):
     model = OSDDump
 
     def get(self, request, cluster_pk):
-        dump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
+        dump = OSDDump.objects.for_cluster(cluster_pk).latest()
         return Response({
             'added': dump.added,
             'added_ms': dump.added_ms,
@@ -37,7 +37,7 @@ class OSDDetail(APIView):
         return None
 
     def get(self, request, cluster_pk, osd_id):
-        dump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
+        dump = OSDDump.objects.for_cluster(cluster_pk).latest()
         osd = self._get_osd(dump.report['osds'], osd_id)
         if not osd:
             raise Http404
@@ -51,7 +51,7 @@ class OSDListDelta(APIView):
     model = OSDDump
 
     def _get_dump(self, cluster_pk, pk=None):
-        dump = OSDDump.objects.filter(cluster__pk=cluster_pk)
+        dump = OSDDump.objects.for_cluster(cluster_pk)
         try:
             if pk:
                 return dump.get(pk=pk)
@@ -110,8 +110,8 @@ class HealthCounters(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        osdump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
-        pooldump = PGPoolDump.objects.filter(cluster__pk=cluster_pk).latest()
+        osdump = OSDDump.objects.for_cluster(cluster_pk).latest()
+        pooldump = PGPoolDump.objects.for_cluster(cluster_pk).latest()
         oldest_update = min([osdump, pooldump], key=lambda m: m.added)
         return Response({
             'added': oldest_update.added,
@@ -152,14 +152,14 @@ class Space(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        space = ClusterSpace.objects.filter(cluster__pk=cluster_pk).latest()
+        space = ClusterSpace.objects.for_cluster(cluster_pk).latest()
         return Response(ClusterSpaceSerializer(space).data)
 
 class Health(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        health = ClusterHealth.objects.filter(cluster__pk=cluster_pk).latest()
+        health = ClusterHealth.objects.for_cluster(cluster_pk).latest()
         return Response(ClusterHealthSerializer(health).data)
 
 class ClusterViewSet(viewsets.ModelViewSet):
