@@ -15,6 +15,11 @@ class Cluster(models.Model):
     def __unicode__(self):
         return self.name
 
+class DumpManager(models.Manager):
+    def for_cluster(self, cluster_pk):
+        "Filter queryset by cluster primary-key"
+        return self.get_query_set().filter(cluster__pk=cluster_pk)
+
 class Dump(models.Model):
     """
     Base class for JSON snapshots retrieved from querying a cluster.
@@ -28,6 +33,8 @@ class Dump(models.Model):
     cluster = models.ForeignKey(Cluster)
     added = models.DateTimeField(auto_now_add=True)
     report = jsonfield.JSONField()
+
+    objects = DumpManager()
 
     class Meta:
         abstract = True
