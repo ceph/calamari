@@ -116,7 +116,7 @@ class HealthCounters(APIView):
         return Response({
             'added': oldest_update.added,
             'added_ms': oldest_update.added_ms,
-            'osd': self._count_osds(osdump.report['osds']),
+            'osd': self._count_osds(osdump),
             'pool': self._count_pools(pooldump.report)
         })
 
@@ -136,21 +136,17 @@ class HealthCounters(APIView):
         counts['total'] = len(pools)
         return counts
 
-    def _count_osds(self, osds):
+    def _count_osds(self, osdump):
         """
         Group and count OSDs by their status.
         """
-        counts = defaultdict(lambda: 0)
-        counts['total'] = len(osds)
-        for osd in osds:
-            up, inn = osd['up'], osd['in']
-            if up and inn:
-                counts['up_in'] += 1
-            elif up and not inn:
-                counts['up_not_in'] += 1
-            elif not up and not inn:
-                counts['not_up_not_in'] += 1
-        return counts
+        total, up_in, up_not_in, not_up_not_in = osdump.num_osds
+        return {
+            'total': total,
+            'up_in': up_in,
+            'up_not_in': up_not_in,
+            'not_up_not_in': not_up_not_in,
+        }
 
 class Space(APIView):
     model = Cluster
