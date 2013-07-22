@@ -3,7 +3,6 @@ from itertools import imap
 from collections import defaultdict
 from django.contrib.auth.models import User
 from django.http import Http404
-from django.utils import dateformat
 from django.core.exceptions import ObjectDoesNotExist
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
 from ceph.models import OSDDump, PGPoolDump
@@ -23,7 +22,7 @@ class OSDList(APIView):
         dump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
         return Response({
             'added': dump.added,
-            'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
+            'added_ms': dump.added_ms,
             'osds': dump.report['osds'],
             'epoch': dump.pk,
         })
@@ -44,7 +43,7 @@ class OSDDetail(APIView):
             raise Http404
         return Response({
             'added': dump.added,
-            'added_ms': int(dateformat.format(dump.added, 'U')) * 1000,
+            'added_ms': dump.added_ms,
             'osd': osd,
         })
 
@@ -100,7 +99,7 @@ class OSDListDelta(APIView):
                 latest_dump.report['osds'], old_dump.report['osds'])
         return Response({
             'added': latest_dump.added,
-            'added_ms': int(dateformat.format(latest_dump.added, 'U')) * 1000,
+            'added_ms': latest_dump.added_ms,
             'new': new,
             'removed': removed,
             'changed': changed,
@@ -113,10 +112,10 @@ class HealthCounters(APIView):
     def get(self, request, cluster_pk):
         osdump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
         pooldump = PGPoolDump.objects.filter(cluster__pk=cluster_pk).latest()
-        oldest_update = min([osdump.added, pooldump.added])
+        oldest_update = min([osdump, pooldump], key=lambda m: m.added)
         return Response({
-            'added': oldest_update,
-            'added_ms': int(dateformat.format(oldest_update, 'U')) * 1000,
+            'added': oldest_update.added,
+            'added_ms': oldest_update.added_ms,
             'osd': self._count_osds(osdump.report['osds']),
             'pool': self._count_pools(pooldump.report)
         })
