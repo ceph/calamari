@@ -65,6 +65,44 @@ class OSDDump(Dump):
     Snapshot of the state of object storage devices.
     """
 
+    def delta(self, other):
+        """
+        Compute a delta between the OSD lists of `self` and `other`.
+
+        An OSD in self.osds will appear in output `new` if it not in
+        other.osds. The opposite is true for output `removed`. The output
+        `changed` is determined by an OSD equality operation that performs a
+        simple single-level dictionary comparison.
+
+        Return:
+          (new, removed, changed)
+        """
+        def compare_osd(a, b):
+            "Simple single-level dictionary comparison."
+            if set(a.keys()) != set(b.keys()):
+                return False
+            for key, value in a.items():
+                if b[key] != value:
+                    return False
+            return True
+
+        # look-up table mapping id to osd
+        other_ids = dict((osd['osd'], osd) for osd in other.osds)
+
+        # generate the delta
+        new, changed = [], []
+        for osd in self.osds:
+            osd_id = osd['osd']
+            if osd_id in other_ids:
+                if not compare_osd(osd, other_ids[osd_id]):
+                    changed.append(osd)
+                del other_ids[osd_id]
+            else:
+                new.append(osd)
+
+        # new, removed, changed
+        return new, other_ids.values(), changed
+
     def get_osd(self, id):
         "Find a specific OSD in the raw dump"
         for osd in self.osds:
