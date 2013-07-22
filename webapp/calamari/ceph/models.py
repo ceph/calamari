@@ -64,6 +64,13 @@ class OSDDump(Dump):
     """
     Snapshot of the state of object storage devices.
     """
+
+    def _get_osds(self):
+        "Select the OSD list from the raw JSON"
+        return self.report['osds']
+
+    osds = property(_get_osds)
+
     def _get_num_osds(self):
         """
         Count OSDs by up/in status.
@@ -72,11 +79,10 @@ class OSDDump(Dump):
           (total, up&in, up&!in, !up&!in)
         """
         cnts = defaultdict(lambda: 0)
-        osds = self.report['osds']
-        for osd in osds:
+        for osd in self.osds:
             up, inn = bool(osd['up']), bool(osd['in'])
             cnts[(up, inn)] += 1
-        return (len(osds), cnts[(True, True)], \
+        return (len(self.osds), cnts[(True, True)], \
                 cnts[(True, False)], cnts[(False, False)])
 
     num_osds = property(_get_num_osds)

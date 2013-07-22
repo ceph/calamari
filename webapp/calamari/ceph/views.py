@@ -33,7 +33,7 @@ class OSDList(APIView):
     def get(self, request, cluster_pk):
         dump = OSDDump.objects.for_cluster(cluster_pk).latest()
         return StampedResponse(dump, {
-            'osds': dump.report['osds'],
+            'osds': dump.osds,
             'epoch': dump.pk,
         })
 
@@ -48,7 +48,7 @@ class OSDDetail(APIView):
 
     def get(self, request, cluster_pk, osd_id):
         dump = OSDDump.objects.for_cluster(cluster_pk).latest()
-        osd = self._get_osd(dump.report['osds'], osd_id)
+        osd = self._get_osd(dump.osds, osd_id)
         if not osd:
             raise Http404
         return StampedResponse(dump, {'osd': osd})
@@ -101,8 +101,7 @@ class OSDListDelta(APIView):
     def get(self, request, cluster_pk, epoch):
         latest_dump = self._get_dump(cluster_pk)
         old_dump = self._get_dump(cluster_pk, epoch)
-        new, removed, changed = self._calc_delta(
-                latest_dump.report['osds'], old_dump.report['osds'])
+        new, removed, changed = self._calc_delta(latest_dump.osds, old_dump.osds)
         return StampedResponse(latest_dump, {
             'new': new,
             'removed': removed,
