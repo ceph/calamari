@@ -107,27 +107,12 @@ class OSDListDelta(APIView):
             'epoch': latest_dump.pk,
         })
 
-class ClusterViewSet(viewsets.ModelViewSet):
-    queryset = Cluster.objects.all()
-    serializer_class = ClusterSerializer
+class HealthCounters(APIView):
+    model = Cluster
 
-    @link()
-    def space(self, request, pk=None):
-        cluster = self.get_object()
-        space = ClusterSpace.objects.filter(cluster=cluster).latest()
-        return Response(ClusterSpaceSerializer(space).data)
-
-    @link()
-    def health(self, request, pk=None):
-        cluster = self.get_object()
-        health = ClusterHealth.objects.filter(cluster=cluster).latest()
-        return Response(ClusterHealthSerializer(health).data)
-
-    @link()
-    def health_counters(self, request, pk=None):
-        cluster = self.get_object()
-        osdump = OSDDump.objects.filter(cluster=cluster).latest()
-        pooldump = PGPoolDump.objects.filter(cluster=cluster).latest()
+    def get(self, request, cluster_pk):
+        osdump = OSDDump.objects.filter(cluster__pk=cluster_pk).latest()
+        pooldump = PGPoolDump.objects.filter(cluster__pk=cluster_pk).latest()
         oldest_update = min([osdump.added, pooldump.added])
         return Response({
             'added': oldest_update,
@@ -167,6 +152,24 @@ class ClusterViewSet(viewsets.ModelViewSet):
             elif not up and not inn:
                 counts['not_up_not_in'] += 1
         return counts
+
+class Space(APIView):
+    model = Cluster
+
+    def get(self, request, cluster_pk):
+        space = ClusterSpace.objects.filter(cluster__pk=cluster_pk).latest()
+        return Response(ClusterSpaceSerializer(space).data)
+
+class Health(APIView):
+    model = Cluster
+
+    def get(self, request, cluster_pk):
+        health = ClusterHealth.objects.filter(cluster__pk=cluster_pk).latest()
+        return Response(ClusterHealthSerializer(health).data)
+
+class ClusterViewSet(viewsets.ModelViewSet):
+    queryset = Cluster.objects.all()
+    serializer_class = ClusterSerializer
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
