@@ -42,17 +42,15 @@ class OSDList(APIView):
         })
 
 class OSDDetail(APIView):
+    """
+    Access details of a single OSD.
+    """
     model = OSDDump
 
-    def _get_osd(self, osds, id):
-        for osd in osds:
-            if osd['osd'] == int(id):
-                return osd
-        return None
-
     def get(self, request, cluster_pk, osd_id):
+        "Return detail of OSD identified by osd_id"
         dump = OSDDump.objects.for_cluster(cluster_pk).latest()
-        osd = self._get_osd(dump.osds, osd_id)
+        osd = dump.get_osd(osd_id)
         if not osd:
             raise Http404
         return StampedResponse(dump, {'osd': osd})
