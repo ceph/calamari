@@ -56,59 +56,30 @@ class OSDDetail(APIView):
         return StampedResponse(dump, {'osd': osd})
 
 class OSDListDelta(APIView):
+    """
+    Return list of OSDs that have changed since a point in the past.
+    """
     model = OSDDump
 
-    def _get_dump(self, cluster_pk, pk=None):
-        dump = OSDDump.objects.for_cluster(cluster_pk)
+    def _get_spread(self, cluster_pk, epoch):
+        "Returns the latest and a specific OSD state dump"
+        all = OSDDump.objects.for_cluster(cluster_pk)
         try:
-            if pk:
-                return dump.get(pk=pk)
-            else:
-                return dump.latest()
-        except ObjectDoesNotExist:
-            raise Http404
-
-    def _osds_equal(self, a, b):
-        """
-        Simple single-level dictionary comparison.
-        """
-        if a.keys() != b.keys():
-            return False
-        for key, value in a.items():
-            if b[key] != value:
-                return False
-        return True
-
-    def _calc_delta(self, latest, old):
-        # look-up table by osd-id
-        old_by_id = {}
-        for osd in old:
-            old_by_id[osd['osd']] = osd
-
-        # build the delta
-        new, changed = [], []
-        for osd in latest:
-            id = osd['osd']
-            if old_by_id.has_key(id):
-                other = old_by_id[id]
-                if not self._osds_equal(osd, other):
-                    changed.append(osd)
-                del old_by_id[id]
-            else:
-                new.append(osd)
-
-        # new, removed, changed
-        return new, old_by_id.values(), changed
+            return all.latest(), all.get(pk=epoch)
+        except OSDDump.DoesNotExist:
+            raise Http404()
 
     def get(self, request, cluster_pk, epoch):
-        latest_dump = self._get_dump(cluster_pk)
-        old_dump = self._get_dump(cluster_pk, epoch)
-        new, removed, changed = self._calc_delta(latest_dump.osds, old_dump.osds)
-        return StampedResponse(latest_dump, {
+        """
+        Return the OSD list delta since epoch (i.e. a primary-key).
+        """
+        current, past = self._get_spread(cluster_pk, epoch)
+        new, removed, changed = current.delta(past)
+        return StampedResponse(current, {
             'new': new,
             'removed': removed,
             'changed': changed,
-            'epoch': latest_dump.pk,
+            'epoch': current.pk,
         })
 
 class HealthCounters(APIView):
