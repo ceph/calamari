@@ -15,14 +15,24 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, link
 
+class StampedResponse(Response):
+    """
+    A rest_framework Response with uniform treatment of timestamps.
+
+    Args:
+      dateobj: the Dump model to take time information from
+      data: the dictionary all the context-dependent values
+    """
+    def __init__(self, dateobj, data, *args, **kwargs):
+        data.update({'added': dateobj.added, 'added_ms': dateobj.added_ms})
+        super(StampedResponse, self).__init__(data, *args, **kwargs)
+
 class OSDList(APIView):
     model = OSDDump
 
     def get(self, request, cluster_pk):
         dump = OSDDump.objects.for_cluster(cluster_pk).latest()
-        return Response({
-            'added': dump.added,
-            'added_ms': dump.added_ms,
+        return StampedResponse(dump, {
             'osds': dump.report['osds'],
             'epoch': dump.pk,
         })
@@ -41,11 +51,7 @@ class OSDDetail(APIView):
         osd = self._get_osd(dump.report['osds'], osd_id)
         if not osd:
             raise Http404
-        return Response({
-            'added': dump.added,
-            'added_ms': dump.added_ms,
-            'osd': osd,
-        })
+        return StampedResponse(dump, {'osd': osd})
 
 class OSDListDelta(APIView):
     model = OSDDump
@@ -97,9 +103,7 @@ class OSDListDelta(APIView):
         old_dump = self._get_dump(cluster_pk, epoch)
         new, removed, changed = self._calc_delta(
                 latest_dump.report['osds'], old_dump.report['osds'])
-        return Response({
-            'added': latest_dump.added,
-            'added_ms': latest_dump.added_ms,
+        return StampedResponse(latest_dump, {
             'new': new,
             'removed': removed,
             'changed': changed,
@@ -113,9 +117,7 @@ class HealthCounters(APIView):
         osdump = OSDDump.objects.for_cluster(cluster_pk).latest()
         pooldump = PGPoolDump.objects.for_cluster(cluster_pk).latest()
         oldest_update = min([osdump, pooldump], key=lambda m: m.added)
-        return Response({
-            'added': oldest_update.added,
-            'added_ms': oldest_update.added_ms,
+        return StampedResponse(oldest_update, {
             'osd': self._count_osds(osdump),
             'pool': self._count_pools(pooldump.report)
         })
