@@ -28,9 +28,13 @@ class StampedResponse(Response):
         super(StampedResponse, self).__init__(data, *args, **kwargs)
 
 class OSDList(APIView):
+    """
+    Access to the list of OSDs in a cluster.
+    """
     model = OSDDump
 
     def get(self, request, cluster_pk):
+        "Return the latest list of OSDs"
         dump = OSDDump.objects.for_cluster(cluster_pk).latest()
         return StampedResponse(dump, {
             'osds': dump.osds,
