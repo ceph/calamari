@@ -60,6 +60,25 @@ class ClusterHealth(Dump):
     """
     pass
 
+class ClusterStatus(Dump):
+    """
+    A snapshot of cluster status.
+    """
+    pass
+
+    def mds_count_by_status(self):
+        """
+        Number of MDSs categorized by status.
+
+        Return:
+          (total, up&in, up&!in, !up&!in)
+        """
+        total = self.report['mdsmap']['max']
+        up = self.report['mdsmap']['up']
+        inn = self.report['mdsmap']['in']
+        # inn implies up (and includes up count)
+        return total, inn, up-inn, total-up
+
 class OSDDump(Dump):
     """
     Snapshot of the state of object storage devices.

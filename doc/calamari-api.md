@@ -139,6 +139,12 @@ Health Counters
 
 ```json
 {
+    "mds": {
+        "up_not_in": 0, 
+        "not_up_not_in": 0, 
+        "total": 3, 
+        "up_in": 3
+    },
     "osd": {
         "up_not_in": 1, 
         "not_up_not_in": 1, 

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.http import Http404
 from django.core.exceptions import ObjectDoesNotExist
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
-from ceph.models import OSDDump, PGPoolDump
+from ceph.models import OSDDump, PGPoolDump, ClusterStatus
 from ceph.serializers import ClusterSerializer
 from ceph.serializers import ClusterSpaceSerializer
 from ceph.serializers import ClusterHealthSerializer
@@ -88,11 +88,22 @@ class HealthCounters(APIView):
     def get(self, request, cluster_pk):
         osdump = OSDDump.objects.for_cluster(cluster_pk).latest()
         pooldump = PGPoolDump.objects.for_cluster(cluster_pk).latest()
-        oldest_update = min([osdump, pooldump], key=lambda m: m.added)
+        status = ClusterStatus.objects.for_cluster(cluster_pk).latest()
+        oldest_update = min([osdump, pooldump, status], key=lambda m: m.added)
         return StampedResponse(oldest_update, {
             'osd': self._count_osds(osdump),
-            'pool': self._count_pools(pooldump.report)
+            'pool': self._count_pools(pooldump.report),
+            'mds': self._count_mds(status),
         })
+
+    def _count_mds(self, status):
+        total, up_in, up_nin, nup_nin = status.mds_count_by_status()
+        return {
+            'total': total,
+            'up_in': up_in,
+            'up_not_in': up_nin,
+            'not_up_not_in': nup_nin,
+        }
 
     def _count_pools(self, pools):
         """
