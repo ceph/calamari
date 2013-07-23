@@ -79,6 +79,19 @@ class ClusterStatus(Dump):
         # inn implies up (and includes up count)
         return total, inn, up-inn, total-up
 
+    def osd_count_by_status(self):
+        """
+        Number of OSDs categorized by status.
+
+        Return:
+          (total, up&in, up&!in, !up&!in)
+        """
+        osds = self.report['osdmap']['osdmap']
+        keys = ['num_osds', 'num_up_osds', 'num_in_osds']
+        total, up, inn = (int(osds[k]) for k in keys)
+        # inn implies up (and includes up count)
+        return total, inn, up-inn, total-up
+
 class OSDDump(Dump):
     """
     Snapshot of the state of object storage devices.
@@ -134,22 +147,6 @@ class OSDDump(Dump):
         return self.report['osds']
 
     osds = property(_get_osds)
-
-    def _get_num_osds(self):
-        """
-        Count OSDs by up/in status.
-
-        Return:
-          (total, up&in, up&!in, !up&!in)
-        """
-        cnts = defaultdict(lambda: 0)
-        for osd in self.osds:
-            up, inn = bool(osd['up']), bool(osd['in'])
-            cnts[(up, inn)] += 1
-        return (len(self.osds), cnts[(True, True)], \
-                cnts[(True, False)], cnts[(False, False)])
-
-    num_osds = property(_get_num_osds)
 
 class PGPoolDump(Dump):
     """
