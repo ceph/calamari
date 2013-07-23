@@ -86,12 +86,11 @@ class HealthCounters(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        osdump = OSDDump.objects.for_cluster(cluster_pk).latest()
         pooldump = PGPoolDump.objects.for_cluster(cluster_pk).latest()
         status = ClusterStatus.objects.for_cluster(cluster_pk).latest()
-        oldest_update = min([osdump, pooldump, status], key=lambda m: m.added)
+        oldest_update = min([pooldump, status], key=lambda m: m.added)
         return StampedResponse(oldest_update, {
-            'osd': self._count_osds(osdump),
+            'osd': self._count_osds(status),
             'pool': self._count_pools(pooldump.report),
             'mds': self._count_mds(status),
         })
@@ -121,16 +120,16 @@ class HealthCounters(APIView):
         counts['total'] = len(pools)
         return counts
 
-    def _count_osds(self, osdump):
+    def _count_osds(self, status):
         """
         Group and count OSDs by their status.
         """
-        total, up_in, up_not_in, not_up_not_in = osdump.num_osds
+        total, up_in, up_nin, nup_nin = status.osd_count_by_status()
         return {
             'total': total,
             'up_in': up_in,
-            'up_not_in': up_not_in,
-            'not_up_not_in': not_up_not_in,
+            'up_not_in': up_nin,
+            'not_up_not_in': nup_nin,
         }
 
 class Space(APIView):
