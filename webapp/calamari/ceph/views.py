@@ -93,7 +93,26 @@ class HealthCounters(APIView):
             'osd': self._count_osds(status),
             'pool': self._count_pools(pooldump.report),
             'mds': self._count_mds(status),
+            'mon': self._count_mon(status),
+            'pg': self._count_pg(status),
         })
+
+    def _count_pg(self, status):
+        total, ok, warn, crit = status.pg_count_by_status()
+        return {
+            'total': total,
+            'ok': ok,
+            'warn': warn,
+            'critical': crit,
+        }
+
+    def _count_mon(self, status):
+        total, in_quorum, not_in_quorum = status.mon_count_by_status()
+        return {
+            'total': total,
+            'in_quorum': in_quorum,
+            'not_in_quorum': not_in_quorum,
+        }
 
     def _count_mds(self, status):
         total, up_in, up_nin, nup_nin = status.mds_count_by_status()
