@@ -1,0 +1,36 @@
+@import 'compass/css3/images';
+@import 'inktank_colors';
+
+$it-nav-active-color: $itaqua;
+$it-nav-color: $itdarkred;
+$it-nav-hover-color: $itred;
+$it-nav-active-hover-color: $itlightaqua;
+
+.navbar {
+    margin-bottom:0;
+    .navbar-inner {
+        @include background(linear-gradient(to bottom, darken($itdarkred, 20%), darken($itred, 40%)));
+        @include border-radius(3px);
+        @include box-shadow(0 2px 4px rgba(0, 0, 0, .2));
+        border: 1px solid darken($itdarkred, 15%);
+    }
+}
+ul.nav {
+    a {
+        color: $it-nav-color;
+    }
+    a:hover {
+        color: $it-nav-hover-color;
+    }
+}
+ul.nav li.active {
+    a {
+        color: $it-nav-active-color;
+    }
+    a:hover {
+        color: $it-nav-active-hover-color;
+    }
+}
+input {
+	font-family: 'ApexSansLight';
+}
