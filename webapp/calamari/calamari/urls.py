@@ -6,7 +6,9 @@ from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('',
     url(r'^api/v1/', include('ceph.urls')),
-    url(r'^api/v1/auth/', include('rest_framework.urls', namespace='rest_framework')),
+    url(r'^api/v1/auth/login', 'calamari.views.login'),
+    url(r'^api/v1/auth/logout', 'calamari.views.logout'),
+    url(r'^api/v1/auth2/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^api/v1/info', 'calamari.views.info'),
 
     # Examples:
