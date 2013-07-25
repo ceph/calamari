@@ -5,15 +5,19 @@ adminApp.config(function($routeProvider) {
 
     $routeProvider.when('/user', {
         templateUrl: 'views/user.html',
+        title: 'User Settings',
         controller: 'UserCtrl'
     }).when('/general', {
         templateUrl: 'views/general.html',
+        title: 'General Settings',
         controller: 'GeneralCtrl'
     }).when('/cluster', {
         templateUrl: 'views/cluster.html',
+        title: 'Cluster Settings',
         controller: 'ClusterCtrl'
     }).when('/users', {
         templateUrl: 'views/users.html',
+        title: 'Users Settings',
         controller: 'UsersCtrl'
     }).otherwise({
         redirectTo: '/user'
@@ -34,6 +38,18 @@ adminApp.factory('menus', function() {
                 });
             }
             return res;
+        }
+    };
+});
+adminApp.run(function($rootScope, $route) {
+    $rootScope.$on('$routeChangeSuccess', function() {
+        $rootScope.pageTitle = $route.current.title;
+    });
+});
+adminApp.factory('pageTitle', function($rootScope, $route) {
+    return {
+        update: function() {
+            $rootScope.pageTitle = $route.current.title;
         }
     };
 });

@@ -1,12 +1,11 @@
-<div class="row span12 well">
-    <h1>{{title}} Settings</h1>
-</div>
-<div class="row well span12">
+<div class="row card span12">
     <div class="tabbable tabs-left">
         <ul class="nav nav-tabs">
             <li ng-class='entry.clazz' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
+            <h4>{{title}}</h4>
+            <hr class='settings-separator'>
             <form class='form-horizontal' name="user-form">
                 <div class="control-group">
                     <label class="control-label">Username</label>

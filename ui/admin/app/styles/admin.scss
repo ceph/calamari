@@ -1,3 +1,5 @@
+@import 'compass/css3/border-radius';
+@import 'compass/css3/box-shadow';
 @import 'compass/css3/images';
 @import 'inktank_colors';
 
@@ -5,7 +7,9 @@ $it-nav-active-color: $itaqua;
 $it-nav-color: $itdarkred;
 $it-nav-hover-color: $itred;
 $it-nav-active-hover-color: $itlightaqua;
+$it-background-color: $itdarkgray;
 
+$it-tab-background: lighten($itlightgray, 9%);
 .navbar {
     margin-bottom:0;
     .navbar-inner {
@@ -26,11 +30,55 @@ ul.nav {
 ul.nav li.active {
     a {
         color: $it-nav-active-color;
+	background: $it-tab-background;
+	@include border-radius(3px);
     }
     a:hover {
         color: $it-nav-active-hover-color;
     }
 }
+.nav.nav-tabs {
+	margin-right: 0px;
+}
+.tab-content {
+    min-height: 600px;
+    padding: 9px 2em;
+    margin: 0;
+    background: $it-tab-background;
+}
 input {
+    font-family:'ApexSansMedium';
+}
+table.users td {
+    font-family:'ApexSansMedium';
+    vertical-align: bottom;
+}
+table.users input {
+	margin-top: -4px;
+}
+table.users th {
+    font-size: 1.1em;
+}
+.users-uid {
+    width: 1em;
+    overflow: hidden;
+}
+.users-username {
+    width: 1em;
+}
+.users-email {
+    width: 10em;
+}
+.users-twitter {
+    width: 5em;
+}
+h4 {
 	font-family: 'ApexSansLight';
+	font-size: 2em;
+}
+hr.settings-separator {
+    border: 0;
+    margin: 1.25em 0 30px 0;
+    height: 1px;
+    background: darken($itlightgray, 20%);
 }
