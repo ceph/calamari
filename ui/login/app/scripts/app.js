@@ -5,67 +5,91 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
     var LoginBox = Backbone.View.extend({
         events: {
             'click input[type="submit"]': 'loginHandler',
+            'submit form': 'loginHandler',
             'keyup input[name="username"],input[name="password"]': 'loginToggle'
         },
         ui: {},
         initialize: function() {
-            _.bindAll(this, 'loginHandler', 'loginToggle');
+            _.bindAll(this, 'loginHandler', 'loginToggle', 'toJSON', 'disableSubmit', 'enableSubmit', 'showErrors', 'hideErrors');
         },
         render: function() {
             this.ui.username = this.$('input[name="username"]');
             this.ui.password = this.$('input[name="password"]');
-            this.ui.submit = this.$('input[type="submit"]');
+            this.ui.submit = this.$('button[type="submit"]');
+            this.ui.errors = this.$('.errors');
             if (this.ui.username.val().length > 0 || this.ui.password.val().length > 0) {
                 this.ui.submit.removeAttr('disabled');
             }
         },
-        cookieName: 'XSRF-TOKEN',
-        headerName: 'X-XSRF-TOKEN',
+        xsrfCookieName: 'XSRF-TOKEN',
+        xsrfHeaderName: 'X-XSRF-TOKEN',
         loginUrl: '/api/v1/auth/login/',
         nextUrl: '/static/index.html',
+        toJSON: function() {
+            return JSON.stringify({
+                username: this.ui.username.val(),
+                password: this.ui.password.val(),
+                next: this.nextUrl
+            });
+        },
         loginHandler: function(evt) {
             evt.preventDefault();
             evt.stopPropagation();
-            var d = $.ajax(this.loginUrl);
-            var self = this;
-            d.then(function() {
-                var csrf = $.cookie(self.cookieName);
+            // get session and xsrf cookie values
+            var get = $.get(this.loginUrl),
+                self = this;
+            this.disableSubmit('icon-spinner icon-spin');
+            this.hideErrors();
+            get.then(function() {
+                var xsrfToken = $.cookie(self.xsrfCookieName);
                 var headers = {};
-                headers[self.headerName] = csrf;
+                headers[self.xsrfHeaderName] = xsrfToken;
                 return $.ajax(self.loginUrl, {
-                    data: {
-                        username: self.ui.username.val(),
-                        password: self.ui.password.val(),
-                        // TODO we need a protected URL to test auth
-                        next: self.nextUrl
-                    },
                     type: 'POST',
+                    contentType: 'application/json; charset=utf-8',
                     headers: headers,
+                    data: self.toJSON(),
                     statusCode: {
-                        400: function() {
-                            // place holder
-                            console.log('authentication failed');
-                        },
                         200: function() {
-                            // place holder
-                            console.log('authentication successful');
+                            // Normal Path
+                            window.location = self.nextUrl;
+                        },
+                        401: function(jqxhr) {
+                            // Normal Error
+                            var resp = JSON.parse(jqxhr.responseText);
+                            self.showErrors(resp.message);
                         }
                     }
                 });
-            }, function(error) {
-                console.log('error during auth ', error);
+            }, function(jqxhr, statusTxt, error) {
+                // All other errors
+                self.showErrors(jqxhr.statusCode().status + ' ' + error);
+            }).always(function() {
+                self.enableSubmit('icon-ok');
             });
             return false;
         },
+        hideErrors: function() {
+            this.ui.errors.fadeOut().css('visibility', 'hidden');
+        },
+        showErrors: function(msg) {
+            var errors = this.ui.errors;
+            errors.text(msg).css('visibility', 'visible').hide().fadeIn();
+        },
+        disableSubmit: function(iconClazz) {
+            this.ui.submit.attr('disabled', 'disabled').addClass('disabled').html('<i class="' + iconClazz + ' icon-large"></i>');
+        },
+        enableSubmit: function(iconClazz) {
+            this.ui.submit.removeAttr('disabled').removeClass('disabled').html('<i class="' + iconClazz + ' icon-large"></i>');
+        },
         loginToggle: function() {
-            var submit = this.ui.submit,
-                username = this.ui.username,
+            var username = this.ui.username,
                 password = this.ui.password;
             if (username.val().length > 0 && password.val().length > 0) {
-                submit.removeAttr('disabled');
+                this.enableSubmit('icon-ok');
                 return;
             }
-            submit.attr('disabled', 'disabled');
+            this.disableSubmit('icon-ban-circle');
         }
     });
 

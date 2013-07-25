@@ -27,7 +27,7 @@
                             <img src="images/logo.png" alt="inktank logo"/>
                         </div>
                         <h3>Calamari Console</h3>
-                        <form action='/api/v1/auth/login' method='post'>
+                        <form action='/api/v1/auth2/login' method='post'>
                             <div class="control-group">
                                 <div class="controls">
                                     <input type="text" name="username" class="username" placeholder="Username"/>
@@ -44,10 +44,15 @@
                             </div>
                             <div class="control-group">
                                 <div class="controls">
-                                    <input class="disabled" type="submit" disabled="true" name="login" value="Login">
+                                    <button type='submit' class="btn-custom disabled" type="submit" disabled name="login" value="">
+                                        <i class="icon-ban-circle icon-large"></i>
+                                    </button>
                                 </div>
                             </div>
                         </form>
+                        <div class="errors">
+                            Unable to Log In
+                        </div>
                     </div>
                 </div>
                 <div class="span4"></div>
