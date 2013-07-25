@@ -1,13 +1,11 @@
-<div class="row span12 well">
-    <h1>{{title}} Settings</h1>
-</div>
-<div class="row well span12">
+<div class="row span12 card">
     <div class="tabbable tabs-left">
         <ul class="nav nav-tabs">
             <li ng-class='entry.clazz' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
-            <h3>Cluster</h3>
+            <h4>{{title}}</h4>
+            <hr class='settings-separator'>
             <table class="table">
                 <thead>
                     <tr>

@@ -1,8 +1,8 @@
 'use strict';
 
-var userController = function($scope, menus) {
-        $scope.title = 'User';
+var userController = function($rootScope, $scope, menus) {
         $scope.menus = menus.menu('user');
+        $scope.title = $rootScope.pageTitle;
         $scope.clear = function() {
             $scope.user.email = 'calamari@inktank.com';
             $scope.user.password = '';
@@ -17,5 +17,5 @@ var userController = function($scope, menus) {
             confirm: ''
         };
     };
-userController.$inject = ['$scope', 'menus'];
+userController.$inject = ['$rootScope', '$scope', 'menus'];
 angular.module('adminApp').controller('UserCtrl', userController);
