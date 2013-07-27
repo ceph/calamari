@@ -40,9 +40,12 @@ ul.nav li.active {
 .nav.nav-tabs {
 	margin-right: 0px;
 }
+.container {
+	margin-bottom: 10px;
+}
 .tab-content {
     min-height: 600px;
-    padding: 9px 2em;
+    padding: 12px 2em 0;
     margin: 0;
     background: $it-tab-background;
 }
@@ -75,10 +78,15 @@ table.users th {
 h4 {
 	font-family: 'ApexSansLight';
 	font-size: 2em;
+	min-height: 29px;
+	vertical-align: middle;
+	.spacing-hack {
+	    visibility: hidden;
+    	}
 }
 hr.settings-separator {
     border: 0;
-    margin: 1.25em 0 30px 0;
+    margin: 0 0 30px 0;
     height: 1px;
     background: darken($itlightgray, 20%);
 }
