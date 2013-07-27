@@ -4,7 +4,7 @@
             <li ng-class='entry.clazz' ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
         </ul>
         <div class="tab-content">
-            <h4>{{title}}</h4>
+            <h4>{{title}} <i ng-show='loading' class='icon-spinner icon-spin'></i><i class='spacing-hack icon-ok'></i></h4>
             <hr class='settings-separator'>
             <form class='form-horizontal' name="user-form">
                 <div class="control-group">
