@@ -1,33 +1,30 @@
-<div class="row card span12">
-    <div class="tabbable tabs-left">
-        <ul class="nav nav-tabs">
-            <li ng-class="entry.clazz" ng-repeat="entry in menus"><a href="{{entry.url}}">{{entry.label}}</a></li>
-        </ul>
-        <div class="tab-content">
-            <h4>{{title}} <i ng-show='loading' class='icon-spinner icon-spin'></i><i class='spacing-hack icon-ok'></i></h4>
-            <hr class='settings-separator'>
-            <table class="table users">
-                <thead>
-                    <tr>
-                        <th class='users-uid'><input type="checkbox" value='all'/></th>
-                        <th class='users-username'>Username</th>
-                        <th class='users-email'>Email</th>
-                        <th class='users-twitter'>Twitter</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="user in users">
-                        <td><input type="checkbox" value="{{user.id}}"/></td>
-                        <td>{{user.username}}</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-                </tbody>
-            </table>
-            <button class="btn" type="button">Add</button>
-            <button class="btn" type="button">Edit</button>
-            <button class="btn" type="button">Remove</button>
-        </div>
-    </div>
-</div>
-
+<h4>{{title}}
+    <i ng-show='loading' class='icon-spinner icon-spin'></i>
+    <i class='spacing-hack icon-ok'></i>
+</h4>
+<hr class='settings-separator'>
+<table class="table users">
+    <thead>
+        <tr>
+            <th class='users-uid'>
+                <input type="checkbox" value='all' />
+            </th>
+            <th class='users-username'>Username</th>
+            <th class='users-email'>Email</th>
+            <th class='users-twitter'>Twitter</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="user in users">
+            <td>
+                <input type="checkbox" value="{{user.id}}" />
+            </td>
+            <td>{{user.username}}</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>
+    </tbody>
+</table>
+<button class="btn" type="button">Add</button>
+<button class="btn" type="button">Edit</button>
+<button class="btn" type="button">Remove</button>
