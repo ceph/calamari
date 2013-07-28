@@ -1,7 +1,7 @@
 'use strict';
 
-var userController = function($rootScope, $scope, menus) {
-        $scope.menus = menus.menu('user');
+var userController = function($rootScope, $scope) {
+        $rootScope.activeTab = 'user';
         $scope.title = $rootScope.pageTitle;
         $scope.clear = function() {
             $scope.user.email = 'calamari@inktank.com';
