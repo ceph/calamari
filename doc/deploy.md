@@ -35,3 +35,19 @@ add `local calamari calamari md5`. On CentOS 6 `pg_hba.conf` is located in
 The default `HOST` setting in Django is an empty string which corresponds to
 the use of local domain sockets. In order to choose TCP sockets, set `HOST` to
 an IP address or `localhost`.
+
+Apache Setup
+============
+
+* yum install httpd
+* yum install mod_wsgi
+
+Copy `calamari/conf/calamari.conf` into `/etc/httpd/conf.d/`. There are
+hard-coded paths in `calamari/conf/calamari.conf` and
+`calamari/conf/calamari.wsgi` that need to be updated based on where the
+Calamari source tree is installed to.
+
+Restart `httpd` with `service httd restart`. There are a lot of very fragile
+things with this setup. Make sure permissions are correct. I haven't found a
+definitive minimal permissions setup, and instead have been making `apache`
+the owner of the install Calamari source tree.
