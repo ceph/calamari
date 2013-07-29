@@ -24,7 +24,7 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
         xsrfCookieName: 'XSRF-TOKEN',
         xsrfHeaderName: 'X-XSRF-TOKEN',
         loginUrl: '/api/v1/auth/login/',
-        nextUrl: '/static/index.html',
+        nextUrl: '/dashboard/',
         toJSON: function() {
             return JSON.stringify({
                 username: this.ui.username.val(),
@@ -50,9 +50,9 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
                     headers: headers,
                     data: self.toJSON(),
                     statusCode: {
-                        200: function() {
+                        200: function(resp) {
                             // Normal Path
-                            window.location = self.nextUrl;
+                            window.location = resp.next ?  resp.next : self.nextUrl;
                         },
                         401: function(jqxhr) {
                             // Normal Error
