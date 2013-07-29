@@ -1,0 +1,28 @@
+<h4>{{title}}
+    <i ng-show="loading" class='icon-spinner icon-spin'></i>
+    <i class='spacing-hack icon-ok'></i>
+</h4>
+<hr class='settings-separator'>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                <input type="checkbox" />
+            </th>
+            <th>Cluster Name</th>
+            <th>URL</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="clusters in clusters">
+            <td>
+                <input type="checkbox" value="{{clusters.id}}" />
+            </td>
+            <td>{{clusters.name}}</td>
+            <td>{{clusters.api_base_url}}</td>
+        </tr>
+    </tbody>
+</table>
+<button class="btn" type="button">Add</button>
+<button class="btn" type="button">Edit</button>
+<button class="btn" type="button">Remove</button>
