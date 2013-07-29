@@ -176,6 +176,15 @@ module.exports = function (grunt) {
         }
       }
     },
+    symlink: {
+        font: {
+            target: 'bower_components/font-awesome/font',
+            link: '<%= yeoman.app %>/font',
+            options: {
+                overwrite: true
+            }
+        }
+    },
     useminPrepare: {
       html: '<%= yeoman.app %>/index.html',
       options: {
@@ -312,6 +321,7 @@ module.exports = function (grunt) {
     }
 
     grunt.task.run([
+      'symlink',
       'clean:server',
       'concurrent:server',
       'connect:livereload',
