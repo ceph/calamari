@@ -1,0 +1,72 @@
+@import 'inktank_colors';
+@import 'font-awesome/scss/font-awesome';
+@import 'compass/css3/border-radius';
+@import 'compass/css3/images';
+
+$login-background: $itdarkgray;
+$default-border-radius: 3px;
+$login-foreground: $itlightgray;
+$app-text-color: lighten($itdarkgray,10%);
+$app-logo-background: $itdarkred;
+body {
+    font-family:'ApexSansMedium';
+    background: $login-background;
+}
+.loginBox {
+}
+.hero-unit {
+    position: relative;
+    h3 {
+        color: $app-text-color;
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    margin-top: 40px;
+    background: $login-foreground;
+    @include border-radius($default-border-radius, $default-border-radius);
+}
+.controls {
+    text-align: center;
+}
+.logo {
+    background: $app-logo-background;
+    padding: 5px 7px 10px 10px;
+    width: 120px;
+    text-align: center;
+    margin: 0 auto 10px auto;
+}
+.input-common-style {
+    color: $app-text-color;
+    font-family: ApexSansMedium;
+}
+input[type='text'] {
+    @extend .input-common-style;
+}
+input[type='password'] {
+    @extend .input-common-style;
+}
+button {
+    width: 220px;
+    line-height: 2.4;
+}
+.btn-custom {
+    color: $itlightgray;
+    background-repeat: repeat-x;
+    border: 0;
+    @include background-image(linear-gradient(left top, $itaqua, $itaqua));
+}
+.btn-custom.disabled {
+    cursor: not-allowed;
+    @include background-image(linear-gradient(left top, $itdarkred, $itdarkred));
+}
+.errors {
+    padding: 0;
+    margin: 0 auto 20px;
+    width: 100%;
+    color: red;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    text-align: center;
+    visibility: hidden;
+}
