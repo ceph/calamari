@@ -1,0 +1,33 @@
+@import "bootstrap-sass/lib/bootstrap";
+@import 'font-awesome/scss/font-awesome';
+@import 'compass/css3';
+@import "inktank_fonts";
+@import "inktank_colors";
+@import "admin";
+
+/* Put your CSS here */
+html, body {
+	border-radius: 3px;
+}
+
+$it-background-color: $itdarkgray;
+$itapp-card-border-radius: 3px;
+$itapp-standard-font-color: $itdarkgray;
+$itapp-card-color: $itlightgray;
+
+.card {
+    color: $itapp-standard-font-color;
+    background-color: $itapp-card-color;
+    @include box-shadow(0 2px 4px rgba(0,0,0,.2));
+    @include box-sizing(border-box);
+    @include border-radius($itapp-card-border-radius);
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+body {
+    background: $it-background-color;
+    font-family: "ApexSansMedium", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #333;
+}
+
