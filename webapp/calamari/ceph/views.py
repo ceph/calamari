@@ -14,6 +14,10 @@ from rest_framework import viewsets, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, link
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
+from rest_framework import status
+from django.views.decorators.cache import never_cache
 
 class StampedResponse(Response):
     """
@@ -172,3 +176,19 @@ class ClusterViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+#
+# Return information about the current user. If the user is not authenticated
+# (i.e. an anonymous user), then 401 is returned with an error message.
+#
+@api_view(['GET'])
+@permission_classes((AllowAny,))
+@never_cache
+def user_me(request):
+    if request.method != 'GET':
+        return
+    if request.user.is_authenticated():
+        return Response(UserSerializer(request.user).data)
+    return Response({
+        'message': 'Session expired or invalid',
+    }, status.HTTP_401_UNAUTHORIZED)
