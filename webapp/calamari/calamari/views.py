@@ -6,7 +6,12 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.forms import AuthenticationForm
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.static import serve as static_serve
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, HttpResponseRedirect
+from django.conf import settings
 from rest_framework import status
+from django.core.urlresolvers import reverse
 
 #
 # How this is populated and where this info lives will need to change from its
@@ -64,3 +69,12 @@ def login(request):
 def logout(request):
     auth_logout(request)
     return Response({'message': 'Logged out'})
+
+def home(request):
+    return HttpResponseRedirect(reverse('dashboard', kwargs={'path': ''}))
+
+@login_required
+def serve_dir_or_index(request, path, document_root):
+    if len(path) == 0:
+        path = 'index.html'
+    return static_serve(request, path, document_root)
