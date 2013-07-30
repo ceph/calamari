@@ -9,7 +9,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout) {
                 $scope.loading = true;
             }
         }, 125);
-        $http.get('api/v1/cluster').success(function(data) {
+        $http.get('/api/v1/cluster').success(function(data) {
             $scope.clusters = data;
             $scope.loaded = true;
             $scope.loading = false;

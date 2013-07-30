@@ -4,7 +4,7 @@ var generalController = function($rootScope, $scope, $http) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'general';
         $scope.loading = true;
-        $http.get('api/v1/general').success(function(data) {
+        $http.get('/api/v1/info').success(function(data) {
             $scope.general = data;
             $scope.loading = false;
         });
