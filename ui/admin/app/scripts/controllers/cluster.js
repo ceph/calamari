@@ -1,9 +1,12 @@
+/* global _ */
 'use strict';
 
-var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
+var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $dialog) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'cluster';
         $scope.loaded = false;
+        $scope.editDisabled = true;
+        $scope.removeDisabled = true;
         $timeout(function() {
             if ($scope.loaded === false) {
                 $scope.loading = true;
@@ -20,7 +23,29 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
                 });
             };
         refresh();
+        $scope.showSelected = function(cluster) {
+            console.log(cluster);
+            if (!cluster.checked) {
+                $scope.editDisabled = true;
+                $scope.removeDisabled = true;
+                $scope.addDisabled = false;
+                return;
+            }
+            $scope.editDisabled = false;
+            $scope.removeDisabled = false;
+            $scope.addDisabled = true;
+            _.each($scope.clusters, function(c) {
+                if (cluster.id === c.id) {
+                    return c;
+                }
+                c.checked = false;
+            });
+            console.log($filter('filter')($scope.clusters, {
+                checked: true
+            }));
+        };
         $scope.openAdd = function() {
+            $scope.cluster = {};
             $scope.addClusterOpen = true;
         };
         $scope.closeAdd = function() {
@@ -34,10 +59,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
             $http({
                 method: 'POST',
                 url: '/api/v1/cluster',
-                data: JSON.stringify({
-                    'name': cluster.name,
-                    'api_base_url': cluster.uri
-                })
+                data: JSON.stringify(cluster)
             }).success(function() {
                 refresh();
                 $scope.allDisabled = false;
@@ -48,10 +70,10 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
             });
         };
         $scope.openEdit = function() {
-            $scope.cluster = {
-                name: 'cluster 1',
-                uri: 'http://cluster'
-            };
+            var selected = $filter('filter')($scope.clusters, {
+                checked: true
+            });
+            $scope.cluster = selected[0];
             $scope.editClusterOpen = true;
         };
         $scope.closeEdit = function() {
@@ -61,6 +83,24 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
             backdropFade: true,
             dialogFade: true
         };
+        $scope.clusterEdit = function(cluster) {
+            console.log('saving ' + cluster);
+            $scope.editClusterOpen = false;
+            $scope.loading = true;
+            $scope.allDisabled = true;
+            $http({
+                method: 'PUT',
+                url: '/api/v1/cluster/' + cluster.id,
+                data: JSON.stringify(cluster)
+            }).success(function() {
+                refresh();
+                $scope.allDisabled = false;
+                $scope.loading = false;
+            }).error(function() {
+                $scope.allDisabled = false;
+                $scope.loading = false;
+            });
+        };
         $scope.dialogOpts = {
             backdrop: true,
             keyboard: true,
@@ -69,23 +109,38 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $dialog) {
             controller: 'RemoveDialogController',
             resolve: {
                 cluster: function() {
-                    return {
-                        name: 'my cluster',
-                        id: 10
-                    };
+                    var selected = $filter('filter')($scope.clusters, {
+                        checked: true
+                    });
+                    return selected[0];
                 }
             }
         };
         $scope.openRemove = function() {
             var d = $dialog.dialog($scope.dialogOpts);
-            d.open().then(function(result) {
-                //$scope.loading = true;
-                console.log(result);
+            d.open().then(function(cluster) {
+                console.log(cluster);
+                if (cluster.id === undefined) {
+                    return;
+                }
+                $scope.loading = true;
+                $scope.allDisabled = true;
+                $http({
+                    method: 'DELETE',
+                    url: '/api/v1/cluster/' + cluster.id
+                }).success(function() {
+                    refresh();
+                    $scope.allDisabled = false;
+                    $scope.loading = false;
+                }).error(function() {
+                    $scope.allDisabled = false;
+                    $scope.loading = false;
+                });
 
             });
         };
     };
-angular.module('adminApp').controller('ClusterCtrl', ['$rootScope', '$scope', '$http', '$timeout', '$dialog', clusterController]);
+angular.module('adminApp').controller('ClusterCtrl', ['$rootScope', '$scope', '$http', '$timeout', '$filter', '$dialog', clusterController]);
 
 var removeDialogController = function($scope, dialog, cluster) {
         $scope.cluster = cluster;
