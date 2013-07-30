@@ -8,6 +8,5 @@ virtualenv
 *.swo
 **/.sass-cache
 **/.tmp
-**/app/bower_components
 **/dist
 **/node_modules
