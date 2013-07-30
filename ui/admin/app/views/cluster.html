@@ -7,7 +7,7 @@
     <thead>
         <tr>
             <th>
-                <input type="checkbox" />
+                <i class='icon-ok'></i>
             </th>
             <th>Cluster Name</th>
             <th>URL</th>
@@ -16,40 +16,40 @@
     <tbody>
         <tr ng-repeat="clusters in clusters">
             <td>
-                <input type="checkbox" value="{{clusters.id}}" />
+                <input type="radio" value="{{clusters.id}}" />
             </td>
             <td>{{clusters.name}}</td>
             <td>{{clusters.api_base_url}}</td>
         </tr>
         <tr ng-show="!clusters.length">
             <td ng-click='openAdd()' colspan=3>
-                Click Add To Add A Cluster
+                No clusters available.
             </td>
         </tr>
     </tbody>
 </table>
-<button class="btn" ng-click="openEdit()" type="button"><i class='icon-edit'></i> Edit</button>
-<button class="btn" ng-click="openAdd()" type="button"><i class='icon-plus'></i> Add</button>
-<button class="btn" type="button"><i class='icon-minus'></i> Remove</button>
+<button class="btn" ng-click="openEdit()" ng-disabled='allDisabled' type="button"><i class='icon-edit'></i> Edit</button>
+<button class="btn" ng-click="openAdd()" ng-disabled='allDisabled' type="button"><i class='icon-plus'></i> Add</button>
+<button class="btn" ng-click="openRemove()" ng-disabled='allDisabled' type="button"><i class='icon-trash'></i> Remove</button>
 <div modal="addClusterOpen" close="closeAdd()" options="opts">
     <div class="modal-header">
         <h3><i class="icon-plus"></i> Add a Cluster</h3>
     </div>
     <div class="modal-body">
-        <form>
+        <form name='form' class='css-form' novalidate>
             <fieldset>
                 <label for="">Name</label>
-                <input name="clusterName" type="text" placeholder="Name of Cluster" />
+                <input name="clusterName" ng-model="cluster.name" required type="text" placeholder="Name of Cluster" />
             </fieldset>
             <fieldset>
                 <label for="">Cluster REST API URI</label>
-                <input name="clusterAPI" type="text" placeholder="REST API URI" />
+                <input name="clusterAPI" ng-model="cluster.uri" required type="url" placeholder="REST API URI" />
             </fieldset>
             </form>
         </div>
         <div class="modal-footer">
             <button class="btn btn-warning cancel" ng-click="closeAdd()">Cancel</button>
-            <button class="btn btn-success" ng-click="closeAdd()">Add</button>
+            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="clusterAdd(cluster)">Add</button>
         </div>
     </div>
 </div>
@@ -58,20 +58,20 @@
         <h3><i class="icon-edit"></i> Edit Cluster</h3>
     </div>
     <div class="modal-body">
-        <form>
+        <form name='form' class='css-form' novalidate>
             <fieldset>
                 <label for="">Name</label>
-                <input name="clusterName" type="text" value="{{cluster.name}}" placeholder="Name of Cluster" />
+                <input name="clusterName" type="text" required value="{{cluster.name}}" placeholder="Name of Cluster" />
             </fieldset>
             <fieldset>
                 <label for="">Cluster REST API URI</label>
-                <input name="clusterAPI" type="text" value="{{cluster.uri}}" placeholder="REST API URI" />
+                <input name="clusterAPI" type="url" required value="{{cluster.uri}}" placeholder="REST API URI" />
             </fieldset>
             </form>
         </div>
         <div class="modal-footer">
             <button class="btn btn-warning cancel" ng-click="closeEdit()">Cancel</button>
-            <button class="btn btn-success" ng-click="closeEdit()">Edit</button>
+            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="clusterEdit(cluster)">Edit</button>
         </div>
     </div>
 </div>
