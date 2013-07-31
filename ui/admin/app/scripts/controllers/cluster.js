@@ -4,9 +4,11 @@
 var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $dialog) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'cluster';
+
         $scope.loaded = false;
-        $scope.editDisabled = true;
-        $scope.removeDisabled = true;
+        $scope.editEnabled = false;
+        $scope.removeEnabled = false;
+        $scope.addEnabled = true;
         $timeout(function() {
             if ($scope.loaded === false) {
                 $scope.loading = true;
@@ -26,14 +28,14 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
         $scope.showSelected = function(cluster) {
             console.log(cluster);
             if (!cluster.checked) {
-                $scope.editDisabled = true;
-                $scope.removeDisabled = true;
-                $scope.addDisabled = false;
+                $scope.editEnabled = false;
+                $scope.removeEnabled = false;
+                $scope.addEnabled = true;
                 return;
             }
-            $scope.editDisabled = false;
-            $scope.removeDisabled = false;
-            $scope.addDisabled = true;
+            $scope.editEnabled = true;
+            $scope.removeEnabled = true;
+            $scope.addEnabled = false;
             _.each($scope.clusters, function(c) {
                 if (cluster.id === c.id) {
                     return c;
@@ -132,9 +134,15 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                     refresh();
                     $scope.allDisabled = false;
                     $scope.loading = false;
+                    $scope.editEnabled = false;
+                    $scope.removeEnabled = false;
+                    $scope.addEnabled = true;
                 }).error(function() {
                     $scope.allDisabled = false;
                     $scope.loading = false;
+                    $scope.editEnabled = false;
+                    $scope.removeEnabled = false;
+                    $scope.addEnabled = true;
                 });
 
             });
