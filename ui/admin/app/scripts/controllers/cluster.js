@@ -14,7 +14,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 $scope.loading = true;
             }
         }, 125);
-        var refresh = function() {
+        var refreshClusterList = function() {
                 $http.get('/api/v1/cluster').success(function(data) {
                     if (data.length === 0) {
                         $scope.addClusterOpen = true;
@@ -24,8 +24,8 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                     $scope.loading = false;
                 });
             };
-        refresh();
-        $scope.showSelected = function(cluster) {
+        refreshClusterList();
+        $scope.updateControls = function(cluster) {
             console.log(cluster);
             if (!cluster.checked) {
                 $scope.editEnabled = false;
@@ -46,14 +46,14 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 checked: true
             }));
         };
-        $scope.openAdd = function() {
+        $scope.addOpen = function() {
             $scope.cluster = {};
             $scope.addClusterOpen = true;
         };
-        $scope.closeAdd = function() {
+        $scope.addClose = function() {
             $scope.addClusterOpen = false;
         };
-        $scope.clusterAdd = function(cluster) {
+        $scope.addCluster = function(cluster) {
             console.log('Adding ' + cluster);
             $scope.addClusterOpen = false;
             $scope.loading = true;
@@ -63,7 +63,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 url: '/api/v1/cluster',
                 data: JSON.stringify(cluster)
             }).success(function() {
-                refresh();
+                refreshClusterList();
                 $scope.allDisabled = false;
                 $scope.loading = false;
             }).error(function() {
@@ -71,21 +71,21 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 $scope.loading = false;
             });
         };
-        $scope.openEdit = function() {
+        $scope.editOpen = function() {
             var selected = $filter('filter')($scope.clusters, {
                 checked: true
             });
             $scope.cluster = selected[0];
             $scope.editClusterOpen = true;
         };
-        $scope.closeEdit = function() {
+        $scope.editClose = function() {
             $scope.editClusterOpen = false;
         };
         $scope.opts = {
             backdropFade: true,
             dialogFade: true
         };
-        $scope.clusterEdit = function(cluster) {
+        $scope.editCluster = function(cluster) {
             console.log('saving ' + cluster);
             $scope.editClusterOpen = false;
             $scope.loading = true;
@@ -95,7 +95,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 url: '/api/v1/cluster/' + cluster.id,
                 data: JSON.stringify(cluster)
             }).success(function() {
-                refresh();
+                refreshClusterList();
                 $scope.allDisabled = false;
                 $scope.loading = false;
             }).error(function() {
@@ -118,7 +118,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 }
             }
         };
-        $scope.openRemove = function() {
+        $scope.removeOpen = function() {
             var d = $dialog.dialog($scope.dialogOpts);
             d.open().then(function(cluster) {
                 console.log(cluster);
@@ -131,7 +131,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                     method: 'DELETE',
                     url: '/api/v1/cluster/' + cluster.id
                 }).success(function() {
-                    refresh();
+                    refreshClusterList();
                     $scope.allDisabled = false;
                     $scope.loading = false;
                     $scope.editEnabled = false;

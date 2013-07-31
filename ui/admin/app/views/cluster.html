@@ -16,7 +16,7 @@
     <tbody>
         <tr ng-repeat="cluster in clusters">
             <td>
-                <input type="checkbox" ng-model="cluster.checked" ng-click="showSelected(cluster)" ng-checked="cluster.checked" value="{{cluster.id}}" />
+                <input type="checkbox" ng-model="cluster.checked" ng-click="updateControls(cluster)" ng-checked="cluster.checked" value="{{cluster.id}}" />
             </td>
             <td>{{cluster.name}}</td>
             <td>{{cluster.api_base_url}}</td>
@@ -28,10 +28,10 @@
         </tr>
     </tbody>
 </table>
-<button class="btn" ng-click="openEdit()" ng-disabled='allDisabled || !editEnabled' type="button"><i class='icon-edit'></i> Edit</button>
-<button class="btn" ng-click="openAdd()" ng-disabled='allDisabled || !addEnabled' type="button"><i class='icon-plus'></i> Add</button>
-<button class="btn" ng-click="openRemove()" ng-disabled='allDisabled || !removeEnabled' type="button"><i class='icon-trash'></i> Remove</button>
-<div modal="addClusterOpen" close="closeAdd()" options="opts">
+<button class="btn" ng-click="editOpen()" ng-disabled='allDisabled || !editEnabled' type="button"><i class='icon-edit'></i> Edit</button>
+<button class="btn" ng-click="addOpen()" ng-disabled='allDisabled || !addEnabled' type="button"><i class='icon-plus'></i> Add</button>
+<button class="btn" ng-click="removeOpen()" ng-disabled='allDisabled || !removeEnabled' type="button"><i class='icon-trash'></i> Remove</button>
+<div modal="addClusterOpen" close="addClose()" options="opts">
     <div class="modal-header">
         <h3><i class="icon-plus"></i> Add a Cluster</h3>
     </div>
@@ -48,12 +48,12 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-warning cancel" ng-click="closeAdd()">Cancel</button>
-            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="clusterAdd(cluster)">Add</button>
+            <button class="btn btn-warning cancel" ng-click="addClose()">Cancel</button>
+            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="addCluster(cluster)">Add</button>
         </div>
     </div>
 </div>
-<div modal="editClusterOpen" close="closeEdit()" options="opts">
+<div modal="editClusterOpen" close="editClose()" options="opts">
     <div class="modal-header">
         <h3><i class="icon-edit"></i> Edit Cluster</h3>
     </div>
@@ -70,8 +70,8 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-warning cancel" ng-click="closeEdit()">Discard</button>
-            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="clusterEdit(cluster)">Save</button>
+            <button class="btn btn-warning cancel" ng-click="editClose()">Discard</button>
+            <button class="btn btn-success" ng-disabled="form.$invalid || isUnChanged(cluster)" ng-click="editCluster(cluster)">Save</button>
         </div>
     </div>
 </div>
