@@ -4,7 +4,7 @@ from collections import defaultdict
 from django.contrib.auth.models import User
 from django.http import Http404
 from django.core.exceptions import ObjectDoesNotExist
-from ceph.models import Cluster, ClusterSpace, ClusterHealth
+from ceph.models import Cluster
 from ceph.models import OSDDump, PGPoolDump, ClusterStatus
 from ceph.serializers import ClusterSerializer
 from ceph.serializers import ClusterSpaceSerializer
@@ -159,15 +159,19 @@ class Space(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        space = ClusterSpace.objects.for_cluster(cluster_pk).latest()
-        return Response(ClusterSpaceSerializer(space).data)
+        cluster = Cluster.objects.get(pk=cluster_pk)
+        if not cluster.space:
+            return Response({}, status.HTTP_404_NOT_FOUND)
+        return Response(ClusterSpaceSerializer(cluster).data)
 
 class Health(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        health = ClusterHealth.objects.for_cluster(cluster_pk).latest()
-        return Response(ClusterHealthSerializer(health).data)
+        cluster = Cluster.objects.get(pk=cluster_pk)
+        if not cluster.health:
+            return Response({}, status.HTTP_404_NOT_FOUND)
+        return Response(ClusterHealthSerializer(cluster).data)
 
 class ClusterViewSet(viewsets.ModelViewSet):
     queryset = Cluster.objects.all()

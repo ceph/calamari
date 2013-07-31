@@ -8,12 +8,34 @@ class Cluster(models.Model):
     A cluster being tracked by Calamari.
     """
     name = models.CharField(max_length=256)
-
-    # REST API URL (e.g. monitor:port/api/v0.1)
+    last_update = models.DateTimeField(auto_now=True)
     api_base_url = models.CharField(max_length=200)
+
+    #
+    # Cluster state ready to be served up by the Calamari API.
+    # 
+    # These fields are populated by Kraken by performing any conversions from
+    # the raw form, and as a side effect, validate the input.  Note that we
+    # could store the raw data, but we'd rather throw an error at the Kraken
+    # level if raw data is malformed and have stale data in the DB, than risk
+    # having a cascading effect of problems with different components
+    # expecting a certain schema if we were to blindly serve the raw data. We
+    # can also choose to store the raw data, but this particular model seems
+    # to maximize the decoupling between the particular web-framework being
+    # used, and the extraction of knowledge from the cluster API. All of this
+    # will probably be deleted and rewritten in the near future any way :).
+    #
+    space = jsonfield.JSONField(null=True)
+    health = jsonfield.JSONField(null=True)
 
     def __unicode__(self):
         return self.name
+
+    def _get_last_update_ms(self):
+        "Convert `last_update` into Unix time."
+        return int(dateformat.format(self.last_update, 'U')) * 1000
+
+    last_update_unix = property(_get_last_update_ms)
 
 class DumpManager(models.Manager):
     def for_cluster(self, cluster_pk):
@@ -45,20 +67,6 @@ class Dump(models.Model):
         return int(dateformat.format(self.added, 'U')) * 1000
 
     added_ms = property(_get_added_ms)
-
-class ClusterSpace(Dump):
-    """
-    A snapshot of cluster space statistics.
-
-    This roughly corresponds to `ceph df` without the per-pool statistics.
-    """
-    pass
-
-class ClusterHealth(Dump):
-    """
-    A snapshot of cluster health.
-    """
-    pass
 
 class ClusterStatus(Dump):
     """

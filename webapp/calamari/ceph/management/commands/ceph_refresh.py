@@ -1,8 +1,67 @@
 import traceback
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from ceph.models import Cluster, ClusterSpace, ClusterHealth, OSDDump
+from ceph.models import Cluster as ClusterModel, OSDDump
 from ceph.models import PGPoolDump, ClusterStatus
+
+class CephRestClient(object):
+    """
+    Wrapper around the Ceph RESTful API.
+    """
+    def __init__(self, url):
+        self.__url = url
+        if self.__url[-1] != '/':
+            self.__url += '/'
+
+    def _query(self, endpoint):
+        "Interrogate a Ceph API endpoint"
+        hdr = {'accept': 'application/json'}
+        r = requests.get(self.__url + endpoint, headers = hdr)
+        return r.json()
+
+    def _df(self):
+        "Get the raw `ceph df` output"
+        return self._query("df")["output"]
+
+    def _health(self):
+        "Get the raw `ceph health detail` output"
+        return self._query("health?detail")["output"]
+
+    def get_space_stats(self):
+        return self._df()
+
+    def get_health(self):
+        return self._health()
+
+class ModelAdapter(object):
+    def __init__(self, client, cluster):
+        self.client = client
+        self.cluster = cluster
+
+    def refresh(self):
+        "Call each _populate* method, then save the model instance"
+        attrs = filter(lambda a: a.startswith('_populate_'), dir(self))
+        for attr in attrs:
+            getattr(self, attr)()
+        self.cluster.save()
+
+    def _populate_space(self):
+        "Fill in the cluster space statistics"
+        data = self.client.get_space_stats()['stats']
+        self.cluster.space = {
+            'used_bytes': data['total_used'] * 1024,
+            'capacity_bytes': data['total_space'] * 1024,
+            'free_bytes': data['total_avail'] * 1024,
+        }
+
+    def _populate_health(self):
+        "Fill in the cluster health state"
+        data = self.client.get_health()
+        self.cluster.health = {
+            'overall_status': data['overall_status'],
+            'detail': data['detail'],
+            'summary': data['summary'],
+        }
 
 class Command(BaseCommand):
     """
@@ -22,14 +81,15 @@ class Command(BaseCommand):
         """
         Update statistics for each registered cluster.
         """
-        clusters = Cluster.objects.all()
+        clusters = ClusterModel.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
+            client = CephRestClient(cluster.api_base_url)
+            adapter = ModelAdapter(client, cluster)
+            adapter.refresh()
             self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                     (cluster.name, cluster.api_base_url))
             try:
-                self._refresh_cluster_space(cluster)
-                self._refresh_cluster_health(cluster)
                 self._refresh_osd_dump(cluster)
                 self._refresh_pg_pool_dump(cluster)
                 self._refresh_cluster_status(cluster)
@@ -61,23 +121,6 @@ class Command(BaseCommand):
         r = requests.get(url_base + url, headers = hdr)
         self._last_response = r
         return r.json()
-
-    def _refresh_cluster_space(self, cluster):
-        """
-        Update cluster space statistics.
-        """
-        result = self._cluster_query(cluster, "df")
-        cluster_stats = result['output']['stats']
-        ClusterSpace(cluster=cluster, report=cluster_stats).save()
-        self.stdout.write("(%s): updated cluster space stats" % (cluster.name,))
-
-    def _refresh_cluster_health(self, cluster):
-        """
-        Update cluster health.
-        """
-        result = self._cluster_query(cluster, "health?detail")
-        ClusterHealth(cluster=cluster, report=result['output']).save()
-        self.stdout.write("(%s): updated cluster health" % (cluster.name,))
 
     def _refresh_cluster_status(self, cluster):
         """

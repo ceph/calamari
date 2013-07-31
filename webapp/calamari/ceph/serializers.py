@@ -3,7 +3,7 @@ import time
 import requests
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from ceph.models import Cluster, ClusterSpace, ClusterHealth
+from ceph.models import Cluster
 
 # This is the same routine we use in Kraken to fetch data from the cluster API.
 # Here we are using it validate the URL provided by the user. We'll want to
@@ -18,6 +18,7 @@ def _cluster_query(api_url, url):
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
+        fields = ('name', 'api_base_url')
 
     def validate_api_base_url(self, attrs, source):
         try:
@@ -51,19 +52,29 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class ClusterSpaceSerializer(serializers.ModelSerializer):
-    added_ms = serializers.SerializerMethodField('get_added_ms')
+    cluster = serializers.SerializerMethodField('get_cluster')
+    last_update_unix = serializers.SerializerMethodField('get_last_update_unix')
 
     class Meta:
-        model = ClusterSpace
+        model = Cluster
+        fields = ('cluster', 'last_update', 'last_update_unix', 'name', 'space')
 
-    def get_added_ms(self, obj):
-        return obj.added_ms
+    def get_cluster(self, obj):
+        return obj.id
+
+    def get_last_update_unix(self, obj):
+        return obj.last_update_unix
 
 class ClusterHealthSerializer(serializers.ModelSerializer):
-    added_ms = serializers.SerializerMethodField('get_added_ms')
+    cluster = serializers.SerializerMethodField('get_cluster')
+    last_update_unix = serializers.SerializerMethodField('get_last_update_unix')
 
     class Meta:
-        model = ClusterHealth
+        model = Cluster
+        fields = ('cluster', 'last_update', 'last_update_unix', 'name', 'health')
 
-    def get_added_ms(self, obj):
-        return obj.added_ms
+    def get_cluster(self, obj):
+        return obj.id
+
+    def get_last_update_unix(self, obj):
+        return obj.last_update_unix
