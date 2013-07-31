@@ -12,6 +12,8 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.conf import settings
 from rest_framework import status
 from django.core.urlresolvers import reverse
+from ceph.models import Cluster
+from django.shortcuts import redirect
 
 #
 # How this is populated and where this info lives will need to change from its
@@ -78,3 +80,10 @@ def serve_dir_or_index(request, path, document_root):
     if len(path) == 0:
         path = 'index.html'
     return static_serve(request, path, document_root)
+
+@login_required
+def dashboard(request, path, document_root):
+    clusters = Cluster.objects.all()
+    if not clusters:
+        return redirect("/admin/#cluster")
+    return serve_dir_or_index(request, path, document_root)

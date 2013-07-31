@@ -26,6 +26,6 @@ urlpatterns = patterns('',
     url(r'^admin/(?P<path>.*)$', 'calamari.views.serve_dir_or_index',
         {'document_root': '/opt/calamari/webapp/content/admin/'}),
 
-    url(r'^dashboard/(?P<path>.*)$', 'calamari.views.serve_dir_or_index',
+    url(r'^dashboard/(?P<path>.*)$', 'calamari.views.dashboard',
         {'document_root': '/opt/calamari/webapp/content/dashboard/'}, name='dashboard'),
 )
