@@ -1,12 +1,30 @@
 import sys
 import time
+import requests
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from ceph.models import Cluster, ClusterSpace, ClusterHealth
 
+# This is the same routine we use in Kraken to fetch data from the cluster API.
+# Here we are using it validate the URL provided by the user. We'll want to
+# factor out some of the Kraken stuff to be re-usable, like this.
+def _cluster_query(api_url, url):
+    if api_url[-1] != '/':
+        api_url += '/'
+    hdr = {'accept': 'application/json'}
+    r = requests.get(api_url + url, headers = hdr, timeout=5)
+    return r.json()
+
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
+
+    def validate_api_base_url(self, attrs, source):
+        try:
+            data = _cluster_query(attrs[source], "status")
+        except Exception:
+            raise serializers.ValidationError("Could not contact the API URL provided.")
+        return attrs
 
 class UserSerializer(serializers.ModelSerializer):
     """
