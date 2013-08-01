@@ -7,7 +7,7 @@ class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
     """
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=256, unique=True)
     last_update = models.DateTimeField(auto_now=True)
     api_base_url = models.CharField(max_length=200)
 
