@@ -51,6 +51,9 @@ class ModelAdapter(object):
             'wait_backfill', 'backfilling', 'backfill_toofull'])
     OKAY_STATES = set(['active', 'clean'])
 
+    OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',
+            'cluster_addr', 'heartbeat_back_addr', 'heartbeat_front_addr']
+
     def __init__(self, client, cluster):
         self.client = client
         self.cluster = cluster
@@ -82,8 +85,12 @@ class ModelAdapter(object):
 
     def _populate_osds(self):
         "Fill in the set of cluster OSDs"
+        def fixup_osd(osd):
+            data = dict((k, osd[k]) for k in self.OSD_FIELDS)
+            data.update({'id': osd['osd']})
+            return data
         data = self.client.get_osds()
-        self.cluster.osds = data["osds"]
+        self.cluster.osds = map(fixup_osd, data["osds"])
 
     def _populate_counters(self):
         self.cluster.counters = {
