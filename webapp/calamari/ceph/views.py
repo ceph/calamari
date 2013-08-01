@@ -3,6 +3,7 @@ from itertools import imap
 from collections import defaultdict
 from django.contrib.auth.models import User
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from ceph.models import Cluster
 from ceph.serializers import *
@@ -19,36 +20,36 @@ class Space(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        cluster = Cluster.objects.get(pk=cluster_pk)
+        cluster = get_object_or_404(Cluster, pk=cluster_pk)
         if not cluster.space:
-            return Response({}, status.HTTP_404_NOT_FOUND)
+            return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterSpaceSerializer(cluster).data)
 
 class Health(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        cluster = Cluster.objects.get(pk=cluster_pk)
+        cluster = get_object_or_404(Cluster, pk=cluster_pk)
         if not cluster.health:
-            return Response({}, status.HTTP_404_NOT_FOUND)
+            return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterHealthSerializer(cluster).data)
 
 class OSDList(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk):
-        cluster = Cluster.objects.get(pk=cluster_pk)
+        cluster = get_object_or_404(Cluster, pk=cluster_pk)
         if not cluster.health:
-            return Response({}, status.HTTP_404_NOT_FOUND)
+            return Response([], status.HTTP_202_ACCEPTED)
         return Response(OSDListSerializer(cluster).data)
 
 class OSDDetail(APIView):
     model = Cluster
 
     def get(self, request, cluster_pk, osd_id):
-        cluster = Cluster.objects.get(pk=cluster_pk)
+        cluster = get_object_or_404(Cluster, pk=cluster_pk)
         if not cluster.has_osd(osd_id):
-            return Response({}, status.HTTP_404_NOT_FOUND)
+            return Response({}, status.HTTP_202_ACCEPTED)
         return Response(OSDDetailSerializer(cluster, osd_id).data)
 
 class ClusterViewSet(viewsets.ModelViewSet):
