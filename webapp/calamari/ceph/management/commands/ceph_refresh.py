@@ -2,9 +2,9 @@ import traceback
 from collections import defaultdict
 from itertools import imap
 import requests
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.core.cache import cache
-from ceph.models import Cluster as ClusterModel
+from ceph.models import Cluster
 
 class CephRestClient(object):
     """
@@ -174,49 +174,26 @@ class Command(BaseCommand):
         super(Command, self).__init__(*args, **kwargs)
         self._last_response = None    # last cluster query response
 
+    def _handle_cluster(self, cluster):
+        self.stdout.write("Refreshing data from cluster: %s (%s)" % \
+                (cluster.name, cluster.api_base_url))
+        client = CephRestClient(cluster.api_base_url)
+        adapter = ModelAdapter(client, cluster)
+        adapter.refresh()
+
     def handle(self, *args, **options):
         """
         Update statistics for each registered cluster.
         """
-        clusters = ClusterModel.objects.all()
+        clusters = Cluster.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
-            client = CephRestClient(cluster.api_base_url)
-            adapter = ModelAdapter(client, cluster)
-            adapter.refresh()
-            self.stdout.write("Refreshing data from cluster: %s (%s)" % \
-                    (cluster.name, cluster.api_base_url))
             try:
-                pass
-            except Exception as e:
-                # dump context from the last cluster query response
-                self._print_response(self.stderr, self._last_response)
+                self._handle_cluster(cluster)
+            except Exception:
                 self.stderr.write(traceback.format_exc())
         cache.clear()
         self.stdout.write("Update completed!")
-
-    def _print_response(self, out, r):
-        """
-        Print out requests.py Response object information.
-        """
-        if not r:
-            out.write("last response: <not set>")
-            return
-        out.write("last response: status code: %d" % (r.status_code,))
-        out.write("last response: headers: %s" % (r.headers,))
-        out.write("last response: content: %s" % (r.text,))
-
-    def _cluster_query(self, cluster, url):
-        """
-        Fetch a JSON result for a Ceph REST API target.
-        """
-        url_base = cluster.api_base_url
-        if url_base[-1] != '/':
-            url_base.append('/')
-        hdr = {'accept': 'application/json'}
-        r = requests.get(url_base + url, headers = hdr)
-        self._last_response = r
-        return r.json()
 
 #
 # This is the algorithm I was using to send the UI OSD Map deltas. We aren't
