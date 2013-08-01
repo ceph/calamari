@@ -3,6 +3,7 @@ from collections import defaultdict
 from itertools import imap
 import requests
 from django.core.management.base import BaseCommand, CommandError
+from django.core.cache import cache
 from ceph.models import Cluster as ClusterModel
 
 class CephRestClient(object):
@@ -191,6 +192,7 @@ class Command(BaseCommand):
                 # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
                 self.stderr.write(traceback.format_exc())
+        cache.clear()
         self.stdout.write("Update completed!")
 
     def _print_response(self, out, r):
