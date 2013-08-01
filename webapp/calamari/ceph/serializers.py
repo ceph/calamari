@@ -49,7 +49,7 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'last_update', 'last_update_unix', 'name', 'space')
+        fields = ('cluster', 'last_update', 'last_update_unix', 'space')
 
     def get_cluster(self, obj):
         return obj.id
