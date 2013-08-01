@@ -1,4 +1,3 @@
-from collections import defaultdict
 from django.utils import dateformat
 from django.db import models
 import jsonfield
