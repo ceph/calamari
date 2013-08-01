@@ -14,5 +14,4 @@ urlpatterns = patterns('',
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/space$', views.Space.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd$', views.OSDList.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd/(?P<osd_id>\d+)$', views.OSDDetail.as_view(), name='osd-detail'),
-    url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd/epoch/(?P<epoch>\d+)$', views.OSDListDelta.as_view(), name='osd-list-delta'),
 )

@@ -1,7 +1,7 @@
 import traceback
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from ceph.models import Cluster as ClusterModel, OSDDump
+from ceph.models import Cluster as ClusterModel
 from ceph.models import PGPoolDump, ClusterStatus
 
 class CephRestClient(object):
@@ -27,11 +27,18 @@ class CephRestClient(object):
         "Get the raw `ceph health detail` output"
         return self._query("health?detail")["output"]
 
+    def _osds(self):
+        "Get the raw `ceph osd dump` output"
+        return self._query("osd/dump")["output"]
+
     def get_space_stats(self):
         return self._df()
 
     def get_health(self):
         return self._health()
+
+    def get_osds(self):
+        return self._osds()
 
 class ModelAdapter(object):
     def __init__(self, client, cluster):
@@ -63,6 +70,11 @@ class ModelAdapter(object):
             'summary': data['summary'],
         }
 
+    def _populate_osds(self):
+        "Fill in the set of cluster OSDs"
+        data = self.client.get_osds()
+        self.cluster.osds = data["osds"]
+
 class Command(BaseCommand):
     """
     Administrative function for refreshing Ceph cluster stats.
@@ -90,7 +102,6 @@ class Command(BaseCommand):
             self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                     (cluster.name, cluster.api_base_url))
             try:
-                self._refresh_osd_dump(cluster)
                 self._refresh_pg_pool_dump(cluster)
                 self._refresh_cluster_status(cluster)
             except Exception as e:
@@ -129,14 +140,6 @@ class Command(BaseCommand):
         result = self._cluster_query(cluster, "status")
         ClusterStatus(cluster=cluster, report=result['output']).save()
         self.stdout.write("(%s): updated cluster status" % (cluster.name,))
-
-    def _refresh_osd_dump(self, cluster):
-        """
-        Update osd dump.
-        """
-        result = self._cluster_query(cluster, "osd/dump")
-        OSDDump(cluster=cluster, report=result['output']).save()
-        self.stdout.write("(%s): updated osd dump" % (cluster.name,))
 
     def _refresh_pg_pool_dump(self, cluster):
         """

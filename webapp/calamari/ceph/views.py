@@ -5,11 +5,8 @@ from django.contrib.auth.models import User
 from django.http import Http404
 from django.core.exceptions import ObjectDoesNotExist
 from ceph.models import Cluster
-from ceph.models import OSDDump, PGPoolDump, ClusterStatus
-from ceph.serializers import ClusterSerializer
-from ceph.serializers import ClusterSpaceSerializer
-from ceph.serializers import ClusterHealthSerializer
-from ceph.serializers import UserSerializer
+from ceph.models import PGPoolDump, ClusterStatus
+from ceph.serializers import *
 from rest_framework import viewsets, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -30,61 +27,6 @@ class StampedResponse(Response):
     def __init__(self, dateobj, data, *args, **kwargs):
         data.update({'added': dateobj.added, 'added_ms': dateobj.added_ms})
         super(StampedResponse, self).__init__(data, *args, **kwargs)
-
-class OSDList(APIView):
-    """
-    Access to the list of OSDs in a cluster.
-    """
-    model = OSDDump
-
-    def get(self, request, cluster_pk):
-        "Return the latest list of OSDs"
-        dump = OSDDump.objects.for_cluster(cluster_pk).latest()
-        return StampedResponse(dump, {
-            'osds': dump.osds,
-            'epoch': dump.pk,
-        })
-
-class OSDDetail(APIView):
-    """
-    Access details of a single OSD.
-    """
-    model = OSDDump
-
-    def get(self, request, cluster_pk, osd_id):
-        "Return detail of OSD identified by osd_id"
-        dump = OSDDump.objects.for_cluster(cluster_pk).latest()
-        osd = dump.get_osd(osd_id)
-        if not osd:
-            raise Http404
-        return StampedResponse(dump, {'osd': osd})
-
-class OSDListDelta(APIView):
-    """
-    Return list of OSDs that have changed since a point in the past.
-    """
-    model = OSDDump
-
-    def _get_spread(self, cluster_pk, epoch):
-        "Returns the latest and a specific OSD state dump"
-        all = OSDDump.objects.for_cluster(cluster_pk)
-        try:
-            return all.latest(), all.get(pk=epoch)
-        except OSDDump.DoesNotExist:
-            raise Http404()
-
-    def get(self, request, cluster_pk, epoch):
-        """
-        Return the OSD list delta since epoch (i.e. a primary-key).
-        """
-        current, past = self._get_spread(cluster_pk, epoch)
-        new, removed, changed = current.delta(past)
-        return StampedResponse(current, {
-            'new': new,
-            'removed': removed,
-            'changed': changed,
-            'epoch': current.pk,
-        })
 
 class HealthCounters(APIView):
     model = Cluster
@@ -172,6 +114,24 @@ class Health(APIView):
         if not cluster.health:
             return Response({}, status.HTTP_404_NOT_FOUND)
         return Response(ClusterHealthSerializer(cluster).data)
+
+class OSDList(APIView):
+    model = Cluster
+
+    def get(self, request, cluster_pk):
+        cluster = Cluster.objects.get(pk=cluster_pk)
+        if not cluster.health:
+            return Response({}, status.HTTP_404_NOT_FOUND)
+        return Response(OSDListSerializer(cluster).data)
+
+class OSDDetail(APIView):
+    model = Cluster
+
+    def get(self, request, cluster_pk, osd_id):
+        cluster = Cluster.objects.get(pk=cluster_pk)
+        if not cluster.has_osd(osd_id):
+            return Response({}, status.HTTP_404_NOT_FOUND)
+        return Response(OSDDetailSerializer(cluster, osd_id).data)
 
 class ClusterViewSet(viewsets.ModelViewSet):
     queryset = Cluster.objects.all()

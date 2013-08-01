@@ -63,10 +63,46 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'last_update', 'last_update_unix', 'name', 'health')
+        fields = ('cluster', 'last_update', 'last_update_unix', 'health')
 
     def get_cluster(self, obj):
         return obj.id
 
     def get_last_update_unix(self, obj):
         return obj.last_update_unix
+
+class OSDListSerializer(serializers.ModelSerializer):
+    cluster = serializers.SerializerMethodField('get_cluster')
+    last_update_unix = serializers.SerializerMethodField('get_last_update_unix')
+
+    class Meta:
+        model = Cluster
+        fields = ('cluster', 'last_update', 'last_update_unix', 'osds')
+
+    def get_cluster(self, obj):
+        return obj.id
+
+    def get_last_update_unix(self, obj):
+        return obj.last_update_unix
+
+class OSDDetailSerializer(serializers.ModelSerializer):
+    cluster = serializers.SerializerMethodField('get_cluster')
+    last_update_unix = serializers.SerializerMethodField('get_last_update_unix')
+    osd = serializers.SerializerMethodField('get_osd')
+
+    def __init__(self, cluster, osd_id, *args, **kwargs):
+        self.osd_id = osd_id
+        super(OSDDetailSerializer, self).__init__(cluster, *args, **kwargs)
+
+    class Meta:
+        model = Cluster
+        fields = ('cluster', 'last_update', 'last_update_unix', 'osd')
+
+    def get_cluster(self, obj):
+        return obj.id
+
+    def get_last_update_unix(self, obj):
+        return obj.last_update_unix
+
+    def get_osd(self, obj):
+        return obj.get_osd(self.osd_id)

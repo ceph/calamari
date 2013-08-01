@@ -27,6 +27,7 @@ class Cluster(models.Model):
     #
     space = jsonfield.JSONField(null=True)
     health = jsonfield.JSONField(null=True)
+    osds = jsonfield.JSONField(null=True)
 
     def __unicode__(self):
         return self.name
@@ -36,6 +37,17 @@ class Cluster(models.Model):
         return int(dateformat.format(self.last_update, 'U')) * 1000
 
     last_update_unix = property(_get_last_update_ms)
+
+    def get_osd(self, osd_id):
+        if not self.osds:
+            return None
+        for osd in self.osds:
+            if osd['osd'] == int(osd_id):
+                return osd
+        return None
+
+    def has_osd(self, osd_id):
+        return self.get_osd(osd_id) is not None
 
 class DumpManager(models.Manager):
     def for_cluster(self, cluster_pk):
