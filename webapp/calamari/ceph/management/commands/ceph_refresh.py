@@ -4,7 +4,6 @@ from itertools import imap
 import requests
 from django.core.management.base import BaseCommand, CommandError
 from ceph.models import Cluster as ClusterModel
-from ceph.models import PGPoolDump, ClusterStatus
 
 class CephRestClient(object):
     """
@@ -20,6 +19,10 @@ class CephRestClient(object):
         hdr = {'accept': 'application/json'}
         r = requests.get(self.__url + endpoint, headers = hdr)
         return r.json()
+
+    def get_status(self):
+        "Get the raw `ceph status` output"
+        return self._query("status")["output"]
 
     def get_space_stats(self):
         "Get the raw `ceph df` output"
@@ -38,6 +41,12 @@ class CephRestClient(object):
         return self._query("pg/dump?dumpcontents=pools")["output"]
 
 class ModelAdapter(object):
+    CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
+    WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
+            'splitting', 'degraded', 'remapped', 'scrubbing', 'repair',
+            'wait_backfill', 'backfilling', 'backfill_toofull'])
+    OKAY_STATES = set(['active', 'clean'])
+
     def __init__(self, client, cluster):
         self.client = client
         self.cluster = cluster
@@ -75,6 +84,10 @@ class ModelAdapter(object):
     def _populate_counters(self):
         self.cluster.counters = {
             'pool': self._calculate_pool_counters(),
+            'osd': self._calculate_osd_counters(),
+            'mds': self._calculate_mds_counters(),
+            'mon': self._calculate_mon_counters(),
+            'pg': self._calculate_pg_counters(),
         }
 
     def _calculate_pool_counters(self):
@@ -90,6 +103,58 @@ class ModelAdapter(object):
             del counts[delkey]
         counts['total'] = len(pools)
         return counts
+
+    def _calculate_osd_counters(self):
+        osds = self.client.get_status()['osdmap']['osdmap']
+        keys = ['num_osds', 'num_up_osds', 'num_in_osds']
+        total, up, inn = (int(osds[k]) for k in keys)
+        return {
+            'total': total,
+            'up_in': inn,
+            'up_not_in': up-inn,
+            'not_up_not_in': total-up,
+        }
+
+    def _calculate_mds_counters(self):
+        mdsmap = self.client.get_status()['mdsmap']
+        total = mdsmap['max']
+        up = mdsmap['up']
+        inn = mdsmap['in']
+        return {
+            'total': total,
+            'up_in': inn,
+            'up_not_in': up-inn,
+            'not_up_not_in': total-up,
+        }
+
+    def _calculate_mon_counters(self):
+        status = self.client.get_status()
+        mons = len(status['monmap']['mons'])
+        quorum = len(status['quorum'])
+        return {
+            'total': mons,
+            'in_quorum': quorum,
+            'not_in_quorum': mons-quorum,
+        }
+
+    def _calculate_pg_counters(self):
+        pg_map = self.client.get_status()['pgmap']
+        ok, warn, crit = 0, 0, 0
+        for pg_state in pg_map['pgs_by_state']:
+            count = pg_state['count']
+            states = map(lambda s: s.lower(), pg_state['state_name'].split("+"))
+            if len(self.CRIT_STATES.intersection(states)) > 0:
+                crit += count
+            elif len(self.WARN_STATES.intersection(states)) > 0:
+                warn += count
+            elif len(self.OKAY_STATES.intersection(states)) > 0:
+                ok += count
+        return {
+            'total': pg_map['num_pgs'],
+            'ok': ok,
+            'warn': warn,
+            'critical': crit,
+        }
 
 class Command(BaseCommand):
     """
@@ -118,7 +183,7 @@ class Command(BaseCommand):
             self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                     (cluster.name, cluster.api_base_url))
             try:
-                self._refresh_cluster_status(cluster)
+                pass
             except Exception as e:
                 # dump context from the last cluster query response
                 self._print_response(self.stderr, self._last_response)
@@ -147,11 +212,3 @@ class Command(BaseCommand):
         r = requests.get(url_base + url, headers = hdr)
         self._last_response = r
         return r.json()
-
-    def _refresh_cluster_status(self, cluster):
-        """
-        Update cluster status.
-        """
-        result = self._cluster_query(cluster, "status")
-        ClusterStatus(cluster=cluster, report=result['output']).save()
-        self.stdout.write("(%s): updated cluster status" % (cluster.name,))

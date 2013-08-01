@@ -9,7 +9,6 @@ router.register(r'cluster', views.ClusterViewSet)
 urlpatterns = patterns('',
     url(r'^user/me', views.user_me),
     url(r'^', include(router.urls)),
-    url(r'^cluster/(?P<cluster_pk>[0-9]+)/health_counters$', views.HealthCounters.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/health$', views.Health.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/space$', views.Space.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd$', views.OSDList.as_view(), name='osd-list'),

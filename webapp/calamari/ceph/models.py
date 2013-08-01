@@ -81,62 +81,6 @@ class Dump(models.Model):
 
     added_ms = property(_get_added_ms)
 
-class ClusterStatus(Dump):
-    """
-    A snapshot of cluster status.
-    """
-    CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
-    WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
-            'splitting', 'degraded', 'remapped', 'scrubbing', 'repair',
-            'wait_backfill', 'backfilling', 'backfill_toofull'])
-    OKAY_STATES = set(['active', 'clean'])
-
-    def mds_count_by_status(self):
-        """
-        Number of MDSs categorized by status.
-
-        Return:
-          (total, up&in, up&!in, !up&!in)
-        """
-        total = self.report['mdsmap']['max']
-        up = self.report['mdsmap']['up']
-        inn = self.report['mdsmap']['in']
-        # inn implies up (and includes up count)
-        return total, inn, up-inn, total-up
-
-    def osd_count_by_status(self):
-        """
-        Number of OSDs categorized by status.
-
-        Return:
-          (total, up&in, up&!in, !up&!in)
-        """
-        osds = self.report['osdmap']['osdmap']
-        keys = ['num_osds', 'num_up_osds', 'num_in_osds']
-        total, up, inn = (int(osds[k]) for k in keys)
-        # inn implies up (and includes up count)
-        return total, inn, up-inn, total-up
-
-    def mon_count_by_status(self):
-        mons = len(self.report['monmap']['mons'])
-        quorum = len(self.report['quorum'])
-        return mons, quorum, mons-quorum
-
-    def pg_count_by_status(self):
-        ok, warn, crit = 0, 0, 0
-        pg_map = self.report['pgmap']
-        for pg_state in pg_map['pgs_by_state']:
-            count = pg_state['count']
-            states = map(lambda s: s.lower(), pg_state['state_name'].split("+"))
-            if len(self.CRIT_STATES.intersection(states)) > 0:
-                crit += count
-            elif len(self.WARN_STATES.intersection(states)) > 0:
-                warn += count
-            elif len(self.OKAY_STATES.intersection(states)) > 0:
-                ok += count
-        return pg_map['num_pgs'], ok, warn, crit
-
-
 class OSDDump(Dump):
     """
     Snapshot of the state of object storage devices.
@@ -192,9 +136,3 @@ class OSDDump(Dump):
         return self.report['osds']
 
     osds = property(_get_osds)
-
-class PGPoolDump(Dump):
-    """
-    A pg pools dump snapshot.
-    """
-    pass
