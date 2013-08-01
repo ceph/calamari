@@ -1,4 +1,5 @@
 /* global _ */
+/* jshint -W106 */
 'use strict';
 
 function editClusterController($rootScope, $scope, $http) {
@@ -20,13 +21,13 @@ function editClusterController($rootScope, $scope, $http) {
     $scope.editCluster = function(cluster) {
         console.log('saving ' + cluster);
         $scope.editClusterOpen = false;
-        $scope.$broadcast('cluster:loading');
+        $scope.$parent.$broadcast('cluster:loading');
         $http({
             method: 'PUT',
             url: '/api/v1/cluster/' + cluster.id,
             data: JSON.stringify(cluster)
         }).success(function() {
-            $scope.$broadcast('cluster:refresh');
+            $scope.$parent.$broadcast('cluster:refresh');
         }).error(function() {
             $scope.allDisabled = false;
             $scope.loading = false;
@@ -51,16 +52,23 @@ function addClusterController($rootScope, $scope, $http) {
     };
     $scope.addCluster = function(cluster) {
         console.log('Adding ' + cluster);
-        $scope.addClusterOpen = false;
         $scope.loading = true;
         $scope.allDisabled = true;
+        $scope.nameError = false;
+        $scope.api_base_urlError = false;
         $http({
             method: 'POST',
             url: '/api/v1/cluster',
             data: JSON.stringify(cluster)
         }).success(function() {
-            $scope.$broadcast('cluster:refresh');
-        }).error(function() {
+            $scope.$parent.$broadcast('cluster:refresh');
+            $scope.loading = false;
+            $scope.addClusterOpen = false;
+        }).error(function(data) {
+            _.each(data, function(value, key) {
+                $scope[key + 'ErrorMsg'] = _.first(value);
+                $scope[key + 'Error'] = true;
+            });
             $scope.allDisabled = false;
             $scope.loading = false;
         });
