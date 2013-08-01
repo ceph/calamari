@@ -2,6 +2,14 @@
 /* jshint -W106 */
 'use strict';
 
+/*
+ * Edit Cluster Controller
+ * @emits
+ *  cluster:refresh - please refresh your cluster data
+ * @accepts
+ *  edit:open - open the modal
+ *  edit:close - close the modal
+ */
 function editClusterController($rootScope, $scope, $http) {
     $scope.editClusterOpen = false;
     $scope.showModal = function(evt, cluster) {
@@ -20,36 +28,53 @@ function editClusterController($rootScope, $scope, $http) {
     };
     $scope.editCluster = function(cluster) {
         console.log('saving ' + cluster);
-        $scope.editClusterOpen = false;
-        $scope.$parent.$broadcast('cluster:loading');
+        $scope.loading = true;
+        $scope.nameError = false;
+        $scope.api_base_urlError = false;
+        var data = {
+            name: cluster.name,
+            api_base_url: cluster.api_base_url
+        };
         $http({
             method: 'PUT',
             url: '/api/v1/cluster/' + cluster.id,
-            data: JSON.stringify(cluster)
+            data: JSON.stringify(data)
         }).success(function() {
             $scope.$parent.$broadcast('cluster:refresh');
-        }).error(function() {
-            $scope.allDisabled = false;
+            $scope.loading = false;
+            $scope.editClusterOpen = false;
+        }).error(function(data) {
+            _.each(data, function(value, key) {
+                $scope[key + 'ErrorMsg'] = _.first(value);
+                $scope[key + 'Error'] = true;
+            });
             $scope.loading = false;
         });
     };
 }
 angular.module('adminApp').controller('editClusterController', ['$rootScope', '$scope', '$http', editClusterController]);
 
+/*
+ * Add Cluster Controller
+ * @emits
+ *  cluster:refresh - please refresh your cluster data
+ * @accepts
+ *  add:open - open the modal
+ *  add:close - close the modal
+ */
 function addClusterController($rootScope, $scope, $http) {
     $scope.addClusterOpen = false;
     $scope.opts = {
         backdropFade: true,
         dialogFade: true
     };
-
     $scope.$on('add:open', function() {
         $scope.addClusterOpen = true;
     });
-
     $scope.addClose = function() {
         $scope.addClusterOpen = false;
     };
+    $scope.$on('add:close', $scope.addClose);
     $scope.addCluster = function(cluster) {
         console.log('Adding ' + cluster);
         $scope.loading = true;
@@ -69,13 +94,22 @@ function addClusterController($rootScope, $scope, $http) {
                 $scope[key + 'ErrorMsg'] = _.first(value);
                 $scope[key + 'Error'] = true;
             });
-            $scope.allDisabled = false;
             $scope.loading = false;
         });
     };
 }
 angular.module('adminApp').controller('addClusterController', ['$rootScope', '$scope', '$http', addClusterController]);
 
+/*
+ * Cluster Page Controller
+ * @emits
+ *  add:open - open the add modal
+ *  edit:open - open the edit modal
+ * @accepts
+ *  cluster:refresh - reload the cluster data from server
+ *  cluster:loading - turn on the spinner
+ *  controls:reset  - reset the buttons to default
+ */
 var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $dialog) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'cluster';
