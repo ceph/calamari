@@ -1,32 +1,94 @@
 /* global _ */
 'use strict';
 
+function editClusterController($rootScope, $scope, $http) {
+    $scope.editClusterOpen = false;
+    $scope.showModal = function(evt, cluster) {
+        console.log(cluster);
+        $scope.cluster = cluster;
+        $scope.editClusterOpen = true;
+    };
+    $scope.hideModal = function() {
+        $scope.editClusterOpen = false;
+    };
+    $scope.$on('edit:open', $scope.showModal);
+    $scope.$on('edit:close', $scope.hideModal);
+    $scope.opts = {
+        backdropFade: true,
+        dialogFade: true
+    };
+    $scope.editCluster = function(cluster) {
+        console.log('saving ' + cluster);
+        $scope.editClusterOpen = false;
+        $scope.$broadcast('cluster:loading');
+        $http({
+            method: 'PUT',
+            url: '/api/v1/cluster/' + cluster.id,
+            data: JSON.stringify(cluster)
+        }).success(function() {
+            $scope.$broadcast('cluster:refresh');
+        }).error(function() {
+            $scope.allDisabled = false;
+            $scope.loading = false;
+        });
+    };
+}
+angular.module('adminApp').controller('editClusterController', ['$rootScope', '$scope', '$http', editClusterController]);
+
+function addClusterController($rootScope, $scope, $http) {
+    $scope.addClusterOpen = false;
+    $scope.opts = {
+        backdropFade: true,
+        dialogFade: true
+    };
+
+    $scope.$on('add:open', function() {
+        $scope.addClusterOpen = true;
+    });
+
+    $scope.addClose = function() {
+        $scope.addClusterOpen = false;
+    };
+    $scope.addCluster = function(cluster) {
+        console.log('Adding ' + cluster);
+        $scope.addClusterOpen = false;
+        $scope.loading = true;
+        $scope.allDisabled = true;
+        $http({
+            method: 'POST',
+            url: '/api/v1/cluster',
+            data: JSON.stringify(cluster)
+        }).success(function() {
+            $scope.$broadcast('cluster:refresh');
+        }).error(function() {
+            $scope.allDisabled = false;
+            $scope.loading = false;
+        });
+    };
+}
+angular.module('adminApp').controller('addClusterController', ['$rootScope', '$scope', '$http', addClusterController]);
+
 var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $dialog) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'cluster';
-
         $scope.loaded = false;
         $scope.editEnabled = false;
         $scope.removeEnabled = false;
         $scope.addEnabled = true;
-        $timeout(function() {
-            if ($scope.loaded === false) {
-                $scope.loading = true;
-            }
-        }, 125);
-        var refreshClusterList = function() {
-                $http.get('/api/v1/cluster').success(function(data) {
-                    if (data.length === 0) {
-                        $scope.addClusterOpen = true;
-                    }
-                    $scope.clusters = data;
-                    $scope.loaded = true;
-                    $scope.loading = false;
-                });
-            };
-        refreshClusterList();
+
+        function refreshClusterList() {
+            $http.get('/api/v1/cluster').success(function(data) {
+                if (data.length === 0) {
+                    $scope.$broadcast('add:open');
+                    return;
+                }
+                $scope.clusters = data;
+                $scope.loaded = true;
+                $scope.loading = false;
+            });
+        }
+
         $scope.updateControls = function(cluster) {
-            console.log(cluster);
             if (!cluster.checked) {
                 $scope.editEnabled = false;
                 $scope.removeEnabled = false;
@@ -42,67 +104,40 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 }
                 c.checked = false;
             });
-            console.log($filter('filter')($scope.clusters, {
-                checked: true
-            }));
         };
-        $scope.addOpen = function() {
-            $scope.cluster = {};
-            $scope.addClusterOpen = true;
-        };
-        $scope.addClose = function() {
-            $scope.addClusterOpen = false;
-        };
-        $scope.addCluster = function(cluster) {
-            console.log('Adding ' + cluster);
-            $scope.addClusterOpen = false;
-            $scope.loading = true;
+
+        $scope.$on('cluster:refresh', refreshClusterList);
+        $scope.$on('cluster:loading', function() {
             $scope.allDisabled = true;
-            $http({
-                method: 'POST',
-                url: '/api/v1/cluster',
-                data: JSON.stringify(cluster)
-            }).success(function() {
-                refreshClusterList();
-                $scope.allDisabled = false;
-                $scope.loading = false;
-            }).error(function() {
-                $scope.allDisabled = false;
-                $scope.loading = false;
-            });
-        };
+            $scope.loaded = false;
+        });
+
+        $timeout(function() {
+            if ($scope.loaded === false) {
+                $scope.loading = true;
+            }
+        }, 125);
+
         $scope.editOpen = function() {
             var selected = $filter('filter')($scope.clusters, {
                 checked: true
             });
-            $scope.cluster = selected[0];
-            $scope.editClusterOpen = true;
+            $scope.$broadcast('edit:open', selected[0]);
         };
-        $scope.editClose = function() {
-            $scope.editClusterOpen = false;
+
+        $scope.addOpen = function() {
+            $scope.$broadcast('add:open');
         };
-        $scope.opts = {
-            backdropFade: true,
-            dialogFade: true
-        };
-        $scope.editCluster = function(cluster) {
-            console.log('saving ' + cluster);
-            $scope.editClusterOpen = false;
-            $scope.loading = true;
-            $scope.allDisabled = true;
-            $http({
-                method: 'PUT',
-                url: '/api/v1/cluster/' + cluster.id,
-                data: JSON.stringify(cluster)
-            }).success(function() {
-                refreshClusterList();
-                $scope.allDisabled = false;
-                $scope.loading = false;
-            }).error(function() {
-                $scope.allDisabled = false;
-                $scope.loading = false;
-            });
-        };
+
+        function resetControls() {
+            $scope.allDisabled = false;
+            $scope.loading = false;
+            $scope.editEnabled = false;
+            $scope.removeEnabled = false;
+            $scope.addEnabled = true;
+        }
+        $scope.$on('controls:reset', resetControls);
+
         $scope.dialogOpts = {
             backdrop: true,
             keyboard: true,
@@ -131,22 +166,17 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                     method: 'DELETE',
                     url: '/api/v1/cluster/' + cluster.id
                 }).success(function() {
-                    refreshClusterList();
-                    $scope.allDisabled = false;
-                    $scope.loading = false;
-                    $scope.editEnabled = false;
-                    $scope.removeEnabled = false;
-                    $scope.addEnabled = true;
+                    $scope.$broadcast('cluster:refresh');
+                    $scope.$broadcast('controls:reset');
                 }).error(function() {
-                    $scope.allDisabled = false;
-                    $scope.loading = false;
-                    $scope.editEnabled = false;
-                    $scope.removeEnabled = false;
-                    $scope.addEnabled = true;
+                    $scope.$broadcast('cluster:refresh');
+                    $scope.$broadcast('controls:reset');
                 });
 
             });
         };
+
+        refreshClusterList();
     };
 angular.module('adminApp').controller('ClusterCtrl', ['$rootScope', '$scope', '$http', '$timeout', '$filter', '$dialog', clusterController]);
 
