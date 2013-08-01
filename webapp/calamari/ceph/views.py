@@ -15,18 +15,6 @@ from rest_framework.decorators import permission_classes
 from rest_framework import status
 from django.views.decorators.cache import never_cache
 
-class StampedResponse(Response):
-    """
-    A rest_framework Response with uniform treatment of timestamps.
-
-    Args:
-      dateobj: the Dump model to take time information from
-      data: the dictionary all the context-dependent values
-    """
-    def __init__(self, dateobj, data, *args, **kwargs):
-        data.update({'added': dateobj.added, 'added_ms': dateobj.added_ms})
-        super(StampedResponse, self).__init__(data, *args, **kwargs)
-
 class Space(APIView):
     model = Cluster
 
