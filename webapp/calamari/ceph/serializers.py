@@ -63,7 +63,7 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'last_update', 'last_update_unix', 'health')
+        fields = ('cluster', 'last_update', 'last_update_unix', 'health', 'counters')
 
     def get_cluster(self, obj):
         return obj.id

@@ -1,4 +1,6 @@
 import traceback
+from collections import defaultdict
+from itertools import imap
 import requests
 from django.core.management.base import BaseCommand, CommandError
 from ceph.models import Cluster as ClusterModel
@@ -19,26 +21,21 @@ class CephRestClient(object):
         r = requests.get(self.__url + endpoint, headers = hdr)
         return r.json()
 
-    def _df(self):
+    def get_space_stats(self):
         "Get the raw `ceph df` output"
         return self._query("df")["output"]
 
-    def _health(self):
+    def get_health(self):
         "Get the raw `ceph health detail` output"
         return self._query("health?detail")["output"]
 
-    def _osds(self):
+    def get_osds(self):
         "Get the raw `ceph osd dump` output"
         return self._query("osd/dump")["output"]
 
-    def get_space_stats(self):
-        return self._df()
-
-    def get_health(self):
-        return self._health()
-
-    def get_osds(self):
-        return self._osds()
+    def get_pg_pools(self):
+        "Get the raw `ceph pg/dump?dumpcontents=pools` output"
+        return self._query("pg/dump?dumpcontents=pools")["output"]
 
 class ModelAdapter(object):
     def __init__(self, client, cluster):
@@ -75,6 +72,25 @@ class ModelAdapter(object):
         data = self.client.get_osds()
         self.cluster.osds = data["osds"]
 
+    def _populate_counters(self):
+        self.cluster.counters = {
+            'pool': self._calculate_pool_counters(),
+        }
+
+    def _calculate_pool_counters(self):
+        fields = ['num_objects_unfound', 'num_objects_missing_on_primary',
+            'num_deep_scrub_errors', 'num_shallow_scrub_errors',
+            'num_scrub_errors', 'num_objects_degraded']
+        counts = defaultdict(lambda: 0)
+        pools = self.client.get_pg_pools()
+        for pool in imap(lambda p: p['stat_sum'], pools):
+            for key, value in pool.items():
+                counts[key] += min(value, 1)
+        for delkey in set(counts.keys()) - set(fields):
+            del counts[delkey]
+        counts['total'] = len(pools)
+        return counts
+
 class Command(BaseCommand):
     """
     Administrative function for refreshing Ceph cluster stats.
@@ -102,7 +118,6 @@ class Command(BaseCommand):
             self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                     (cluster.name, cluster.api_base_url))
             try:
-                self._refresh_pg_pool_dump(cluster)
                 self._refresh_cluster_status(cluster)
             except Exception as e:
                 # dump context from the last cluster query response
@@ -140,11 +155,3 @@ class Command(BaseCommand):
         result = self._cluster_query(cluster, "status")
         ClusterStatus(cluster=cluster, report=result['output']).save()
         self.stdout.write("(%s): updated cluster status" % (cluster.name,))
-
-    def _refresh_pg_pool_dump(self, cluster):
-        """
-        Update pg pools dump.
-        """
-        result = self._cluster_query(cluster, "pg/dump?dumpcontents=pools")
-        PGPoolDump(cluster=cluster, report=result['output']).save()
-        self.stdout.write("(%s): updated pg pools dump" % (cluster.name,))
