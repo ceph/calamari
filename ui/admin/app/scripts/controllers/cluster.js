@@ -221,7 +221,7 @@ var removeDialogController = function($scope, dialog, cluster) {
             dialog.close(cluster);
         };
     };
-angular.module('adminApp').controller('RemoveDialogController', ['$scope', 'dialog', removeDialogController]);
+angular.module('adminApp').controller('RemoveDialogController', ['$scope', 'dialog', 'cluster', removeDialogController]);
 
 var clusterService = function($http) {
         var baseURL = '/api/v1/cluster';
