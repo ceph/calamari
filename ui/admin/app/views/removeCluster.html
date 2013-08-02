@@ -1,0 +1,11 @@
+<div class="modal-header">
+    <h3>
+        <i class="icon-trash"></i> Remove a Cluster</h3>
+</div>
+<div class="modal-body">
+    <p>Are you sure you want to remove '{{cluster.name}}'?</p>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-warning cancel" ng-click="closeRemove()">No</button>
+    <button class="btn btn-success" ng-click="clusterRemove(cluster)">Yes</button>
+</div>

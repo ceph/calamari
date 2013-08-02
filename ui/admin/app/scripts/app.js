@@ -1,6 +1,6 @@
 'use strict';
 
-var adminApp = angular.module('adminApp', []);
+var adminApp = angular.module('adminApp', ['ui.bootstrap']);
 adminApp.config(function($routeProvider) {
 
     $routeProvider.when('/user', {
