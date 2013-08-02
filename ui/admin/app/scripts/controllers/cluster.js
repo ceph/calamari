@@ -1,5 +1,6 @@
 /* global _ */
 /* jshint -W106 */
+
 'use strict';
 
 /*
@@ -10,7 +11,7 @@
  *  edit:open - open the modal
  *  edit:close - close the modal
  */
-function editClusterController($rootScope, $scope, $http) {
+function editClusterController($rootScope, $scope, clusterSrv) {
     $scope.editClusterOpen = false;
     $scope.showModal = function(evt, cluster) {
         console.log(cluster);
@@ -35,11 +36,7 @@ function editClusterController($rootScope, $scope, $http) {
             name: cluster.name,
             api_base_url: cluster.api_base_url
         };
-        $http({
-            method: 'PUT',
-            url: '/api/v1/cluster/' + cluster.id,
-            data: JSON.stringify(data)
-        }).success(function() {
+        clusterSrv.update(cluster, data).success(function() {
             $scope.$parent.$broadcast('cluster:refresh');
             $scope.loading = false;
             $scope.editClusterOpen = false;
@@ -52,7 +49,7 @@ function editClusterController($rootScope, $scope, $http) {
         });
     };
 }
-angular.module('adminApp').controller('editClusterController', ['$rootScope', '$scope', '$http', editClusterController]);
+angular.module('adminApp').controller('editClusterController', ['$rootScope', '$scope', 'clusterSrv', editClusterController]);
 
 /*
  * Add Cluster Controller
@@ -62,7 +59,7 @@ angular.module('adminApp').controller('editClusterController', ['$rootScope', '$
  *  add:open - open the modal
  *  add:close - close the modal
  */
-function addClusterController($rootScope, $scope, $http) {
+function addClusterController($rootScope, $scope, clusterSrv) {
     $scope.addClusterOpen = false;
     $scope.opts = {
         backdropFade: true,
@@ -81,11 +78,7 @@ function addClusterController($rootScope, $scope, $http) {
         $scope.allDisabled = true;
         $scope.nameError = false;
         $scope.api_base_urlError = false;
-        $http({
-            method: 'POST',
-            url: '/api/v1/cluster',
-            data: JSON.stringify(cluster)
-        }).success(function() {
+        clusterSrv.create(cluster).success(function() {
             $scope.$parent.$broadcast('cluster:refresh');
             $scope.loading = false;
             $scope.addClusterOpen = false;
@@ -98,7 +91,7 @@ function addClusterController($rootScope, $scope, $http) {
         });
     };
 }
-angular.module('adminApp').controller('addClusterController', ['$rootScope', '$scope', '$http', addClusterController]);
+angular.module('adminApp').controller('addClusterController', ['$rootScope', '$scope', 'clusterSrv', addClusterController]);
 
 /*
  * Cluster Page Controller
@@ -110,7 +103,7 @@ angular.module('adminApp').controller('addClusterController', ['$rootScope', '$s
  *  cluster:loading - turn on the spinner
  *  controls:reset  - reset the buttons to default
  */
-var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $dialog) {
+var clusterController = function($rootScope, $scope, $timeout, $filter, $dialog, clusterSrv) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'cluster';
         $scope.loaded = false;
@@ -119,7 +112,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
         $scope.addEnabled = true;
 
         function refreshClusterList() {
-            $http.get('/api/v1/cluster').success(function(data) {
+            clusterSrv.read().success(function(data) {
                 if (data.length === 0) {
                     $scope.$broadcast('add:open');
                     return;
@@ -204,10 +197,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
                 }
                 $scope.loading = true;
                 $scope.allDisabled = true;
-                $http({
-                    method: 'DELETE',
-                    url: '/api/v1/cluster/' + cluster.id
-                }).success(function() {
+                clusterSrv.delete_(cluster).success(function() {
                     $scope.$broadcast('cluster:refresh');
                     $scope.$broadcast('controls:reset');
                 }).error(function() {
@@ -220,7 +210,7 @@ var clusterController = function($rootScope, $scope, $http, $timeout, $filter, $
 
         refreshClusterList();
     };
-angular.module('adminApp').controller('ClusterCtrl', ['$rootScope', '$scope', '$http', '$timeout', '$filter', '$dialog', clusterController]);
+angular.module('adminApp').controller('ClusterCtrl', ['$rootScope', '$scope', '$timeout', '$filter', '$dialog', 'clusterSrv', clusterController]);
 
 var removeDialogController = function($scope, dialog, cluster) {
         $scope.cluster = cluster;
@@ -232,3 +222,36 @@ var removeDialogController = function($scope, dialog, cluster) {
         };
     };
 angular.module('adminApp').controller('RemoveDialogController', ['$scope', 'dialog', 'cluster', removeDialogController]);
+
+var clusterService = function($http) {
+        var baseURL = '/api/v1/cluster';
+        return {
+            read: function() {
+                return $http({
+                    method: 'GET',
+                    url: baseURL
+                });
+            },
+            create: function(cluster) {
+                return $http({
+                    method: 'POST',
+                    url: baseURL,
+                    data: JSON.stringify(cluster)
+                });
+            },
+            update: function(cluster, data) {
+                return $http({
+                    method: 'PUT',
+                    url: baseURL + '/' + cluster.id,
+                    data: JSON.stringify(data)
+                });
+            },
+            delete_: function(cluster) {
+                return $http({
+                    method: 'DELETE',
+                    url: baseURL + '/' + cluster.id
+                });
+            }
+        };
+    };
+angular.module('adminApp').factory('clusterSrv', ['$http', clusterService]);

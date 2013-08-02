@@ -46,10 +46,3 @@ adminApp.run(function($rootScope, $route, menus) {
         $rootScope.pageTitle = $route.current.title;
     });
 });
-adminApp.factory('pageTitle', function($rootScope, $route) {
-    return {
-        update: function() {
-            $rootScope.pageTitle = $route.current.title;
-        }
-    };
-});
