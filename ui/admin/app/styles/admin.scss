@@ -19,6 +19,9 @@ $it-tab-background: lighten($itlightgray, 9%);
         border: 1px solid darken($itdarkred, 15%);
     }
 }
+.modal-header {
+    font-family: 'ApexSansLight';
+}
 ul.nav {
     a {
         color: $it-nav-color;
