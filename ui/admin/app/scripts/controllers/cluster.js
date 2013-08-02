@@ -224,31 +224,32 @@ var removeDialogController = function($scope, dialog, cluster) {
 angular.module('adminApp').controller('RemoveDialogController', ['$scope', 'dialog', removeDialogController]);
 
 var clusterService = function($http) {
+        var baseURL = '/api/v1/cluster';
         return {
             read: function() {
                 return $http({
                     method: 'GET',
-                    url: '/api/v1/cluster'
+                    url: baseURL
                 });
             },
             create: function(cluster) {
                 return $http({
                     method: 'POST',
-                    url: '/api/v1/cluster',
+                    url: baseURL,
                     data: JSON.stringify(cluster)
                 });
             },
             update: function(cluster, data) {
                 return $http({
                     method: 'PUT',
-                    url: '/api/v1/cluster/' + cluster.id,
+                    url: baseURL + '/' + cluster.id,
                     data: JSON.stringify(data)
                 });
             },
             delete_: function(cluster) {
                 return $http({
                     method: 'DELETE',
-                    url: '/api/v1/cluster/' + cluster.id
+                    url: baseURL + '/' + cluster.id
                 });
             }
         };
