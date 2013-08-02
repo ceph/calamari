@@ -79,14 +79,14 @@ options="opts">
         <form name='form' class='css-form' novalidate>
             <fieldset>
                 <label for="">Name</label>
-                <input name="clusterName" type="text" required value="{{cluster.name}}"
+                <input name="clusterName" type="text" required ng-model="cluster.name"
                 placeholder="Name of Cluster" />
                 <span class='text-error' ng-show='nameError'>{{nameErrorMsg}}</span>
             </fieldset>
             <fieldset>
                 <label for="">Cluster REST API URI</label>
-                <input class="span5" name="clusterAPI" type="url"
-                required value="{{cluster.api_base_url}}" placeholder="REST API URI" />
+                <input class="span7" name="clusterAPI" type="url"
+                required ng-model="cluster.api_base_url" placeholder="REST API URI" />
                 <div class='text-error' ng-show='api_base_urlError'>{{api_base_urlErrorMsg}}</div>
             </fieldset>
         </form>
