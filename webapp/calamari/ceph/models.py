@@ -7,7 +7,7 @@ class Cluster(models.Model):
     A cluster being tracked by Calamari.
     """
     name = models.CharField(max_length=256, unique=True)
-    last_update = models.DateTimeField(auto_now=True)
+    last_update = models.DateTimeField(auto_now=True, null=True)
     api_base_url = models.CharField(max_length=200)
 
     #
@@ -34,6 +34,8 @@ class Cluster(models.Model):
 
     def _get_last_update_ms(self):
         "Convert `last_update` into Unix time."
+        if not self.last_update:
+            return None
         return int(dateformat.format(self.last_update, 'U')) * 1000
 
     last_update_unix = property(_get_last_update_ms)
