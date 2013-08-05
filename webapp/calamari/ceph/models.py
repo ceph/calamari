@@ -42,7 +42,7 @@ class Cluster(models.Model):
         if not self.osds:
             return None
         for osd in self.osds:
-            if osd['osd'] == int(osd_id):
+            if osd['id'] == int(osd_id):
                 return osd
         return None
 
