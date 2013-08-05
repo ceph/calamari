@@ -9,7 +9,7 @@ from ceph.management.commands.ceph_refresh import CephRestClient
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
-        fields = ('name', 'api_base_url')
+        fields = ('id', 'name', 'api_base_url')
 
     def validate_api_base_url(self, attrs, source):
         try:
