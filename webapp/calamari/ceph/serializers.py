@@ -153,6 +153,7 @@ class OSDListSerializer(serializers.ModelSerializer):
     added = serializers.SerializerMethodField('get_added')
     added_ms = serializers.SerializerMethodField('get_last_update_unix')
     epoch = serializers.SerializerMethodField('get_epoch')
+    osds = serializers.SerializerMethodField('get_osds')
 
     class Meta:
         model = Cluster
@@ -161,6 +162,12 @@ class OSDListSerializer(serializers.ModelSerializer):
 
     def get_cluster(self, obj):
         return obj.id
+
+    def get_osds(self, obj):
+        if obj.osds:
+            for osd in obj.osds:
+                osd['osd'] = osd['id']
+        return obj.osds
 
     def get_last_update_unix(self, obj):
         return obj.last_update_unix
