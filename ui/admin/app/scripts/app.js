@@ -1,6 +1,6 @@
 'use strict';
 
-var adminApp = angular.module('adminApp', []);
+var adminApp = angular.module('adminApp', ['ui.bootstrap']);
 adminApp.config(function($routeProvider) {
 
     $routeProvider.when('/user', {
@@ -45,11 +45,4 @@ adminApp.run(function($rootScope, $route, menus) {
     $rootScope.$on('$routeChangeSuccess', function() {
         $rootScope.pageTitle = $route.current.title;
     });
-});
-adminApp.factory('pageTitle', function($rootScope, $route) {
-    return {
-        update: function() {
-            $rootScope.pageTitle = $route.current.title;
-        }
-    };
 });
