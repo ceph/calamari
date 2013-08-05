@@ -34,6 +34,15 @@ class Health(APIView):
             return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterHealthSerializer(cluster).data)
 
+class HealthCounters(APIView):
+    model = Cluster
+
+    def get(self, request, cluster_pk):
+        cluster = get_object_or_404(Cluster, pk=cluster_pk)
+        if not cluster.counters:
+            return Response({}, status.HTTP_202_ACCEPTED)
+        return Response(ClusterHealthCountersSerializer(cluster).data)
+
 class OSDList(APIView):
     model = Cluster
 
