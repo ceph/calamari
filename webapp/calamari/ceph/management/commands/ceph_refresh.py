@@ -44,6 +44,10 @@ class CephRestClient(object):
         "Get the raw `ceph pg/dump?dumpcontents=pools` output"
         return self._query("pg/dump?dumpcontents=pools")["output"]
 
+    def get_pg_dump(self):
+        "Get the raw `ceph pg dump` output"
+        return self._query("pg/dump")["output"]
+
 class ModelAdapter(object):
     CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
     WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
@@ -53,6 +57,8 @@ class ModelAdapter(object):
 
     OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',
             'cluster_addr', 'heartbeat_back_addr', 'heartbeat_front_addr']
+
+    PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 
     def __init__(self, client, cluster):
         self.client = client
@@ -91,6 +97,28 @@ class ModelAdapter(object):
             return data
         data = self.client.get_osds()
         self.cluster.osds = map(fixup_osd, data["osds"])
+
+    def _populate_pgs(self):
+
+        def fixup_pg(pg):
+            data = dict((k, pg[k]) for k in self.PG_FIELDS)
+            data['state'] = data['state'].split("+")
+            return data
+
+        # save the brief pg map
+        pgs = self.client.get_pg_dump()['pg_stats']
+        self.cluster.pgs = map(fixup_pg, pgs)
+
+        # save a list of osds by pg state
+        osds_by_state = defaultdict(lambda: set([]))
+        for pg in self.cluster.pgs:
+            acting = set(pg['acting'])
+            for state in pg['state']:
+                osds_by_state[state] |= acting
+        # convert set() to list to make JSON happy
+        osds_by_state = dict((k, list(v)) for k, v in
+                osds_by_state.iteritems())
+        self.cluster.osds_by_pg_state = osds_by_state
 
     def _populate_counters(self):
         self.cluster.counters = {

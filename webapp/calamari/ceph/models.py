@@ -27,7 +27,9 @@ class Cluster(models.Model):
     space = jsonfield.JSONField(null=True)
     health = jsonfield.JSONField(null=True)
     osds = jsonfield.JSONField(null=True)
+    osds_by_pg_state = jsonfield.JSONField(null=True)
     counters = jsonfield.JSONField(null=True)
+    pgs = jsonfield.JSONField(null=True)
 
     def __unicode__(self):
         return self.name

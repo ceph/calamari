@@ -148,6 +148,7 @@ class ClusterHealthCountersSerializer(serializers.ModelSerializer):
 class OSDListSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
     last_update_unix = serializers.SerializerMethodField('get_last_update_unix')
+    pg_state_counts = serializers.SerializerMethodField('get_pg_state_counts')
 
     # backwards compatibility during transition
     added = serializers.SerializerMethodField('get_added')
@@ -158,7 +159,7 @@ class OSDListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'last_update', 'last_update_unix', 'osds',
-            'added', 'added_ms', 'epoch')
+            'added', 'added_ms', 'epoch', 'pg_state_counts')
 
     def get_cluster(self, obj):
         return obj.id
@@ -177,6 +178,9 @@ class OSDListSerializer(serializers.ModelSerializer):
 
     def get_epoch(self, obj):
         return 0
+
+    def get_pg_state_counts(self, obj):
+        return dict((s, len(v)) for s, v in obj.osds_by_pg_state.iteritems())
 
 class OSDDetailSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')

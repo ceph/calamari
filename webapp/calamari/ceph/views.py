@@ -46,10 +46,34 @@ class HealthCounters(APIView):
 class OSDList(APIView):
     model = Cluster
 
+    def _filter_by_pg_state(self, cluster, pg_states):
+        """Filter the cluster OSDs by PG states.
+
+        Note that we can't do any nice DB querying here because we aren't
+        normalizing out our data to fit the relational model. Thus, this is a
+        bit hacky.
+
+        We are modifying the OSD field of this instance of a cluster based on
+        the filtering, and passing the result to the serializer. Do not do
+        anything like a .save() on this instance; it's just a vehicle for the
+        filtered OSDs.
+        """
+        pg_states = set(map(lambda s: s.lower(), pg_states.split(",")))
+        target_osds = set([])
+        for state, osds in cluster.osds_by_pg_state.iteritems():
+            if state in pg_states:
+                target_osds |= set(osds)
+        cluster.osds[:] = [o for o in cluster.osds if o['id'] in target_osds]
+
     def get(self, request, cluster_pk):
         cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.health:
+        if not cluster.osds:
             return Response([], status.HTTP_202_ACCEPTED)
+        pg_states = request.QUERY_PARAMS.get('pg_states', None)
+        if pg_states:
+            if not cluster.pgs:
+                return Response([], status.HTTP_202_ACCEPTED)
+            self._filter_by_pg_state(cluster, pg_states)
         return Response(OSDListSerializer(cluster).data)
 
 class OSDDetail(APIView):
