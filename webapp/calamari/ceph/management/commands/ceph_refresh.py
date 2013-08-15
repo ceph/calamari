@@ -44,6 +44,10 @@ class CephRestClient(object):
         "Get the raw `ceph pg/dump?dumpcontents=pools` output"
         return self._query("pg/dump?dumpcontents=pools")["output"]
 
+    def get_pools(self):
+        "Get the raw `ceph osd lspools` output"
+        return self._query("osd/lspools")["output"]
+
     def get_pg_dump(self):
         "Get the raw `ceph pg dump` output"
         return self._query("pg/dump")["output"]
@@ -94,6 +98,8 @@ class ModelAdapter(object):
 
         # map osd id to pg states
         pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
+        # map osd id to set of pools
+        pools_by_osd = defaultdict(lambda: set([]))
         # map pg state to osd ids
         osds_by_pg_state = defaultdict(lambda: set([]))
 
@@ -107,13 +113,20 @@ class ModelAdapter(object):
         pgs = self.client.get_pg_dump()['pg_stats']
         self.cluster.pgs = map(fixup_pg, pgs)
 
+        # get the list of pools
+        pools = self.client.get_pools()
+        pools_by_id = dict((d['poolnum'], d['poolname']) for d in pools)
+
         # populate the indexes
         for pg in self.cluster.pgs:
+            pool_id = int(pg['pgid'].split(".")[0])
             acting = set(pg['acting'])
             for state in pg['state']:
                 osds_by_pg_state[state] |= acting
                 for osd_id in acting:
                     pg_states_by_osd[osd_id][state] += 1
+                    if pools_by_id.has_key(pool_id):
+                        pools_by_osd[osd_id] |= set([pools_by_id[pool_id]])
 
         # convert set() to list to make JSON happy
         osds_by_pg_state = dict((k, list(v)) for k, v in
@@ -126,6 +139,7 @@ class ModelAdapter(object):
             data = dict((k, osd[k]) for k in self.OSD_FIELDS)
             data.update({'id': osd_id})
             data.update({'pg_states': pg_states_by_osd[osd_id]})
+            data.update({'pools': list(pools_by_osd[osd_id])})
             return data
 
         # add the pg states to each osd
