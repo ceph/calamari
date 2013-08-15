@@ -89,17 +89,15 @@ class ModelAdapter(object):
             'summary': data['summary'],
         }
 
-    def _populate_osds(self):
-        "Fill in the set of cluster OSDs"
-        def fixup_osd(osd):
-            data = dict((k, osd[k]) for k in self.OSD_FIELDS)
-            data.update({'id': osd['osd']})
-            return data
-        data = self.client.get_osds()
-        self.cluster.osds = map(fixup_osd, data["osds"])
+    def _populate_osds_and_pgs(self):
+        "Fill in the PG and OSD lists"
 
-    def _populate_pgs(self):
+        # map osd id to pg states
+        pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
+        # map pg state to osd ids
+        osds_by_pg_state = defaultdict(lambda: set([]))
 
+        # helper to modify each pg object
         def fixup_pg(pg):
             data = dict((k, pg[k]) for k in self.PG_FIELDS)
             data['state'] = data['state'].split("+")
@@ -109,16 +107,30 @@ class ModelAdapter(object):
         pgs = self.client.get_pg_dump()['pg_stats']
         self.cluster.pgs = map(fixup_pg, pgs)
 
-        # save a list of osds by pg state
-        osds_by_state = defaultdict(lambda: set([]))
+        # populate the indexes
         for pg in self.cluster.pgs:
             acting = set(pg['acting'])
             for state in pg['state']:
-                osds_by_state[state] |= acting
+                osds_by_pg_state[state] |= acting
+                for osd_id in acting:
+                    pg_states_by_osd[osd_id][state] += 1
+
         # convert set() to list to make JSON happy
-        osds_by_state = dict((k, list(v)) for k, v in
-                osds_by_state.iteritems())
-        self.cluster.osds_by_pg_state = osds_by_state
+        osds_by_pg_state = dict((k, list(v)) for k, v in
+                osds_by_pg_state.iteritems())
+        self.cluster.osds_by_pg_state = osds_by_pg_state
+
+        # helper to modify each osd object
+        def fixup_osd(osd):
+            osd_id = osd['osd']
+            data = dict((k, osd[k]) for k in self.OSD_FIELDS)
+            data.update({'id': osd_id})
+            data.update({'pg_states': pg_states_by_osd[osd_id]})
+            return data
+
+        # add the pg states to each osd
+        osds = self.client.get_osds()["osds"]
+        self.cluster.osds = map(fixup_osd, osds)
 
     def _populate_counters(self):
         self.cluster.counters = {
