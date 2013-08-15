@@ -144,15 +144,25 @@ class ModelAdapter(object):
         return counts
 
     def _calculate_osd_counters(self):
-        osds = self.client.get_status()['osdmap']['osdmap']
-        keys = ['num_osds', 'num_up_osds', 'num_in_osds']
-        total, up, inn = (int(osds[k]) for k in keys)
-        return {
-            'total': total,
-            'up_in': inn,
-            'up_not_in': up-inn,
-            'not_up_not_in': total-up,
+        osds = self.client.get_osds()["osds"]
+        counters = {
+            'total': len(osds),
+            'not_up_not_in': 0,
+            'not_up_in': 0,
+            'up_not_in': 0,
+            'up_in': 0
         }
+        for osd in osds:
+            up, inn = osd['up'], osd['in']
+            if not up and not inn:
+                counters['not_up_not_in'] += 1
+            elif not up and inn:
+                counters['not_up_in'] += 1
+            elif up and not inn:
+                counters['up_not_in'] += 1
+            elif up and inn:
+                counters['up_in'] += 1
+        return counters
 
     def _calculate_mds_counters(self):
         mdsmap = self.client.get_status()['mdsmap']
