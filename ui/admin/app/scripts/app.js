@@ -27,8 +27,8 @@ adminApp.config(function($routeProvider) {
 adminApp.factory('menus', function() {
     return {
         menu: function() {
-            var labels = ['General', 'Cluster', 'User', 'Users'];
-            var url = ['general', 'cluster', 'user', 'users'];
+            var labels = ['General', 'Cluster', 'User'];
+            var url = ['general', 'cluster', 'user'];
             var res = [];
             for (var i = 0; i < url.length; ++i) {
                 res.push({
