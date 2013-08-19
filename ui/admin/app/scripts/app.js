@@ -43,7 +43,7 @@ adminApp.factory('menus', function() {
 adminApp.run(function($rootScope, $route, menus) {
     $rootScope.menus = menus.menu();
     $rootScope.dashboard = function() {
-        window.document.location = '/dashboard';
+        window.document.location = '/dashboard/';
     };
     $rootScope.$on('$routeChangeSuccess', function() {
         $rootScope.pageTitle = $route.current.title;
