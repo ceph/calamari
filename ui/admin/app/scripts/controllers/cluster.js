@@ -110,6 +110,7 @@ var clusterController = function($rootScope, $scope, $timeout, $filter, $dialog,
         $scope.editEnabled = false;
         $scope.removeEnabled = false;
         $scope.addEnabled = true;
+        $scope.dashboard = $rootScope.dashboard;
 
         function refreshClusterList() {
             clusterSrv.read().success(function(data) {
