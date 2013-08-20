@@ -212,23 +212,40 @@ class ModelAdapter(object):
             'not_in_quorum': mons-quorum,
         }
 
+    def _pg_counter_helper(self, states, classifier, count, stats):
+        matched_states = classifier.intersection(states)
+        if len(matched_states) > 0:
+            stats[0] += count
+            for state in matched_states:
+                stats[1][state] += count
+            return True
+        return False
+
     def _calculate_pg_counters(self):
         pg_map = self.client.get_status()['pgmap']
-        ok, warn, crit = 0, 0, 0
+        ok, warn, crit = [[0, defaultdict(int)] for _ in range(3)]
         for pg_state in pg_map['pgs_by_state']:
             count = pg_state['count']
             states = map(lambda s: s.lower(), pg_state['state_name'].split("+"))
-            if len(self.CRIT_STATES.intersection(states)) > 0:
-                crit += count
-            elif len(self.WARN_STATES.intersection(states)) > 0:
-                warn += count
-            elif len(self.OKAY_STATES.intersection(states)) > 0:
-                ok += count
+            if self._pg_counter_helper(states, self.CRIT_STATES, count, crit):
+                pass
+            elif self._pg_counter_helper(states, self.WARN_STATES, count, warn):
+                pass
+            elif self._pg_counter_helper(states, self.OKAY_STATES, count, ok):
+                pass
         return {
-            'total': pg_map['num_pgs'],
-            'ok': ok,
-            'warn': warn,
-            'critical': crit,
+            'ok': {
+                'count': ok[0],
+                'states': ok[1],
+            },
+            'warn': {
+                'count': warn[0],
+                'states': warn[1],
+            },
+            'critical': {
+                'count': crit[0],
+                'states': crit[1],
+            },
         }
 
 class Command(BaseCommand):
