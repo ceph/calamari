@@ -213,7 +213,26 @@ class ModelAdapter(object):
                 counters['up_not_in'] += 1
             elif up and inn:
                 counters['up_in'] += 1
-        return counters
+        warn_count = counters['up_not_in'] + counters['not_up_in']
+        warn_states = {}
+        if counters['up_not_in'] > 0:
+            warn_states['up/out'] = counters['up_not_in']
+        if counters['not_up_in'] > 0:
+            warn_states['down/in'] = counters['not_up_in']
+        return {
+            'ok': {
+                'count': counters['up_in'],
+                'states': {} if counters['up_in'] == 0 else {'up/in': counters['up_in']},
+            },
+            'warn': {
+                'count': warn_count,
+                'states': {} if warn_count == 0 else warn_states,
+            },
+            'critical': {
+                'count': counters['not_up_not_in'],
+                'states': {} if counters['not_up_not_in'] == 0 else {'down/out': counters['not_up_not_in']},
+            },
+        }
 
     def _calculate_mds_counters(self):
         mdsmap = self.client.get_status()['mdsmap']
@@ -230,11 +249,21 @@ class ModelAdapter(object):
     def _calculate_mon_counters(self):
         status = self.client.get_status()
         mons = len(status['monmap']['mons'])
-        quorum = len(status['quorum'])
+        inn = len(status['quorum'])
+        out = mons - inn
         return {
-            'total': mons,
-            'in_quorum': quorum,
-            'not_in_quorum': mons-quorum,
+            'ok': {
+                'count': inn,
+                'states': {} if inn == 0 else {'in': inn},
+            },
+            'warn': {
+                'count': 0,
+                'states': {},
+            },
+            'critical': {
+                'count': out,
+                'states': {} if out == 0 else {'out': out},
+            }
         }
 
     def _pg_counter_helper(self, states, classifier, count, stats):
