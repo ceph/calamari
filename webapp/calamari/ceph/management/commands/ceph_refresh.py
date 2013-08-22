@@ -52,6 +52,10 @@ class CephRestClient(object):
         "Get the raw `ceph pg dump` output"
         return self._query("pg/dump")["output"]
 
+    def get_osd_tree(self):
+        "Get the raw `ceph osd tree` output"
+        return self._query("osd/tree")["output"]
+
 class ModelAdapter(object):
     CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
     WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
@@ -133,6 +137,26 @@ class ModelAdapter(object):
                 osds_by_pg_state.iteritems())
         self.cluster.osds_by_pg_state = osds_by_pg_state
 
+        # get the osd tree. we'll use it to get hostnames
+        osd_tree = self.client.get_osd_tree()
+        nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
+
+        # FIXME: this assumes that an osd node is a direct descendent of a
+        #
+        # host. It also assumes that these node types are called 'osd', and
+        # 'host' respectively. This is probably not as general as we would like
+        # it. Some clusters might have weird crush maps. This also assumes that
+        # the host name in the crush map is the same host name reported by
+        # Diamond. It is fragile.
+        host_by_osd_name = defaultdict(lambda: None)
+        for node in osd_tree["nodes"]:
+            if node["type"] == "host":
+                host = node["name"]
+                for id in node["children"]:
+                    child = nodes_by_id[id]
+                    if child["type"] == "osd":
+                        host_by_osd_name[child["name"]] = host
+
         # helper to modify each osd object
         def fixup_osd(osd):
             osd_id = osd['osd']
@@ -140,6 +164,7 @@ class ModelAdapter(object):
             data.update({'id': osd_id})
             data.update({'pg_states': pg_states_by_osd[osd_id]})
             data.update({'pools': list(pools_by_osd[osd_id])})
+            data.update({'host': host_by_osd_name["osd.%d" % (osd_id,)]})
             return data
 
         # add the pg states to each osd
