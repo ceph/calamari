@@ -1,0 +1,1 @@
+uwsgi -s /tmp/cephrestapi.sock -C777 --module uwsgiapp --callable app --threads 10
