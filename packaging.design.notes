@@ -11,16 +11,16 @@ OSD machines:
 A mon:
     * install calamari-rest (name?) package (deb or rpm) that:
         * depends on ceph-common (deb) or ceph (rpm)
-        * installs nginx (no known version dependencies)
+        * depends on nginx (no known version dependencies)
         * pip-installs uwsgi (in system ok, or do we need virtualenv?)
         * has postinstall that configures nginx/uwsgi:
-            * install new /etc/nginx/cephrestapi.conf
+            * install new /etc/nginx/cephrestapi.conf, restart nginx
             * install /var/lib/ceph/uwsgiapp.py (is there a better location?)
-            * install /etc/init.d/uwsgi or /etc/init/uwsgi.conf, which
-              will start and keep running:
-
-		uwsgi -s /tmp/cephrestapi.sock -C777 --module \
-		    /var/lib/ceph/uwsgiapp --callable app
+            * install /etc/init.d/cephrestapi or /etc/init/cephrestapi.conf,
+              which will start and keep running:
+                uwsgi -s /tmp/cephrestapi.sock -C777 --module \
+                    /var/lib/ceph/uwsgiapp --callable app
+            * start uwsgi service
 
         * possible config changes if desired/necessary:
             * 'listen 5000' in /etc/nginx/cephrestapi.conf
