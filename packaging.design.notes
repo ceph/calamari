@@ -6,6 +6,7 @@ OSD machines:
     * edit diamond.conf host line to <calamari-vm-host>
     (above is the same as described in diamond docs at
     https://github.com/BrightcoveOS/Diamond/wiki/Configuration)
+    * restart diamond service
 
 A mon:
     * install calamari-rest (name?) package (deb or rpm) that:
