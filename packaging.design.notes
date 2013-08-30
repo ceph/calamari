@@ -9,7 +9,7 @@ OSD machines:
     * restart diamond service
 
 A mon:
-    * install calamari-rest (name?) package (deb or rpm) that:
+    * install ceph-rest-inktank package (deb or rpm) that:
         * depends on ceph-common (deb) or ceph (rpm)
         * depends on nginx (no known version dependencies)
         * pip-installs uwsgi (in system ok, or do we need virtualenv?)
@@ -22,9 +22,9 @@ A mon:
                     /var/lib/ceph/uwsgiapp --callable app
             * start uwsgi service
 
-        * possible config changes if desired/necessary:
-            * 'listen 5000' in /etc/nginx/cephrestapi.conf
-            * CLUSTERNAME, CEPHCONF in /var/lib/ceph/uwsgiapp.py
+possible manual config changes if desired/necessary:
+    * 'listen 5000' in /etc/nginx/cephrestapi.conf
+    * CLUSTERNAME, CEPHCONF in /var/lib/ceph/uwsgiapp.py
 
 VM: 
     Take the supplied .ova and run it in VirtualBox
