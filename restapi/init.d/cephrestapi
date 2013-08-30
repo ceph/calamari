@@ -1,0 +1,60 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          cephrestapi
+# Required-Start:    $network
+# Required-Stop:     $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Ceph REST API
+# Description:       Ceph REST API
+### END INIT INFO
+
+DESC="Ceph REST API"
+
+# set to --threads <n> for multithreaded serving
+THREADS=
+
+SOCKNAME=/tmp/cephrestapi.sock
+PIDFILE=/var/run/cephresatpi.uwsgi.pid
+
+start() {
+	uwsgi -s $SOCKNAME -C777 --module cephrestwsgi --callable app
+	echo $? > $PIDFILE
+}
+
+stop() {
+	if [ -f $PIDFILE ] ; then
+		kill $(<$PIDFILE)
+	else
+		pid=$(ps -ef | grep uwsgi.*cephrestwsgi | awk '${print $2}')
+		if [ -n "$pid" ] ; then
+			kill $pid
+		else
+			echo "Can't find cephrestwsgi instance to kill" >&2
+			exit 1
+		fi
+	fi
+}
+
+case "$1" in
+  start)
+	start
+	;;
+
+  stop)
+	stop
+	;;
+
+  reload|restart)
+	stop
+	start
+	;;
+
+  *)
+	echo "Usage: cephrestapi {start|stop|restart|reload}"
+	exit 1
+	;;
+esac
+
+exit 0
