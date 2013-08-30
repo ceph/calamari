@@ -1,11 +1,25 @@
 On Ceph cluster machines:
 
+Cluster in general:
+    * make certain the crushmap contains real shortnames for the hosts
+      in the 'host' entry, which parents the OSDs.  Mapping osd to hostname
+      depends on the crushmap, and if this is wrong, osd-host stats don't
+      work.
+
 OSD machines:
     * Install Inktank-built package (deb or rpm) "diamond"
     * copy /etc/diamond/diamond.conf.example to diamond.conf
-    * edit diamond.conf host line to <calamari-vm-host>
-    (above is the same as described in diamond docs at
-    https://github.com/BrightcoveOS/Diamond/wiki/Configuration)
+    * edit diamond.conf host line to 'calamari'
+    * set ENABLE_DIAMOND="yes" in /etc/default/diamond
+      (XXX already set by package build)
+    * make sure DIAMOND_USER (from /etc/default/diamond) can read
+      ceph admin socket (for now, DIAMOND_USER=root; in future perhaps
+      g+rw and a cephdaemon group?)
+    * make sure host can resolve 'calamari', and can connect back to port
+      calamari:2003 (for Diamond updates).
+    (see also https://github.com/BrightcoveOS/Diamond/wiki/Configuration)
+    * install /etc/diamond/collectors/CephCollector.conf
+      (XXX already installed, but see diffs noted below)
     * restart diamond service
 
 A mon:
@@ -15,20 +29,29 @@ A mon:
         * pip-installs uwsgi (in system ok, or do we need virtualenv?)
         * has postinstall that configures nginx/uwsgi:
             * install new /etc/nginx/cephrestapi.conf, restart nginx
-            * install /var/lib/ceph/uwsgiapp.py (is there a better location?)
+            * install <system-python-location>/cephrestwsgi.py
             * install /etc/init.d/cephrestapi or /etc/init/cephrestapi.conf,
               which will start and keep running:
                 uwsgi -s /tmp/cephrestapi.sock -C777 --module \
-                    /var/lib/ceph/uwsgiapp --callable app
+                    cephrestwsgi --callable app
             * start uwsgi service
+    * can run collectors here too; should we by default?
 
 possible manual config changes if desired/necessary:
     * 'listen 5000' in /etc/nginx/cephrestapi.conf
     * CLUSTERNAME, CEPHCONF in /var/lib/ceph/uwsgiapp.py
 
 VM: 
-    Take the supplied .ova and run it in VirtualBox
-    Configure cluster: ?
+    * Take the supplied .ova and run it in VirtualBox as hostname 'calamari'
+      (that is, it needs to be accessible from the cluster as hostname
+      calamari, at least on port 2003 for carbon)
+      Configured services:
+         httpd for Calamari and Graphite webapps
+	 kraken (/etc/init/kraken.conf)
+      Required services:
+         carbon-cache (nohup python /opt/graphite/bin/carbon-cache.py &)
+    * Configure cluster using admin/admin login, and path
+      http://<clusterhost>:5000/api/v0.1/
 
 ===== mostly-static files: =====
 
@@ -45,7 +68,7 @@ server {
 }
 =================
 
-uwsgiapp.py:
+cephrestwsgi.py:
 
 import ceph_rest_api
 
@@ -62,5 +85,18 @@ app = ceph_rest_api.generate_app(
     CLIENTID,
     CLIENTARGS,
 )
+
+=================
+CephCollector.conf
+
+enabled = True
+path_suffix = ""
+measure_collector_time = False
+ceph_binary = /usr/bin/ceph
+byte_unit = byte, kilobyte
+socket_prefix = ceph-
+socket_path = /var/run/ceph
+socket_ext = asok
+interval = 30
 
 =================
