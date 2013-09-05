@@ -200,6 +200,15 @@ module.exports = function (grunt) {
                 }
             }
         },
+        symlink: {
+            font: {
+                target: 'bower_components/font-awesome/font',
+                link: '<%= yeoman.app %>/font',
+                options: {
+                    overwrite: true
+                }
+            }
+        },
         useminPrepare: {
             options: {
                 dest: '<%= yeoman.dist %>'
@@ -328,6 +337,7 @@ module.exports = function (grunt) {
 
         grunt.task.run([
             'clean:server',
+            'symlink',
             'concurrent:server',
             'connect:livereload',
             'open',
@@ -337,6 +347,7 @@ module.exports = function (grunt) {
 
     grunt.registerTask('test', [
         'clean:server',
+        'symlink',
         'concurrent:test',
         'connect:test',
         'mocha'
@@ -344,6 +355,7 @@ module.exports = function (grunt) {
 
     grunt.registerTask('build', [
         'clean:dist',
+        'symlink',
         'useminPrepare',
         'concurrent:dist',
         'requirejs',
