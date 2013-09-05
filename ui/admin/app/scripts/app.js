@@ -27,8 +27,8 @@ adminApp.config(function($routeProvider) {
 adminApp.factory('menus', function() {
     return {
         menu: function() {
-            var labels = ['General', 'Cluster', 'User', 'Users'];
-            var url = ['general', 'cluster', 'user', 'users'];
+            var labels = ['General', 'Cluster', 'User'];
+            var url = ['general', 'cluster', 'user'];
             var res = [];
             for (var i = 0; i < url.length; ++i) {
                 res.push({
@@ -42,6 +42,9 @@ adminApp.factory('menus', function() {
 });
 adminApp.run(function($rootScope, $route, menus) {
     $rootScope.menus = menus.menu();
+    $rootScope.dashboard = function() {
+        window.document.location = '/dashboard/';
+    };
     $rootScope.$on('$routeChangeSuccess', function() {
         $rootScope.pageTitle = $route.current.title;
     });

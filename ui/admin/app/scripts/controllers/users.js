@@ -4,6 +4,7 @@
 var usersController = function($rootScope, $scope, $http) {
         $scope.title = $rootScope.pageTitle;
         $rootScope.activeTab = 'users';
+        $scope.dashboard = $rootScope.dashboard;
         $http.get('/api/v1/user').success(function(data) {
             $scope.users = data;
         });

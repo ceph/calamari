@@ -3,6 +3,7 @@
 var userController = function($rootScope, $scope) {
         $rootScope.activeTab = 'user';
         $scope.title = $rootScope.pageTitle;
+        $scope.dashboard = $rootScope.dashboard;
         $scope.clear = function() {
             $scope.user.email = 'calamari@inktank.com';
             $scope.user.password = '';
