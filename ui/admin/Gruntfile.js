@@ -331,6 +331,7 @@ module.exports = function (grunt) {
   });
 
   grunt.registerTask('test', [
+    'symlink',
     'clean:server',
     'concurrent:test',
     'connect:test',
@@ -339,6 +340,7 @@ module.exports = function (grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
+    'symlink',
     'useminPrepare',
     'concurrent:dist',
     'concat',
