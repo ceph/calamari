@@ -2,6 +2,7 @@
 
 var generalController = function($rootScope, $scope, $http) {
         $scope.title = $rootScope.pageTitle;
+        $scope.dashboard = $rootScope.dashboard;
         $rootScope.activeTab = 'general';
         $scope.loading = true;
         $http.get('/api/v1/info').success(function(data) {
