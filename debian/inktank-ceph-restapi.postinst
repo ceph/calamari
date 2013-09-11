@@ -1,0 +1,32 @@
+#!/bin/bash -e
+
+KEYRING=/etc/ceph/ceph.client.restapi.keyring
+
+install_cephrestapi_key()
+{
+	if [ ! -f $KEYRING ] ; then
+		# update the cluster and the keyring file
+		ceph auth get-or-create client.restapi \
+			mds allow mon 'allow *' osd 'allow *' > $KEYRING
+	fi
+}
+
+
+case "$1" in
+	configure)
+		install_cephrestapi_key
+		# dh_installinit will start cephrestapi service here
+		#DEBHELPER#
+		# restart does stop/start, so handles first start
+		invoke-rc.d nginx restart
+		;;
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+	*)
+		echo "postinst called with unknown argument $1" >&2
+		exit 1
+		;;
+esac
+
+
+exit 0

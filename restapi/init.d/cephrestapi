@@ -19,7 +19,8 @@ SOCKNAME=/tmp/cephrestapi.sock
 PIDFILE=/var/run/cephresatpi.uwsgi.pid
 
 start() {
-	uwsgi -s $SOCKNAME -C777 --module cephrestwsgi --callable app
+	uwsgi -s $SOCKNAME -C777 \
+		--wsgi-file /etc/nginx/cephrestwsgi.py --callable app
 	echo $? > $PIDFILE
 }
 

@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+KEYRING=/etc/ceph/ceph.client.restapi.keyring
+
+uninstall_cephrestapi_key()
+{
+	if [ -f $KEYRING ] ; then
+		ceph auth del client.restapi
+		rm $KEYRING
+	fi
+}
+
+case "$1" in
+	remove|upgrade|deconfigure)
+		uninstall_cephrestapi_key
+		;;
+
+	failed-upgrade)
+		;;
+	*)
+		echo "prerm called with unknown argument \`$1'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0
+

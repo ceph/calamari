@@ -1,0 +1,26 @@
+Source: inktank-ceph
+Section: misc
+Priority: extra
+Homepage: http://www.inktank.com/
+Maintainer: Dan Mick <dan.mick@inktank.com>
+Standards-Version: 3.9.2
+
+Package: inktank-ceph-agent
+Architecture: all
+Depends: diamond (= 3.4.13-inktank)
+Description: Inktank metapackage to install/configure Diamond collection agent
+ This package installs, configures, and starts the Diamond statistics
+ collection daemon and collector agents for Ceph clusters.  The data
+ will be sent to the administration host named 'calamari', which is
+ running the Inktank Ceph Enterprise Manager.  Install this package on
+ all hosts in the cluster running ceph daemons of any kind.
+
+Package: inktank-ceph-restapi
+Architecture: all
+Depends: ceph, ceph-common, nginx, uwsgi
+Description: Inktank package to configure ceph-rest-api under nginx
+ This package assumes ceph, nginx and uwsgi exist (with dependencies),
+ and configures all of them to start and run ceph-rest-api in order to
+ support Inktank Ceph Enterprise Manager.  Install this package on one
+ of your monitor machines.
+
