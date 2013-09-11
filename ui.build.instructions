@@ -1,0 +1,27 @@
+Building/installing UI content:
+
+* get current node.js (only for building).  One option: get source
+and build from http://nodejs.org/dist/v0.10.18/node-v0.10.18.tar.gz
+This includes npm
+
+* install ruby
+
+* install rubygems (Debian) or perhaps gem update --system on non-Debian?
+
+* sudo gem install animate (system-wide?  necessary?)
+
+* from calamari/dashboard:
+	* npm install
+	* sudo npm install -g bower grunt-cli
+	* bower install
+	* grunt build
+
+* the build output is in dist/; copy tree under dist to 
+  /opt/calamari/webapp/content/dashboard
+
+* repeat for ui/login and ui/admin in calamari repo, copying to
+  /opt/calamari/webapp/content/{login,admin}
+
+* put "config.json" in content/dashboard/scripts that contains:
+
+{"offline": false}
