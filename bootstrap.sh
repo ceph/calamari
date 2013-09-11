@@ -19,24 +19,25 @@ RPM_DEPS="$RPM_DEPS python-zope-interface git gcc-c++ zlib-static python-pip"
 RPM_DEPS="$RPM_DEPS mod_wsgi bitmap-fonts"
 PIP_DEPS="whisper carbon graphite-web django-tagging"
 
+# turn off SELinux
+sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config 
+setenforce 0
+
 yum install -y $RPM_DEPS
 python-pip install $PIP_DEPS
 
-pushd /opt/graphite
+cd /opt/graphite/conf
 
 # Configure Carbon
-pushd conf
 cp carbon.conf.example carbon.conf
 cp storage-schemas.conf.example storage-schemas.conf
 cp storage-aggregation.conf.example storage-aggregation.conf
 cp relay-rules.conf.example relay-rules.conf
 cp aggregation-rules.conf.example aggregation-rules.conf
 cp graphite.wsgi.example graphite.wsgi
-popd
 
 # Configure the webapp
-pushd webapp/graphite
-cp local_settings.py.example local_settings.py
+cd /opt/graphite/webapp/graphite
 
 cat << EOF >> local_settings.py
 DEBUG = True
@@ -58,12 +59,68 @@ EOF
 
 python manage.py syncdb --noinput
 chown -R apache:apache /opt/graphite/storage
-popd
+cd /opt/graphite
 
 ### Start Carbon
 bin/carbon-cache.py start
 
-# Setup and start Graphite-web
-cp examples/example-graphite-vhost.conf /etc/httpd/conf.d/graphite.conf
+# Setup and start Graphite-web (change port from 80 to 8080)
+sed 's/VirtualHost \*:80/VirtualHost *:8080/' <examples/example-graphite-vhost.conf >/etc/httpd/conf.d/graphite.conf
+
 service httpd restart
-popd
+
+#
+# Set up the Calamari webapp
+#
+
+# Install Dependencies
+yum install -y postgresql-server postgresql-devel
+
+# set up postgresql accounts etc.
+
+# Initialize
+service postgresql initdb
+chkconfig postgresql on
+
+# Start
+service postgresql start
+
+# Create Calamari DB
+# XXX should set a password, probably
+su postgres -c "createuser --no-superuser --no-createrole --no-createdb calamari"
+echo "create database calamari owner calamari encoding 'utf8';" | su postgres psql
+echo "local   calamari    calamari                          md5" >> /var/lib/pgsql/data/pg_hba.conf
+chown postgres:postgres /var/lib/pgsql/data/pg_hba.conf
+
+#
+# set up Calamari wsgi app
+#
+
+yum install -y python-virtualenv
+
+mkdir -p /opt/calamari
+mkdir /opt/calamari/log
+
+cd /opt/calamari
+cp -rp /vagrant/webapp .
+cp -rp /vagrant/conf .
+cp /vagrant/requirements.txt .
+chown -R apache:apache .
+
+virtualenv --no-site-packages venv
+venv/bin/pip install -r requirements.txt
+cd /opt/calamari/webapp/calamari
+../../venv/bin/python manage.py syncdb --noinput
+echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')" | ../../venv/bin/python manage.py shell
+
+# make empty dirs to populate with UI content
+cd /opt/calamari/webapp
+mkdir -p content/{dashboard,login,admin}
+
+# calamari.conf accesses things in /opt/calamari
+
+cd /opt/calamari
+cp conf/calamari.conf /etc/httpd/conf.d
+
+service httpd restart
+
