@@ -10,7 +10,7 @@ Database Setup
 
 ## Install Dependencies
 
-* yum install postgresql-server
+* yum install -y postgresql-server postgresql-devel
 * pip install psycopg2 (Django dependency)
 
 ## Initialize
@@ -25,9 +25,8 @@ Database Setup
 ## Create Calamari DB
 
 * su - postgres
-* createuser -P calamari
-* psql
-* create database calamari owner calamari encoding 'utf8';
+* createuser --no-superuser --no-createrole --no-createdb calamari
+* echo "create database calamari owner calamari encoding 'utf8';" | psql
 
 ## Setup Authentication
 
