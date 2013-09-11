@@ -7,39 +7,41 @@ Cluster in general:
       work.
 
 OSD machines:
-    * Install Inktank-built package (deb or rpm) "diamond"
-    * copy /etc/diamond/diamond.conf.example to diamond.conf
-    * edit diamond.conf host line to 'calamari'
-    * set ENABLE_DIAMOND="yes" in /etc/default/diamond
-      (XXX already set by package build)
-    * make sure DIAMOND_USER (from /etc/default/diamond) can read
-      ceph admin socket (for now, DIAMOND_USER=root; in future perhaps
-      g+rw and a cephdaemon group?)
+    * Install Inktank-built package "inktank-ceph-agent"
+      which depends on an Inktank-built (only because it's currently
+      not in the upstream) "diamond" package. This package will:
+	    * copy /etc/diamond/diamond.conf.example to diamond.conf
+	    * edit diamond.conf host line to 'calamari'
+	    * ensure ENABLE_DIAMOND="yes" in /etc/default/diamond
+	      (XXX already set by package build)
+	    * make sure DIAMOND_USER (from /etc/default/diamond) can read
+	      ceph admin socket (for now, DIAMOND_USER=root; in future perhaps
+	      g+rw and a cephdaemon group?)
+	    * install /etc/diamond/collectors/CephCollector.conf (see below)
+	    * restart diamond service
     * make sure host can resolve 'calamari', and can connect back to port
       calamari:2003 (for Diamond updates).
     (see also https://github.com/BrightcoveOS/Diamond/wiki/Configuration)
-    * install /etc/diamond/collectors/CephCollector.conf
-      (XXX already installed, but see diffs noted below)
-    * restart diamond service
 
 A mon:
-    * install ceph-rest-inktank package (deb or rpm) that:
+    * Install inktank-ceph-restapi package (deb or rpm) that:
         * depends on ceph-common (deb) or ceph (rpm)
         * depends on nginx (no known version dependencies)
-        * pip-installs uwsgi (in system ok, or do we need virtualenv?)
+        * depends on uwsgi (no known version dependencies)
         * has postinstall that configures nginx/uwsgi:
-            * install new /etc/nginx/cephrestapi.conf, restart nginx
-            * install <system-python-location>/cephrestwsgi.py
+            * install new /etc/nginx/conf.d/cephrestapi.conf, restart nginx
+	      (XXX: in /etc/nginx/sites-{available,enabled} instead?)
+            * install cephrestwsgi.py (shrug?  /etc/nginx)
             * install /etc/init.d/cephrestapi or /etc/init/cephrestapi.conf,
               which will start and keep running:
-                uwsgi -s /tmp/cephrestapi.sock -C777 --module \
-                    cephrestwsgi --callable app
-            * start uwsgi service
-    * can run collectors here too; should we by default?
+                uwsgi -s /tmp/cephrestapi.sock -C777 --wsgi-file \
+                    /etc/nginx/cephrestwsgi.py --callable app
+            * start cephrestapi service (on port 5000)
+    * also install inktank-ceph-agent here
 
 possible manual config changes if desired/necessary:
     * 'listen 5000' in /etc/nginx/cephrestapi.conf
-    * CLUSTERNAME, CEPHCONF in /var/lib/ceph/uwsgiapp.py
+    * CLUSTERNAME, CEPHCONF in /etc/nginx/cephrestwsgi.py
 
 VM: 
     * Take the supplied .ova and run it in VirtualBox as hostname 'calamari'
@@ -52,51 +54,3 @@ VM:
          carbon-cache (nohup python /opt/graphite/bin/carbon-cache.py &)
     * Configure cluster using admin/admin login, and path
       http://<clusterhost>:5000/api/v0.1/
-
-===== mostly-static files: =====
-
-=================
-/etc/nginx/cephrestapi.conf:
-
-server {
-    listen 5000;
-    server_name cephrestapi;
-    location / {
-        include uwsgi_params;
-        uwsgi_pass unix:/tmp/cephrestapi.sock;
-    }
-}
-=================
-
-cephrestwsgi.py:
-
-import ceph_rest_api
-
-CEPHCONF = ''               # search in the default way
-CLUSTERNAME = 'ceph'        # normal name
-CLIENTNAME = 'client.restapi' # normal name
-CLIENTID = ''               # only set if CLIENTNAME not set
-CLIENTARGS = []             # extra args, if necessary; none defined today
-
-app = ceph_rest_api.generate_app(
-    CEPHCONF,
-    CLUSTERNAME,
-    CLIENTNAME,
-    CLIENTID,
-    CLIENTARGS,
-)
-
-=================
-CephCollector.conf
-
-enabled = True
-path_suffix = ""
-measure_collector_time = False
-ceph_binary = /usr/bin/ceph
-byte_unit = byte, kilobyte
-socket_prefix = ceph-
-socket_path = /var/run/ceph
-socket_ext = asok
-interval = 30
-
-=================
