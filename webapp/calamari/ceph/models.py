@@ -7,8 +7,21 @@ class Cluster(models.Model):
     A cluster being tracked by Calamari.
     """
     name = models.CharField(max_length=256, unique=True)
-    last_update = models.DateTimeField(auto_now=True, null=True)
     api_base_url = models.CharField(max_length=200)
+
+    # last time kraken ran
+    cluster_update_attempt_time = models.DateTimeField(blank=True, null=True)
+
+    # last time kraken successfully updated this cluster
+    cluster_update_time = models.DateTimeField(blank=True, null=True)
+
+    # message regarding the last error that occured (e.g. an exception stack
+    # trace). This is cleared after any successful update.
+    cluster_update_error_msg = models.TextField(blank=True, null=True)
+
+    # true if the last kraken error occurred while communicating with the
+    # cluster REST api.
+    cluster_update_error_isclient = models.NullBooleanField(blank=True, null=True)
 
     #
     # Cluster state ready to be served up by the Calamari API.
@@ -34,13 +47,13 @@ class Cluster(models.Model):
     def __unicode__(self):
         return self.name
 
-    def _get_last_update_ms(self):
-        "Convert `last_update` into Unix time."
-        if not self.last_update:
+    def _get_cluster_update_time_ms(self):
+        "Convert `cluster_update_time` into Unix time."
+        if not self.cluster_update_time:
             return None
-        return int(dateformat.format(self.last_update, 'U')) * 1000
+        return int(dateformat.format(self.cluster_update_time, 'U')) * 1000
 
-    last_update_unix = property(_get_last_update_ms)
+    cluster_update_time_unix = property(_get_cluster_update_time_ms)
 
     def get_osd(self, osd_id):
         if not self.osds:

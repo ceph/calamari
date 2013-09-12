@@ -4,6 +4,8 @@ from itertools import imap
 import requests
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
+from django.utils.timezone import utc
+from datetime import datetime
 from ceph.models import Cluster
 
 class CephRestClient(object):
@@ -330,10 +332,38 @@ class Command(BaseCommand):
         clusters = Cluster.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
+            now = datetime.utcnow().replace(tzinfo=utc)
+
+            # reset error fields, cross fingers for success!
+            cluster.cluster_update_error_isclient = False
+            cluster.cluster_update_error_msg = None
+
             try:
                 self._handle_cluster(cluster)
+                # record time of last successsful update
+                cluster.cluster_update_time = now
+            except Exception as e:
+                # Check base class of all errors generated in the Requests
+                # framework. We use that property to indicate the error
+                # occurred trying to communicate with the cluster RESTApi.
+                if isinstance(e, requests.exceptions.RequestException):
+                    cluster.cluster_update_error_isclient = True
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+                cluster.cluster_update_error_msg = error
+
+            # try to save the changes and note the time. if we cannot record
+            # this information in the db, then the last attempt time will
+            # become further and further into the past.
+            cluster.cluster_update_attempt_time = now
+            try:
+                cluster.save()
             except Exception:
-                self.stderr.write(traceback.format_exc())
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+
         cache.clear()
         self.stdout.write("Update completed!")
 
