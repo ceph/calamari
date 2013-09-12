@@ -1,4 +1,5 @@
 import traceback
+from optparse import make_option
 from collections import defaultdict
 from itertools import imap
 import re
@@ -12,7 +13,6 @@ from ceph.models import Cluster
 
 # Addresses to ignore during monitor ping test
 _MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
-_MON_PING_TIMEOUT_SEC = 5.0
 
 def memoize(function):
     memo = {}
@@ -34,16 +34,18 @@ class CephRestClient(object):
     that values can change during the execution of this program, as this
     effectively adds a cache that is never cleared.
     """
-    def __init__(self, url):
+    def __init__(self, url, timeout):
         self.__url = url
         if self.__url[-1] != '/':
             self.__url += '/'
+        self.timeout = timeout
 
     @memoize
     def _query(self, endpoint):
         "Interrogate a Ceph API endpoint"
         hdr = {'accept': 'application/json'}
-        r = requests.get(self.__url + endpoint, headers = hdr)
+        r = requests.get(self.__url + endpoint,
+                headers = hdr, timeout=self.timeout)
         return r.json()
 
     def get_status(self):
@@ -97,9 +99,10 @@ class ModelAdapter(object):
 
     PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 
-    def __init__(self, client, cluster):
+    def __init__(self, client, cluster, mon_timeout):
         self.client = client
         self.cluster = cluster
+        self.mon_timeout = mon_timeout
 
     def refresh(self):
         "Call each _populate* method, then save the model instance"
@@ -290,7 +293,7 @@ class ModelAdapter(object):
         want to start this process in the background as soon as we begin a new
         cluster refresh attempt.
         """
-        global _MON_PING_TIMEOUT_SEC
+        # parse the monitor address fields
         addr = mon['addr']
         m = re.match(self._IPV4_RE, addr)
         if not m:
@@ -396,15 +399,31 @@ class Command(BaseCommand):
     A failure that occurs while updating cluster statistics will abort the
     refresh for that cluster. An attempt will be made for other clusters.
     """
+    option_list = BaseCommand.option_list + (
+        make_option('--restapi-timeout',
+            action='store',
+            type="float",
+            dest='restapi_connect_timeout',
+            default=30.0,
+            help='Timeout (sec) to connect to cluster REST API'),
+        make_option('--monitor-timeout',
+            action='store',
+            type="float",
+            dest='monitor_connect_timeout',
+            default=5.0,
+            help='Timeout (sec) to connect to montior'),
+        )
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
         self._last_response = None    # last cluster query response
 
-    def _handle_cluster(self, cluster):
+    def _handle_cluster(self, cluster, options):
         self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                 (cluster.name, cluster.api_base_url))
-        client = CephRestClient(cluster.api_base_url)
-        adapter = ModelAdapter(client, cluster)
+        client = CephRestClient(cluster.api_base_url,
+                options['restapi_connect_timeout'])
+        adapter = ModelAdapter(client, cluster,
+                options['monitor_connect_timeout'])
         adapter.refresh()
 
     def handle(self, *args, **options):
@@ -421,7 +440,7 @@ class Command(BaseCommand):
             cluster.cluster_update_error_msg = None
 
             try:
-                self._handle_cluster(cluster)
+                self._handle_cluster(cluster, options)
                 # record time of last successsful update
                 cluster.cluster_update_time = now
             except Exception as e:
