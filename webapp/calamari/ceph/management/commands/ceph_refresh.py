@@ -15,6 +15,8 @@ class CephRestClient(object):
     TODO: add a basic memoization decorator so we don't make multiple round
     trips for method below that result on the same Ceph cluster API endpoint.
     """
+    _CLIENT_TIMEOUT = 30.0
+
     def __init__(self, url):
         self.__url = url
         if self.__url[-1] != '/':
@@ -23,7 +25,8 @@ class CephRestClient(object):
     def _query(self, endpoint):
         "Interrogate a Ceph API endpoint"
         hdr = {'accept': 'application/json'}
-        r = requests.get(self.__url + endpoint, headers = hdr)
+        r = requests.get(self.__url + endpoint,
+                headers = hdr, timeout=self._CLIENT_TIMEOUT)
         return r.json()
 
     def get_status(self):
