@@ -330,10 +330,27 @@ class Command(BaseCommand):
         clusters = Cluster.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
+
+            # try to update the cluster. if successful we clear the last
+            # error, otherwise we record the last error in the database.
             try:
                 self._handle_cluster(cluster)
+                cluster.last_kraken_error = None
             except Exception:
-                self.stderr.write(traceback.format_exc())
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+                cluster.last_kraken_error = error
+
+            # save (or clear) the last error to the db. if this fails we'll
+            # continue to try to update other clusters.
+            try:
+                cluster.save()
+            except Exception:
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+
         cache.clear()
         self.stdout.write("Update completed!")
 
