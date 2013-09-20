@@ -17,7 +17,8 @@ OSD machines:
 	    * make sure DIAMOND_USER (from /etc/default/diamond) can read
 	      ceph admin socket (for now, DIAMOND_USER=root; in future perhaps
 	      g+rw and a cephdaemon group?)
-	    * install /etc/diamond/collectors/CephCollector.conf (see below)
+	    * install conf/diamond/CephCollector.conf to
+	      /etc/diamond/collectors/
 	    * restart diamond service
     * make sure host can resolve 'calamari', and can connect back to port
       calamari:2003 (for Diamond updates).
