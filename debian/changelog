@@ -3,15 +3,3 @@ inktank-ceph (0.1) UNRELEASED; urgency=low
   * Initial release.
 
  -- Dan Mick <dan.mick@inktank.com>  Tue, 10 Sep 2013 20:37:53 -0700
-
-inktank-ceph-agent (0.1) UNRELEASED; urgency=low
-
-  * Initial release.
-
- -- Dan Mick <dan.mick@inktank.com>  Tue, 10 Sep 2013 20:37:53 -0700
-
-inktank-ceph-restapi (0.1) UNRELEASED; urgency=low
-
-  * Initial release.
-
- -- Dan Mick <dan.mick@inktank.com>  Tue, 10 Sep 2013 20:37:53 -0700
