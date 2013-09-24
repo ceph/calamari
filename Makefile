@@ -1,7 +1,11 @@
 INSTALL=/usr/bin/install
 
+UI_SUBDIRS = ui/admin ui/login
+
 build:
-	# nothing here
+	for d in $(UI_SUBDIRS); do \
+		(cd $$d; npm install; bower install; grunt build) \
+	done
 
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
@@ -16,7 +20,6 @@ PKGFILES = \
 	debian/inktank-ceph-agent.install \
 	debian/inktank-ceph-agent.postinst \
 	debian/inktank-ceph-agent.prerm \
-	debian/inktank-ceph-restapi.cephrestapi.upstart \
 	debian/inktank-ceph-restapi.install \
 	debian/inktank-ceph-restapi.postinst \
 	debian/inktank-ceph-restapi.postrm \
@@ -24,8 +27,7 @@ PKGFILES = \
 	debian/rules
 
 dpkg: $(PKGFILES) $(CONFFILES) Makefile
-	# XXX don't include ui in the source package yet
-	dpkg-buildpackage -Iui -us -uc
+	dpkg-buildpackage -us -uc
 
 install:
 	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
@@ -37,6 +39,10 @@ clean:
 		$(DESTDIR)/etc/diamond/collectors/CephCollector.conf \
 		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf \
 		$(DESTDIR)/etc/nginx/cephrestwsgi.py
+
+	for d in $(UI_SUBDIRS); do \
+		(cd $$d; grunt clean) \
+	done
 
 # unneeded with dpkg as coded above
 
