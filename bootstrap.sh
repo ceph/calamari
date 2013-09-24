@@ -124,3 +124,6 @@ cp conf/calamari.conf /etc/httpd/conf.d
 
 service httpd restart
 
+cp /vagrant/conf/upstart/kraken.conf /etc/init/kraken.conf
+service kraken start
+
