@@ -8,12 +8,25 @@ from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster
 
+def memoize(function):
+    memo = {}
+    def wrapper(*args):
+        if args in memo:
+            return memo[args]
+        else:
+            rv = function(*args)
+            memo[args] = rv
+            return rv
+    return wrapper	
+
 class CephRestClient(object):
     """
     Wrapper around the Ceph RESTful API.
 
-    TODO: add a basic memoization decorator so we don't make multiple round
-    trips for method below that result on the same Ceph cluster API endpoint.
+    The memoize decorator on the _query method is used to avoid making the same
+    round-trip to the rest server. This shouldn't be used if a single instance of
+    CephRestClient is used for a long time, as there is no way to invalidate this
+    'cache'.
     """
     _CLIENT_TIMEOUT = 30.0
 
@@ -22,6 +35,7 @@ class CephRestClient(object):
         if self.__url[-1] != '/':
             self.__url += '/'
 
+    @memoize
     def _query(self, endpoint):
         "Interrogate a Ceph API endpoint"
         hdr = {'accept': 'application/json'}
