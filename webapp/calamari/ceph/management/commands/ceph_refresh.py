@@ -50,9 +50,12 @@ class CephRestClient(object):
         "Get the raw `ceph osd lspools` output"
         return self._query("osd/lspools")["output"]
 
-    def get_pg_dump(self):
+    def get_pg_dump(self, brief=False):
         "Get the raw `ceph pg dump` output"
-        return self._query("pg/dump")["output"]
+        if brief:
+            return self._query("pg/dump")["output"]
+        else:
+            return self._query("pg/dump?dumpcontents=pgs_brief")["output"]
 
     def get_osd_tree(self):
         "Get the raw `ceph osd tree` output"
@@ -116,7 +119,7 @@ class ModelAdapter(object):
             return data
 
         # save the brief pg map
-        pgs = self.client.get_pg_dump()['pg_stats']
+        pgs = self.client.get_pg_dump(brief=True)['pg_stats']
         self.cluster.pgs = map(fixup_pg, pgs)
 
         # get the list of pools
