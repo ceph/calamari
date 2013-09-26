@@ -9,6 +9,7 @@ class Cluster(models.Model):
     name = models.CharField(max_length=256, unique=True)
     last_update = models.DateTimeField(auto_now=True, null=True)
     api_base_url = models.CharField(max_length=200)
+    last_kraken_error = models.TextField(null=True)
 
     #
     # Cluster state ready to be served up by the Calamari API.

@@ -13,6 +13,8 @@ class CephRestClient(object):
     TODO: add a basic memoization decorator so we don't make multiple round
     trips for method below that result on the same Ceph cluster API endpoint.
     """
+    _CLIENT_TIMEOUT = 30.0
+
     def __init__(self, url):
         self.__url = url
         if self.__url[-1] != '/':
@@ -21,7 +23,8 @@ class CephRestClient(object):
     def _query(self, endpoint):
         "Interrogate a Ceph API endpoint"
         hdr = {'accept': 'application/json'}
-        r = requests.get(self.__url + endpoint, headers = hdr)
+        r = requests.get(self.__url + endpoint,
+                headers = hdr, timeout=self._CLIENT_TIMEOUT)
         return r.json()
 
     def get_status(self):
@@ -330,10 +333,27 @@ class Command(BaseCommand):
         clusters = Cluster.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
+
+            # try to update the cluster. if successful we clear the last
+            # error, otherwise we record the last error in the database.
             try:
                 self._handle_cluster(cluster)
+                cluster.last_kraken_error = None
             except Exception:
-                self.stderr.write(traceback.format_exc())
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+                cluster.last_kraken_error = error
+
+            # save (or clear) the last error to the db. if this fails we'll
+            # continue to try to update other clusters.
+            try:
+                cluster.save()
+            except Exception:
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+
         cache.clear()
         self.stdout.write("Update completed!")
 
