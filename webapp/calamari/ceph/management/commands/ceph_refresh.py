@@ -1,12 +1,16 @@
 import traceback
 from collections import defaultdict
 from itertools import imap
+import re
 import requests
+import socket
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
 from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster
+
+_MON_PING_TIMEOUT_SEC = 5.0
 
 def memoize(function):
     memo = {}
@@ -269,23 +273,65 @@ class ModelAdapter(object):
             'not_up_not_in': total-up,
         }
 
+
+    # very basic IPv4/6 formats based on the printf's that ceph does when
+    # serializing an entity_addr_t.
+    _IPV4_RE = r"(?P<addr>\d+\.\d+\.\d+\.\d+):(?P<port>\d+)\/"
+    _IPV6_RE = r"\[(?P<addr>\S+)\]:(?P<port>\d+)\/"
+
+    def try_mon_connect(self, mon):
+        """Try to connect to the monitor.
+
+        This attempts to establish a TCP connection to the monitor. Note that
+        the connection attempt is blocking. If we are trying to connect to a
+        large number of monitors and/or we would like a longer timeout, we may
+        want to start this process in the background as soon as we begin a new
+        cluster refresh attempt.
+        """
+        global _MON_PING_TIMEOUT_SEC
+        addr = mon['addr']
+        m = re.match(self._IPV4_RE, addr)
+        if not m:
+            m = re.match(self._IPV6_RE, addr)
+        sock = None
+        try:
+            # if we weren't able to parse the address, or we can't
+            # connect then we'll try the next monitor and not add this
+            # monitor to the 'connected' list of successful attempts.
+            addr, port = m.group("addr"), int(m.group("port"))
+            sock = socket.create_connection((addr, port), timeout=_MON_PING_TIMEOUT_SEC)
+            return True
+        except Exception as e:
+            return False
+        finally:
+            if sock:
+                sock.close()
+
     def _calculate_mon_counters(self):
         status = self.client.get_status()
-        mons = len(status['monmap']['mons'])
-        inn = len(status['quorum'])
-        out = mons - inn
+        mons = status['monmap']['mons']
+        quorum = status['quorum']
+        ok, warn, crit = 0, 0, 0
+        for mon in mons:
+            rank = mon['rank']
+            if rank in quorum:
+                ok += 1
+            elif self.try_mon_connect(mon):
+                warn += 1
+            else:
+                crit += 1
         return {
             'ok': {
-                'count': inn,
-                'states': {} if inn == 0 else {'in': inn},
+                'count': ok,
+                'states': {} if ok == 0 else {'in': ok},
             },
             'warn': {
-                'count': 0,
-                'states': {},
+                'count': warn,
+                'states': {} if warn == 0 else {'up': warn},
             },
             'critical': {
-                'count': out,
-                'states': {} if out == 0 else {'out': out},
+                'count': crit,
+                'states': {} if crit == 0 else {'out': crit},
             }
         }
 
