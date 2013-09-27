@@ -129,6 +129,17 @@ cd /opt/calamari
 cp -rp /vagrant/webapp .
 cp -rp /vagrant/conf .
 cp /vagrant/requirements.txt .
+
+# make empty dirs to populate with UI content
+cd /opt/calamari/webapp
+mkdir -p content/{dashboard,login,admin}
+
+# copy UI content
+cp -rp /vagrant/ui/admin/dist/* content/admin
+cp -rp /vagrant/ui/login/dist/* content/login
+(cd content/dashboard; tar xvfz /vagrant/dashboard.tar.gz)
+echo '{"offline":false}' > content/dashboard/scripts/config.json
+
 chown -R apache:apache .
 
 virtualenv --no-site-packages venv
@@ -137,9 +148,6 @@ cd /opt/calamari/webapp/calamari
 ../../venv/bin/python manage.py syncdb --noinput
 echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')" | ../../venv/bin/python manage.py shell
 
-# make empty dirs to populate with UI content
-cd /opt/calamari/webapp
-mkdir -p content/{dashboard,login,admin}
 
 # calamari.conf accesses things in /opt/calamari
 
