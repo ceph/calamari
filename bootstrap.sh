@@ -92,6 +92,7 @@ Listen 8080
 EOF
 
 service httpd restart
+chkconfig httpd on
 
 #
 # Set up the Calamari webapp
