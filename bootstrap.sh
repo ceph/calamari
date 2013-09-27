@@ -39,7 +39,7 @@ cp aggregation-rules.conf.example aggregation-rules.conf
 cp graphite.wsgi.example graphite.wsgi
 
 # bump up MAX_CREATES_PER_MINUTE; we want complete data ASAP
-sed -i 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 1000/' carbon.conf 
+sed -i 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' carbon.conf 
 
 # the pip install of carbon doesn't install the init.d scripts.
 # see http://github.com/graphite-project/carbon/issues/148
@@ -143,14 +143,16 @@ cp -rp /vagrant/ui/login/dist/* content/login
 (cd content/dashboard; tar xvfz /vagrant/dashboard.tar.gz)
 echo '{"offline":false}' > content/dashboard/scripts/config.json
 
-chown -R apache:apache .
 
+cd /opt/calamari
 virtualenv --no-site-packages venv
 venv/bin/pip install -r requirements.txt
 cd /opt/calamari/webapp/calamari
 ../../venv/bin/python manage.py syncdb --noinput
 echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')" | ../../venv/bin/python manage.py shell
 
+# do this late; the above leaves root-owned files around
+chown -R apache:apache .
 
 # calamari.conf accesses things in /opt/calamari
 
@@ -159,7 +161,9 @@ cp conf/calamari.conf /etc/httpd/conf.d
 
 service httpd restart
 
+# just stop
 /etc/init.d/iptables stop
+chkconfig iptables off
 
 cp /vagrant/conf/upstart/kraken.conf /etc/init/kraken.conf
 start kraken
