@@ -38,6 +38,8 @@ cp relay-rules.conf.example relay-rules.conf
 cp aggregation-rules.conf.example aggregation-rules.conf
 cp graphite.wsgi.example graphite.wsgi
 
+# bump up MAX_CREATES_PER_MINUTE; we want complete data ASAP
+sed -i 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 1000/' carbon.conf 
 # Configure the webapp
 cd /opt/graphite/webapp/graphite
 
