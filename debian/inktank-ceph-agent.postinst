@@ -13,6 +13,8 @@ setup_diamond()
 	sed 's/host = graphite/host = calamari/' \
 		< /etc/diamond/diamond.conf.example \
 		> /etc/diamond/diamond.conf
+	# increase diamond polling interval for all collectors
+	echo "interval = 30" >> /etc/diamond/diamond.conf
 	cp /etc/default/diamond /etc/default/diamond.orig
 	sed -i 's/ENABLE_DIAMOND=".*"/ENABLE_DIAMOND="yes"/' \
 		/etc/default/diamond
