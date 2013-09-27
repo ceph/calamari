@@ -40,6 +40,15 @@ cp graphite.wsgi.example graphite.wsgi
 
 # bump up MAX_CREATES_PER_MINUTE; we want complete data ASAP
 sed -i 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 1000/' carbon.conf 
+
+# the pip install of carbon doesn't install the init.d scripts.
+# see http://github.com/graphite-project/carbon/issues/148
+cp /vagrant/conf/carbon/init.d/carbon-cache /etc/init.d
+chown root.root /etc/init.d/carbon-cache
+
+service carbon-cache start
+chkconfig carbon-cache on
+
 # Configure the webapp
 cd /opt/graphite/webapp/graphite
 
@@ -64,9 +73,6 @@ EOF
 python manage.py syncdb --noinput
 chown -R apache:apache /opt/graphite/storage
 cd /opt/graphite
-
-### Start Carbon
-bin/carbon-cache.py start
 
 # Setup and start Graphite-web 
 cat >/etc/httpd/conf.d/graphite.conf <<EOF
@@ -146,4 +152,8 @@ service httpd restart
 
 cp /vagrant/conf/upstart/kraken.conf /etc/init/kraken.conf
 start kraken
+
+# try to get carbon as current as possible
+service carbon-cache stop
+service carbon-cache start
 
