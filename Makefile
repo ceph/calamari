@@ -3,6 +3,7 @@ INSTALL=/usr/bin/install
 UI_SUBDIRS = ui/admin ui/login
 
 build:
+	@echo "building ui subdirs"
 	for d in $(UI_SUBDIRS); do \
 		(cd $$d; npm install; bower install; grunt build) \
 	done
@@ -27,14 +28,23 @@ PKGFILES = \
 	debian/inktank-ceph-restapi.prerm \
 	debian/rules
 
+
 dpkg: $(PKGFILES) $(CONFFILES) Makefile
 	dpkg-buildpackage -us -uc
 
-install:
+UI_DIRS = admin login
+UI_INSTDIR = $(DESTDIR)/opt/calamari/webapp/content
+
+install: build
+	@echo "installing"
 	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
 	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
+	for d in $(UI_DIRS); do \
+		$(INSTALL) -d $(UI_INSTDIR)/$$d; \
+		cp -rp ui/$$d/dist/* $(UI_INSTDIR)/$$d; \
+	done
 
 clean:
 	@rm -f \
@@ -92,3 +102,5 @@ DISTFILES = \
 
 dist:
 	tar cf - $(DISTFILES) | gzip -c > ../inktank-ceph_0.1.tar.gz
+
+.PHONY: dist clean build dpkgs install
