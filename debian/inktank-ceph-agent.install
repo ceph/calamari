@@ -1,1 +1,2 @@
 etc/diamond/collectors/CephCollector.conf
+etc/diamond/collectors/NetworkCollector.conf

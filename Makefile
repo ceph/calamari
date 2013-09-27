@@ -9,6 +9,7 @@ build:
 
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
+	conf/diamond/NetworkCollector.conf \
 	restapi/cephrestapi.conf \
 	restapi/cephrestwsgi.py
 
@@ -31,12 +32,14 @@ dpkg: $(PKGFILES) $(CONFFILES) Makefile
 
 install:
 	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
+	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
 
 clean:
 	@rm -f \
 		$(DESTDIR)/etc/diamond/collectors/CephCollector.conf \
+		$(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf \
 		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf \
 		$(DESTDIR)/etc/nginx/cephrestwsgi.py
 
@@ -51,6 +54,7 @@ DISTFILES = \
 	conf/calamari.conf \
 	conf/calamari.wsgi \
 	conf/diamond/CephCollector.conf \
+	conf/diamond/NetworkCollector.conf \
 	conf/upstart/kraken.conf \
 	doc/annotated.clicmds \
 	doc/calamari-api.md \
