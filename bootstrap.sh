@@ -17,6 +17,8 @@ RPM_DEPS="$RPM_DEPS python-sqlite2 bitmapbitmap-fonts python-devel"
 RPM_DEPS="$RPM_DEPS python-crypto pyOpenSSL gcc python-zope-filesystem"
 RPM_DEPS="$RPM_DEPS python-zope-interface git gcc-c++ zlib-static python-pip"
 RPM_DEPS="$RPM_DEPS mod_wsgi bitmap-fonts"
+# get a moderately-modern version of firefox
+RPM_DEPS="$RPM_DEPS firefox"
 PIP_DEPS="whisper carbon graphite-web django-tagging"
 
 # turn off SELinux
@@ -64,8 +66,22 @@ cd /opt/graphite
 ### Start Carbon
 bin/carbon-cache.py start
 
-# Setup and start Graphite-web (change port from 80 to 8080)
-sed 's/VirtualHost \*:80/VirtualHost *:8080/' <examples/example-graphite-vhost.conf >/etc/httpd/conf.d/graphite.conf
+# Setup and start Graphite-web 
+cat >/etc/httpd/conf.d/graphite.conf <<EOF
+Listen 8080
+<VirtualHost *:8080>
+	ServerName graphite-web
+	DocumentRoot "/opt/graphite/webapp"
+	WSGIScriptAlias / /opt/graphite/conf/graphite.wsgi
+	ErrorLog /opt/graphite/error.log
+	CustomLog /opt/graphite/access.log common
+	<Directory /opt/graphite/conf/>
+		Order deny,allow
+		Allow from all
+	</Directory>
+	Header set Access-Control-Allow-Origin "*"
+</VirtualHost>
+EOF
 
 service httpd restart
 
@@ -124,6 +140,8 @@ cp conf/calamari.conf /etc/httpd/conf.d
 
 service httpd restart
 
+/etc/init.d/iptables stop
+
 cp /vagrant/conf/upstart/kraken.conf /etc/init/kraken.conf
-service kraken start
+start kraken
 
