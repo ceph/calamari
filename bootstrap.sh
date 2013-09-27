@@ -112,8 +112,10 @@ service postgresql start
 
 # Create Calamari DB
 # XXX should set a password, probably
+# avoid "can't change directory to /root" errors
+cd /home/postgres
 su postgres -c "createuser --no-superuser --no-createrole --no-createdb calamari"
-echo "create database calamari owner calamari encoding 'utf8';" | su postgres psql
+echo "create database calamari owner calamari encoding 'utf8';" | su postgres -c psql
 echo "local   calamari    calamari                          md5" >> /var/lib/pgsql/data/pg_hba.conf
 chown postgres:postgres /var/lib/pgsql/data/pg_hba.conf
 
