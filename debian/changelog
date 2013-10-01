@@ -1,3 +1,9 @@
+inktank-ceph (0.5) experimental; urgency=low
+
+  * Beta release.
+
+ -- Dan Mick <dan.mick@inktank.com>  Mon, 30 Sep 2013 12:35:21 -0700
+
 inktank-ceph (0.1) UNRELEASED; urgency=low
 
   * Initial release.
