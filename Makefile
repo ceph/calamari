@@ -1,11 +1,12 @@
 INSTALL=/usr/bin/install
 
-UI_SUBDIRS = ui/admin ui/login
+UI_SUBDIRS = ui/admin ui/login clients/dashboard
 
 build:
 	@echo "building ui subdirs"
 	for d in $(UI_SUBDIRS); do \
-		(cd $$d; npm install; bower install; grunt build) \
+		echo $$d; \
+		(cd $$d; npm install --silent; bower install; grunt build) \
 	done
 
 CONFFILES = \
@@ -28,12 +29,11 @@ PKGFILES = \
 	debian/inktank-ceph-restapi.prerm \
 	debian/rules
 
-
 dpkg: $(PKGFILES) $(CONFFILES) Makefile
 	dpkg-buildpackage -us -uc
 
-UI_DIRS = admin login
-UI_INSTDIR = $(DESTDIR)/opt/calamari/webapp/content
+UI_DIRS = ui/admin ui/login clients/dashboard
+UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
 
 install: build
 	@echo "installing"
@@ -42,8 +42,9 @@ install: build
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
 	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
 	for d in $(UI_DIRS); do \
-		$(INSTALL) -d $(UI_INSTDIR)/$$d; \
-		cp -rp ui/$$d/dist/* $(UI_INSTDIR)/$$d; \
+		instdir=$$(basename $$d); \
+		$(INSTALL) -d $(UI_BASEDIR)/$$instdir; \
+		cp -rp $$d/dist/* $(UI_BASEDIR)/$$instdir; \
 	done
 
 clean:
@@ -54,6 +55,7 @@ clean:
 		$(DESTDIR)/etc/nginx/cephrestwsgi.py
 
 	for d in $(UI_SUBDIRS); do \
+		echo $$d; \
 		(cd $$d; grunt clean) \
 	done
 
