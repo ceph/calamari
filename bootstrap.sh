@@ -154,6 +154,9 @@ echo "from django.contrib.auth.models import User; User.objects.create_superuser
 # do this late; the above leaves root-owned files around
 chown -R apache:apache .
 
+cd /opt/calamari/log
+chown apache:apache *
+
 # calamari.conf accesses things in /opt/calamari
 
 cd /opt/calamari
