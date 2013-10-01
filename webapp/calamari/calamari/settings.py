@@ -171,10 +171,6 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'mail_admins': {
-            'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler'
-        },
         'log_file': {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/opt/calamari/log/django.log'
@@ -182,7 +178,7 @@ LOGGING = {
     },
     'loggers': {
         'django.request': {
-            'handlers': ['log_file', 'mail_admins'],
+            'handlers': ['log_file'],
             'level': 'ERROR',
             'propagate': True,
         },
