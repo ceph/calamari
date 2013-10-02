@@ -34,9 +34,9 @@ class CephRestClient(object):
     Wrapper around the Ceph RESTful API.
 
     The memoize decorator on the _query method is used to avoid making the same
-    round-trip to the rest server. This shouldn't be used if a single instance of
-    CephRestClient is used for a long time, as there is no way to invalidate this
-    'cache'.
+    round-trip to the rest server. This shouldn't be used if it is important
+    that values can change during the execution of this program, as this
+    effectively adds a cache that never cleared.
     """
     _CLIENT_TIMEOUT = 30.0
 
