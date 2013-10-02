@@ -10,7 +10,13 @@ from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster
 
+# timeout for establishing a connection to a monitor during the ping test.
 _MON_PING_TIMEOUT_SEC = 5.0
+
+# during monitor ping test, monitors with these addresses are skipped without
+# attempting to establish a connection. Ceph may report these, but they aren't
+# valid.
+_MON_ADDR_IGNORES = ["0.0.0.0"]
 
 def memoize(function):
     memo = {}
@@ -292,23 +298,36 @@ class ModelAdapter(object):
         cluster refresh attempt.
         """
         global _MON_PING_TIMEOUT_SEC
+        global _MON_ADDR_IGNORES
+
+        # parse the monitor address fields
         addr = mon['addr']
         m = re.match(self._IPV4_RE, addr)
         if not m:
             m = re.match(self._IPV6_RE, addr)
+
         sock = None
         try:
-            # if we weren't able to parse the address, or we can't
-            # connect then we'll try the next monitor and not add this
-            # monitor to the 'connected' list of successful attempts.
+            # if we weren't able to parse the address this regex group
+            # extraction will fail and we'll skip this monitor.
             addr, port = m.group("addr"), int(m.group("port"))
+            # skip any special addresses (see _MON_ADDR_IGNORES definition)
+            if addr in _MON_ADDR_IGNORES:
+                return False
             sock = socket.create_connection((addr, port), timeout=_MON_PING_TIMEOUT_SEC)
             return True
         except Exception as e:
             return False
         finally:
+            # the python documentation doesn't say whether or not sock.close()
+            # will throw an exception, but we want to avoid marking a monitor
+            # down in the case that we just had a hiccup closing the socket
+            # connection.
             if sock:
-                sock.close()
+                try:
+                    sock.close()
+                except Exception:
+                    pass
 
     def _calculate_mon_counters(self):
         status = self.client.get_status()
