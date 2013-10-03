@@ -11,6 +11,9 @@ from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster
 
+# Addresses to ignore during monitor ping test
+_MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
+
 def memoize(function):
     memo = {}
     def wrapper(*args):
@@ -96,10 +99,9 @@ class ModelAdapter(object):
 
     PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 
-    def __init__(self, client, cluster, mon_timeout, mon_addr_ignore):
+    def __init__(self, client, cluster, mon_timeout):
         self.client = client
         self.cluster = cluster
-        self.mon_addr_ignore = mon_addr_ignore
         self.mon_timeout = mon_timeout
 
     def refresh(self):
@@ -302,8 +304,11 @@ class ModelAdapter(object):
             # if we weren't able to parse the address this regex group
             # extraction will fail and we'll skip this monitor.
             addr, port = m.group("addr"), int(m.group("port"))
-            # skip ignored addresses (e.g. 0.0.0.0)
-            if addr in self.mon_addr_ignore:
+            # skip ignored addresses (e.g. 0.0.0.0, ::)
+            # a future enhancement here is to use the python 'ipaddress'
+            # library which contains routines for identifying addresses based
+            # on properties such as 'unspecified', 'reserved', and 'multicast'.
+            if addr in _MON_ADDR_IGNORES:
                 return False
             sock = socket.create_connection((addr, port), timeout=self.mon_timeout)
             return True
@@ -407,12 +412,6 @@ class Command(BaseCommand):
             dest='monitor_connect_timeout',
             default=5.0,
             help='Timeout (sec) to connect to montior'),
-        make_option('--monitor-ignore-addr',
-            action='append',
-            type="string",
-            dest='monitor_ignore_addr',
-            default=["0.0.0.0"],
-            help='Ignore address during monitor ping test.'),
         )
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
@@ -424,8 +423,7 @@ class Command(BaseCommand):
         client = CephRestClient(cluster.api_base_url,
                 options['restapi_connect_timeout'])
         adapter = ModelAdapter(client, cluster,
-                options['monitor_connect_timeout'],
-                options['monitor_ignore_addr'])
+                options['monitor_connect_timeout'])
         adapter.refresh()
 
     def handle(self, *args, **options):
