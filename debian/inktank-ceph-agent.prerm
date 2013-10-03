@@ -2,7 +2,8 @@
 
 unconfigure_diamond()
 {
-	rm -f /etc/diamond/diamond.conf
+	[ -e /etc/diamond/diamond.conf ] && \
+		rm -f /etc/diamond/diamond.conf
 	[ -e /etc/default/diamond.orig ] && \
 		mv /etc/default/diamond.orig /etc/default/diamond
 }
