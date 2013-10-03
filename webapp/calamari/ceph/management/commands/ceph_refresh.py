@@ -1,27 +1,51 @@
 import traceback
+from optparse import make_option
 from collections import defaultdict
 from itertools import imap
+import re
 import requests
+import socket
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
+from django.utils.timezone import utc
+from datetime import datetime
 from ceph.models import Cluster
+
+# Addresses to ignore during monitor ping test
+_MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
+
+def memoize(function):
+    memo = {}
+    def wrapper(*args):
+        if args in memo:
+            return memo[args]
+        else:
+            rv = function(*args)
+            memo[args] = rv
+            return rv
+    return wrapper	
 
 class CephRestClient(object):
     """
     Wrapper around the Ceph RESTful API.
 
-    TODO: add a basic memoization decorator so we don't make multiple round
-    trips for method below that result on the same Ceph cluster API endpoint.
+    The memoize decorator on the _query method is used to avoid making the same
+    round-trip to the rest server. This shouldn't be used if it is important
+    that values can change during the execution of this program, as this
+    effectively adds a cache that is never cleared.
     """
-    def __init__(self, url):
+    def __init__(self, url, timeout):
         self.__url = url
         if self.__url[-1] != '/':
             self.__url += '/'
+        self.timeout = timeout
 
+    @memoize
     def _query(self, endpoint):
         "Interrogate a Ceph API endpoint"
         hdr = {'accept': 'application/json'}
-        r = requests.get(self.__url + endpoint, headers = hdr)
+        r = requests.get(self.__url + endpoint,
+                headers = hdr, timeout=self.timeout)
         return r.json()
 
     def get_status(self):
@@ -52,6 +76,13 @@ class CephRestClient(object):
         "Get the raw `ceph pg dump` output"
         return self._query("pg/dump")["output"]
 
+    def get_pg_stats(self, brief=True):
+        "Get the pg stats"
+        if brief:
+            return self._query("pg/dump?dumpcontents=pgs_brief")["output"]
+        else:
+            return self.get_pg_dump()['pg_stats']
+
     def get_osd_tree(self):
         "Get the raw `ceph osd tree` output"
         return self._query("osd/tree")["output"]
@@ -68,9 +99,10 @@ class ModelAdapter(object):
 
     PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 
-    def __init__(self, client, cluster):
+    def __init__(self, client, cluster, mon_timeout):
         self.client = client
         self.cluster = cluster
+        self.mon_timeout = mon_timeout
 
     def refresh(self):
         "Call each _populate* method, then save the model instance"
@@ -114,7 +146,7 @@ class ModelAdapter(object):
             return data
 
         # save the brief pg map
-        pgs = self.client.get_pg_dump()['pg_stats']
+        pgs = self.client.get_pg_stats()
         self.cluster.pgs = map(fixup_pg, pgs)
 
         # get the list of pools
@@ -246,23 +278,78 @@ class ModelAdapter(object):
             'not_up_not_in': total-up,
         }
 
+
+    # very basic IPv4/6 formats based on the printf's that ceph does when
+    # serializing an entity_addr_t.
+    _IPV4_RE = r"(?P<addr>\d+\.\d+\.\d+\.\d+):(?P<port>\d+)\/"
+    _IPV6_RE = r"\[(?P<addr>\S+)\]:(?P<port>\d+)\/"
+
+    def try_mon_connect(self, mon):
+        """Try to connect to the monitor.
+
+        This attempts to establish a TCP connection to the monitor. Note that
+        the connection attempt is blocking. If we are trying to connect to a
+        large number of monitors and/or we would like a longer timeout, we may
+        want to start this process in the background as soon as we begin a new
+        cluster refresh attempt.
+        """
+        # parse the monitor address fields
+        addr = mon['addr']
+        m = re.match(self._IPV4_RE, addr)
+        if not m:
+            m = re.match(self._IPV6_RE, addr)
+
+        sock = None
+        try:
+            # if we weren't able to parse the address this regex group
+            # extraction will fail and we'll skip this monitor.
+            addr, port = m.group("addr"), int(m.group("port"))
+            # skip ignored addresses (e.g. 0.0.0.0, ::)
+            # a future enhancement here is to use the python 'ipaddress'
+            # library which contains routines for identifying addresses based
+            # on properties such as 'unspecified', 'reserved', and 'multicast'.
+            if addr in _MON_ADDR_IGNORES:
+                return False
+            sock = socket.create_connection((addr, port), timeout=self.mon_timeout)
+            return True
+        except Exception as e:
+            return False
+        finally:
+            # the python documentation doesn't say whether or not sock.close()
+            # will throw an exception, but we want to avoid marking a monitor
+            # down in the case that we just had a hiccup closing the socket
+            # connection.
+            if sock:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+
     def _calculate_mon_counters(self):
         status = self.client.get_status()
-        mons = len(status['monmap']['mons'])
-        inn = len(status['quorum'])
-        out = mons - inn
+        mons = status['monmap']['mons']
+        quorum = status['quorum']
+        ok, warn, crit = 0, 0, 0
+        for mon in mons:
+            rank = mon['rank']
+            if rank in quorum:
+                ok += 1
+            elif self.try_mon_connect(mon):
+                warn += 1
+            else:
+                crit += 1
         return {
             'ok': {
-                'count': inn,
-                'states': {} if inn == 0 else {'in': inn},
+                'count': ok,
+                'states': {} if ok == 0 else {'in': ok},
             },
             'warn': {
-                'count': 0,
-                'states': {},
+                'count': warn,
+                'states': {} if warn == 0 else {'up': warn},
             },
             'critical': {
-                'count': out,
-                'states': {} if out == 0 else {'out': out},
+                'count': crit,
+                'states': {} if crit == 0 else {'out': crit},
             }
         }
 
@@ -312,15 +399,31 @@ class Command(BaseCommand):
     A failure that occurs while updating cluster statistics will abort the
     refresh for that cluster. An attempt will be made for other clusters.
     """
+    option_list = BaseCommand.option_list + (
+        make_option('--restapi-timeout',
+            action='store',
+            type="float",
+            dest='restapi_connect_timeout',
+            default=30.0,
+            help='Timeout (sec) to connect to cluster REST API'),
+        make_option('--monitor-timeout',
+            action='store',
+            type="float",
+            dest='monitor_connect_timeout',
+            default=5.0,
+            help='Timeout (sec) to connect to montior'),
+        )
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
         self._last_response = None    # last cluster query response
 
-    def _handle_cluster(self, cluster):
+    def _handle_cluster(self, cluster, options):
         self.stdout.write("Refreshing data from cluster: %s (%s)" % \
                 (cluster.name, cluster.api_base_url))
-        client = CephRestClient(cluster.api_base_url)
-        adapter = ModelAdapter(client, cluster)
+        client = CephRestClient(cluster.api_base_url,
+                options['restapi_connect_timeout'])
+        adapter = ModelAdapter(client, cluster,
+                options['monitor_connect_timeout'])
         adapter.refresh()
 
     def handle(self, *args, **options):
@@ -330,10 +433,38 @@ class Command(BaseCommand):
         clusters = Cluster.objects.all()
         self.stdout.write("Updating %d clusters..." % (len(clusters),))
         for cluster in clusters:
+            now = datetime.utcnow().replace(tzinfo=utc)
+
+            # reset error fields, cross fingers for success!
+            cluster.cluster_update_error_isclient = False
+            cluster.cluster_update_error_msg = None
+
             try:
-                self._handle_cluster(cluster)
+                self._handle_cluster(cluster, options)
+                # record time of last successsful update
+                cluster.cluster_update_time = now
+            except Exception as e:
+                # Check base class of all errors generated in the Requests
+                # framework. We use that property to indicate the error
+                # occurred trying to communicate with the cluster RESTApi.
+                if isinstance(e, requests.exceptions.RequestException):
+                    cluster.cluster_update_error_isclient = True
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+                cluster.cluster_update_error_msg = error
+
+            # try to save the changes and note the time. if we cannot record
+            # this information in the db, then the last attempt time will
+            # become further and further into the past.
+            cluster.cluster_update_attempt_time = now
+            try:
+                cluster.save()
             except Exception:
-                self.stderr.write(traceback.format_exc())
+                error = traceback.format_exc()
+                self.stdout.flush()
+                self.stderr.write(error)
+
         cache.clear()
         self.stdout.write("Update completed!")
 
