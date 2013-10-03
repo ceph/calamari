@@ -32,7 +32,7 @@ class CephRestClient(object):
     The memoize decorator on the _query method is used to avoid making the same
     round-trip to the rest server. This shouldn't be used if it is important
     that values can change during the execution of this program, as this
-    effectively adds a cache that never cleared.
+    effectively adds a cache that is never cleared.
     """
     def __init__(self, url, timeout):
         self.__url = url
