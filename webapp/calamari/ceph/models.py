@@ -47,13 +47,21 @@ class Cluster(models.Model):
     def __unicode__(self):
         return self.name
 
+    def _convert_to_unix_ms(self, t):
+        if t is None:
+            return None
+        return int(dateformat.format(t, 'U')) * 1000
+
     def _get_cluster_update_time_ms(self):
         "Convert `cluster_update_time` into Unix time."
-        if not self.cluster_update_time:
-            return None
-        return int(dateformat.format(self.cluster_update_time, 'U')) * 1000
+        return self._convert_to_unix_ms(self.cluster_update_time)
+
+    def _get_cluster_update_attempt_time_ms(self):
+        "Convert `cluster_update_attempt_time` into Unix time."
+        return self._convert_to_unix_ms(self.cluster_update_time)
 
     cluster_update_time_unix = property(_get_cluster_update_time_ms)
+    cluster_update_attempt_time_unix = property(_get_cluster_update_attempt_time_ms)
 
     def get_osd(self, osd_id):
         if not self.osds:

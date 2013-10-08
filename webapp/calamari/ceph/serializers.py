@@ -9,13 +9,15 @@ from ceph.management.commands.ceph_refresh import CephRestClient
 class ClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
-        fields = ('id', 'name', 'api_base_url', 'cluster_update_time',
-                'cluster_update_attempt_time', 'cluster_update_error_msg',
-                'cluster_update_error_isclient')
+        fields = ('id', 'name', 'api_base_url',
+              'cluster_update_time', 'cluster_update_time_unix',
+              'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
+              'cluster_update_error_msg', 'cluster_update_error_isclient')
 
         # only kraken updates this stuff. we don't want to expose it through
         # the rest API, so these read-only fields won't be altered.
-        read_only_fields = ('cluster_update_time', 'cluster_update_attempt_time',
+        read_only_fields = ('cluster_update_time', 'cluster_update_time_unix',
+                'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
                 'cluster_update_error_msg', 'cluster_update_error_isclient')
 
     def validate_api_base_url(self, attrs, source):
