@@ -22,6 +22,7 @@ class ClusterSerializer(serializers.ModelSerializer):
 
     def validate_api_base_url(self, attrs, source):
         try:
+            # Will use the CephRestClient default connection timeout
             client = CephRestClient(attrs[source])
             data = client.get_health()
         except Exception:
