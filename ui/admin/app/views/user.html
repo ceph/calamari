@@ -7,7 +7,7 @@
     <div class="control-group">
         <label class="control-label">Username</label>
         <div class="controls">
-            <input type="text" name="userName" readonly="true" ng-model="user.name"></input>
+            <input type="text" name="userName" readonly="true" ng-model="user.username"></input>
         </div>
     </div>
     <div class="control-group">
@@ -36,7 +36,7 @@
     </div>
     <div class="control-group">
         <div class="controls">
-            <button type="submit" class="btn">Update</button>
+            <button type="submit" ng-click="update(user)" class="btn">Update</button>
             <button type="submit" ng-click="clear()" class="btn">Clear</button>
         </div>
     </div>
