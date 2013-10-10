@@ -14,6 +14,9 @@ from ceph.models import Cluster
 # Addresses to ignore during monitor ping test
 _MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
 
+# Default timeout for communicating with the Ceph REST API.
+_REST_CLIENT_DEFAULT_TIMEOUT = 10.0
+
 def memoize(function):
     memo = {}
     def wrapper(*args):
@@ -34,7 +37,7 @@ class CephRestClient(object):
     that values can change during the execution of this program, as this
     effectively adds a cache that is never cleared.
     """
-    def __init__(self, url, timeout):
+    def __init__(self, url, timeout=_REST_CLIENT_DEFAULT_TIMEOUT):
         self.__url = url
         if self.__url[-1] != '/':
             self.__url += '/'
