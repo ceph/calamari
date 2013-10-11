@@ -7,18 +7,28 @@ from ceph.models import Cluster
 from ceph.management.commands.ceph_refresh import CephRestClient
 
 class ClusterSerializer(serializers.ModelSerializer):
+    cluster_update_time_unix = serializers.SerializerMethodField(
+        'get_cluster_update_time_unix');
+    cluster_update_attempt_time_unix = serializers.SerializerMethodField(
+        'get_cluster_update_attempt_time_unix');
     class Meta:
         model = Cluster
         fields = ('id', 'name', 'api_base_url',
-              'cluster_update_time', 'cluster_update_time_unix',
-              'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
-              'cluster_update_error_msg', 'cluster_update_error_isclient')
+            'cluster_update_time', 'cluster_update_time_unix',
+            'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
+            'cluster_update_error_msg', 'cluster_update_error_isclient')
 
         # only kraken updates this stuff. we don't want to expose it through
         # the rest API, so these read-only fields won't be altered.
-        read_only_fields = ('cluster_update_time', 'cluster_update_time_unix',
-                'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
-                'cluster_update_error_msg', 'cluster_update_error_isclient')
+        read_only_fields = ('cluster_update_time',
+            'cluster_update_attempt_time', 'cluster_update_error_msg',
+            'cluster_update_error_isclient')
+
+    def get_cluster_update_time_unix(self, obj):
+        return obj.cluster_update_time_unix
+
+    def get_cluster_update_attempt_time_unix(self, obj):
+        return obj.cluster_update_attempt_time_unix
 
     def validate_api_base_url(self, attrs, source):
         try:
