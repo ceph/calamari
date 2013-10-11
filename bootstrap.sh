@@ -7,6 +7,13 @@
 # actually getting them to work yet, so this will have to do for now.
 #
 
+
+set -e
+
+# set this to the location of the source tree for copying into
+# deployment directories
+
+SOURCE=${SOURCE:-"/vagrant"}
 # Add the EPEL repository
 EPEL_RPM_URL="http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm"
 rpm -Uvh $EPEL_RPM_URL
@@ -43,7 +50,7 @@ sed -i 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' carbon.co
 
 # the pip install of carbon doesn't install the init.d scripts.
 # see http://github.com/graphite-project/carbon/issues/148
-cp /vagrant/conf/carbon/init.d/carbon-cache /etc/init.d
+cp ${SOURCE}/conf/carbon/init.d/carbon-cache /etc/init.d
 chown root.root /etc/init.d/carbon-cache
 
 service carbon-cache start
@@ -52,6 +59,7 @@ chkconfig carbon-cache on
 # Configure the webapp
 cd /opt/graphite/webapp/graphite
 
+# graphite uses sqlite3 for admin settings, saved graphs, etc.
 cat << EOF >> local_settings.py
 DEBUG = True
 DATABASES = {
@@ -66,6 +74,8 @@ DATABASES = {
 }
 EOF
 
+# this should be random per install; it's really an RNG seed for crypto
+# (a standard Django feature)
 cat << EOF >> app_settings.py
 SECRET_KEY = "23tn2wo3ngweghwkjefh"
 EOF
@@ -129,20 +139,19 @@ mkdir -p /opt/calamari
 mkdir /opt/calamari/log
 
 cd /opt/calamari
-cp -rp /vagrant/webapp .
-cp -rp /vagrant/conf .
-cp /vagrant/requirements.txt .
+cp -rp ${SOURCE}/webapp .
+cp -rp ${SOURCE}/conf .
+cp ${SOURCE}/requirements.txt .
 
 # make empty dirs to populate with UI content
 cd /opt/calamari/webapp
 mkdir -p content/{dashboard,login,admin}
 
 # copy UI content
-cp -rp /vagrant/ui/admin/dist/* content/admin
-cp -rp /vagrant/ui/login/dist/* content/login
-(cd content/dashboard; tar xvfz /vagrant/dashboard.tar.gz)
+cp -rp ${SOURCE}/ui/admin/dist/* content/admin
+cp -rp ${SOURCE}/ui/login/dist/* content/login
+cp -rp ${SOURCE}/clients/dashboard/dist/* content/dashboard
 echo '{"offline":false}' > content/dashboard/scripts/config.json
-
 
 cd /opt/calamari
 virtualenv --no-site-packages venv
@@ -157,8 +166,6 @@ chown -R apache:apache .
 cd /opt/calamari/log
 chown apache:apache *
 
-# calamari.conf accesses things in /opt/calamari
-
 cd /opt/calamari
 cp conf/calamari.conf /etc/httpd/conf.d
 
@@ -168,7 +175,7 @@ service httpd restart
 /etc/init.d/iptables stop
 chkconfig iptables off
 
-cp /vagrant/conf/upstart/kraken.conf /etc/init/kraken.conf
+cp ${SOURCE}/conf/upstart/kraken.conf /etc/init/kraken.conf
 start kraken
 
 # try to get carbon as current as possible
