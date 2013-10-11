@@ -4,7 +4,8 @@ require.config({
         'jquery.cookie': '../bower_components/jquery.cookie/jquery.cookie',
         underscore: '../bower_components/underscore-amd/underscore',
         backbone: '../bower_components/backbone/backbone',
-        bootstrap: 'vendor/bootstrap'
+        bootstrap: 'vendor/bootstrap',
+        gitcommit: 'git'
     },
     shim: {
         bootstrap: {
