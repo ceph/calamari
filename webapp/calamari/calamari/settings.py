@@ -101,7 +101,6 @@ TEMPLATE_LOADERS = (
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 
 MIDDLEWARE_CLASSES = (
-    'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'calamari.middleware.AngularCSRFRename',
@@ -110,7 +109,6 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',
 )
 
 ROOT_URLCONF = 'calamari.urls'
@@ -123,29 +121,6 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
 )
-
-#
-# We are using site-wide caching, which transparently caches every view
-# exported by Django. Since we only export the API, that is what is cached.
-# This works well because we _only_ have updates to the database that are
-# intiated by Kraken, and Kraken invalidates the cache each time it updates
-# the DB.
-#
-# Choose between memcached and local-memory caching. For development, using
-# local-memory is fine, but cache invalidation performed (cache.clear()) from
-# Kraken won't have any affect.
-#
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        #'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        #'LOCATION': '127.0.0.1:11211',
-    }
-}
-
-CACHE_MIDDLEWARE_ALIAS = "default"
-CACHE_MIDDLEWARE_SECONDS = 30
-CACHE_MIDDLEWARE_KEY_PREFIX = ""
 
 INSTALLED_APPS = (
     'django.contrib.auth',
