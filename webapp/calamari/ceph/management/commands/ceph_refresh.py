@@ -6,7 +6,6 @@ import re
 import requests
 import socket
 from django.core.management.base import BaseCommand
-from django.core.cache import cache
 from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster
@@ -467,8 +466,6 @@ class Command(BaseCommand):
                 error = traceback.format_exc()
                 self.stdout.flush()
                 self.stderr.write(error)
-
-        cache.clear()
         self.stdout.write("Update completed!")
 
 #
