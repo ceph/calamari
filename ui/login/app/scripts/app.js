@@ -1,5 +1,5 @@
 /*global define */
-define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Backbone) {
+define(['underscore', 'jquery', 'backbone', 'gitcommit', 'jquery.cookie'], function(_, $, Backbone, gitcommit) {
     'use strict';
 
     var LoginBox = Backbone.View.extend({
@@ -97,6 +97,9 @@ define(['underscore', 'jquery', 'backbone', 'jquery.cookie'], function(_, $, Bac
         el: '.loginBox'
     });
     loginBox.render();
+    window.inktank = {
+        commit: gitcommit['git-commit']
+    };
     return {
         LoginBox: loginBox
     };

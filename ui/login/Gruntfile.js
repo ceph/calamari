@@ -327,6 +327,13 @@ module.exports = function (grunt) {
             all: {
                 rjsConfig: '<%= yeoman.app %>/scripts/main.js'
             }
+        },
+        'git-describe': {
+            options: {
+                failOnError: false
+            },
+            'git.js': {
+            }
         }
     });
 
@@ -338,6 +345,7 @@ module.exports = function (grunt) {
         grunt.task.run([
             'clean:server',
             'symlink',
+            'saveRevision',
             'concurrent:server',
             'connect:livereload',
             'open',
@@ -356,6 +364,7 @@ module.exports = function (grunt) {
     grunt.registerTask('build', [
         'clean:dist',
         'symlink',
+        'saveRevision',
         'useminPrepare',
         'concurrent:dist',
         'requirejs',
@@ -372,4 +381,12 @@ module.exports = function (grunt) {
         'test',
         'build'
     ]);
+
+    grunt.registerTask('saveRevision', function() {
+        grunt.event.once('git-describe', function(rev) {
+            grunt.log.writeln('Git Revision: ' + rev);
+            grunt.file.write('app/scripts/git.js', '/*global define */ define([], function() { \'use strict\'; return { \'git-commit\': \'' + rev + '\' }; });');
+        });
+        grunt.task.run('git-describe');
+    });
 };
