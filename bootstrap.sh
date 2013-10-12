@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 #
 # Setup a basic Graphite environment in CentOS 6.4.
@@ -6,9 +6,6 @@
 # There are various Chef and Puppet recipes for some of these tasks. No luck
 # actually getting them to work yet, so this will have to do for now.
 #
-
-
-set -e
 
 # set this to the location of the source tree for copying into
 # deployment directories
