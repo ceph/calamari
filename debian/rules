@@ -2,7 +2,7 @@
 %:
 	dh $@ --with python2
 
-DEBUPSTART = debian/inktank-ceph-restapi.cephrestapi.upstart
+DEBUPSTART = debian/calamari-restapi.cephrestapi.upstart
 override_dh_installinit:
 	install -m0644 restapi/init/cephrestapi.conf $(DEBUPSTART)
 	dh_installinit --name=cephrestapi --upstart-only

@@ -1,11 +1,11 @@
-Source: inktank-ceph
+Source: calamari
 Section: misc
 Priority: extra
 Homepage: http://www.inktank.com/
 Maintainer: Dan Mick <dan.mick@inktank.com>
 Standards-Version: 3.9.2
 
-Package: inktank-ceph-agent
+Package: calamari-agent
 Architecture: all
 Depends: diamond (= 3.4.13-inktank)
 Description: Inktank metapackage to install/configure Diamond collection agent
@@ -15,7 +15,7 @@ Description: Inktank metapackage to install/configure Diamond collection agent
  running the Inktank Ceph Enterprise Manager.  Install this package on
  all hosts in the cluster running ceph daemons of any kind.
 
-Package: inktank-ceph-restapi
+Package: calamari-restapi
 Architecture: all
 Depends: ceph, ceph-common, nginx, uwsgi
 Description: Inktank package to configure ceph-rest-api under nginx

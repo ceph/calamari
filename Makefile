@@ -20,13 +20,13 @@ PKGFILES = \
 	debian/compat \
 	debian/control \
 	debian/copyright\
-	debian/inktank-ceph-agent.install \
-	debian/inktank-ceph-agent.postinst \
-	debian/inktank-ceph-agent.prerm \
-	debian/inktank-ceph-restapi.install \
-	debian/inktank-ceph-restapi.postinst \
-	debian/inktank-ceph-restapi.postrm \
-	debian/inktank-ceph-restapi.prerm \
+	debian/calamari-agent.install \
+	debian/calamari-agent.postinst \
+	debian/calamari-agent.prerm \
+	debian/calamari-restapi.install \
+	debian/calamari-restapi.postinst \
+	debian/calamari-restapi.postrm \
+	debian/calamari-restapi.prerm \
 	debian/rules
 
 dpkg: $(PKGFILES) $(CONFFILES) Makefile
@@ -103,6 +103,6 @@ DISTFILES = \
 	webapp/calamari/manage.py
 
 dist:
-	tar cf - $(DISTFILES) | gzip -c > ../inktank-ceph_0.1.tar.gz
+	tar cf - $(DISTFILES) | gzip -c > ../calamari_0.1.tar.gz
 
 .PHONY: dist clean build dpkgs install

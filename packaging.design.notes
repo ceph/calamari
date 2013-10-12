@@ -7,7 +7,7 @@ Cluster in general:
       work.
 
 OSD machines:
-    * Install Inktank-built package "inktank-ceph-agent"
+    * Install Inktank-built package "calamari-agent"
       which depends on an Inktank-built (only because it's currently
       not in the upstream) "diamond" package. This package will:
 	    * copy /etc/diamond/diamond.conf.example to diamond.conf
@@ -25,7 +25,7 @@ OSD machines:
     (see also https://github.com/BrightcoveOS/Diamond/wiki/Configuration)
 
 A mon:
-    * Install inktank-ceph-restapi package (deb or rpm) that:
+    * Install calamari-restapi package (deb or rpm) that:
         * depends on ceph-common (deb) or ceph (rpm)
         * depends on nginx (no known version dependencies)
         * depends on uwsgi (no known version dependencies)
@@ -38,7 +38,7 @@ A mon:
                 uwsgi -s /tmp/cephrestapi.sock -C777 --wsgi-file \
                     /etc/nginx/cephrestwsgi.py --callable app
             * start cephrestapi service (on port 5000)
-    * also install inktank-ceph-agent here
+    * also install calamari-agent here
 
 possible manual config changes if desired/necessary:
     * 'listen 5000' in /etc/nginx/cephrestapi.conf
