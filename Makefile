@@ -68,7 +68,6 @@ DISTFILES = \
 	conf/diamond/CephCollector.conf \
 	conf/diamond/NetworkCollector.conf \
 	conf/upstart/kraken.conf \
-	doc/annotated.clicmds \
 	doc/calamari-api.md \
 	doc/calamari-client-examples.md \
 	doc/deploy.md \
