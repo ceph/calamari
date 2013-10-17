@@ -89,7 +89,7 @@ clean:
 
 	for d in $(UI_SUBDIRS); do \
 		echo $$d; \
-		(cd $$d; grunt clean) \
+		(cd $$d; grunt clean > /dev/null) \
 	done
 	@rm -f $(CONFIG_JSON)
 
