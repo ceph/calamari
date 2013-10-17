@@ -1,3 +1,7 @@
+VERSION=0.5.1
+DISTNAMEVER=calamari_$(VERSION)
+TARNAME = ../$(DISTNAMEVER).tar.gz
+
 INSTALL=/usr/bin/install
 
 UI_SUBDIRS = ui/admin ui/login clients/dashboard
@@ -9,22 +13,46 @@ CONFFILES = \
 	restapi/cephrestapi.conf \
 	restapi/cephrestwsgi.py
 
-PKGFILES = \
-	debian/changelog \
-	debian/compat \
-	debian/control \
-	debian/copyright\
-	debian/calamari-agent.install \
-	debian/calamari-agent.postinst \
-	debian/calamari-agent.prerm \
-	debian/calamari-restapi.install \
-	debian/calamari-restapi.postinst \
-	debian/calamari-restapi.postrm \
-	debian/calamari-restapi.prerm \
-	debian/rules
+# Strategy for building dist tarball: find what we know is source
+# "grunt clean" doesn't take us back to a pristine source dir, so instead
+# we filter out what we know is build product and tar up only what we
+# want in sources.
 
-dpkg: $(PKGFILES) $(CONFFILES) Makefile
-	dpkg-buildpackage -us -uc
+# this is crazy convoluted to work around files with spaces in their names.
+# also, debian is pruned because we want to add only specific parts of it
+FINDCMD =find . \
+        -name .git -prune \
+        -o -name node_modules -prune \
+        -o -name .tmp -prune \
+        -o -name .sass-cache -prune \
+        -o -name debian -prune \
+        -o -print0 
+
+DISTFILES:=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
+SPACEFILES:=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
+
+# add in just the debian files we want
+DEBFILES = \
+	calamari-agent.install \
+	calamari-agent.postinst \
+	calamari-agent.prerm \
+	calamari-console.init \
+	calamari-console.docs \
+	calamari-console.install \
+	calamari-console.postinst \
+	calamari-restapi.install \
+	calamari-restapi.postinst \
+	calamari-restapi.postrm \
+	calamari-restapi.prerm \
+	changelog \
+	compat \
+	control \
+	copyright \
+	rules \
+	source/format
+
+DISTFILES += $(DEBFILES:%=debian/%)
+
 build: build-ui $(CONFIG_JSON) $(CONFFILES)
 
 build-ui:
@@ -46,6 +74,11 @@ $(CONFIG_JSON):
 	# XXX ownership?
 	echo '{"offline": false}' > $(CONFIG_JSON)
 
+# this source is just not very amenable to building source packages.
+# the Javascript directories don't really go back to "clean"; it might
+# be possible to change that, but for now, just skip the source build
+dpkg: 
+	dpkg-buildpackage -b -us -uc
 
 UI_DIRS = ui/admin ui/login clients/dashboard
 UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
@@ -93,50 +126,11 @@ clean:
 	done
 	@rm -f $(CONFIG_JSON)
 
-# unneeded with dpkg as coded above
-
-DISTFILES = \
-	bootstrap.sh \
-	conf/calamari.conf \
-	conf/calamari.wsgi \
-	conf/diamond/CephCollector.conf \
-	conf/diamond/NetworkCollector.conf \
-	conf/upstart/kraken.conf \
-	doc/annotated.clicmds \
-	doc/calamari-api.md \
-	doc/calamari-client-examples.md \
-	doc/deploy.md \
-	Makefile \
-	packaging.design.notes \
-	README.md \
-	requirements.txt \
-	restapi/cephrestapi.conf \
-	restapi/cephrestwsgi.py \
-	restapi/init/cephrestapi.conf \
-	restapi/init.d/cephrestapi \
-	restapi/uwsgi.startup \
-	ui.build.instructions \
-	Vagrantfile \
-	webapp/calamari/calamari/__init__.py \
-	webapp/calamari/calamari/middleware.py \
-	webapp/calamari/calamari/settings.py \
-	webapp/calamari/calamari/urls.py \
-	webapp/calamari/calamari/views.py \
-	webapp/calamari/calamari/wsgi.py \
-	webapp/calamari/ceph/fixtures/ceph_fake.json \
-	webapp/calamari/ceph/__init__.py \
-	webapp/calamari/ceph/management/commands/ceph_refresh.py \
-	webapp/calamari/ceph/management/commands/__init__.py \
-	webapp/calamari/ceph/management/__init__.py \
-	webapp/calamari/ceph/models.py \
-	webapp/calamari/ceph/serializers.py \
-	webapp/calamari/ceph/tests.py \
-	webapp/calamari/ceph/urls.py \
-	webapp/calamari/ceph/views.py \
-	webapp/calamari/.gitignore \
-	webapp/calamari/manage.py
 
 dist:
-	tar cf - $(DISTFILES) | gzip -c > ../calamari_0.1.tar.gz
+	@echo "making dist tarball in $(TARNAME)"
+	@tar --transform 's;^\./;'$(DISTNAMEVER)'/;' \
+		-czf $(TARNAME) $(DISTFILES) $(SPACEFILES) 
+	@echo "tar file made in $(TARNAME)"
 
 .PHONY: dist clean build build-ui dpkg install 

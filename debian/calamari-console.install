@@ -1,0 +1,4 @@
+opt/calamari
+etc/httpd/conf/graphite.conf
+etc/httpd/conf/calamari.conf
+opt/graphite/webapp/graphite/local_settings.py
