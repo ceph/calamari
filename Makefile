@@ -49,24 +49,27 @@ $(CONFIG_JSON):
 
 UI_DIRS = ui/admin ui/login clients/dashboard
 UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
-ROOTOG=-o root -g root
+ROOTOG=-o root -g root -m 644
 
 # a crock; depends on target machine, not build machine. 
 # there are more deb-vs-RH dependencies to work out besides this.
 WEBUSER:=$(shell egrep 'apache|www-data' /etc/passwd | awk -F: '{print $$1;}')
-APACHEOG=-o $(WEBUSER) -g $(WEBUSER)
+APACHEOG=-o $(WEBUSER) -g $(WEBUSER) -m 644
 
 install: build $(CONFFILES)
 	@echo "installing"
 	# Diamond conf files
-	@$(INSTALL) -D $(ROOTOG) -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
-	@$(INSTALL) -D $(ROOTOG) -m 644 conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
+	@$(INSTALL) -D $(ROOTOG) conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
+	@$(INSTALL) -D $(ROOTOG) conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
 	# nginx/wsgi for ceph-rest-api
-	@$(INSTALL) -D $(ROOTOG) -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
-	@$(INSTALL) -D $(ROOTOG) -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
+	@$(INSTALL) -D $(ROOTOG) restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
+	@$(INSTALL) -D $(ROOTOG) restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
+	# httpd conf for graphite and calamari vhosts
+	@$(INSTALL) -D $(ROOTOG) conf/graphite/graphite.conf $(DESTDIR)/etc/httpd/conf.d/graphite.conf
+	@$(INSTALL) -D $(ROOTOG) conf/calamari.conf $(DESTDIR)/etc/httpd/conf.d/calamari.conf
 	# /etc/init{.d} files
-	@$(INSTALL) -D $(ROOTOG) -m 644 conf/carbon/init.d/carbon-cache $(DESTDIR)/etc/init.d/carbon-cache
-	@$(INSTALL) -D $(ROOTOG) -m 644 conf/upstart/kraken.conf $(DESTDIR)/etc/init/kraken.conf
+	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache $(DESTDIR)/etc/init.d/carbon-cache
+	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf $(DESTDIR)/etc/init/kraken.conf
 
 	# UI code
 	for d in $(UI_DIRS); do \
@@ -74,6 +77,8 @@ install: build $(CONFFILES)
 		$(INSTALL) -d $(UI_BASEDIR)/$$instdir; \
 		cp -rp $$d/dist/* $(UI_BASEDIR)/$$instdir; \
 	done
+	# graphite local_settings.py
+	$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py $(DESTDIR)/opt/graphite/webapp/graphite
 
 clean:
 	@rm -f \
