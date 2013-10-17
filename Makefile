@@ -1,13 +1,7 @@
 INSTALL=/usr/bin/install
 
 UI_SUBDIRS = ui/admin ui/login clients/dashboard
-
-build:
-	@echo "building ui subdirs"
-	for d in $(UI_SUBDIRS); do \
-		echo $$d; \
-		(cd $$d; npm install --silent; bower install; grunt build) \
-	done
+CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
@@ -31,16 +25,50 @@ PKGFILES = \
 
 dpkg: $(PKGFILES) $(CONFFILES) Makefile
 	dpkg-buildpackage -us -uc
+build: build-ui $(CONFIG_JSON) $(CONFFILES)
+
+build-ui:
+	@echo "building ui subdirs"
+	for d in $(UI_SUBDIRS); do \
+		echo $$d; \
+		(cd $$d; \
+		npm install --silent; \
+		bower install; \
+		# yes, this is the recommended way to silence grunt \
+		grunt build >/dev/null) \
+	done
+
+# for right now, this contains one useful thing that should be set
+# when running against a live cluster.  We could preinstall it in the
+# package or do it in a postinstall; it has more visibility here
+
+$(CONFIG_JSON):
+	# XXX ownership?
+	echo '{"offline": false}' > $(CONFIG_JSON)
+
 
 UI_DIRS = ui/admin ui/login clients/dashboard
 UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
+ROOTOG=-o root -g root
 
-install: build
+# a crock; depends on target machine, not build machine. 
+# there are more deb-vs-RH dependencies to work out besides this.
+WEBUSER:=$(shell egrep 'apache|www-data' /etc/passwd | awk -F: '{print $$1;}')
+APACHEOG=-o $(WEBUSER) -g $(WEBUSER)
+
+install: build $(CONFFILES)
 	@echo "installing"
-	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
-	@$(INSTALL) -D -o root -g root -m 644 conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
-	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
-	@$(INSTALL) -D -o root -g root -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
+	# Diamond conf files
+	@$(INSTALL) -D $(ROOTOG) -m 644 conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
+	@$(INSTALL) -D $(ROOTOG) -m 644 conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
+	# nginx/wsgi for ceph-rest-api
+	@$(INSTALL) -D $(ROOTOG) -m 644 restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
+	@$(INSTALL) -D $(ROOTOG) -m 644 restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
+	# /etc/init{.d} files
+	@$(INSTALL) -D $(ROOTOG) -m 644 conf/carbon/init.d/carbon-cache $(DESTDIR)/etc/init.d/carbon-cache
+	@$(INSTALL) -D $(ROOTOG) -m 644 conf/upstart/kraken.conf $(DESTDIR)/etc/init/kraken.conf
+
+	# UI code
 	for d in $(UI_DIRS); do \
 		instdir=$$(basename $$d); \
 		$(INSTALL) -d $(UI_BASEDIR)/$$instdir; \
@@ -58,6 +86,7 @@ clean:
 		echo $$d; \
 		(cd $$d; grunt clean) \
 	done
+	@rm -f $(CONFIG_JSON)
 
 # unneeded with dpkg as coded above
 
@@ -105,4 +134,4 @@ DISTFILES = \
 dist:
 	tar cf - $(DISTFILES) | gzip -c > ../calamari_0.1.tar.gz
 
-.PHONY: dist clean build dpkgs install
+.PHONY: dist clean build build-ui dpkg install 
