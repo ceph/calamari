@@ -54,8 +54,9 @@ carbon()
 	cp graphite.wsgi.example graphite.wsgi
 	# init.d/carbon-cache handled in make install
 	mkdir /var/log/carbon
-	service carbon-cache start
+	start carbon-cache
 	# rpm/centos
+	# service carbon-cache start
 	# chkconfig carbon-cache on
 	cd $d
 }
@@ -66,8 +67,9 @@ case "$1" in
 		graphite
 		carbon
 		calamari
-		service httpd restart
+		restart apache2
 		# rpm/centos
+		# service httpd restart
 		# chkconfig httpd on
 
 	abort-upgrade|abort-remove|abort-deconfigure)

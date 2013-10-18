@@ -97,9 +97,15 @@ install: build $(CONFFILES)
 	# nginx/wsgi for ceph-rest-api
 	@$(INSTALL) -D $(ROOTOG) restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
 	@$(INSTALL) -D $(ROOTOG) restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
-	# httpd conf for graphite and calamari vhosts
-	@$(INSTALL) -D $(ROOTOG) conf/graphite/graphite.conf $(DESTDIR)/etc/httpd/conf.d/graphite.conf
-	@$(INSTALL) -D $(ROOTOG) conf/calamari.conf $(DESTDIR)/etc/httpd/conf.d/calamari.conf
+	# httpd conf for graphite and calamari vhosts, redhat
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/graphite.conf $(DESTDIR)/etc/httpd/conf.d/graphite.conf
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/calamari.conf $(DESTDIR)/etc/httpd/conf.d/calamari.conf
+	# httpd conf for graphite and calamari vhosts, debian
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/graphite.conf $(DESTDIR)/etc/apache2/sites-available/graphite.conf
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/calamari.conf $(DESTDIR)/etc/apache2/sites-available/calamari.conf
+	@$(INSTALL) -d $(ROOTOG) $(DESTDIR)/etc/apache2/sites-enabled
+	@ln -s $(DESTDIR)/etc/apache2/sites-available/calamari.conf $(DESTDIR)/etc/apache2/sites-enabled
+	@ln -s $(DESTDIR)/etc/apache2/sites-available/graphite.conf $(DESTDIR)/etc/apache2/sites-enabled
 	# /etc/init{.d} files
 	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache $(DESTDIR)/etc/init.d/carbon-cache
 	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf $(DESTDIR)/etc/init/kraken.conf
