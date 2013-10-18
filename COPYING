@@ -1,0 +1,33 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Contact: dan.mick@inktank.com
+Disclaimer: Commercial software from Inktank Storage, Inc.
+License: XXX software-as-a-whole
+
+Files: *
+Copyright 2013, Inktank Storage, Inc.
+License: XXX
+
+Files: content/admin/bower_components/underscore/*
+Copyright:
+Copyright (c) 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+License: Expat
+
+Files: ui/login/node_modules/connect-livereload/*
+Copyright: Copyright (c) 2013 intesso
+License: Expat
+
+Files: ui/login/node_modules/grunt-contrib-jshint/node_modules/jshint/node_modules/minimatch/node_modules/sigmund/*
+Copyright:
+Copyright (c) Isaac Z. Schlueter ("Author")
+All rights reserved
+License: BSD-2-clause
+
+Files: ui/login/node_modules/grunt-contrib-jshint/node_modules/jshint/node_modules/minimatch/node_modules/lru-cache/*
+Copyright:
+Copyright 2009, 2010, 2011 Isaac Z. Schlueter.
+All rights reserved.
+License: Expat
+
+
+
+

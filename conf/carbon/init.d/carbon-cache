@@ -6,6 +6,7 @@
 # Copied from github.com/graphite-project.  Bug fix: move PYTHONPATH setting
 # from here down to after GRAPHITE_DIR setting.  
 # See https://github.com/graphite-project/carbon/issues/147
+# also: add --logdir /var/log/carbon
 
 # Source function library.
 if [ -e /etc/rc.d/init.d/functions ]; then
@@ -31,7 +32,7 @@ start(){
             INSTANCE="a";
         fi;
         echo "Starting carbon-${CARBON_DAEMON}:${INSTANCE}..."
-        bin/carbon-${CARBON_DAEMON}.py --instance=${INSTANCE} start;
+        bin/carbon-${CARBON_DAEMON}.py --instance=${INSTANCE} --logdir=/var/log/carbon start;
 
         if [ $? -eq 0 ]; then
             echo_success
@@ -74,7 +75,7 @@ status(){
         if [ "${INSTANCE}" == "${CARBON_DAEMON}" ]; then
             INSTANCE="a";
         fi;
-        bin/carbon-${CARBON_DAEMON}.py --instance=${INSTANCE} status;
+        bin/carbon-${CARBON_DAEMON}.py --instance=${INSTANCE} --logdir=/var/log/carbon status;
     
         if [ $? -eq 0 ]; then
             echo_success

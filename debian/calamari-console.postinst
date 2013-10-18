@@ -1,0 +1,84 @@
+#!/bin/bash -e
+
+set -x
+
+calamari()
+{
+	d=$(pwd)
+	# initialize database
+	cd /opt/calamari/webapp/calamari
+	../../venv/bin/python manage.py syncdb --noinput
+
+	# set up calamari admin user
+	echo "from django.contrib.auth.models import User; \
+		User.objects.create_superuser(\
+		'admin', 'calamari@inktank.com', 'admin')" | \
+		../../venv/bin/python manage.py shell
+
+	# allow apache access to all
+	chown -R apache:apache .
+	cd $d
+}
+
+graphite_seed()
+{
+	# prerm
+	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
+	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
+	echo "SECRET_KEY = $$KEY" >/opt/graphite/webapp/graphite/app_settings.py
+}
+
+graphite()
+{
+	d=$(pwd)
+	cd /opt/graphite/webapp/graphite
+	python manage.py syncdb --noinput
+	chown -R apache:apache /opt/graphite/storage
+	cd $d
+}
+
+
+carbon()
+{
+	d=$(pwd)
+	cd /opt/graphite/conf
+	sed -e 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' \
+		<carbon.conf.example >carbon.conf
+
+	# XXX are these necessary?
+	cp storage-schemas.conf.example storage-schemas.conf
+	cp storage-aggregation.conf.example storage-aggregation.conf
+	cp relay-rules.conf.example relay-rules.conf
+	cp aggregation-rules.conf.example aggregation-rules.conf
+
+	cp graphite.wsgi.example graphite.wsgi
+	# init.d/carbon-cache handled in make install
+	mkdir /var/log/carbon
+	start carbon-cache
+	# rpm/centos
+	# service carbon-cache start
+	# chkconfig carbon-cache on
+	cd $d
+}
+
+case "$1" in
+	configure)
+		graphite_seed
+		graphite
+		carbon
+		calamari
+		restart apache2
+		# rpm/centos
+		# service httpd restart
+		# chkconfig httpd on
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+	*)
+		echo "postinst called with unknown argument $1" >&2
+		exit 1
+		;;
+esac
+
+
+exit 0

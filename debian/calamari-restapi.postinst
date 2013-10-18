@@ -15,9 +15,6 @@ install_cephrestapi_key()
 case "$1" in
 	configure)
 		install_cephrestapi_key
-		# dh_installinit will start cephrestapi service here
-		#DEBHELPER#
-		# unclear why this doesn't actually happen in the dh snippet
 		start cephrestapi
 		# restart does stop/start, so handles first start
 		invoke-rc.d nginx restart
