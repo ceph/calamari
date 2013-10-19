@@ -159,7 +159,7 @@ install-graphite-venv:
 	./graphite/bin/pip install graphite-web \
 	    --install-option="--prefix=$(DESTDIR)/opt/graphite" \
 	    --install-option="--install-lib=$(DESTDIR)/opt/graphite/webapp"; \
-	./graphite/bin/pip install -r $(SRC)/requirements.txt )
+	./graphite/bin/pip install -r $(SRC)/graphite-requirements.txt )
 	# graphite local_settings.py
 	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
 		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
