@@ -1,10 +1,19 @@
 VERSION=0.5.1
 DISTNAMEVER=calamari_$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
+SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
 
+# a crock; depends on target machine, not build machine.
+# there are more deb-vs-RH dependencies to work out besides this.
+WEBUSER:=$(shell egrep 'apache|www-data' /etc/passwd | awk -F: '{print $$1;}')
+APACHEOG=-o $(WEBUSER) -g $(WEBUSER) -m 644
+ROOTOG=-o root -g root -m 644
+
+UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
 UI_SUBDIRS = ui/admin ui/login clients/dashboard
+
 CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 
 CONFFILES = \
@@ -26,10 +35,10 @@ FINDCMD =find . \
         -o -name .tmp -prune \
         -o -name .sass-cache -prune \
         -o -name debian -prune \
-        -o -print0 
+        -o -print0
 
-DISTFILES:=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
-SPACEFILES:=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
+DISTFILES=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
+SPACEFILES=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
 
 # add in just the debian files we want
 DEBFILES = \
@@ -40,6 +49,7 @@ DEBFILES = \
 	calamari-console.docs \
 	calamari-console.install \
 	calamari-console.postinst \
+	calamari-console.prerm \
 	calamari-restapi.install \
 	calamari-restapi.postinst \
 	calamari-restapi.postrm \
@@ -55,6 +65,8 @@ DISTFILES += $(DEBFILES:%=debian/%)
 
 build: build-ui $(CONFIG_JSON) $(CONFFILES)
 
+# yes, the recommended way to silence grunt is > /dev/null
+
 build-ui:
 	@echo "building ui subdirs"
 	for d in $(UI_SUBDIRS); do \
@@ -62,7 +74,6 @@ build-ui:
 		(cd $$d; \
 		npm install --silent; \
 		bower install; \
-		# yes, this is the recommended way to silence grunt \
 		grunt build >/dev/null) \
 	done
 
@@ -77,47 +88,93 @@ $(CONFIG_JSON):
 # this source is just not very amenable to building source packages.
 # the Javascript directories don't really go back to "clean"; it might
 # be possible to change that, but for now, just skip the source build
-dpkg: 
+dpkg:
 	dpkg-buildpackage -b -us -uc
 
-UI_DIRS = ui/admin ui/login clients/dashboard
-UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
-ROOTOG=-o root -g root -m 644
 
-# a crock; depends on target machine, not build machine. 
-# there are more deb-vs-RH dependencies to work out besides this.
-WEBUSER:=$(shell egrep 'apache|www-data' /etc/passwd | awk -F: '{print $$1;}')
-APACHEOG=-o $(WEBUSER) -g $(WEBUSER) -m 644
-
-install: build $(CONFFILES)
+install: build install-conf install-init install-ui install-graphite-venv install-calamari-venv
 	@echo "installing"
-	# Diamond conf files
-	@$(INSTALL) -D $(ROOTOG) conf/diamond/CephCollector.conf $(DESTDIR)/etc/diamond/collectors/CephCollector.conf
-	@$(INSTALL) -D $(ROOTOG) conf/diamond/NetworkCollector.conf $(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
-	# nginx/wsgi for ceph-rest-api
-	@$(INSTALL) -D $(ROOTOG) restapi/cephrestapi.conf $(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
-	@$(INSTALL) -D $(ROOTOG) restapi/cephrestwsgi.py $(DESTDIR)/etc/nginx/cephrestwsgi.py
-	# httpd conf for graphite and calamari vhosts, redhat
-	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/graphite.conf $(DESTDIR)/etc/httpd/conf.d/graphite.conf
-	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/calamari.conf $(DESTDIR)/etc/httpd/conf.d/calamari.conf
-	# httpd conf for graphite and calamari vhosts, debian
-	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/graphite.conf $(DESTDIR)/etc/apache2/sites-available/graphite.conf
-	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/calamari.conf $(DESTDIR)/etc/apache2/sites-available/calamari.conf
-	@$(INSTALL) -d $(ROOTOG) $(DESTDIR)/etc/apache2/sites-enabled
-	@ln -s $(DESTDIR)/etc/apache2/sites-available/calamari.conf $(DESTDIR)/etc/apache2/sites-enabled
-	@ln -s $(DESTDIR)/etc/apache2/sites-available/graphite.conf $(DESTDIR)/etc/apache2/sites-enabled
-	# /etc/init{.d} files
-	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache $(DESTDIR)/etc/init.d/carbon-cache
-	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf $(DESTDIR)/etc/init/kraken.conf
 
-	# UI code
-	for d in $(UI_DIRS); do \
+install-conf: $(CONFFILES)
+	@echo "install-conf"
+	# Diamond conf files$
+	@$(INSTALL) -D $(ROOTOG) conf/diamond/CephCollector.conf \
+		$(DESTDIR)/etc/diamond/collectors/CephCollector.conf
+	@$(INSTALL) -D $(ROOTOG) conf/diamond/NetworkCollector.conf \
+		$(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
+	# nginx/wsgi for ceph-rest-api
+	@$(INSTALL) -D $(ROOTOG) restapi/cephrestapi.conf \
+		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
+	@$(INSTALL) -D $(ROOTOG) restapi/cephrestwsgi.py \
+		$(DESTDIR)/etc/nginx/cephrestwsgi.py
+	# httpd conf for graphite and calamari vhosts, redhat
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/graphite.conf \
+		$(DESTDIR)/etc/httpd/conf.d/graphite.conf
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/calamari.conf \
+		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
+	# httpd conf for graphite and calamari vhosts, debian
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/graphite.conf \
+		$(DESTDIR)/etc/apache2/sites-available/graphite.conf
+	@$(INSTALL) -D $(ROOTOG) conf/httpd/debian/calamari.conf \
+		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
+	@$(INSTALL) -d $(ROOTOG) $(DESTDIR)/etc/apache2/sites-enabled
+	@ln -s ../sites-available/calamari.conf \
+		$(DESTDIR)/etc/apache2/sites-enabled
+	@ln -s ../sites-available/graphite.conf \
+		$(DESTDIR)/etc/apache2/sites-enabled
+
+install-init:
+	@echo "install-init"
+	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache \
+		$(DESTDIR)/etc/init.d/carbon-cache
+	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf \
+		$(DESTDIR)/etc/init/kraken.conf
+
+install-ui:
+	@echo "install-ui"
+	for d in $(UI_SUBDIRS); do \
 		instdir=$$(basename $$d); \
 		$(INSTALL) -d $(UI_BASEDIR)/$$instdir; \
 		cp -rp $$d/dist/* $(UI_BASEDIR)/$$instdir; \
 	done
+
+# build venv for graphite
+
+# graphite-web's requirements are obtained from a static copy of its
+# requirements.txt from github, because obviously expressing those in setup.py
+# or even including them in the stuff installed with setup.py would be just
+# stupid.  Of course this depends on requirements.txt actually matching
+# graphite-web's pip install. arrrrrrgh.
+# XXX maybe at least add some kind of versioning check?...like what?...
+
+install-graphite-venv:
+	@echo "install-graphite-venv"
+	$(INSTALL) -d $(DESTDIR)/opt
+	( cd $(DESTDIR)/opt; \
+	virtualenv graphite; \
+	./graphite/bin/pip install whisper; \
+	./graphite/bin/pip install carbon \
+	    --install-option="--prefix=$(DESTDIR)/opt/graphite" \
+	    --install-option="--install-lib=$(DESTDIR)/opt/graphite/lib"; \
+	./graphite/bin/pip install graphite-web \
+	    --install-option="--prefix=$(DESTDIR)/opt/graphite" \
+	    --install-option="--install-lib=$(DESTDIR)/opt/graphite/webapp"; \
+	./graphite/bin/pip install -r $(SRC)/requirements.txt )
 	# graphite local_settings.py
-	$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py $(DESTDIR)/opt/graphite/webapp/graphite
+	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
+		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
+
+install-calamari-venv:
+	@echo "install-calamari-venv"
+	# copy calamari webapp files into place
+	$(INSTALL) -d $(ROOTOG) $(DESTDIR)/opt/calamari/webapp
+	cp -rp webapp/* $(DESTDIR)/opt/calamari/webapp
+	# build venv for calamari
+	$(INSTALL) -D $(ROOTOG) requirements.txt \
+		$(DESTDIR)/opt/calamari/requirements.txt
+	( cd $(DESTDIR)/opt/calamari; \
+	virtualenv venv; \
+	./venv/bin/pip install -r requirements.txt)
 
 clean:
 	@rm -f \
@@ -136,7 +193,8 @@ clean:
 dist:
 	@echo "making dist tarball in $(TARNAME)"
 	@tar --transform 's;^\./;'$(DISTNAMEVER)'/;' \
-		-czf $(TARNAME) $(DISTFILES) $(SPACEFILES) 
+		-czf $(TARNAME) $(DISTFILES) $(SPACEFILES)
 	@echo "tar file made in $(TARNAME)"
 
-.PHONY: dist clean build build-ui dpkg install 
+.PHONY: dist clean build build-venvs build-ui dpkg install install-conf 
+.PHONY: install-init install-ui install-graphite-venv install-calamari-venv

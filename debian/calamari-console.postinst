@@ -16,7 +16,8 @@ calamari()
 		../../venv/bin/python manage.py shell
 
 	# allow apache access to all
-	chown -R apache:apache .
+	# rpm/centos: www-user?
+	chown -R apache.apache .
 	cd $d
 }
 
@@ -25,15 +26,17 @@ graphite_seed()
 	# prerm
 	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
 	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
-	echo "SECRET_KEY = $$KEY" >/opt/graphite/webapp/graphite/app_settings.py
+	echo "# built by $0" >/opt/graphite/webapp/graphite/app_settings.py
+	echo "SECRET_KEY = \"$KEY\"" >>/opt/graphite/webapp/graphite/app_settings.py
 }
 
 graphite()
 {
 	d=$(pwd)
 	cd /opt/graphite/webapp/graphite
-	python manage.py syncdb --noinput
-	chown -R apache:apache /opt/graphite/storage
+	../../bin/python manage.py syncdb --noinput
+	# rpm/centos: www-user?
+	chown -R apache.apache /opt/graphite/storage
 	cd $d
 }
 
@@ -71,6 +74,7 @@ case "$1" in
 		# rpm/centos
 		# service httpd restart
 		# chkconfig httpd on
+		;;
 
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;
