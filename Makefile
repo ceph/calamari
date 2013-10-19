@@ -107,6 +107,10 @@ install-conf: $(CONFFILES)
 		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
 	@$(INSTALL) -D $(ROOTOG) restapi/cephrestwsgi.py \
 		$(DESTDIR)/etc/nginx/cephrestwsgi.py
+	# wsgi conf for calamari
+	@$(INSTALL) -D $(ROOTOG) conf/calamari.wsgi \
+		$(DESTDIR)/opt/calamari/conf/calamari.wsgi
+	# wsgi conf for graphite constructed in postinst
 	# httpd conf for graphite and calamari vhosts, redhat
 	@$(INSTALL) -D $(ROOTOG) conf/httpd/rh/graphite.conf \
 		$(DESTDIR)/etc/httpd/conf.d/graphite.conf

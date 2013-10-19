@@ -54,7 +54,24 @@ carbon()
 	cp relay-rules.conf.example relay-rules.conf
 	cp aggregation-rules.conf.example aggregation-rules.conf
 
-	cp graphite.wsgi.example graphite.wsgi
+	cat >graphite.wsgi <<EOF
+import os
+import sys
+import site
+
+prev_sys_path = list(sys.path)
+site.addsitedir('/opt/graphite/lib/python2.7/site-packages')
+
+# Reorder sys.path so new directories at the front.
+new_sys_path = []
+for item in list(sys.path):
+    if item not in prev_sys_path:
+        new_sys_path.append(item)
+        sys.path.remove(item)
+sys.path[:0] = new_sys_path
+
+EOF
+	cat graphite.wsgi.example >> graphite.wsgi
 	# init.d/carbon-cache handled in make install
 	[ -d /var/log/carbon ] || mkdir /var/log/carbon
 	/etc/init.d/carbon-cache restart
@@ -64,11 +81,17 @@ carbon()
 	cd $d
 }
 
+kraken()
+{
+	start kraken
+}
+
 case "$1" in
 	configure)
 		graphite_seed
 		graphite
 		carbon
+		kraken
 		calamari
 		[ -x /usr/sbin/a2enmod ] && a2enmod headers
 		service apache2 restart
