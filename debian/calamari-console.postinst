@@ -56,8 +56,8 @@ carbon()
 
 	cp graphite.wsgi.example graphite.wsgi
 	# init.d/carbon-cache handled in make install
-	mkdir /var/log/carbon
-	start carbon-cache
+	[ -d /var/log/carbon ] || mkdir /var/log/carbon
+	/etc/init.d/carbon-cache restart
 	# rpm/centos
 	# service carbon-cache start
 	# chkconfig carbon-cache on
@@ -70,7 +70,8 @@ case "$1" in
 		graphite
 		carbon
 		calamari
-		restart apache2
+		[ -x /usr/sbin/a2enmod ] && a2enmod headers
+		service apache2 restart
 		# rpm/centos
 		# service httpd restart
 		# chkconfig httpd on

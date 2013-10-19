@@ -1,3 +1,5 @@
 opt/calamari
 opt/graphite
 etc/apache2
+etc/init.d
+etc/init
