@@ -16,8 +16,8 @@ calamari()
 		../../venv/bin/python manage.py shell
 
 	# allow apache access to all
-	# rpm/centos: www-user?
-	chown -R apache.apache .
+	# rpm/centos: apache?
+	chown -R www-data.www-data .
 	cd $d
 }
 
@@ -35,8 +35,8 @@ graphite()
 	d=$(pwd)
 	cd /opt/graphite/webapp/graphite
 	../../bin/python manage.py syncdb --noinput
-	# rpm/centos: www-user?
-	chown -R apache.apache /opt/graphite/storage
+	# rpm/centos: apache?
+	chown -R www-data.www-data /opt/graphite/storage
 	cd $d
 }
 
