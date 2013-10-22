@@ -16,7 +16,8 @@ calamari()
 		../../venv/bin/python manage.py shell
 
 	# allow apache access to all
-	chown -R apache:apache .
+	# rpm/centos: apache?
+	chown -R www-data.www-data .
 	cd $d
 }
 
@@ -25,15 +26,17 @@ graphite_seed()
 	# prerm
 	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
 	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
-	echo "SECRET_KEY = $$KEY" >/opt/graphite/webapp/graphite/app_settings.py
+	echo "# built by $0" >/opt/graphite/webapp/graphite/app_settings.py
+	echo "SECRET_KEY = \"$KEY\"" >>/opt/graphite/webapp/graphite/app_settings.py
 }
 
 graphite()
 {
 	d=$(pwd)
 	cd /opt/graphite/webapp/graphite
-	python manage.py syncdb --noinput
-	chown -R apache:apache /opt/graphite/storage
+	../../bin/python manage.py syncdb --noinput
+	# rpm/centos: apache?
+	chown -R www-data.www-data /opt/graphite/storage
 	cd $d
 }
 
@@ -51,14 +54,36 @@ carbon()
 	cp relay-rules.conf.example relay-rules.conf
 	cp aggregation-rules.conf.example aggregation-rules.conf
 
-	cp graphite.wsgi.example graphite.wsgi
+	cat >graphite.wsgi <<EOF
+import os
+import sys
+import site
+
+prev_sys_path = list(sys.path)
+site.addsitedir('/opt/graphite/lib/python2.7/site-packages')
+
+# Reorder sys.path so new directories at the front.
+new_sys_path = []
+for item in list(sys.path):
+    if item not in prev_sys_path:
+        new_sys_path.append(item)
+        sys.path.remove(item)
+sys.path[:0] = new_sys_path
+
+EOF
+	cat graphite.wsgi.example >> graphite.wsgi
 	# init.d/carbon-cache handled in make install
-	mkdir /var/log/carbon
-	start carbon-cache
+	[ -d /var/log/carbon ] || mkdir /var/log/carbon
+	/etc/init.d/carbon-cache restart
 	# rpm/centos
 	# service carbon-cache start
 	# chkconfig carbon-cache on
 	cd $d
+}
+
+kraken()
+{
+	start kraken
 }
 
 case "$1" in
@@ -66,11 +91,14 @@ case "$1" in
 		graphite_seed
 		graphite
 		carbon
+		kraken
 		calamari
-		restart apache2
+		[ -x /usr/sbin/a2enmod ] && a2enmod headers
+		service apache2 restart
 		# rpm/centos
 		# service httpd restart
 		# chkconfig httpd on
+		;;
 
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;
