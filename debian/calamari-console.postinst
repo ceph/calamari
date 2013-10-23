@@ -18,6 +18,10 @@ calamari()
 	# allow apache access to all
 	# rpm/centos: apache?
 	chown -R www-data.www-data .
+	# centos: ???
+	a2dissite 000-default
+	a2ensite calamari.conf
+	a2ensite graphite.conf
 	cd $d
 }
 
@@ -83,7 +87,7 @@ EOF
 
 kraken()
 {
-	start kraken
+	restart kraken
 }
 
 case "$1" in

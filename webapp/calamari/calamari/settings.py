@@ -148,7 +148,7 @@ LOGGING = {
     'handlers': {
         'log_file': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/var/log/calamari.django.log'
+            'filename': '/var/log/apache2/calamari.django.log'
         },
     },
     'loggers': {
