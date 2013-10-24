@@ -152,34 +152,42 @@ install-ui:
 # graphite-web's pip install. arrrrrrgh.
 # XXX maybe at least add some kind of versioning check?...like what?...
 
+# ugh, this just gets uglier.  virtualenv really really does not
+# handle being installed in a different place than it will run.
+# use the *install dirs* on the build machine (note: this means 
+# running make will write to /opt/graphite and /opt/calamari.  Be 
+# prepared for this!)  
+# XXX consider an env var to set to protect against naive builders
+
 install-graphite-venv:
 	@echo "install-graphite-venv"
-	$(INSTALL) -d $(DESTDIR)/opt
-	( cd $(DESTDIR)/opt; \
+	( cd /opt; \
 	virtualenv graphite; \
 	./graphite/bin/pip install whisper; \
-	./graphite/bin/pip install carbon \
-	    --install-option="--prefix=$(DESTDIR)/opt/graphite" \
-	    --install-option="--install-lib=$(DESTDIR)/opt/graphite/lib"; \
-	./graphite/bin/pip install graphite-web \
-	    --install-option="--prefix=$(DESTDIR)/opt/graphite" \
-	    --install-option="--install-lib=$(DESTDIR)/opt/graphite/webapp"; \
-	./graphite/bin/pip install -r $(SRC)/graphite-requirements.txt )
+	./graphite/bin/pip install carbon; \
+	./graphite/bin/pip install graphite-web; \
+	./graphite/bin/pip install -r $(SRC)/graphite-requirements.txt)
 	# graphite local_settings.py
 	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
-		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
+		/opt/graphite/webapp/graphite/local_settings.py
+	# copy it back from /opt/graphite to DESTDIR
+	@$(INSTALL) -d $(ROOTOG) $(DESTDIR)/opt/graphite
+	@cp -rp /opt/graphite $(DESTDIR)/opt
 
 install-calamari-venv:
 	@echo "install-calamari-venv"
 	# copy calamari webapp files into place
-	$(INSTALL) -d $(ROOTOG) $(DESTDIR)/opt/calamari/webapp
-	cp -rp webapp/* $(DESTDIR)/opt/calamari/webapp
+	$(INSTALL) -d $(ROOTOG) /opt/calamari/webapp
+	cp -rp webapp/* /opt/calamari/webapp
 	# build venv for calamari
 	$(INSTALL) -D $(ROOTOG) requirements.txt \
 		$(DESTDIR)/opt/calamari/requirements.txt
-	( cd $(DESTDIR)/opt/calamari; \
+	( cd /opt/calamari; \
 	virtualenv venv; \
-	./venv/bin/pip install -r requirements.txt)
+	./venv/bin/pip install -r $(SRC)/requirements.txt)
+	# copy back to DESTDIR
+	$(INSTALL) -d $(ROOTOG) $(DESTDIR)/opt/calamari/webapp
+	@cp -rp /opt/calamari $(DESTDIR)/opt
 
 clean:
 	@rm -f \
