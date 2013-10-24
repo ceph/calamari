@@ -29,9 +29,12 @@ graphite_seed()
 {
 	# prerm
 	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
+	APP_SETTINGS=/opt/graphite/webapp/graphite/app_settings.py
+	grep -s -q SECRET_KEY $APP_SETTINGS && return
+
 	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
-	echo "# built by $0" >/opt/graphite/webapp/graphite/app_settings.py
-	echo "SECRET_KEY = \"$KEY\"" >>/opt/graphite/webapp/graphite/app_settings.py
+	echo "# key added by $0" >>$APP_SETTINGS
+	echo "SECRET_KEY = \"$KEY\"" >>$APP_SETTINGS
 }
 
 graphite()

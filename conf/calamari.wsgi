@@ -3,7 +3,7 @@ import sys
 import site
 
 prev_sys_path = list(sys.path)
-site.addsitedir('/opt/calamari/venv/lib/python2.6/site-packages')
+site.addsitedir('/opt/calamari/venv/lib/python2.7/site-packages')
 
 # Reorder sys.path so new directories at the front.
 new_sys_path = []
