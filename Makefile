@@ -1,5 +1,6 @@
 VERSION=0.5.1
 DISTNAMEVER=calamari_$(VERSION)
+PKGDIR=calamari-$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
 SRC := $(shell pwd)
 
@@ -37,8 +38,8 @@ FINDCMD =find . \
         -o -name debian -prune \
         -o -print0
 
-DISTFILES=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
-SPACEFILES=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
+#DISTFILES=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
+#SPACEFILES=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
 
 # add in just the debian files we want
 DEBFILES = \
@@ -61,7 +62,7 @@ DEBFILES = \
 	rules \
 	source/format
 
-DISTFILES += $(DEBFILES:%=debian/%)
+#DISTFILES += $(DEBFILES:%=debian/%)
 
 build: build-ui $(CONFIG_JSON) $(CONFFILES)
 
@@ -196,8 +197,10 @@ clean:
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
-	@tar --transform 's;^\./;'$(DISTNAMEVER)'/;' \
-		-czf $(TARNAME) $(DISTFILES) $(SPACEFILES)
+	@rm -rf $(PKGDIR)
+	@$(FINDCMD) | cpio --null -p -d $(PKGDIR)
+	@tar -zcf $(TARNAME) $(PKGDIR)
+	@rm -rf $(PKGDIR)
 	@echo "tar file made in $(TARNAME)"
 
 .PHONY: dist clean build build-venvs build-ui dpkg install install-conf 
