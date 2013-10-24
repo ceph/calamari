@@ -28,6 +28,9 @@ urlpatterns = patterns('',
     url(r'^admin/(?P<path>.*)$', 'calamari.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_DOC_ROOT}),
 
+    url(r'^login/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/login/' % STATIC_DOC_ROOT, 'path': "index.html"}),
+
     url(r'^dashboard/(?P<path>.*)$', 'calamari.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_DOC_ROOT},
         name='dashboard'),
