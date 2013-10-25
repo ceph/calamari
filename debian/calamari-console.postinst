@@ -22,6 +22,7 @@ calamari()
 	a2dissite 000-default
 	a2ensite calamari.conf
 	a2ensite graphite.conf
+	a2enmod proxy
 	cd $d
 }
 
