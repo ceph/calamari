@@ -10,10 +10,11 @@ calamari()
 	../../venv/bin/python manage.py syncdb --noinput
 
 	# set up calamari admin user
-	echo "from django.contrib.auth.models import User; \
-		User.objects.create_superuser(\
-		'admin', 'calamari@inktank.com', 'admin')" | \
-		../../venv/bin/python manage.py shell
+	cat <<- EOF | ../../venv/bin/python manage.py shell
+	from django.contrib.auth.models import User;
+	if User.objects.get(username__exact='admin') is None:
+	  User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')
+EOF
 
 	# allow apache access to all
 	# rpm/centos: apache?
@@ -31,6 +32,7 @@ graphite_seed()
 	# prerm
 	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
 	APP_SETTINGS=/opt/graphite/webapp/graphite/app_settings.py
+	# avoid if already there
 	grep -s -q SECRET_KEY $APP_SETTINGS && return
 
 	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
@@ -53,8 +55,9 @@ carbon()
 {
 	d=$(pwd)
 	cd /opt/graphite/conf
-	sed -e 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' \
-		<carbon.conf.example >carbon.conf
+	if ! grep -q -s 'MAX_CREATES_PER_MINUTE = 10000' carbon.conf; then
+		sed 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' <carbon.conf.example >carbon.conf
+	fi
 
 	# XXX are these necessary?
 	cp storage-schemas.conf.example storage-schemas.conf
