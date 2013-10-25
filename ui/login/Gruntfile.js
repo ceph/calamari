@@ -364,7 +364,6 @@ module.exports = function (grunt) {
     grunt.registerTask('build', [
         'clean:dist',
         'symlink',
-        'saveRevision',
         'useminPrepare',
         'concurrent:dist',
         'requirejs',
@@ -377,6 +376,7 @@ module.exports = function (grunt) {
     ]);
 
     grunt.registerTask('default', [
+        'saveRevision',
         'jshint',
         'test',
         'build'
@@ -385,7 +385,9 @@ module.exports = function (grunt) {
     grunt.registerTask('saveRevision', function() {
         grunt.event.once('git-describe', function(rev) {
             grunt.log.writeln('Git Revision: ' + rev);
-            grunt.file.write('app/scripts/git.js', '/*global define */ define([], function() { \'use strict\'; return { \'git-commit\': \'' + rev + '\' }; });');
+            /* jshint -W024 */
+            grunt.file.delete('app/scripts/git.js');
+            grunt.file.write('app/scripts/git.js', '/*global define */\n\'use strict\';\ndefine([], function() { return { \'git-commit\': \'' + rev + '\' }; });');
         });
         grunt.task.run('git-describe');
     });
