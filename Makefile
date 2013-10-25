@@ -65,8 +65,6 @@ DISTFILES += $(DEBFILES:%=debian/%)
 
 build: build-ui $(CONFIG_JSON) $(CONFFILES)
 
-# yes, the recommended way to silence grunt is > /dev/null
-
 build-ui:
 	@echo "building ui subdirs"
 	for d in $(UI_SUBDIRS); do \
@@ -74,7 +72,7 @@ build-ui:
 		(cd $$d; \
 		npm install --silent; \
 		bower install; \
-		grunt build >/dev/null) \
+		grunt build) \
 	done
 
 # for right now, this contains one useful thing that should be set
