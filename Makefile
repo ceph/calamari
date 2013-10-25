@@ -76,6 +76,7 @@ build-ui:
 		(cd $$d; \
 		npm install --silent; \
 		bower install; \
+		grunt saveRevision; \
 		grunt build) \
 	done
 
