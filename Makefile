@@ -10,7 +10,8 @@ INSTALL=/usr/bin/install
 # there are more deb-vs-RH dependencies to work out besides this.
 WEBUSER:=$(shell egrep 'apache|www-data' /etc/passwd | awk -F: '{print $$1;}')
 APACHEOG=-o $(WEBUSER) -g $(WEBUSER) -m 644
-ROOTOG=-o root -g root -m 644
+#ROOTOG=-o root -g root -m 644
+ROOTOG=-m 644
 
 UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
 UI_SUBDIRS = ui/admin ui/login clients/dashboard
@@ -75,7 +76,7 @@ build-ui:
 		(cd $$d; \
 		npm install --silent; \
 		bower install; \
-		grunt build >/dev/null) \
+		grunt build) \
 	done
 
 # for right now, this contains one useful thing that should be set

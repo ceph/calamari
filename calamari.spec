@@ -11,8 +11,8 @@
 # common
 #################################################################################
 Name:		calamari
-Version: 	0.1
-Release: 	0
+Version: 	0.5.1
+Release: 	0%{?dist}
 Summary: 	Ceph monitoring tool
 License: 	Inktank
 Group:   	System/Filesystems
@@ -23,25 +23,27 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Meta package for calamari-agent and calamari-restapi packages.
 
 %prep
-%setup -q -n %{name}_%{version}
+%setup -q -n %{name}-%{version}
 
 %build
 #python setup.py build
 
 %install
-# calamari agent
-echo "installing calamari-agent"
-install -m 0755 -D conf/diamond/CephCollector.conf \
-                   $RPM_BUILD_ROOT/%{_sysconfdir}/diamond/collectors/CephCollector.conf
-install -m 0755 -D conf/diamond/NetworkCollector.conf \
-                   $RPM_BUILD_ROOT/%{_sysconfdir}/diamond/collectors/NetworkCollector.conf
+make DESTDIR=${RPM_BUILD_ROOT} install
 
-# calamari restapi
-echo "installing calamari-restapi"
-install -m 0755 -D restapi/cephrestapi.conf \
-                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/conf.d/cephrestapi.conf
-install -m 0755 -D restapi/cephrestwsgi.py \
-                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/cephrestwsgi.py
+# calamari agent
+#echo "installing calamari-agent"
+#install -m 0755 -D conf/diamond/CephCollector.conf \
+#                   $RPM_BUILD_ROOT/%{_sysconfdir}/diamond/collectors/CephCollector.conf
+#install -m 0755 -D conf/diamond/NetworkCollector.conf \
+#                   $RPM_BUILD_ROOT/%{_sysconfdir}/diamond/collectors/NetworkCollector.conf
+#
+## calamari restapi
+#echo "installing calamari-restapi"
+#install -m 0755 -D restapi/cephrestapi.conf \
+#                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/conf.d/cephrestapi.conf
+#install -m 0755 -D restapi/cephrestwsgi.py \
+#                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/cephrestwsgi.py
 
 %clean
 ## [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf "$RPM_BUILD_ROOT"
