@@ -11,9 +11,11 @@ calamari()
 
 	# set up calamari admin user
 	cat <<- EOF | ../../venv/bin/python manage.py shell
-	from django.contrib.auth.models import User;
-	if User.objects.get(username__exact='admin') is None:
-	  User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')
+	from django.contrib.auth.models import User
+	try:
+	   User.objects.get(username__exact='admin')
+	except User.DoesNotExist:
+	   User.objects.create_superuser('admin', 'calamari@inktank.com', 'admin')
 EOF
 
 	# allow apache access to all
