@@ -99,6 +99,7 @@ TEMPLATE_LOADERS = (
 )
 
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
+SESSION_COOKIE_NAME = "calamari_sessionid"
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
