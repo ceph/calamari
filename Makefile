@@ -75,13 +75,13 @@ build-ui:
 		grunt build) \
 	done
 
-# for right now, this contains one useful thing that should be set
+# for right now, this contains two useful things that should be set
 # when running against a live cluster.  We could preinstall it in the
 # package or do it in a postinstall; it has more visibility here
 
 $(CONFIG_JSON):
-	# XXX ownership?
-	echo '{"offline": false}' > $(CONFIG_JSON)
+	echo '{ "offline": False, "graphite-host": "/graphite" }' \
+		> $(CONFIG_JSON)
 
 # this source is just not very amenable to building source packages.
 # the Javascript directories don't really go back to "clean"; it might
