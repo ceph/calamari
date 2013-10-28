@@ -99,6 +99,7 @@ TEMPLATE_LOADERS = (
 )
 
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
+SESSION_COOKIE_NAME = "calamari_sessionid"
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
@@ -148,7 +149,7 @@ LOGGING = {
     'handlers': {
         'log_file': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/opt/calamari/log/django.log'
+            'filename': '/var/log/apache2/calamari.django.log'
         },
     },
     'loggers': {

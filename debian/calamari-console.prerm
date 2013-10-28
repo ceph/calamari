@@ -1,0 +1,18 @@
+#!/bin/bash -e
+
+case "$1" in
+	remove)
+		rm /opt/graphite/webapp/graphite/app_settings.py
+		;;
+	upgrade|deconfigure)
+		:
+		;;
+	*)
+		echo "prerm called with unknown argument $1" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -4,6 +4,7 @@ Priority: extra
 Homepage: http://www.inktank.com/
 Maintainer: Dan Mick <dan.mick@inktank.com>
 Standards-Version: 3.9.2
+Build-Depends: libcairo2-dev, python-pip
 
 Package: calamari-agent
 Architecture: all
@@ -24,3 +25,10 @@ Description: Inktank package to configure ceph-rest-api under nginx
  support Inktank Ceph Enterprise Manager.  Install this package on one
  of your monitor machines.
 
+Package: calamari-console
+Architecture: all
+Depends: apache2, libapache2-mod-wsgi, libcairo2
+Description: Inktank package containing the Calamari management console
+ Calamari is a webapp to monitor and control a Ceph cluster via a web
+ browser.  It depends on having calamari-agent and calamari-restapi deployed
+ on the cluster.
