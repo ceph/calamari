@@ -254,7 +254,6 @@ module.exports = function (grunt) {
             '*.{ico,png,txt}',
             '.htaccess',
             'bower_components/angular/*',
-            'bower_components/underscore/*',
             'images/{,*/}*.{gif,webp,svg}',
             'styles/fonts/*',
             'font/*'
@@ -373,7 +372,7 @@ module.exports = function (grunt) {
   grunt.registerTask('saveRevision', function() {
     grunt.event.once('git-describe', function(rev) {
       grunt.log.writeln('Git Revision: ' + rev);
-      grunt.file.write('app/scripts/git.js', 'angular.module(\'adminApp\').run(function() { window.inktank = { commit: \'' + rev + '\'}; });');
+      grunt.file.write('app/scripts/git.js', '/* jshint -W015 */\nangular.module(\'adminApp\').run(function() { \'use strict\';\nwindow.inktank = { commit: \'' + rev + '\'}; });');
     });
     grunt.task.run('git-describe');
   });
