@@ -1,3 +1,9 @@
+calamari (1.0.0-1) precise; urgency=low
+
+  * New upstream release 
+
+ -- Gary Lowell <glowell@pudgy.ops.newdream.net>  Wed, 30 Oct 2013 21:30:21 -0700
+
 calamari (0.5.1) experimental; urgency=low
 
   * Beta refresh 1.

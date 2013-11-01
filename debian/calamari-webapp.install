@@ -1,0 +1,7 @@
+opt/calamari
+opt/graphite
+etc/init.d
+etc/init
+etc/apache2
+var/log/graphite
+var/log/calamari

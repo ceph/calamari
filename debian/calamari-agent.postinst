@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 setup_diamond()
 {

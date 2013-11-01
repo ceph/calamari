@@ -16,25 +16,18 @@ DESC="Ceph REST API"
 THREADS=
 
 SOCKNAME=/tmp/cephrestapi.sock
-PIDFILE=/var/run/cephresatpi.uwsgi.pid
+PIDFILE=/var/run/cephrestapi.uwsgi.pid
+LOGFILE=/var/log/ceph/uwsgi.log
 
 start() {
-	uwsgi -s $SOCKNAME -C777 \
-		--wsgi-file /etc/nginx/cephrestwsgi.py --callable app
+	uwsgi --plugin python -s $SOCKNAME --chmod-socket=777 \
+		--wsgi-file /etc/nginx/cephrestwsgi.py --callable app &
 	echo $? > $PIDFILE
 }
 
 stop() {
 	if [ -f $PIDFILE ] ; then
-		kill $(<$PIDFILE)
-	else
-		pid=$(ps -ef | grep uwsgi.*cephrestwsgi | awk '${print $2}')
-		if [ -n "$pid" ] ; then
-			kill $pid
-		else
-			echo "Can't find cephrestwsgi instance to kill" >&2
-			exit 1
-		fi
+		uwsgi --stop $PIDFILE
 	fi
 }
 

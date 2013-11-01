@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 KEYRING=/etc/ceph/ceph.client.restapi.keyring
 
@@ -8,16 +8,17 @@ install_cephrestapi_key()
 		# update the cluster and the keyring file
 		ceph auth get-or-create client.restapi \
 			mds allow mon 'allow *' osd 'allow *' > $KEYRING
+		if [ $? -ne 0 ] ; then
+			echo "ceph cluster is not configured"
+			rm -f $KEYRING
+			exit 1
+		fi
 	fi
 }
-
 
 case "$1" in
 	configure)
 		install_cephrestapi_key
-		# dh_installinit will start cephrestapi service here
-		#DEBHELPER#
-		# unclear why this doesn't actually happen in the dh snippet
 		start cephrestapi
 		# restart does stop/start, so handles first start
 		invoke-rc.d nginx restart

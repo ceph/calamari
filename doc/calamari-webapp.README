@@ -1,0 +1,25 @@
+Don't forget to disable any iptables firewalling that would
+prevent Calamari host communication.  The below is 
+provided for convenient reference; you should read your system
+documentation and establish an appropriate level of security as
+your site requires.  
+
+Requirements that may need to be addressed:
+
+Calamari cluster hosts must be able to contact the Calamari console
+management host on TCP port 2003 to send statistics from Diamond
+to Graphite/Whisper.  By default it does this by connecting to 
+name "calamari", which must be resolvable.
+
+The apache processes must be able to write to /opt/calamari/log
+
+
+Completely disable iptables:
+
+SysVInit:
+/etc/init.d/iptables stop
+chkconfig iptables off
+
+Upstart:
+stop iptables
+echo "manual" > /etc/init/iptables.override

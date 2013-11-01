@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 KEYRING=/etc/ceph/ceph.client.restapi.keyring
 

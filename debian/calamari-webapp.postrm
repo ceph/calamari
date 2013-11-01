@@ -2,7 +2,11 @@
 
 case "$1" in
 	remove|purge|upgrade|disappear|failed-upgrade|abort-install|abort-upgrade)
-		invoke-rc.d nginx restart
+		# clean up .pyc, whisper db entries, and other detritus
+		rm -rf /opt/graphite	
+		rm -rf /opt/calamari
+		rm -rf /var/log/graphite
+		rm -rf /var/log/calamari
 		;;
 	*)
 		echo "postrm called with unknown argument $1" >&2

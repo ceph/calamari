@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 unconfigure_diamond()
 {
