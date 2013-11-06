@@ -1,4 +1,6 @@
 .vagrant
+webapp/content/
+*.log
 *.pyc
 env
 venv
