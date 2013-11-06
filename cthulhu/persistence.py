@@ -1,6 +1,5 @@
 from collections import defaultdict
 import datetime
-from itertools import imap
 from django.conf import settings
 import os
 import sys
@@ -98,7 +97,7 @@ def populate_osds_and_pgs(osd_map, osd_tree, pgs):
             osds_by_pg_state[state] |= acting
             for osd_id in acting:
                 pg_states_by_osd[osd_id][state] += 1
-                if pools_by_id.has_key(pool_id):
+                if pool_id in pools_by_id:
                     pools_by_osd[osd_id] |= set([pools_by_id[pool_id]])
 
     # convert set() to list to make JSON happy

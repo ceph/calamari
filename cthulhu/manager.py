@@ -209,7 +209,8 @@ class RpcInterface(object):
 
     def osd_modify(self, fs_id, osd_id, attributes):
         cluster = self._fs_resolve(fs_id)
-        osd = self._osd_resolve(fs_id, osd_id)
+        # Run a resolve to throw exception if it's unknown
+        self._osd_resolve(fs_id, osd_id)
         if not 'id' in attributes:
             attributes['id'] = osd_id
 
@@ -587,7 +588,7 @@ class ClusterMonitor(threading.Thread):
                     )
 
             if sync_type in [OsdMap, PgBrief, OsdTree]:
-                if self._sync_objects.get_version(OsdMap) and self._sync_objects.get_version(OsdTree) and self._sync_objects.get_version(PgBrief):
+                if None not in map(lambda t: self._sync_objects.get_version(t), [OsdMap, OsdTree, PgBrief]):
                     persistence.populate_osds_and_pgs(
                         self._sync_objects.get(OsdMap).data,
                         self._sync_objects.get(OsdTree).data,
@@ -644,7 +645,6 @@ class ClusterMonitor(threading.Thread):
                 else:
                     commands.append(('osd in', {'ids': [p['id'].__str__()]}))
 
-
         # TODO: provide some per-object-type ability to emit human readable descriptions
         # of what we are doing.
 
@@ -668,12 +668,6 @@ class ClusterMonitor(threading.Thread):
 
 
 if __name__ == '__main__':
-    try:
-        import persistence
-    except:
-        log.error("Failed to set up database: %s", traceback.format_exc())
-        raise
-
     m = Manager()
     m.start()
 
