@@ -8,7 +8,7 @@ DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-# ('Your Name', 'your_email@example.com'),
+    # ('Your Name', 'your_email@example.com'),
 )
 
 MANAGERS = ADMINS
@@ -125,9 +125,9 @@ ROOT_URLCONF = 'calamari.urls'
 WSGI_APPLICATION = 'calamari.wsgi.application'
 
 TEMPLATE_DIRS = (
-# Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-# Always use forward slashes, even on Windows.
-# Don't forget to use absolute paths, not relative paths.
+    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
+    # Always use forward slashes, even on Windows.
+    # Don't forget to use absolute paths, not relative paths.
 )
 
 INSTALLED_APPS = (
@@ -182,7 +182,7 @@ REST_FRAMEWORK = {
     # Use hyperlinked styles by default.
     # Only used if the `serializer_class` attribute is not set on a view.
     'DEFAULT_MODEL_SERIALIZER_CLASS':
-        'rest_framework.serializers.HyperlinkedModelSerializer',
+    'rest_framework.serializers.HyperlinkedModelSerializer',
 
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
@@ -192,61 +192,12 @@ REST_FRAMEWORK = {
 }
 
 # >>> These settings belong to the graphite app
-LOG_DIR = ''
-#
-## Cluster settings
-#CLUSTER_SERVERS = []
-#REMOTE_FIND_TIMEOUT = 3.0
-#REMOTE_FETCH_TIMEOUT = 6.0
-#REMOTE_RETRY_DELAY = 60.0
-#REMOTE_READER_CACHE_SIZE_LIMIT = 1000
-#CARBONLINK_HOSTS = ["127.0.0.1:7002"]
-#CARBONLINK_TIMEOUT = 1.0
-#CARBONLINK_HASHING_KEYFUNC = None
-#CARBONLINK_RETRY_DELAY = 15
-#REPLICATION_FACTOR = 1
-#MEMCACHE_HOSTS = []
-#FIND_CACHE_DURATION = 300
-#FIND_TOLERANCE = 2 * FIND_CACHE_DURATION
-#DEFAULT_CACHE_DURATION = 60  # metric data and graphs are cached for one minute by default
-#LOG_CACHE_PERFORMANCE = False
-#
-##Remote rendering settings
-#REMOTE_RENDERING = False  # if True, rendering is delegated to RENDERING_HOSTS
-#RENDERING_HOSTS = []
-#REMOTE_RENDER_CONNECT_TIMEOUT = 1.0
-#LOG_RENDERING_PERFORMANCE = False
-#
-## Remote store settings
-#REMOTE_STORE_FETCH_TIMEOUT = 6
-#REMOTE_STORE_FIND_TIMEOUT = 2.5
-#REMOTE_STORE_RETRY_DELAY = 60
-#REMOTE_FIND_CACHE_DURATION = 300
-#
-##Miscellaneous settings
-#SMTP_SERVER = "localhost"
-#DOCUMENTATION_URL = "http://graphite.readthedocs.org/"
-#ALLOW_ANONYMOUS_CLI = True
-#LOG_METRIC_ACCESS = False
-#LEGEND_MAX_ITEMS = 10
-#RRD_CF = 'AVERAGE'
-#
-##Authentication settings
-#USE_LDAP_AUTH = False
-#LDAP_SERVER = ""  # "ldapserver.mydomain.com"
-#LDAP_PORT = 389
-#LDAP_USE_TLS = False
-#LDAP_SEARCH_BASE = ""  # "OU=users,DC=mydomain,DC=com"
-#LDAP_BASE_USER = ""  # "CN=some_readonly_account,DC=mydomain,DC=com"
-#LDAP_BASE_PASS = ""  # "my_password"
-#LDAP_USER_QUERY = ""  # "(username=%s)"  For Active Directory use "(sAMAccountName=%s)"
-#LDAP_URI = None
 
 # Filesystem layout
-WEB_DIR = dirname( abspath(__file__) )
+WEB_DIR = dirname(abspath(__file__))
 WEBAPP_DIR = dirname(WEB_DIR)
 GRAPHITE_ROOT = dirname(WEBAPP_DIR)
-THIRDPARTY_DIR = join(WEB_DIR,'thirdparty')
+THIRDPARTY_DIR = join(WEB_DIR, 'thirdparty')
 # Initialize additional path variables
 # Defaults for these are set after local_settings is imported
 CONTENT_DIR = ''
@@ -254,7 +205,6 @@ CSS_DIR = ''
 CONF_DIR = ''
 DASHBOARD_CONF = ''
 GRAPHTEMPLATES_CONF = ''
-STORAGE_DIR = ''
 WHITELIST_FILE = ''
 INDEX_FILE = ''
 LOG_DIR = ''
@@ -270,7 +220,7 @@ sys.path.append(THIRDPARTY_DIR)
 
 # Memcache settings
 MEMCACHE_HOSTS = []
-DEFAULT_CACHE_DURATION = 60 #metric data and graphs are cached for one minute by default
+DEFAULT_CACHE_DURATION = 60  # metric data and graphs are cached for one minute by default
 LOG_CACHE_PERFORMANCE = False
 
 # Remote store settings
@@ -280,7 +230,7 @@ REMOTE_STORE_RETRY_DELAY = 60
 REMOTE_FIND_CACHE_DURATION = 300
 
 #Remote rendering settings
-REMOTE_RENDERING = False #if True, rendering is delegated to RENDERING_HOSTS
+REMOTE_RENDERING = False  # if True, rendering is delegated to RENDERING_HOSTS
 RENDERING_HOSTS = []
 REMOTE_RENDER_CONNECT_TIMEOUT = 1.0
 LOG_RENDERING_PERFORMANCE = False
@@ -296,43 +246,46 @@ LEGEND_MAX_ITEMS = 10
 
 #Authentication settings
 USE_LDAP_AUTH = False
-LDAP_SERVER = "" # "ldapserver.mydomain.com"
+LDAP_SERVER = ""  # "ldapserver.mydomain.com"
 LDAP_PORT = 389
-LDAP_SEARCH_BASE = "" # "OU=users,DC=mydomain,DC=com"
-LDAP_BASE_USER = "" # "CN=some_readonly_account,DC=mydomain,DC=com"
-LDAP_BASE_PASS = "" # "my_password"
-LDAP_USER_QUERY = "" # "(username=%s)"  For Active Directory use "(sAMAccountName=%s)"
+LDAP_SEARCH_BASE = ""  # "OU=users,DC=mydomain,DC=com"
+LDAP_BASE_USER = ""  # "CN=some_readonly_account,DC=mydomain,DC=com"
+LDAP_BASE_PASS = ""  # "my_password"
+LDAP_USER_QUERY = ""  # "(username=%s)"  For Active Directory use "(sAMAccountName=%s)"
 LDAP_URI = None
 # <<<
 
-STORAGE_DIR = os.path.join(os.environ['VIRTUAL_ENV'], 'storage')
+if DEBUG:
+    STORAGE_DIR = os.path.join(os.environ['VIRTUAL_ENV'], 'storage')
+else:
+    STORAGE_DIR = ''
 
 
 ## Set config dependent on flags set in local_settings
 # Path configuration
 if not CONTENT_DIR:
-  CONTENT_DIR = join(WEBAPP_DIR, 'content')
+    CONTENT_DIR = join(WEBAPP_DIR, 'content')
 if not CSS_DIR:
-  CSS_DIR = join(CONTENT_DIR, 'css')
+    CSS_DIR = join(CONTENT_DIR, 'css')
 
 if not CONF_DIR:
-  CONF_DIR = os.environ.get('GRAPHITE_CONF_DIR', join(GRAPHITE_ROOT, 'conf'))
+    CONF_DIR = os.environ.get('GRAPHITE_CONF_DIR', join(GRAPHITE_ROOT, 'conf'))
 if not DASHBOARD_CONF:
-  DASHBOARD_CONF = join(CONF_DIR, 'dashboard.conf')
+    DASHBOARD_CONF = join(CONF_DIR, 'dashboard.conf')
 if not GRAPHTEMPLATES_CONF:
-  GRAPHTEMPLATES_CONF = join(CONF_DIR, 'graphTemplates.conf')
+    GRAPHTEMPLATES_CONF = join(CONF_DIR, 'graphTemplates.conf')
 
 if not STORAGE_DIR:
-  STORAGE_DIR = os.environ.get('GRAPHITE_STORAGE_DIR', join(GRAPHITE_ROOT, 'storage'))
+    STORAGE_DIR = os.environ.get('GRAPHITE_STORAGE_DIR', join(GRAPHITE_ROOT, 'storage'))
 if not WHITELIST_FILE:
-  WHITELIST_FILE = join(STORAGE_DIR, 'lists', 'whitelist')
+    WHITELIST_FILE = join(STORAGE_DIR, 'lists', 'whitelist')
 if not INDEX_FILE:
-  INDEX_FILE = join(STORAGE_DIR, 'index')
+    INDEX_FILE = join(STORAGE_DIR, 'index')
 if not LOG_DIR:
-  LOG_DIR = join(STORAGE_DIR, 'log', 'webapp')
+    LOG_DIR = join(STORAGE_DIR, 'log', 'webapp')
 if not WHISPER_DIR:
-  WHISPER_DIR = join(STORAGE_DIR, 'whisper/')
+    WHISPER_DIR = join(STORAGE_DIR, 'whisper/')
 if not RRD_DIR:
-  RRD_DIR = join(STORAGE_DIR, 'rrd/')
+    RRD_DIR = join(STORAGE_DIR, 'rrd/')
 if not DATA_DIRS:
     DATA_DIRS = [WHISPER_DIR]
