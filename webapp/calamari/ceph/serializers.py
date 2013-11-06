@@ -1,28 +1,28 @@
-import sys
-import time
-import requests
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from ceph.models import Cluster
 from ceph.management.commands.ceph_refresh import CephRestClient
 
+
 class ClusterSerializer(serializers.ModelSerializer):
     cluster_update_time_unix = serializers.SerializerMethodField(
-        'get_cluster_update_time_unix');
+        'get_cluster_update_time_unix')
     cluster_update_attempt_time_unix = serializers.SerializerMethodField(
-        'get_cluster_update_attempt_time_unix');
+        'get_cluster_update_attempt_time_unix')
+
     class Meta:
         model = Cluster
         fields = ('id', 'name', 'api_base_url',
-            'cluster_update_time', 'cluster_update_time_unix',
-            'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
-            'cluster_update_error_msg', 'cluster_update_error_isclient')
+                  'cluster_update_time', 'cluster_update_time_unix',
+                  'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
+                  'cluster_update_error_msg', 'cluster_update_error_isclient')
 
         # only kraken updates this stuff. we don't want to expose it through
         # the rest API, so these read-only fields won't be altered.
         read_only_fields = ('cluster_update_time',
-            'cluster_update_attempt_time', 'cluster_update_error_msg',
-            'cluster_update_error_isclient')
+                            'cluster_update_attempt_time', 'cluster_update_error_msg',
+                            'cluster_update_error_isclient')
 
     def get_cluster_update_time_unix(self, obj):
         return obj.cluster_update_time_unix
@@ -34,10 +34,11 @@ class ClusterSerializer(serializers.ModelSerializer):
         try:
             # Will use the CephRestClient default connection timeout
             client = CephRestClient(attrs[source])
-            data = client.get_health()
+            client.get_health()
         except Exception:
             raise serializers.ValidationError("Could not contact the API URL provided.")
         return attrs
+
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -63,6 +64,7 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(attrs['password'])
         return user
 
+
 class ClusterSpaceSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
     cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
@@ -75,7 +77,7 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'space',
-            'added', 'added_ms', 'report')
+                  'added', 'added_ms', 'report')
 
     def get_cluster(self, obj):
         return obj.id
@@ -93,6 +95,7 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
     def get_added(self, obj):
         return obj.cluster_update_time
 
+
 class ClusterHealthSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
     cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
@@ -105,7 +108,7 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'report',
-            'added', 'added_ms')
+                  'added', 'added_ms')
 
     def get_cluster(self, obj):
         return obj.id
@@ -118,6 +121,7 @@ class ClusterHealthSerializer(serializers.ModelSerializer):
 
     def get_added(self, obj):
         return obj.cluster_update_time
+
 
 class ClusterHealthCountersSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
@@ -136,7 +140,7 @@ class ClusterHealthCountersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix',
-            'added', 'added_ms', 'pg', 'mds', 'pool', 'mon', 'osd')
+                  'added', 'added_ms', 'pg', 'mds', 'pool', 'mon', 'osd')
 
     def get_cluster(self, obj):
         return obj.id
@@ -166,6 +170,7 @@ class ClusterHealthCountersSerializer(serializers.ModelSerializer):
     def get_osd(self, obj):
         return obj.counters['osd']
 
+
 class OSDListSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
     cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
@@ -180,7 +185,7 @@ class OSDListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'osds',
-            'added', 'added_ms', 'epoch', 'pg_state_counts')
+                  'added', 'added_ms', 'epoch', 'pg_state_counts')
 
     def get_cluster(self, obj):
         return obj.id
@@ -203,6 +208,7 @@ class OSDListSerializer(serializers.ModelSerializer):
     def get_pg_state_counts(self, obj):
         return dict((s, len(v)) for s, v in obj.osds_by_pg_state.iteritems())
 
+
 class OSDDetailSerializer(serializers.ModelSerializer):
     cluster = serializers.SerializerMethodField('get_cluster')
     cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
@@ -219,7 +225,7 @@ class OSDDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'osd',
-            'added', 'added_ms')
+                  'added', 'added_ms')
 
     def get_cluster(self, obj):
         return obj.id

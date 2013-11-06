@@ -30,7 +30,7 @@ class Cluster(models.Model):
 
     #
     # Cluster state ready to be served up by the Calamari API.
-    # 
+    #
     # These fields are populated by Kraken by performing any conversions from
     # the raw form, and as a side effect, validate the input.  Note that we
     # could store the raw data, but we'd rather throw an error at the Kraken

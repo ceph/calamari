@@ -1,20 +1,18 @@
-import json
-from itertools import imap
-from collections import defaultdict
-from django.contrib.auth.models import User
-from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import ObjectDoesNotExist
-from ceph.models import Cluster
-from ceph.serializers import *
-from rest_framework import viewsets, generics
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, link
+from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import permission_classes
 from rest_framework import status
 from django.views.decorators.cache import never_cache
+from ceph.models import Cluster
+from django.contrib.auth.models import User
+
+from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer,\
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer
+
 
 class Space(APIView):
     model = Cluster
@@ -25,6 +23,7 @@ class Space(APIView):
             return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterSpaceSerializer(cluster).data)
 
+
 class Health(APIView):
     model = Cluster
 
@@ -34,6 +33,7 @@ class Health(APIView):
             return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterHealthSerializer(cluster).data)
 
+
 class HealthCounters(APIView):
     model = Cluster
 
@@ -42,6 +42,7 @@ class HealthCounters(APIView):
         if not cluster.counters:
             return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterHealthCountersSerializer(cluster).data)
+
 
 class OSDList(APIView):
     model = Cluster
@@ -76,6 +77,7 @@ class OSDList(APIView):
             self._filter_by_pg_state(cluster, pg_states)
         return Response(OSDListSerializer(cluster).data)
 
+
 class OSDDetail(APIView):
     model = Cluster
 
@@ -85,22 +87,25 @@ class OSDDetail(APIView):
             return Response({}, status.HTTP_202_ACCEPTED)
         return Response(OSDDetailSerializer(cluster, osd_id).data)
 
+
 class ClusterViewSet(viewsets.ModelViewSet):
     queryset = Cluster.objects.all()
     serializer_class = ClusterSerializer
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-#
-# Return information about the current user. If the user is not authenticated
-# (i.e. an anonymous user), then 401 is returned with an error message.
-#
+
 @api_view(['GET'])
 @permission_classes((AllowAny,))
 @never_cache
 def user_me(request):
+    """
+    Return information about the current user. If the user is not authenticated
+    (i.e. an anonymous user), then 401 is returned with an error message.
+    """
     if request.method != 'GET':
         return
     if request.user.is_authenticated():
