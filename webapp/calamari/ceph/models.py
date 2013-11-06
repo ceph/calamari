@@ -2,11 +2,16 @@ from django.utils import dateformat
 from django.db import models
 import jsonfield
 
+
 class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
     """
     name = models.CharField(max_length=256, unique=True)
+
+    # FIXME put in proper max-length for a fsid
+    #fsid = models.CharField(max_length=256, unique=True)
+
     api_base_url = models.CharField(max_length=200)
 
     # last time kraken ran
@@ -53,11 +58,11 @@ class Cluster(models.Model):
         return int(dateformat.format(t, 'U')) * 1000
 
     def _get_cluster_update_time_ms(self):
-        "Convert `cluster_update_time` into Unix time."
+        """Convert `cluster_update_time` into Unix time."""
         return self._convert_to_unix_ms(self.cluster_update_time)
 
     def _get_cluster_update_attempt_time_ms(self):
-        "Convert `cluster_update_attempt_time` into Unix time."
+        """Convert `cluster_update_attempt_time` into Unix time."""
         return self._convert_to_unix_ms(self.cluster_update_time)
 
     cluster_update_time_unix = property(_get_cluster_update_time_ms)

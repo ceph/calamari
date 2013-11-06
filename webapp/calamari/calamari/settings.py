@@ -304,4 +304,34 @@ LDAP_USER_QUERY = "" # "(username=%s)"  For Active Directory use "(sAMAccountNam
 LDAP_URI = None
 # <<<
 
-DATA_DIRS = [os.path.join(os.environ['VIRTUAL_ENV'], 'storage')]
+STORAGE_DIR = os.path.join(os.environ['VIRTUAL_ENV'], 'storage')
+
+
+## Set config dependent on flags set in local_settings
+# Path configuration
+if not CONTENT_DIR:
+  CONTENT_DIR = join(WEBAPP_DIR, 'content')
+if not CSS_DIR:
+  CSS_DIR = join(CONTENT_DIR, 'css')
+
+if not CONF_DIR:
+  CONF_DIR = os.environ.get('GRAPHITE_CONF_DIR', join(GRAPHITE_ROOT, 'conf'))
+if not DASHBOARD_CONF:
+  DASHBOARD_CONF = join(CONF_DIR, 'dashboard.conf')
+if not GRAPHTEMPLATES_CONF:
+  GRAPHTEMPLATES_CONF = join(CONF_DIR, 'graphTemplates.conf')
+
+if not STORAGE_DIR:
+  STORAGE_DIR = os.environ.get('GRAPHITE_STORAGE_DIR', join(GRAPHITE_ROOT, 'storage'))
+if not WHITELIST_FILE:
+  WHITELIST_FILE = join(STORAGE_DIR, 'lists', 'whitelist')
+if not INDEX_FILE:
+  INDEX_FILE = join(STORAGE_DIR, 'index')
+if not LOG_DIR:
+  LOG_DIR = join(STORAGE_DIR, 'log', 'webapp')
+if not WHISPER_DIR:
+  WHISPER_DIR = join(STORAGE_DIR, 'whisper/')
+if not RRD_DIR:
+  RRD_DIR = join(STORAGE_DIR, 'rrd/')
+if not DATA_DIRS:
+    DATA_DIRS = [WHISPER_DIR]

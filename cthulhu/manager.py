@@ -29,10 +29,16 @@ from salt.client import condition_kwarg
 import zerorpc
 import zmq
 
+import persistence
+
 log = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log.addHandler(handler)
+handler = logging.FileHandler("{0}.log".format(__name__))
+handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
 log.setLevel(logging.DEBUG)
 
 
@@ -65,37 +71,35 @@ class SyncObject(object):
 
 class OsdMap(SyncObject):
     str = 'osd_map'
-    pass
+
+
+class OsdTree(SyncObject):
+    str = 'osd_tree'
 
 
 class MdsMap(SyncObject):
     str = 'mds_map'
-    pass
 
 
 class MonMap(SyncObject):
     str = 'mon_map'
-    pass
 
 
 class MonStatus(SyncObject):
     str = 'mon_status'
-    pass
 
 
 class PgBrief(SyncObject):
     str = 'pg_brief'
-    pass
 
 
 class HEALTH(SyncObject):
     str = 'health'
-    pass
 
 OSD = 'osd'
 CEPH_OBJECT_TYPES = [OSD]
 
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgBrief, HEALTH]
+SYNC_OBJECT_TYPES = [MdsMap, OsdMap, OsdTree, MonMap, MonStatus, PgBrief, HEALTH]
 
 str_to_type = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
@@ -552,6 +556,8 @@ class ClusterMonitor(threading.Thread):
                     'since': old_version
                 }))
 
+        persistence.heartbeat()
+
     def on_sync_object(self, minion_id, data):
         if minion_id != self._favorite_mon:
             log.debug("Ignoring map from %s, it is not my favourite (%s)" % (minion_id, self._favorite_mon))
@@ -568,6 +574,14 @@ class ClusterMonitor(threading.Thread):
                 'data': data['data']
             })
             self._sync_objects.set_map(sync_type, data['version'], data['data'])
+
+            if self._sync_objects.get_version(OsdMap) and self._sync_objects.get_version(OsdTree) and self._sync_objects.get_version(PgBrief):
+                # FIXME: should push this to a queue instead of doing it in the here and now
+                persistence.populate_osds_and_pgs(
+                    self._sync_objects.get(OsdMap).data,
+                    self._sync_objects.get(OsdTree).data,
+                    self._sync_objects.get(PgBrief).data
+                )
 
     def on_completion(self, data):
         jid = data['jid']
@@ -640,6 +654,12 @@ class ClusterMonitor(threading.Thread):
 
 
 if __name__ == '__main__':
+    try:
+        import persistence
+    except:
+        log.error("Failed to set up database: %s", traceback.format_exc())
+        raise
+
     m = Manager()
     m.start()
 

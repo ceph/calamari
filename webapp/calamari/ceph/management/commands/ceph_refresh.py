@@ -16,6 +16,7 @@ _MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
 # Default timeout for communicating with the Ceph REST API.
 _REST_CLIENT_DEFAULT_TIMEOUT = 10.0
 
+
 def memoize(function):
     memo = {}
     def wrapper(*args):
@@ -26,6 +27,7 @@ def memoize(function):
             memo[args] = rv
             return rv
     return wrapper	
+
 
 class CephRestClient(object):
     """
@@ -88,6 +90,7 @@ class CephRestClient(object):
     def get_osd_tree(self):
         "Get the raw `ceph osd tree` output"
         return self._query("osd/tree")["output"]
+
 
 class ModelAdapter(object):
     CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
