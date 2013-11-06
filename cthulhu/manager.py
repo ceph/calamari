@@ -93,13 +93,13 @@ class PgBrief(SyncObject):
     str = 'pg_brief'
 
 
-class HEALTH(SyncObject):
+class Health(SyncObject):
     str = 'health'
 
 OSD = 'osd'
 CEPH_OBJECT_TYPES = [OSD]
 
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, OsdTree, MonMap, MonStatus, PgBrief, HEALTH]
+SYNC_OBJECT_TYPES = [MdsMap, OsdMap, OsdTree, MonMap, MonStatus, PgBrief, Health]
 
 str_to_type = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
@@ -567,21 +567,35 @@ class ClusterMonitor(threading.Thread):
         sync_type = str_to_type[data['type']]
 
         if data['version'] != self._sync_objects.get_version(sync_type):
-            log.info("Received new copy of for %s/%s: %s" % (fsid, sync_type.str, data['version']))
+            log.info("Received new copy of %s/%s: %s" % (fsid, sync_type.str, data['version']))
             self._notifier.publish('ceph:sync', {
                 'type': data['type'],
                 'version': data['version'],
                 'data': data['data']
             })
+
             self._sync_objects.set_map(sync_type, data['version'], data['data'])
 
-            if self._sync_objects.get_version(OsdMap) and self._sync_objects.get_version(OsdTree) and self._sync_objects.get_version(PgBrief):
-                # FIXME: should push this to a queue instead of doing it in the here and now
-                persistence.populate_osds_and_pgs(
-                    self._sync_objects.get(OsdMap).data,
-                    self._sync_objects.get(OsdTree).data,
-                    self._sync_objects.get(PgBrief).data
-                )
+            # FIXME: should push persistence ops to a queue instead of doing it in the here and now
+            if sync_type in [OsdMap, MdsMap, MonStatus, PgBrief]:
+                if None not in map(lambda t: self._sync_objects.get_version(t), [OsdMap, MdsMap, MonStatus, PgBrief]):
+                    persistence.populate_counters(
+                        self._sync_objects.get(OsdMap).data,
+                        self._sync_objects.get(MdsMap).data,
+                        self._sync_objects.get(MonStatus).data,
+                        self._sync_objects.get(PgBrief).data
+                    )
+
+            if sync_type in [OsdMap, PgBrief, OsdTree]:
+                if self._sync_objects.get_version(OsdMap) and self._sync_objects.get_version(OsdTree) and self._sync_objects.get_version(PgBrief):
+                    persistence.populate_osds_and_pgs(
+                        self._sync_objects.get(OsdMap).data,
+                        self._sync_objects.get(OsdTree).data,
+                        self._sync_objects.get(PgBrief).data
+                    )
+
+            if sync_type is Health:
+                persistence.populate_health(data['data'])
 
     def on_completion(self, data):
         jid = data['jid']

@@ -14,7 +14,6 @@ urlpatterns = patterns('',
     url(r'^api/v1/auth/logout', 'calamari.views.logout'),
     url(r'^api/v1/auth2/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^api/v1/info', 'calamari.views.info'),
-    url(r'^render/?', include('graphite.render.urls')),
 
     url(r'^admin/(?P<path>.*)$', 'calamari.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_DOC_ROOT}),
@@ -28,4 +27,8 @@ urlpatterns = patterns('',
     url(r'^dashboard/(?P<path>.*)$', 'calamari.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_DOC_ROOT},
         name='dashboard'),
+
+    url(r'^render/?', include('graphite.render.urls')),
+    url(r'^metrics/?', include('graphite.metrics.urls')),
+
 )

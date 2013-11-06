@@ -144,7 +144,8 @@ INSTALLED_APPS = (
     'rest_framework',
     'ceph',
     'graphite.render',
-    'graphite.account'
+    'graphite.account',
+    'graphite.metrics'
 )
 
 # A sample logging configuration. The only tangible logging

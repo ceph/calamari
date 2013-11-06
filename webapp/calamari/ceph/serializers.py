@@ -157,7 +157,8 @@ class ClusterHealthCountersSerializer(serializers.ModelSerializer):
         return obj.counters['mds']
 
     def get_pool(self, obj):
-        return obj.counters['pool']
+        return None
+        #return obj.counters['pool']
 
     def get_mon(self, obj):
         return obj.counters['mon']
