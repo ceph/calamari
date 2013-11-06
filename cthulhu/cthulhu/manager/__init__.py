@@ -29,7 +29,7 @@ from salt.client import condition_kwarg
 import zerorpc
 import zmq
 
-import persistence
+from cthulhu import persistence
 
 log = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -667,7 +667,7 @@ class ClusterMonitor(threading.Thread):
         return req
 
 
-if __name__ == '__main__':
+def main():
     m = Manager()
     m.start()
 

@@ -2,18 +2,15 @@ from collections import defaultdict
 import datetime
 from django.conf import settings
 import os
-import sys
 from pytz import utc
 
 settings.configure(
     DATABASES={'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(os.path.dirname(os.path.abspath(__file__)), '../webapp/calamari/db.sqlite3')
+        'NAME': os.environ['CALAMARI_DB']
     }},
     USE_TZ=True
 )
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../webapp/calamari/'))
 
 from ceph.models import Cluster
 
