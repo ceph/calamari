@@ -11,13 +11,12 @@ calamari()
 	../../venv/bin/python addadmin.py
 
 	# allow apache access to all
-	# rpm/centos: apache?
 	chown -R www-data.www-data .
-	# centos: ???
 	a2dissite 000-default
 	a2ensite calamari.conf
 	a2ensite graphite.conf
 	a2enmod proxy
+	a2enmod proxy_http
 	chown -R www-data:www-data /var/log/calamari
 	cd $d
 }
@@ -40,7 +39,6 @@ graphite()
 	d=$(pwd)
 	cd /opt/graphite/webapp/graphite
 	../../bin/python manage.py syncdb --noinput
-	# rpm/centos: apache?
 	chown -R www-data:www-data /opt/graphite/storage
 	chown -R www-data:www-data /var/log/graphite
 	cd $d
@@ -85,9 +83,6 @@ EOF
 	[ -d /var/log/carbon ] || mkdir /var/log/carbon
 	/etc/init.d/carbon-cache stop || true
 	/etc/init.d/carbon-cache start
-	# rpm/centos
-	# service carbon-cache start
-	# chkconfig carbon-cache on
 	cd $d
 }
 
@@ -106,9 +101,6 @@ case "$1" in
 		calamari
 		service apache2 stop || true
 		service apache2 start
-		# rpm/centos
-		# service httpd restart
-		# chkconfig httpd on
 		;;
 
 	abort-upgrade|abort-remove|abort-deconfigure)
