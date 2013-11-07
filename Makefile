@@ -59,7 +59,9 @@ DEBFILES = \
 
 #DISTFILES += $(DEBFILES:%=debian/%)
 
-build: build-ui $(CONFIG_JSON) $(CONFFILES)
+build: build-ui build-venvs $(CONFIG_JSON) $(CONFFILES)
+
+build-venvs: build-graphite-venv build-calamari-venv
 
 build-ui:
 	@echo "building ui subdirs"
@@ -71,6 +73,75 @@ build-ui:
 		grunt --no-color saveRevision; \
 		grunt --no-color build; ) \
 	done
+
+# graphite-web's requirements are obtained from a static copy of its
+# requirements.txt from github, because obviously expressing those in setup.py
+# or even including them in the stuff installed with setup.py would be just
+# stupid.  Of course this depends on requirements.txt actually matching
+# graphite-web's pip install. arrrrrrgh.
+# XXX maybe at least add some kind of versioning check?...like what?...
+
+# *EVEN BETTER*:
+# carbon install, when it senses 'redhat' in platform.dist()[0], tries
+# to install scripts to /etc/init.d.  THANKS.  Download, hack the setup.py,
+# and install in three steps rather than one to accommodate this braindeath.
+#
+# XXX we call 'bin/python bin/pip' rather than pip directly because the
+# #! line in bin/pip can easily be too long; Linux can only handle 128 chars
+
+build-graphite-venv:
+	@echo "build-graphite-venv"
+	(export PYTHONDONTWRITEBYTECODE=1; \
+	virtualenv graphite; \
+	cd graphite; \
+	./bin/python ./bin/pip install whisper; \
+	./bin/python ./bin/pip install --no-install carbon; \
+	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
+		build/carbon/setup.py; \
+	./bin/python ./bin/pip install \
+          --install-option="--prefix=$(SRC)/graphite" \
+	  --install-option="--install-lib=$(SRC)/graphite/lib" \
+	  --no-download carbon; \
+	./bin/python ./bin/pip install \
+	  --install-option="--prefix=$(SRC)/graphite" \
+	  --install-option="--install-lib=$(SRC)/graphite/webapp" \
+	  graphite-web; \
+	./bin/python ./bin/pip install -r \
+	  $(SRC)/graphite-requirements.txt; \
+	(find . -type f | xargs grep -l '#!.*'$(SRC) ; \
+	   echo bin/activate bin/activate.csh bin/activate.fish ) | \
+	while read f; do \
+		echo -n "modifying $$f: "; \
+		grep $(SRC) $$f; \
+		sed -i -e 's;'$(SRC)';/opt;' $$f; \
+	done; \
+	if [ -h local/bin ] ; then \
+		for p in bin include lib; do \
+			rm local/$$p; \
+			ln -s /opt/graphite/$$p local/$$p; \
+		done; \
+	fi)
+
+build-calamari-venv:
+	@echo "build-calamari-venv"
+	(export PYTHONDONTWRITEBYTECODE=1; \
+	mkdir calamari; \
+	virtualenv calamari/venv; \
+	cd calamari/venv; \
+	./bin/python ./bin/pip install -r $(SRC)/requirements.txt; \
+	(find . -type f | xargs grep -l '#!.*'$(SRC) ; \
+	  echo bin/activate bin/activate.csh bin/activate.fish) | \
+	while read f; do \
+		echo -n "modifying $$f: "; \
+		grep $(SRC) $$f; \
+		sed -i -e 's;'$(SRC)';/opt;' $$f; \
+	done; \
+	if [ -h local/bin ] ; then \
+		for p in bin include lib; do \
+			rm local/$$p; \
+			ln -s /opt/calamari/venv/$$p local/$$p; \
+		done; \
+	fi)
 
 # for right now, this contains two useful things that should be set
 # when running against a live cluster.  We could preinstall it in the
@@ -152,58 +223,20 @@ install-ui:
 		cp -rp $$d/dist/* $(UI_BASEDIR)/$$instdir; \
 	done
 
-# build venv for graphite
-
-# graphite-web's requirements are obtained from a static copy of its
-# requirements.txt from github, because obviously expressing those in setup.py
-# or even including them in the stuff installed with setup.py would be just
-# stupid.  Of course this depends on requirements.txt actually matching
-# graphite-web's pip install. arrrrrrgh.
-# XXX maybe at least add some kind of versioning check?...like what?...
-
-# ugh, this just gets uglier.  virtualenv really really does not
-# handle being installed in a different place than it will run.
-# use the *install dirs* on the build machine (note: this means 
-# running make will write to /opt/graphite and /opt/calamari.  Be 
-# prepared for this!)  
-# XXX consider an env var to set to protect against naive builders
-# *EVEN BETTER*:
-# carbon install, when it senses 'redhat' in platform.dist()[0], tries
-# to install scripts to /etc/init.d.  THANKS.  Download, hack the setup.py,
-# and install in three steps rather than one to accommodate this braindeath.
-
-install-graphite-venv:
+install-graphite-venv: build-graphite-venv
 	@echo "install-graphite-venv"
-	( cd /opt; \
-	virtualenv graphite; \
-	./graphite/bin/pip install whisper; \
-	./graphite/bin/pip install --no-install carbon; \
-	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-		graphite/build/carbon/setup.py; \
-	./graphite/bin/pip install --no-download carbon; \
-	./graphite/bin/pip install graphite-web; \
-	./graphite/bin/pip install -r $(SRC)/graphite-requirements.txt)
+	$(INSTALL) -d $(DESTDIR)/opt/graphite
+	cp -a graphite $(DESTDIR)/opt/graphite
 	# graphite local_settings.py
 	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
-		/opt/graphite/webapp/graphite/local_settings.py
-	# copy it back from /opt/graphite to DESTDIR
-	@$(INSTALL) -d -m 755 $(DESTDIR)/opt/graphite
-	@cp -rp /opt/graphite $(DESTDIR)/opt
+		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
 
-install-calamari-venv:
+install-calamari-venv: build-calamari-venv
 	@echo "install-calamari-venv"
 	# copy calamari webapp files into place
-	$(INSTALL) -d -m 755 /opt/calamari/webapp
-	cp -rp webapp/* /opt/calamari/webapp
-	# build venv for calamari
-	$(INSTALL) -D $(ROOTOG) requirements.txt \
-		$(DESTDIR)/opt/calamari/requirements.txt
-	( cd /opt/calamari; \
-	virtualenv venv; \
-	./venv/bin/pip install -r $(SRC)/requirements.txt)
-	# copy back to DESTDIR
 	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
-	@cp -rp /opt/calamari $(DESTDIR)/opt
+	cp -rp webapp/* $(DESTDIR)/opt/calamari/webapp
+	cp -rp calamari/* $(DESTDIR)/opt/calamari
 
 clean:
 	for d in $(UI_SUBDIRS); do \
@@ -214,7 +247,8 @@ clean:
 		grunt --no-color clean) \
 	done
 	@rm -f $(CONFIG_JSON)
-
+	rm -rf graphite
+	rm -rf calamari
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
