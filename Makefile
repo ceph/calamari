@@ -242,9 +242,7 @@ clean:
 	for d in $(UI_SUBDIRS); do \
 		echo $$d; \
 		(cd $$d; \
-		npm install --silent; \
-		bower install; \
-		grunt --no-color clean) \
+		if [ -d node_modules ] ; then grunt --no-color clean; fi) \
 	done
 	@rm -f $(CONFIG_JSON)
 	rm -rf graphite
