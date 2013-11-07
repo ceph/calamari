@@ -43,7 +43,7 @@
 #   deactivate
 #
 
-Django>=1.4
+Django==1.5.5
 Twisted==11.1.0
 python-memcached==1.47
 txAMQP==0.4
