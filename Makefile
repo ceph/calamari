@@ -161,49 +161,63 @@ install-ui:
 # graphite-web's pip install. arrrrrrgh.
 # XXX maybe at least add some kind of versioning check?...like what?...
 
-# ugh, this just gets uglier.  virtualenv really really does not
-# handle being installed in a different place than it will run.
-# use the *install dirs* on the build machine (note: this means 
-# running make will write to /opt/graphite and /opt/calamari.  Be 
-# prepared for this!)  
-# XXX consider an env var to set to protect against naive builders
 # *EVEN BETTER*:
 # carbon install, when it senses 'redhat' in platform.dist()[0], tries
 # to install scripts to /etc/init.d.  THANKS.  Download, hack the setup.py,
 # and install in three steps rather than one to accommodate this braindeath.
 
+ABS_DESTDIR=$(shell readlink --canonicalize $(DESTDIR))
+
 install-graphite-venv:
 	@echo "install-graphite-venv"
-	( cd /opt; \
+	( cd $(DESTDIR); \
+	export PYTHONDONTWRITEBYTECODE=1; \
+	mkdir opt; \
+	cd opt; \
 	virtualenv graphite; \
 	./graphite/bin/pip install whisper; \
 	./graphite/bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		graphite/build/carbon/setup.py; \
-	./graphite/bin/pip install --no-download carbon; \
-	./graphite/bin/pip install graphite-web; \
+	./graphite/bin/pip install \
+          --install-option="--prefix=$(DESTDIR)/opt/graphite" \
+	  --install-option="--install-lib=$(DESTDIR)/opt/graphite/lib" \
+	  --no-download carbon; \
+	./graphite/bin/pip install \
+	  --install-option="--prefix=$(DESTDIR)/opt/graphite" \
+	  --install-option="--install-lib=$(DESTDIR)/opt/graphite/webapp" \
+	  graphite-web; \
 	./graphite/bin/pip install -r $(SRC)/graphite-requirements.txt)
 	# graphite local_settings.py
 	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
-		/opt/graphite/webapp/graphite/local_settings.py
-	# copy it back from /opt/graphite to DESTDIR
-	@$(INSTALL) -d -m 755 $(DESTDIR)/opt/graphite
-	@cp -rp /opt/graphite $(DESTDIR)/opt
+		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
+	( cd $(DESTDIR)/opt/graphite; \
+	  (find . -type f | xargs grep -l '#!.*'$(ABS_DESTDIR) ; \
+	    echo bin/activate bin/activate.csh bin/activate.fish ) | \
+	    while read f; do \
+		echo -n "modifying $$f: "; \
+		grep $(ABS_DESTDIR) $$f; \
+		sed -i -e 's;'$(ABS_DESTDIR)';;' $$f; \
+	  done)
 
 install-calamari-venv:
 	@echo "install-calamari-venv"
 	# copy calamari webapp files into place
-	$(INSTALL) -d -m 755 /opt/calamari/webapp
-	cp -rp webapp/* /opt/calamari/webapp
+	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
+	cp -rp webapp/* $(DESTDIR)/opt/calamari/webapp
 	# build venv for calamari
-	$(INSTALL) -D $(ROOTOG) requirements.txt \
-		$(DESTDIR)/opt/calamari/requirements.txt
-	( cd /opt/calamari; \
+	( cd $(DESTDIR)/opt/calamari; \
+	export PYTHONDONTWRITEBYTECODE=1; \
 	virtualenv venv; \
 	./venv/bin/pip install -r $(SRC)/requirements.txt)
-	# copy back to DESTDIR
-	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
-	@cp -rp /opt/calamari $(DESTDIR)/opt
+	( cd $(DESTDIR)/opt/calamari/venv; \
+	  (find . -type f | xargs grep -l '#!.*'$(ABS_DESTDIR) ; \
+	    echo bin/activate bin/activate.csh bin/activate.fish) | \
+	    while read f; do \
+		echo -n "modifying $$f: "; \
+		grep $(ABS_DESTDIR) $$f; \
+		sed -i -e 's;'$(ABS_DESTDIR)';;' $$f; \
+	  done)
 
 clean:
 	for d in $(UI_SUBDIRS); do \
