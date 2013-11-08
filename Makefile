@@ -212,7 +212,7 @@ install-init:
 	@echo "install-init"
 	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache \
 		$(DESTDIR)/etc/init.d/carbon-cache
-	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf \
+	@$(INSTALL) -D $(ROOTOG) conf/init/kraken.conf \
 		$(DESTDIR)/etc/init/kraken.conf
 
 install-ui:

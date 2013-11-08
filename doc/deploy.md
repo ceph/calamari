@@ -1,7 +1,7 @@
 Kraken Setup
 ============
 
-There is an upstart script for running Kraken at conf/upstart/kraken.conf.
+There is an upstart script for running Kraken at conf/init/kraken.conf.
 This should be placed into /etc/init/ and it will start and stop at standard
 run-levels.
 
