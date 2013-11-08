@@ -1,6 +1,6 @@
 from django.conf.urls import patterns, include, url
 
-from settings import STATIC_DOC_ROOT
+from settings import STATIC_DOC_ROOT, DEBUG, GRAPHITE_API_PREFIX
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -30,5 +30,21 @@ urlpatterns = patterns('',
 
     url(r'^render/?', include('graphite.render.urls')),
     url(r'^metrics/?', include('graphite.metrics.urls')),
-
+    url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
 )
+
+if DEBUG:
+    # Graphite dashboard client code is not CSRF enabled, but we have
+    # global CSRF protection enabled.  Make exceptions for the views
+    # that the graphite dashboard wants to POST to.
+    from django.views.decorators.csrf import csrf_exempt
+    import inspect
+
+    def patch_views(mod):
+        for name, member in mod.__dict__.items():
+            if inspect.isfunction(member):
+                setattr(mod, name, csrf_exempt(member))
+    import graphite.metrics.views
+    import graphite.dashboard.views
+    patch_views(graphite.metrics.views)
+    patch_views(graphite.dashboard.views)

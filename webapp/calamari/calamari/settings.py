@@ -145,7 +145,8 @@ INSTALLED_APPS = (
     'ceph',
     'graphite.render',
     'graphite.account',
-    'graphite.metrics'
+    'graphite.metrics',
+    'graphite.dashboard'
 )
 
 # A sample logging configuration. The only tangible logging
@@ -253,6 +254,19 @@ LDAP_BASE_USER = ""  # "CN=some_readonly_account,DC=mydomain,DC=com"
 LDAP_BASE_PASS = ""  # "my_password"
 LDAP_USER_QUERY = ""  # "(username=%s)"  For Active Directory use "(sAMAccountName=%s)"
 LDAP_URI = None
+
+# Required by dashboard app
+JAVASCRIPT_DEBUG = False
+GRAPHITE_API_PREFIX = "/graphite"
+if DEBUG:
+    TEMPLATE_DIRS = os.path.join(os.environ['VIRTUAL_ENV'],  "lib/python2.7/site-packages/graphite/templates")
+    CONTENT_DIR = os.path.join(os.environ['VIRTUAL_ENV'],  "webapp/content/")
+    STATICFILES_DIRS = STATICFILES_DIRS + (
+        os.path.join(os.environ['VIRTUAL_ENV'],  "webapp/content/"),
+    )
+    STATIC_URL = "/content/"
+
+
 # <<<
 
 if DEBUG:
