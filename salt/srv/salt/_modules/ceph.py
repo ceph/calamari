@@ -1,0 +1,371 @@
+from glob import glob
+import hashlib
+import os
+import re
+import socket
+import requests
+
+# Default timeout for communicating with the Ceph REST API.
+import struct
+
+# Note: do not import ceph modules at this scope, otherwise this module won't be able
+# to cleanly talk to us about systems where ceph isn't installed yet.
+
+_REST_CLIENT_DEFAULT_TIMEOUT = 10.0
+
+import json
+
+
+# >>> XXX unclean borrowed from open source ceph code XXX
+def admin_socket(asok_path, cmd, format=''):
+    """
+    Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
+    path to the admin socket; cmd is a list of strings; format may be
+    set to one of the formatted forms to get output in that form
+    (daemon commands don't support 'plain' output).
+    """
+
+    from ceph_argparse import parse_json_funcsigs, validate_command
+
+    def do_sockio(path, cmd):
+        """ helper: do all the actual low-level stream I/O """
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(path)
+        try:
+            sock.sendall(cmd + '\0')
+            len_str = sock.recv(4)
+            if len(len_str) < 4:
+                raise RuntimeError("no data returned from admin socket")
+            l, = struct.unpack(">I", len_str)
+            ret = ''
+
+            got = 0
+            while got < l:
+                bit = sock.recv(l - got)
+                ret += bit
+                got += len(bit)
+
+        except Exception as e:
+            raise RuntimeError('exception: ' + str(e))
+        return ret
+
+    try:
+        cmd_json = do_sockio(asok_path,
+            json.dumps({"prefix":"get_command_descriptions"}))
+    except Exception as e:
+        #raise RuntimeError('exception getting command descriptions: ' + str(e))
+        return None
+
+    if cmd == 'get_command_descriptions':
+        return cmd_json
+
+    sigdict = parse_json_funcsigs(cmd_json, 'cli')
+    valid_dict = validate_command(sigdict, cmd)
+    if not valid_dict:
+        raise RuntimeError('invalid command')
+
+    if format:
+        valid_dict['format'] = format
+
+    try:
+        ret = do_sockio(asok_path, json.dumps(valid_dict))
+    except Exception as e:
+        raise RuntimeError('exception: ' + str(e))
+
+    return ret
+# <<< XXX unclean XXX
+
+
+def memoize(function):
+    memo = {}
+
+    def wrapper(*args):
+        if args in memo:
+            return memo[args]
+        else:
+            rv = function(*args)
+            memo[args] = rv
+            return rv
+    return wrapper
+
+
+class CephRestClient(object):
+    """
+    Wrapper around the Ceph RESTful API.
+
+    The memoize decorator on the _query method is used to avoid making the same
+    round-trip to the rest server. This shouldn't be used if it is important
+    that values can change during the execution of this program, as this
+    effectively adds a cache that is never cleared.
+    """
+
+    def __init__(self, url="http://localhost:5000/api/v0.1/", timeout=_REST_CLIENT_DEFAULT_TIMEOUT):
+        self.__url = url
+        if self.__url[-1] != '/':
+            self.__url += '/'
+        self.timeout = timeout
+
+    @memoize
+    def query(self, endpoint):
+        """Interrogate a Ceph API endpoint"""
+        hdr = {'accept': 'application/json'}
+        r = requests.get(self.__url + endpoint,
+                         headers=hdr, timeout=self.timeout)
+        return r.json()
+
+
+SYNC_TYPES = ['mon_status',
+              'mon_map',
+              'osd_map',
+              'osd_tree',
+              'mds_map',
+              'pg_map',
+              'pg_brief',
+              'health']
+
+
+def md5(raw):
+    hasher = hashlib.md5()
+    hasher.update(raw)
+    return hasher.hexdigest()
+
+
+def rados_commands(cluster_name, commands):
+    import rados
+    from ceph_argparse import json_command
+
+    # Open a RADOS session
+    cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
+    cluster_handle.connect()
+
+    results = []
+
+    # Each command is a 2-tuple of a prefix followed by an argument dictionary
+    for i, (prefix, argdict) in enumerate(commands):
+        argdict['format'] = 'json'
+        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict)
+        if ret != 0:
+            return {
+                'results': results,
+                'err_outbuf': outbuf,
+                'err_outs': outs
+            }
+        if outbuf:
+            results.append(json.loads(outbuf))
+        else:
+            results.append(None)
+
+    # Success
+    return {
+        'results': results,
+        'err_outbuf': '',
+        'err_outs': ''
+    }
+
+
+def get_cluster_object(cluster_name, sync_type, since):
+    # TODO: for the synced objects that support it, support
+    # fetching older-than-present versions to allow the master
+    # to backfill its history.
+
+    # This should only ever be called in response to
+    # having already talked to ceph, so assume modules
+    # are present
+    import rados
+    from ceph_argparse import json_command
+
+    # Check you're asking me for something I know how to give you
+    assert sync_type in SYNC_TYPES
+
+    # Open a RADOS session
+    cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
+    cluster_handle.connect()
+
+    ret, outbuf, outs = json_command(cluster_handle, prefix='status', argdict={'format': 'json'})
+    status = json.loads(outbuf)
+    #latest_version = {
+    #    'mds': lambda s: s['mdsmap']['epoch'],
+    #    'osd': lambda s: s['osdmap']['osdmap']['epoch'],
+    #    'pg': lambda s: s['pgmap']['version'],
+    #    'mon': lambda s: s['monmap']['epoch']
+    #}[type](status)
+    #
+    fsid = status['fsid']
+
+    command, kwargs, version_fn = {
+        'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
+        'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
+        'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
+        # FIXME: this should really be inlined with the OSD map we return, as it is derived from it: it's
+        # not a separate thing.  Same deal for CRUSH map when that is added.
+        'osd_tree': ('osd tree', {}, lambda d, r: d['epoch']),
+        'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
+        #'pg_map': ('pg dump', {}, lambda d, r: d['version']),
+        'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
+        'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
+    }[sync_type]
+    kwargs['format'] = 'json'
+    ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
+    assert ret == 0
+
+    data = json.loads(raw)
+
+    if sync_type == 'osd_tree':
+        # XXX HACKHACKHACK
+        version = status['osdmap']['osdmap']['epoch']
+    else:
+        version = version_fn(data, raw)
+
+    return {
+        'type': sync_type,
+        'fsid': fsid,
+        'version': version,
+        'data': data
+    }
+
+
+def terse_status():
+    """
+    The goal here is *not* to give a helpful summary of
+    the cluster status, rather it is to give the minimum
+    amount if information to let an informed master decide
+    whether it needs to ask us for any additional information,
+    such as updated copies of the cluster maps.
+
+    Enumerate Ceph services running locally, for each report
+    its FSID, type and ID.
+
+    If a mon is running here, do some extra work:
+
+    - Report the mapping of cluster name to FSID from /etc/ceph/<cluster name>.conf
+    - For all clusters, report the latest versions of all cluster maps.
+
+    :return None if ceph modules are unavailable, else a dict.
+
+    """
+
+    try:
+        import rados
+        from ceph_argparse import json_command
+    except ImportError:
+        return None
+
+    services = {}
+
+    # Map of FSID to path string string
+    mon_sockets = {}
+
+    # FSID string to cluster name string
+    fsid_names = {}
+
+    for filename in glob("/var/run/ceph/*.asok"):
+        cluster_name, service_type, service_id = re.match("^(.*)-(.*)\.(.*).asok$", os.path.basename(filename)).groups()
+        service_name = "%s-%s.%s" % (cluster_name, service_type, service_id)
+
+        # Interrogate the service for its FSID
+        config_response = admin_socket(filename, ['config', 'get', 'fsid'], 'json')
+        if config_response is None:
+            # Dead socket, defunct service
+            continue
+        config = json.loads(config_response)
+        fsid = config['fsid']
+
+        services[service_name] = {
+            'cluster': cluster_name,
+            'type': service_type,
+            'id': service_id,
+            'fsid': fsid
+        }
+        fsid_names[fsid] = cluster_name
+
+        if service_type == 'mon':
+            mon_sockets[fsid] = filename
+
+    clusters = {}
+    for fsid, socket_path in mon_sockets.items():
+        # First, are we quorate?
+        admin_response = admin_socket(socket_path, ['mon_status'], 'json')
+        if admin_response is None:
+            # Dead socket, defunct service
+            continue
+        mon_status = json.loads(admin_response)
+
+        if not mon_status['quorum']:
+            continue
+        else:
+            election_epoch = mon_status['election_epoch']
+
+        # FIXME 1: We probably can't assume that <clustername>.client.admin.keyring is always
+        # present, although this is the case on a nicely ceph-deploy'd system
+        # FIXME 2: It shouldn't really be necessary to fire up a RADOS client to obtain this
+        # information, instead we should be able to get it from the mon admin socket.
+        cluster_handle = rados.Rados(name='client.admin', clustername=fsid_names[fsid], conffile='')
+        cluster_handle.connect()
+
+        # FIXME: error handling leaves a little to be desired: handle case where the cluster becomes
+        # unavailable partway through these queries
+        # Get map versions from 'status'
+        ret, outbuf, outs = json_command(cluster_handle, prefix='status', argdict={'format': 'json'})
+        assert ret == 0
+        status = json.loads(outbuf)
+        mon_epoch = status['monmap']['epoch']
+        osd_epoch = status['osdmap']['osdmap']['epoch']
+        #pg_version = status['pgmap']['version']
+        mds_epoch = status['mdsmap']['epoch']
+
+        # FIXME: even on a healthy system, 'health detail' contains some statistics
+        # that change on their own, such as 'lasted_updated' and the mon space usage.
+        # Get digest of health
+        ret, outbuf, outs = json_command(cluster_handle, prefix='health', argdict={
+            'format': 'json',
+            'detail': 'detail'
+        })
+        assert ret == 0
+        health_digest = md5(outbuf)
+
+        # Get digest of brief pg info
+        ret, outbuf, outs = json_command(cluster_handle, prefix='pg dump', argdict={
+            'format': 'json', 'dumpcontents': ['pgs_brief'], 'fooffd': 'asdasd'})
+        assert ret == 0
+        pgs_brief_digest = md5(outbuf)
+
+        # TODO: send 'brief pg' hash instead of pg_version, as we would not want to keep
+        # up with a full PG map dump for every new version (which is like every second).
+
+        clusters[fsid] = {
+            'name': fsid_names[fsid],
+            'fsid': fsid,
+            'versions': {
+                'mon_status': election_epoch,
+                'mon_map': mon_epoch,
+                'osd_map': osd_epoch,
+                'osd_tree': osd_epoch,
+                'mds_map': mds_epoch,
+                #'pg_map': pg_version,
+                'pg_brief': pgs_brief_digest,
+                'health': health_digest
+            }
+        }
+
+    return services, clusters
+
+
+def heartbeat():
+    """
+    Send an event to the master with the terse status
+    """
+    services, clusters = terse_status()
+
+    __salt__['event.fire_master'](services, 'ceph/services')
+    for fsid, cluster_data in clusters.items():
+        __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
+
+    # Return the emitted data because it's useful if debugging with salt-call
+    return services, clusters
+
+
+if __name__ == '__main__':
+    # Debug, just dump everything
+    print json.dumps(terse_status(), indent=2)
+    for typ in SYNC_TYPES:
+        get_cluster_object('ceph', typ, 0)
