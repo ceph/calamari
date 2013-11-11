@@ -38,13 +38,17 @@ if DEBUG:
     # global CSRF protection enabled.  Make exceptions for the views
     # that the graphite dashboard wants to POST to.
     from django.views.decorators.csrf import csrf_exempt
-    import inspect
+
+    # By default graphite views are visible to anyone who asks:
+    # we only want to allow logged in users to access graphite
+    # API.
+    from django.contrib.auth.decorators import login_required
 
     def patch_views(mod):
-        for name, member in mod.__dict__.items():
-            if inspect.isfunction(member):
-                setattr(mod, name, csrf_exempt(member))
-    import graphite.metrics.views
-    import graphite.dashboard.views
-    patch_views(graphite.metrics.views)
-    patch_views(graphite.dashboard.views)
+        for url_pattern in mod.urlpatterns:
+            cb = url_pattern.callback
+            url_pattern._callback = csrf_exempt(login_required(cb))
+    import graphite.metrics.urls
+    import graphite.dashboard.urls
+    patch_views(graphite.metrics.urls)
+    patch_views(graphite.dashboard.urls)
