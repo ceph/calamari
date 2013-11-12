@@ -10,8 +10,8 @@ setup(
     license="Inktank Ceph Enterprise Software License",
     entry_points={
         'console_scripts': [
-            'minion-sim = minion_sim.cli:main',
-            'minion-child = minion_sim.cli:child'
+            'minion-sim = minion_sim.sim:main',
+            'minion-child = minion_sim.child:main'
         ]
     }
 )

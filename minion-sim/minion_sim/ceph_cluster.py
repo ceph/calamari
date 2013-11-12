@@ -1,114 +1,20 @@
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-import argparse
 from collections import defaultdict
-import getpass
 import json
-import os
-import errno
-import subprocess
 import uuid
-import xmlrpclib
-from jinja2 import Template
-import threading
-import signal
-import salt
-import sys
-import yaml
-
-XMLRPC_PORT = 8761
-
-MINION_CONFIG_TEMPLATE = """
-master: localhost
-id: {{ HOSTNAME }}
-user: {{ USER }}
-pidfile: {{ ROOT }}/var/run/salt-minion.pid
-pki_dir: {{ ROOT }}/etc/pki
-cachedir: {{ ROOT }}/var/cache
-log_file: {{ ROOT }}/var/log/salt/minion
-sock_dir: /tmp
-grains:
-    fqdn: {{ FQDN}}
-    localhost: {{ HOSTNAME }}
-    host: {{ HOSTNAME }}
-    nodename: {{ HOSTNAME }}
-"""
-
-PREFIX = 'figment'
-DOMAIN = 'imagination.com'
-ROOT = os.getcwd()
-
-
-class Minion(object):
-    def __init__(self, index):
-        super(Minion, self).__init__()
-
-        self.ps = None
-        self.hostname = "{0}{1:03d}".format(PREFIX, index)
-        self.fqdn = "{0}.{1}".format(self.hostname, DOMAIN)
-
-        path = os.path.join(ROOT, self.hostname)
-
-        try:
-            os.makedirs(path)
-            os.makedirs(os.path.join(path, 'var/run'))
-            os.makedirs(os.path.join(path, 'etc/salt'))
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                raise
-
-        config_str = Template(MINION_CONFIG_TEMPLATE).render(
-            HOSTNAME=self.hostname,
-            USER=getpass.getuser(),
-            ROOT=path,
-            FQDN=self.fqdn
-        )
-
-        config_filename = os.path.join(path, 'etc/salt/minion')
-        open(config_filename, 'w').write(config_str)
-
-        self.cmdline = ['-c', os.path.dirname(config_filename)]
-
-    def start(self):
-        print "Calling salt_minion.start"
-        self.ps = subprocess.Popen(['minion-child'] + self.cmdline)
-
-    def stop(self):
-        self.ps.send_signal(signal.SIGTERM)
-        out, err = self.ps.communicate()
-
-
-#
-#"""
-#- eb15e37d-7f6d-44e8-ae7c-a5e2ba2a17f3:
-#    ----------
-#    fsid:
-#        eb15e37d-7f6d-44e8-ae7c-a5e2ba2a17f3
-#    name:
-#        ceph
-#    versions:
-#        ----------
-#        health:
-#            63dc16c521047de5f119dc5830bb251d
-#        mds_map:
-#            1
-#        mon_map:
-#            1
-#        mon_status:
-#            16
-#        osd_map:
-#            714
-#        osd_tree:
-#            714
-#        pg_brief:
-#            ca5e1a30d24bad3d6f7637349a17a7fe
-#"""
 
 
 class CephCluster(object):
+    """
+    An approximate simulation of a Ceph cluster.
+
+    Use for driving test/demo environments.
+    """
+
     @staticmethod
-    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap = False):
+    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False):
+        """
+        Generate initial state for a cluster
+        """
         fsid = uuid.uuid4().__str__()
         name = 'ceph'
 
@@ -292,36 +198,22 @@ class CephCluster(object):
                 objects['pg_brief'].append({
                     'pgid': pg_id,
                     'state': 'active+clean',
-                    'up': [0,1],
-                    'acting': [0,1]
+                    'up': [0, 1],
+                    'acting': [0, 1]
                 })
 
         json.dump({
-            'service_locations': service_locations,
-            'host_services': host_services,
-            'fsid': fsid,
-            'name': name,
-            'objects': objects
-        }, open(filename, 'w'))
+                      'service_locations': service_locations,
+                      'host_services': host_services,
+                      'fsid': fsid,
+                      'name': name,
+                      'objects': objects
+                  }, open(filename, 'w'))
 
     def get_services(self, fqdn):
         return self._host_services[fqdn]
 
     def get_heartbeat(self, fsid):
-#        health:
-#            63dc16c521047de5f119dc5830bb251d
-#        mds_map:
-#            1
-#        mon_map:
-#            1
-#        mon_status:
-#            16
-#        osd_map:
-#            714
-#        osd_tree:
-#            714
-#        pg_brief:
-#            ca5e1a30d24bad3d6f7637349a17a7fe
         return {
             'name': self._name,
             'fsid': self._fsid,
@@ -353,91 +245,3 @@ class CephCluster(object):
         self._objects = data['objects']
 
         print "Loaded %s: %s" % (filename, self._host_services)
-
-
-# Because salt minion will be calling functions
-# defined in this module
-__context__ = {}
-
-
-def child():
-    """
-    This is a specialized launcher for salt-minion.
-
-    The difference is that it substitutes some modules with mocked versions
-    that get their data from an XMLRPC test-driving interface instead of
-    from the real system.
-    """
-    # Dirty arg parsing, I assume I will always be invoked with -c <config>
-    config_file = sys.argv[2]
-    config = yaml.load(open(os.path.join(config_file, 'minion')))
-    fqdn = config['grains']['fqdn']
-
-    __salt__ = None
-
-    cluster = xmlrpclib.ServerProxy('http://localhost:%s' % XMLRPC_PORT, allow_none=True)
-
-    # Monkey-patch in a mock version of the ceph module
-    def heartbeat():
-        global __salt__
-        report_clusters = {}
-
-
-        services = cluster.get_services(fqdn)
-        for service in services:
-            if service['type'] == 'mon':
-                fsid = service['fsid']
-
-                report_clusters[fsid] = cluster.get_heartbeat(fsid)
-
-        for fsid, cluster_data in report_clusters.items():
-            __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
-
-    def get_cluster_object(cluster_name, sync_type, since):
-        return cluster.get_cluster_object(cluster_name, sync_type, since)
-
-    import salt.loader
-    old_minion_mods = salt.loader.minion_mods
-
-    def my_minion_mods(opts):
-        global __salt__
-        data = old_minion_mods(opts)
-        data['ceph.heartbeat'] = heartbeat
-        data['ceph.get_cluster_object'] = get_cluster_object
-        __salt__ = data
-        return data
-    salt.loader.minion_mods = my_minion_mods
-
-    minion = salt.Minion()
-    minion.start()
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Start simulated salt minions.')
-    parser.add_argument('--count', dest='count', type=int, default=3, help='Number of simulated minions')
-    args = parser.parse_args()
-
-    minions = []
-    for i in range(0, args.count):
-        minions.append(Minion(i))
-
-    if not os.path.exists('cluster.json'):
-        CephCluster.create('cluster.json', [m.fqdn for m in minions])
-    cluster = CephCluster('cluster.json')
-
-    # Start an XMLRPC service for the minions' fake ceph plugins to
-    # get their state
-    server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
-    server.register_instance(cluster)
-
-    for minion in minions:
-        minion.start()
-
-    try:
-        server.serve_forever()
-        #complete = threading.Event()
-        #while not complete.is_set():
-        #    complete.wait(1)
-    except KeyboardInterrupt:
-        for minion in minions:
-            minion.stop()
