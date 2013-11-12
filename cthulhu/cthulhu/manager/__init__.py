@@ -480,6 +480,9 @@ class ClusterMonitor(threading.Thread):
                         # we might have a sync out for, and
                         # FIXME: filtering: chop these down to only the jobs for this cluster, ideally
                         # I would like to prefix my cluster ID to JIDs
+                        if not data['success']:
+                            log.error("on_sync_object: failure from %s: %s" % (data['id'], data['return']))
+                            continue
                         self.on_sync_object(data['id'], data['return'])
                     elif 'fun' in data and data['fun'] == 'ceph.rados_commands' and 'return' in data:
                         # A ceph.rados_commands response

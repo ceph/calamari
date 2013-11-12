@@ -2,12 +2,15 @@ from django.utils import dateformat
 from django.db import models
 import jsonfield
 
-from graphite.render.attime import parseATTime
-from graphite.render.datalib import fetchData
 import pytz
 
 
 def get_latest(metric):
+    # Local imports so that this module can be imported outside a django
+    # app (the graphite imports look for settings.*)
+    from graphite.render.attime import parseATTime
+    from graphite.render.datalib import fetchData
+
     tzinfo = pytz.timezone("UTC")
     until_time = parseATTime('now', tzinfo)
     from_time = parseATTime('-10min', tzinfo)
