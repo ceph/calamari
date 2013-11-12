@@ -84,6 +84,8 @@ diamond-service-config:
       - file: diamond-log-dir
       - pip: diamond-install
       - file: diamond-install
+      - file: diamond-network-config
+      - file: diamond-ceph-config
 
 diamond:
   service:

@@ -2,6 +2,26 @@ from django.utils import dateformat
 from django.db import models
 import jsonfield
 
+from graphite.render.attime import parseATTime
+from graphite.render.datalib import fetchData
+import pytz
+
+
+def get_latest(metric):
+    tzinfo = pytz.timezone("UTC")
+    until_time = parseATTime('now', tzinfo)
+    from_time = parseATTime('-10min', tzinfo)
+    series = fetchData({
+        'startTime': from_time,
+        'endTime': until_time,
+        'localOnly': False},
+        'ceph.ceph.df.{0}'.format(metric)
+    )
+    try:
+        return [k for k in series[0] if k is not None][-1]
+    except IndexError:
+        return None
+
 
 class Cluster(models.Model):
     """
@@ -42,7 +62,7 @@ class Cluster(models.Model):
     # used, and the extraction of knowledge from the cluster API. All of this
     # will probably be deleted and rewritten in the near future any way :).
     #
-    space = jsonfield.JSONField(null=True)
+    #space = jsonfield.JSONField(null=True)
     health = jsonfield.JSONField(null=True)
     osds = jsonfield.JSONField(null=True)
     osds_by_pg_state = jsonfield.JSONField(null=True)
@@ -78,3 +98,17 @@ class Cluster(models.Model):
 
     def has_osd(self, osd_id):
         return self.get_osd(osd_id) is not None
+
+    @property
+    def space(self):
+        def to_bytes(kb):
+            if kb is not None:
+                return kb * 1024
+            else:
+                return None
+        return {
+            'used_bytes': to_bytes(get_latest('total_used')),
+            'capacity_bytes': to_bytes(get_latest('total_space')),
+            'free_bytes': to_bytes(get_latest('totaL_avail')),
+
+        }

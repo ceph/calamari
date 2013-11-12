@@ -1,5 +1,6 @@
 
 from django.contrib.auth.models import User
+
 from rest_framework import serializers
 from ceph.models import Cluster
 from ceph.management.commands.ceph_refresh import CephRestClient
@@ -74,6 +75,8 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
     added = serializers.SerializerMethodField('get_added')
     added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
 
+    space = serializers.Field()
+
     class Meta:
         model = Cluster
         fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'space',
@@ -85,12 +88,22 @@ class ClusterSpaceSerializer(serializers.ModelSerializer):
     def get_cluster_update_time_unix(self, obj):
         return obj.cluster_update_time_unix
 
+    def get_space(self, obj):
+        return obj.space
+
     def get_report(self, obj):
-        return {
-            'total_used': obj.space['used_bytes']/1024,
-            'total_space': obj.space['capacity_bytes']/1024,
-            'total_avail': obj.space['free_bytes']/1024,
-        }
+        # This was a redundant field in calamari 1.0 (it had 'report' and 'space'
+        # where the only difference was bytes vs KB and different attribute names)
+        return None
+        #return dict([(m, get_latest(m)) for m in ['total_space', 'total_used', 'total_avail']])
+        #return {
+        #    'total_used': obj.space['used_bytes']/1024,
+        #    'total_space': obj.space['capacity_bytes']/1024,
+        #    'total_avail': obj.space['free_bytes']/1024,
+        #}
+
+
+        #return dict([(m, get_latest(m)) for m in ['total_space', 'total_used', 'total_avail']])
 
     def get_added(self, obj):
         return obj.cluster_update_time

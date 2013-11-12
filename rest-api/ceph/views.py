@@ -19,8 +19,9 @@ class Space(APIView):
 
     def get(self, request, cluster_pk):
         cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.space:
-            return Response({}, status.HTTP_202_ACCEPTED)
+
+        #if not cluster.space:
+        #    return Response({}, status.HTTP_202_ACCEPTED)
         return Response(ClusterSpaceSerializer(cluster).data)
 
 
