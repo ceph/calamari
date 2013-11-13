@@ -19,9 +19,9 @@ install_cephrestapi_key()
 case "$1" in
 	configure)
 		install_cephrestapi_key
-		start cephrestapi
+		service cephrestapi start
 		# restart does stop/start, so handles first start
-		invoke-rc.d nginx restart
+		service nginx restart
 		;;
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;
@@ -31,5 +31,11 @@ case "$1" in
 		;;
 esac
 
+#
+# The sort of thing debhelper would add
+# 
+if [ -x /etc/init.d/cephrestapi ] ; then
+	update-rc.d cephrestapi defaults
+fi
 
 exit 0

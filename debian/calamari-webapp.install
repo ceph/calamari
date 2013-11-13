@@ -1,7 +1,8 @@
 opt/calamari
 opt/graphite
-etc/init.d
-etc/init
+etc/init.d/carbon-cache
+etc/init.d/kraken
+etc/init.d/run_loop
 etc/apache2
 var/log/graphite
 var/log/calamari

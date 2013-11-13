@@ -12,6 +12,8 @@ uninstall_cephrestapi_key()
 
 case "$1" in
 	remove|upgrade|deconfigure)
+		service cephrestapi stop
+		update-rc.d -f cephrestapi remove
 		uninstall_cephrestapi_key
 		;;
 
