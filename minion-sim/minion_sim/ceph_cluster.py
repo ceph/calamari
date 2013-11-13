@@ -7,11 +7,37 @@ KB = 1024
 GIGS = 1024 * 1024 * 1024
 
 
+def flatten_dictionary(data, sep='.', prefix=None):
+    """Produces iterator of pairs where the first value is
+    the joined key names and the second value is the value
+    associated with the lowest level key. For example::
+
+      {'a': {'b': 10},
+       'c': 20,
+       }
+
+    produces::
+
+      [('a.b', 10), ('c', 20)]
+    """
+    for name, value in sorted(data.items()):
+        fullname = sep.join(filter(None, [prefix, name]))
+        if isinstance(value, dict):
+            for result in flatten_dictionary(value, sep, fullname):
+                yield result
+        else:
+            yield (fullname, value)
+
+
 def pseudorandom_subset(possible_values, n_select, selector):
     result = []
     for i in range(0, n_select):
         result.append(possible_values[hash(selector + i.__str__()) % len(possible_values)])
     return result
+
+
+def get_hostname(fqdn):
+    return fqdn.split(".")[0]
 
 
 class CephCluster(object):
@@ -53,10 +79,11 @@ class CephCluster(object):
                 osd_id += 1
 
         for fqdn in mon_hosts:
-            service_locations["mon"][fqdn] = fqdn
+            mon_id = get_hostname(fqdn)
+            service_locations["mon"][mon_id] = fqdn
             host_services[fqdn].append({
                 "type": "mon",
-                "id": fqdn,
+                "id": mon_id,
                 'fsid': fsid
             })
 
@@ -170,7 +197,7 @@ class CephCluster(object):
             # Entry for the host itself
             objects['osd_tree']['nodes'].append({
                 "id": host_tree_id,
-                "name": fqdn,
+                "name": get_hostname(fqdn),
                 "type": "host",
                 "type_id": 1,
                 "children": [
@@ -184,15 +211,17 @@ class CephCluster(object):
         objects['mon_map'] = {
             'mons': [
 
-            ]
+            ],
+            'quorum': []
         }
         for i, mon_fqdn in enumerate(mon_hosts):
             # TODO: populate addr
             objects['mon_map']['mons'].append({
                 'rank': i,
-                'name': mon_fqdn,
+                'name': get_hostname(mon_fqdn),
                 'addr': ""
             })
+            objects['mon_map']['quorum'].append(i)
         objects['mon_status'] = {
             "monmap": objects['mon_map'],
             "quorum": [m['rank'] for m in objects['mon_map']['mons']]
@@ -307,18 +336,48 @@ class CephCluster(object):
 
     def get_stats(self, fqdn):
         stats = dict()
+        hostname = fqdn.split('.')[0]
+
+        # Server stats
+        # =============
+        cpu_count = 2
+        cpu_stat_names = ['guest', 'guest_nice', 'idle', 'iowait', 'irq', 'nice', 'softirq', 'steal', 'system', 'user']
+        cpu_stats = defaultdict(dict)
+
+        for k in cpu_stat_names:
+            cpu_stats['total'][k] = 0
+        for cpu in range(cpu_count):
+            # Junk stats to generate load on carbon/graphite
+            for k in cpu_stat_names:
+                v = random.random()
+                cpu_stats["cpu{0}".format(cpu)][k] = random.random()
+                cpu_stats['total'][k] += v
+
+        stats.update(flatten_dictionary(cpu_stats, prefix="servers.{0}.cpu".format(hostname)))
 
         # Network stats
         # =============
+        interfaces = ['em1', 'p1p1', 'p1p2']
+        net_stats = defaultdict(dict)
+        for interface in interfaces:
+            for k in ['rx_byte', 'rx_compressed', 'rx_drop', 'rx_errors', 'rx_fifo', 'rx_frame', 'rx_multicast',
+                      'rx_packets', 'tx_byte', 'tx_compressed', 'tx_drop', 'tx_errors', 'tx_fifo', 'tx_frame',
+                      'tx_multicast', 'tx_packets']:
+                net_stats[interface][k] = random.random()
+        stats.update(flatten_dictionary(net_stats, prefix="servers.{0}.network".format(hostname)))
 
         # Service stats
         # =============
 
         # Cluster stats
         # =============
-        # TODO track and respect who is mon leader,
-        # temporarily just using mon 0
-        if fqdn == self._objects['mon_map']['mons'][0]['name']:
+        leader_name = None
+        if self._objects['mon_map']['quorum']:
+            leader_id = self._objects['mon_map']['quorum'][0]
+            leader = [m for m in self._objects['mon_map']['mons'] if m['rank'] == leader_id][0]
+            leader_name = leader['name']
+
+        if get_hostname(fqdn) == leader_name:
             pool_stats = defaultdict(lambda: dict(
                 bytes_used=0,
                 kb_used=0,
@@ -357,7 +416,9 @@ class CephCluster(object):
             'name': self._name,
             'objects': self._objects,
             'osd_stats': self._osd_stats,
-            'pg_stats': self._pg_stats
+            'pg_stats': self._pg_stats,
+            'service_locations': self._service_locations,
+            'host_services': self._host_services
         }
         json.dump(dump, open(self._filename, 'w'))
 
@@ -369,7 +430,8 @@ class CephCluster(object):
         self._fsid = data['fsid']
         self._name = data['name']
 
-        # The public objects (OSD map, brief PG info, etc)
+        # The public objects (health, OSD map, brief PG info, etc)
+        # This is the subset the RADOS interface that Calamari needs
         self._objects = data['objects']
 
         # The hidden state (in real ceph this would be accessible but

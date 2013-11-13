@@ -1,3 +1,4 @@
+import random
 import threading
 
 
@@ -13,9 +14,9 @@ class LoadGenerator(threading.Thread):
 
         while not self._complete.is_set():
             # Some 'data'
-            self._cluster.add_objects(0, 10, 1024 * 1024 * 4)
+            self._cluster.add_objects(0, random.randint(10, 20), 1024 * 1024 * 4)
             # Some 'metadata'
-            self._cluster.add_objects(1, 10, 1024)
+            self._cluster.add_objects(1, random.randint(10, 20), 1024)
 
             self._complete.wait(interval)
 

@@ -20,6 +20,12 @@ def main():
         CephCluster.create('cluster.json', [m.fqdn for m in minions])
     cluster = CephCluster('cluster.json')
 
+    # Quick smoke test that these methods aren't going
+    # to throw exceptions (rather stop now than get exceptions
+    # remotely)
+    for minion in minions:
+        cluster.get_stats(minion.fqdn)
+
     # A thread to generate some synthetic activity on the synthetic cluster
     load_gen = LoadGenerator(cluster)
 
