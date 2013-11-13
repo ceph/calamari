@@ -7,18 +7,35 @@ from minion_sim.load_gen import LoadGenerator
 from minion_sim.minion_launcher import MinionLauncher
 
 
+PREFIX = 'figment'
+DOMAIN = 'imagination.com'
+
+
+def get_dns(index):
+    hostname = "{0}{1:03d}".format(PREFIX, index)
+    fqdn = "{0}.{1}".format(hostname, DOMAIN)
+
+    return hostname, fqdn
+
+
 def main():
     parser = argparse.ArgumentParser(description='Start simulated salt minions.')
     parser.add_argument('--count', dest='count', type=int, default=3, help='Number of simulated minions')
     args = parser.parse_args()
 
+    if not os.path.exists('cluster.json'):
+        CephCluster.create('cluster.json', [get_dns(i)[1] for i in range(0, args.count)])
+    cluster = CephCluster('cluster.json')
+
+    # Start an XMLRPC service for the minions' fake ceph plugins to
+    # get their state
+    server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
+    server.register_instance(cluster)
+
     minions = []
     for i in range(0, args.count):
-        minions.append(MinionLauncher(i))
-
-    if not os.path.exists('cluster.json'):
-        CephCluster.create('cluster.json', [m.fqdn for m in minions])
-    cluster = CephCluster('cluster.json')
+        hostname, fqdn = get_dns(i)
+        minions.append(MinionLauncher(hostname, fqdn, cluster))
 
     # Quick smoke test that these methods aren't going
     # to throw exceptions (rather stop now than get exceptions
@@ -28,12 +45,6 @@ def main():
 
     # A thread to generate some synthetic activity on the synthetic cluster
     load_gen = LoadGenerator(cluster)
-
-    # Start an XMLRPC service for the minions' fake ceph plugins to
-    # get their state
-    server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
-    server.register_instance(cluster)
-
     load_gen.start()
 
     for minion in minions:
