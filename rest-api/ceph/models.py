@@ -18,7 +18,7 @@ def get_latest(metric):
         'startTime': from_time,
         'endTime': until_time,
         'localOnly': False},
-        'ceph.ceph.df.{0}'.format(metric)
+        metric
     )
     try:
         return [k for k in series[0] if k is not None][-1]
@@ -109,9 +109,10 @@ class Cluster(models.Model):
                 return kb * 1024
             else:
                 return None
-        return {
-            'used_bytes': to_bytes(get_latest('total_used')),
-            'capacity_bytes': to_bytes(get_latest('total_space')),
-            'free_bytes': to_bytes(get_latest('totaL_avail')),
 
+        df_path = lambda stat_name: "ceph.{0}.df.{1}".format(self.name, stat_name)
+        return {
+            'used_bytes': to_bytes(get_latest(df_path('total_used'))),
+            'capacity_bytes': to_bytes(get_latest(df_path('total_space'))),
+            'free_bytes': to_bytes(get_latest(df_path('totaL_avail')))
         }

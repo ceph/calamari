@@ -304,8 +304,6 @@ class DiscoveryThread(threading.Thread):
         event.subscribe("ceph/heartbeat/")
 
         while not self._complete.is_set():
-            #self._complete.wait(5)
-            #continue
             data = event.get_event()
             if data is not None:
                 try:
@@ -371,6 +369,10 @@ class Manager(object):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
         cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'], self._notification_thread)
         self.monitors[heartbeat_data['fsid']] = cluster_monitor
+
+        persistence.get_or_create(
+            heartbeat_data['name']
+        )
 
         # Run before passing on the heartbeat, because otherwise the
         # syncs resulting from the heartbeat might not be received

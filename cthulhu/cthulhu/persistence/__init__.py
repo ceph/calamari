@@ -26,6 +26,20 @@ WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
 OKAY_STATES = set(['active', 'clean'])
 
 
+def get_or_create(cluster_name):
+    # Note that this is a sleazy "only ever one cluster" implementation
+    try:
+        cluster = Cluster.objects.get()
+    except Cluster.DoesNotExist:
+        cluster = Cluster.objects.create(name=cluster_name)
+    else:
+        if cluster.name != cluster_name:
+            cluster.name = cluster_name
+            cluster.save()
+
+    return cluster
+
+
 def heartbeat():
     cluster = Cluster.objects.get()
     cluster.cluster_update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
