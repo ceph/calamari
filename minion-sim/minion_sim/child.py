@@ -2,7 +2,7 @@ import os
 import sys
 import xmlrpclib
 import yaml
-from minion_sim.sim import XMLRPC_PORT
+from minion_sim.constants import XMLRPC_PORT
 
 
 # Because salt minion will be calling functions

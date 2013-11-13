@@ -2,10 +2,9 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 import argparse
 import os
 from minion_sim.ceph_cluster import CephCluster
+from minion_sim.constants import XMLRPC_PORT
+from minion_sim.load_gen import LoadGenerator
 from minion_sim.minion_launcher import MinionLauncher
-
-
-XMLRPC_PORT = 8761
 
 
 def main():
@@ -21,10 +20,15 @@ def main():
         CephCluster.create('cluster.json', [m.fqdn for m in minions])
     cluster = CephCluster('cluster.json')
 
+    # A thread to generate some synthetic activity on the synthetic cluster
+    load_gen = LoadGenerator(cluster)
+
     # Start an XMLRPC service for the minions' fake ceph plugins to
     # get their state
     server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
     server.register_instance(cluster)
+
+    load_gen.start()
 
     for minion in minions:
         minion.start()
@@ -32,7 +36,11 @@ def main():
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        load_gen.stop()
         for minion in minions:
             minion.stop()
+        load_gen.join()
         for minion in minions:
             minion.join()
+
+        cluster.save()
