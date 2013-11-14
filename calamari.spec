@@ -262,11 +262,15 @@ exit 0
 
 %postun -n calamari-webapp
 # Remove anything left behind in the calamari and graphite
-# virtual environment  directories.
-rm -rf /opt/calamari
-rm -rf /opt/graphite
-exit 0
-
+# virtual environment  directories, if this is a "last-instance" call
+if [ $1 == 0 ] ; then
+	rm -rf /opt/calamari
+	rm -rf /opt/graphite
+	rm -rf /var/log/kraken.log
+	rm -rf /var/log/calamari
+	rm -rf /var/log/graphite
+	rm -rf /var/log/carbon
+fi
 exit 0
 
 %changelog
