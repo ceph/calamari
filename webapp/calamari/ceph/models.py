@@ -58,7 +58,7 @@ class Cluster(models.Model):
 
     def _get_cluster_update_attempt_time_ms(self):
         "Convert `cluster_update_attempt_time` into Unix time."
-        return self._convert_to_unix_ms(self.cluster_update_time)
+        return self._convert_to_unix_ms(self.cluster_update_attempt_time)
 
     cluster_update_time_unix = property(_get_cluster_update_time_ms)
     cluster_update_attempt_time_unix = property(_get_cluster_update_attempt_time_ms)
