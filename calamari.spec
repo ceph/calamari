@@ -265,8 +265,10 @@ exit 0
 # virtual environment  directories.
 rm -rf /opt/calamari
 rm -rf /opt/graphite
-exit 0
-
+rm -rf /var/log/kraken.log
+rm -rf /var/log/calamari
+rm -rf /var/log/graphite
+rm -rf /var/log/carbon
 exit 0
 
 %changelog
