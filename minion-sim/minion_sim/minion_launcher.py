@@ -11,13 +11,11 @@ from diamond.handler.graphite import GraphiteHandler
 from minion_sim.constants import XMLRPC_PORT
 
 
-ROOT = os.getcwd()
-
 STATS_PERIOD = 10
 
 MINION_CONFIG_TEMPLATE = """
 master: localhost
-id: {{ HOSTNAME }}
+id: {{ FQDN }}
 user: {{ USER }}
 pidfile: {{ ROOT }}/var/run/salt-minion.pid
 pki_dir: {{ ROOT }}/etc/pki
@@ -97,14 +95,14 @@ class MinionLauncher(object):
     Responsible for creating the filesystem tree for this salt
     minion, writing out a config file and then starting/stopping it.
     """
-    def __init__(self, hostname, fqdn, cluster=None):
+    def __init__(self, config_dir, hostname, fqdn, cluster=None):
         super(MinionLauncher, self).__init__()
 
         self.ps = None
         self.hostname = hostname
         self.fqdn = fqdn
 
-        path = os.path.join(ROOT, self.hostname)
+        path = os.path.join(config_dir, self.hostname)
 
         try:
             os.makedirs(path)

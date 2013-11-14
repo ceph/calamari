@@ -1,4 +1,5 @@
 from ConfigParser import ConfigParser
+import json
 import logging
 import os
 import socket
@@ -59,6 +60,36 @@ class DevCalamariControl(object):
 
         return up
 
+    def clear_keys(self):
+        """
+        XXX temporary
+        This method will go away once key handling can be driven via the REST API
+        """
+        subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-D", "-y"])
+
+    def authorize_keys(self, minion_ids):
+        """
+        XXX temporary
+        This method will go away once key handling can be driven via the REST API
+
+        Wait for the minion ids to show up in an unauthorized state, and then authorize
+        them all
+        """
+
+        def _fqdns_present():
+            data = json.loads(subprocess.check_output(["salt-key", "-c", "salt/etc/salt", "-L", "--out=json"]))
+            all_present = len(set(minion_ids) & set(data['minions_pre'])) == len(minion_ids)
+            log.debug("checking keys, found %s (%s)" % (data['minions_pre'], all_present))
+
+            return all_present
+
+        wait_until_true(_fqdns_present)
+
+        for minion_id in minion_ids:
+            log.debug("Authorising key for %s" % minion_id)
+
+            subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-y", "-a", minion_id])
+
     def start(self):
         config_path = os.path.join(TREE_ROOT, "supervisord.conf")
         assert os.path.exists(config_path)
@@ -96,6 +127,7 @@ class DevCalamariControl(object):
             raise
 
     def stop(self):
+        log.info("%s.stop" % self.__class__.__name__)
         self._ps.send_signal(signal.SIGINT)
         stdout, stderr = self._ps.communicate()
         rc = self._ps.wait()
