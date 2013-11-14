@@ -27,6 +27,9 @@ class CephControl(object):
         """
         raise NotImplementedError()
 
+    def mark_osd_out(self, osd_id):
+        raise NotImplementedError()
+
 
 class DevCephControl(CephControl):
     """

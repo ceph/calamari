@@ -1,64 +1,117 @@
-
-import logging
-from django.utils.unittest import TestCase
-from tests.calamari_ctl import DevCalamariControl
-from tests.ceph_ctl import DevCephControl
-from tests.http_client import AuthenticatedHttpClient
+from django.utils.unittest.case import skipIf
+from tests.server_testcase import ServerTestCase
 from tests.utils import wait_until_true
 
 
-API_URL = "http://localhost:8000/api/v1/"
-API_USERNAME = 'admin'
-API_PASSWORD = 'admin'
+# The tests need to have a rough idea of how often
+# calamari checks things, so that they can set
+# sane upper bounds on waits
+HEARTBEAT_INTERVAL = 10
 
-log = logging.getLogger(__name__)
+# Roughly how long should it take for one OSD to
+# recover its PGs after an outage?  This is a 'finger in the air'
+# number that depends on the ceph cluster used in testing.
+OSD_RECOVERY_PERIOD = 600
 
 
-class TestMonitoring(TestCase):
-    def setUp(self):
-        self.calamari_ctl = DevCalamariControl()
-        self.calamari_ctl.start()
-
-        try:
-            # Calamari is up, we can login to it
-            self.api = AuthenticatedHttpClient(API_URL, API_USERNAME, API_PASSWORD)
-            self.api.login()
-
-            # Let's give calamari something to monitor
-            self.ceph_ctl = DevCephControl()
-
-        except:
-            self.calamari_ctl.stop()
-            raise
+class TestMonitoring(ServerTestCase):
+    def _cluster_detected(self, expected=1):
+        response = self.api.get("cluster")
+        response.raise_for_status()
+        clusters = response.json()
+        if len(clusters) < expected:
+            return False
+        elif len(clusters) == expected:
+            return True
+        else:
+            raise self.failureException("Too many clusters: %s" % clusters)
 
     def test_detect_simple(self):
         """
         Check that a single cluster, when sending a heartbeat to the
         calamari server, becomes visible via the REST API
         """
+        self.clear()
 
-        # Initially there should be no clusters
-        response = self.api.get("cluster")
-        response.raise_for_status()
-        for cluster in response.json():
-            response = self.api.delete("cluster/%s" % cluster['id'])
-            response.raise_for_status()
-
-        # And the salt master should recognise no minions
-        self.calamari_ctl.clear_keys()
-
-        # Then we start up our Ceph Cluster
+        # Start one Ceph cluster
         self.ceph_ctl.configure(3)
+        # Authorize the Ceph servers' minions
         self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
 
-        def cluster_detected():
-            response = self.api.get("cluster")
-            response.raise_for_status()
-            return bool(response.json())
+        # Check that the Ceph cluster appears in the REST API
+        wait_until_true(self._cluster_detected, timeout=HEARTBEAT_INTERVAL*3)
 
-        wait_until_true(cluster_detected)
+    @skipIf(True, "Not implemented yet")
+    def test_cluster_down(self):
+        """
+        Check Calamari's reaction to total loss of contact with
+        a Ceph cluster being monitored.
 
-    def tearDown(self):
-        log.info("%s.teardown" % self.__class__.__name__)
-        self.ceph_ctl.shutdown()
-        self.calamari_ctl.stop()
+        - The cluster update time should stop getting incremented
+        - TODO an alert should be recorded
+        - The system should recover promptly when the cluster comes
+          back online.
+        """
+        pass
+
+    @skipIf(True, "Not implemented yet")
+    def test_mon_down(self):
+        """
+        Check Calamari's reaction to loss of contact with
+        individual mon servers in a Ceph cluster.
+
+        - The cluster state should continue to be updated
+          as long as there is a mon quorum and
+          one mon is available to calamari.
+        """
+        pass
+
+    @skipIf(True, "Not implemented yet")
+    def test_osd_out(self):
+        """
+        Check Calamari's reaction to an OSD going down:
+
+        - The OSD map should be updated
+        - The health information should be updated and indicate a warning
+        - TODO an alert should be recorded
+        """
+
+        # Start monitoring a cluster
+        self.clear()
+        self.ceph_ctl.configure(3)
+        self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
+        wait_until_true(self._cluster_detected, timeout=HEARTBEAT_INTERVAL*3)
+
+        # Pick an OSD and check its initial status
+        cluster_id = self.api.get("cluster").json()[0]['id']
+        osd_id = 0
+        osd_url = "cluster/{0}/osd/{1}".format(cluster_id, osd_id)
+
+        # Check it's initially up and in
+        initial_osd_status = self.api.get(osd_url).json()['osd']
+        self.assertEqual(initial_osd_status['up'], 1)
+        self.assertEqual(initial_osd_status['in'], 1)
+
+        # Cause it to 'spontaneously' (as far as calamari is concerned)
+        # be marked out
+        self.ceph_ctl.mark_osd_out(0)
+
+        # Wait for the status to filter up to the REST API
+        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 0,
+                        timeout=HEARTBEAT_INTERVAL*3)
+
+        # Wait for the health status to reflect the degradation
+        health_url = "cluster/{0}/health".format(cluster_id)
+        wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_WARN",
+                        timeout=HEARTBEAT_INTERVAL*3)
+
+        # Bring the OSD back into the cluster
+        self.ceph_ctl.mark_osd_in(0)
+
+        # Wait for the status
+        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL*3)
+
+        # Wait for the health
+        # This can take a long time, because it has to wait for PGs to fully recover
+        wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_OK",
+                        timeout=OSD_RECOVERY_PERIOD*2)
