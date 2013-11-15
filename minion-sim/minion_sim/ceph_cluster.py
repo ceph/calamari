@@ -1,10 +1,24 @@
 from collections import defaultdict
+import hashlib
 import json
+import logging
 import uuid
 import random
 
 KB = 1024
 GIGS = 1024 * 1024 * 1024
+
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+log.addHandler(logging.StreamHandler())
+log.addHandler(logging.FileHandler("{0}.log".format(__name__)))
+
+
+def md5(raw):
+    hasher = hashlib.md5()
+    hasher.update(raw)
+    return hasher.hexdigest()
 
 
 def flatten_dictionary(data, sep='.', prefix=None):
@@ -102,6 +116,7 @@ class CephCluster(object):
         # =======
         osd_stats = {}
         objects['osd_map'] = {
+            'epoch': 1,
             'osds': [],
             'pools': []
         }
@@ -272,29 +287,36 @@ class CephCluster(object):
             'name': self._name,
             'fsid': self._fsid,
             'versions': {
-                'health': 'xxx',
+                'health': md5(json.dumps(self._objects['health'])),
                 'mds_map': 1,
                 'mon_map': 1,
                 'mon_status': 1,
-                'osd_map': 1,
+                'osd_map': self._objects['osd_map']['epoch'],
                 'osd_tree': 1,
-                'pg_brief': 'xxx'
+                'pg_brief': md5(json.dumps(self._objects['pg_brief']))
             }
         }
 
     def get_cluster_object(self, cluster_name, sync_type, since):
+        data = self._objects[sync_type]
+        if sync_type == 'osd_map':
+            version = data['epoch']
+        elif sync_type == 'health' or sync_type == 'pg_brief':
+            version = md5(json.dumps(data))
+        else:
+            version = 1
+
         return {
             'fsid': self._fsid,
-            'version': 1,
+            'version': version,
             'type': sync_type,
-            'data': self._objects[sync_type]
+            'data': data
         }
 
     def _pg_id_to_osds(self, pg_id):
         # TODO: respect the pool's replication policy
         replicas = 2
 
-        # TODO: respect whether OSDs are in or out
         possible_osd_ids = [o['osd'] for o in self._objects['osd_map']['osds'] if o['in']]
 
         return pseudorandom_subset(possible_osd_ids, replicas, pg_id)
@@ -309,7 +331,7 @@ class CephCluster(object):
 
         return "{0}.{1}".format(pool_id, hash(object_id.__str__()) % pg_num)
 
-    def add_objects(self, pool_id, n, size):
+    def rados_write(self, pool_id, n, size):
         # Pick a random base ID
         base_id = random.randint(0, 10000)
 
@@ -323,6 +345,90 @@ class CephCluster(object):
             self._pg_stats[pg_id]['num_bytes_wr'] += size
             # NB assuming all other usage stats are calculated from
             # PG stats
+
+    def set_osd_state(self, osd_id, up=None, osd_in=None):
+        # Update OSD map
+        dirty = False
+        osd = [o for o in self._objects['osd_map']['osds'] if o['osd'] == osd_id][0]
+        if up is not None and osd['up'] != up:
+            log.debug("Mark OSD %s up=%s" % (osd_id, up))
+            osd['up'] = up
+            dirty = True
+        if osd_in is not None and osd['in'] != osd_in:
+            log.debug("Mark OSD %s in=%s" % (osd_id, osd_in))
+            osd['in'] = osd_in
+            dirty = True
+
+        if not dirty:
+            return
+
+        log.debug("Advancing OSD map")
+        self._objects['osd_map']['epoch'] += 1
+
+        self._pg_monitor()
+        self._update_health()
+
+    def _pg_monitor(self, recovery_credits=0):
+        """
+        Crude facimile of the PG monitor.  For each PG, based on its
+        current state and the state of its OSDs, update it: usually do
+        nothing, maybe mark it stale, maybe remap it.
+        """
+
+        osds = dict([(osd['osd'], osd) for osd in self._objects['osd_map']['osds']])
+
+        for pg in self._objects['pg_brief']:
+            states = set(pg['state'].split('+'))
+            primary_osd_id = pg['acting'][0]
+            # Call a PG is stale if its primary OSD is down
+            if osds[primary_osd_id]['in'] == 1 and osds[primary_osd_id]['up'] == 0:
+                states.add('stale')
+            else:
+                states.discard('stale')
+
+            # Call a PG active if any of its OSDs are in
+            if any([osds[i]['in'] == 1 for i in pg['acting']]):
+                states.add('active')
+            else:
+                states.discard('active')
+
+            # Remap a PG if any of its OSDs are out
+            if any([osds[i]['in'] == 0 for i in pg['acting']]):
+                states.add('remapped')
+                osd_ids = self._pg_id_to_osds(pg['pgid'])
+                pg['up'] = osd_ids
+                pg['acting'] = osd_ids
+
+            # Call a PG clean if its not remapped and all its OSDs are in
+            if all([osds[i]['in'] == 1 for i in pg['acting']]) and not 'remapped' in states:
+                states.add('clean')
+            else:
+                states.discard('clean')
+
+            if recovery_credits > 0 and 'remapped' in states:
+                states.discard('remapped')
+                recovery_credits -= 1
+                log.debug("Recovered PG %s" % pg['pgid'])
+
+            new_state = "+".join(sorted(list(states)))
+            if pg['state'] != new_state:
+                log.debug("New PG state %s: %s" % (pg['pgid'], new_state))
+                pg['state'] = new_state
+
+    def advance(self, t):
+        RECOVERIES_PER_SECOND = 1
+        self._pg_monitor(t * RECOVERIES_PER_SECOND)
+        self._update_health()
+
+    def _update_health(self):
+        """
+        Update the 'health' object based on the cluster maps
+        """
+
+        if any([pg['state'] != 'active+clean' for pg in self._objects['pg_brief']]):
+            self._objects['health']['overall_status'] = "HEALTH_WARN"
+        else:
+            self._objects['health']['overall_status'] = "HEALTH_OK"
 
     def update_rates(self):
         pass

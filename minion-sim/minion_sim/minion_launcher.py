@@ -130,7 +130,7 @@ class MinionLauncher(object):
 
     def start(self):
         print "Calling salt_minion.start"
-        self.ps = subprocess.Popen(['minion-child'] + self.cmdline)
+        self.ps = subprocess.Popen(['minion-child'] + self.cmdline, stdin=subprocess.PIPE)
         self._stats_sender.start()
 
     def stop(self):

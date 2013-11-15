@@ -1,7 +1,9 @@
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 import argparse
+import logging
 import os
 import threading
+import time
 from minion_sim.ceph_cluster import CephCluster
 from minion_sim.constants import XMLRPC_PORT
 from minion_sim.load_gen import LoadGenerator
@@ -10,6 +12,12 @@ from minion_sim.minion_launcher import MinionLauncher
 
 PREFIX = 'figment'
 DOMAIN = 'imagination.com'
+
+
+log = logging.getLogger('minion_sim.sim')
+log.setLevel(logging.DEBUG)
+log.addHandler(logging.StreamHandler())
+log.addHandler(logging.FileHandler('minion_sim.sim.log'))
 
 
 def get_dns(index):
@@ -28,6 +36,27 @@ class MinionSim(threading.Thread):
         self._server_available = threading.Event()
         self.minions = []
 
+        config_file = os.path.join(self._config_dir, 'cluster.json')
+        if not os.path.exists(config_file):
+            CephCluster.create(config_file, [get_dns(i)[1] for i in range(0, self._count)])
+
+        self.cluster = CephCluster(config_file)
+
+        # An XMLRPC service for the minions' fake ceph plugins to
+        # get their state
+        self._server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
+        self._server.register_instance(self.cluster)
+
+        for i in range(0, self._count):
+            hostname, fqdn = get_dns(i)
+            self.minions.append(MinionLauncher(self._config_dir, hostname, fqdn, self.cluster))
+
+        # Quick smoke test that these methods aren't going
+        # to throw exceptions (rather stop now than get exceptions
+        # remotely)
+        for minion in self.minions:
+            self.cluster.get_stats(minion.fqdn)
+
     def get_minion_fqdns(self):
         return [m.fqdn for m in self.minions]
 
@@ -36,44 +65,32 @@ class MinionSim(threading.Thread):
         self._server_available.wait()
 
     def run(self):
-        config_file = os.path.join(self._config_dir, 'cluster.json')
-        if not os.path.exists(config_file):
-            CephCluster.create(config_file, [get_dns(i)[1] for i in range(0, self._count)])
-        cluster = CephCluster(config_file)
-
-        # Start an XMLRPC service for the minions' fake ceph plugins to
-        # get their state
-        self._server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
-        self._server.register_instance(cluster)
-
-        for i in range(0, self._count):
-            hostname, fqdn = get_dns(i)
-            self.minions.append(MinionLauncher(self._config_dir, hostname, fqdn, cluster))
-
-        # Quick smoke test that these methods aren't going
-        # to throw exceptions (rather stop now than get exceptions
-        # remotely)
-        for minion in self.minions:
-            cluster.get_stats(minion.fqdn)
-
         # A thread to generate some synthetic activity on the synthetic cluster
-        load_gen = LoadGenerator(cluster)
+        load_gen = LoadGenerator(self.cluster)
         load_gen.start()
 
         for minion in self.minions:
             minion.start()
 
         self._server_available.set()
+
+        log.debug("Starting XMLRPC server...")
         self._server.serve_forever()
+        self._server.server_close()
+        log.debug("XMLRPC server terminated, stopping threads")
 
         load_gen.stop()
         for minion in self.minions:
             minion.stop()
+
+        log.debug("Joining threads")
         load_gen.join()
         for minion in self.minions:
             minion.join()
 
-        cluster.save()
+        log.debug("Saving state")
+        self.cluster.save()
+        log.debug("Complete.")
 
     def stop(self):
         self._server.shutdown()
@@ -88,10 +105,14 @@ def main():
 
     sim = MinionSim(config_path, args.count)
 
+    log.debug("Starting simulator...")
     sim.start()
     try:
-        sim.join()
+        log.debug("Waiting for simulator...")
+        while True:
+            time.sleep(0.5)
     except KeyboardInterrupt:
+        log.debug("Terminating simulator...")
         sim.stop()
         sim.join()
-        pass
+        log.debug("Complete.")

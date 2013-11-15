@@ -23,11 +23,21 @@ class CephControl(object):
 
     def configure(self, server_count):
         """
-        Tell me about the kind of system you would like
+        Tell me about the kind of system you would like.
+
+        We will give you that system in a clean state or not at all:
+        - Sometimes by setting it up for you here and now
+        - Sometimes by cleaning up an existing cluster that's left from a previous test
+        - Sometimes a clean cluster is already present for us
+        - Sometimes we may not be able to give you the configuration you asked for
+          (maybe you asked for more servers than we have servers) and have to
+          throw you a test skip exception
+        - Sometimes we may have a cluster that we can't clean up well enough
+          to hand back to you, and have to throw you an error exception
         """
         raise NotImplementedError()
 
-    def mark_osd_out(self, osd_id):
+    def mark_osd_out(self, osd_id, out=True):
         raise NotImplementedError()
 
 
@@ -55,6 +65,9 @@ class DevCephControl(CephControl):
             self._sim.stop()
             self._sim.join()
         shutil.rmtree(self._config_dir)
+
+    def mark_osd_in(self, osd_id, osd_in=True):
+        self._sim.cluster.set_osd_state(osd_id, osd_in=1 if osd_in else 0)
 
 
 class RealCephControl(CephControl):

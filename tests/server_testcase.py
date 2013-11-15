@@ -54,5 +54,5 @@ class ServerTestCase(TestCase):
 
     def tearDown(self):
         log.info("%s.teardown" % self.__class__.__name__)
-        self.ceph_ctl.shutdown()
         self.calamari_ctl.stop()
+        self.ceph_ctl.shutdown()

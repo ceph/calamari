@@ -10,13 +10,16 @@ class LoadGenerator(threading.Thread):
         self._complete = threading.Event()
 
     def run(self):
-        interval = 0.5
+        interval = 2
 
         while not self._complete.is_set():
             # Some 'data'
-            self._cluster.add_objects(0, random.randint(10, 20), 1024 * 1024 * 4)
+            self._cluster.rados_write(0, random.randint(10, 20), 1024 * 1024 * 4)
             # Some 'metadata'
-            self._cluster.add_objects(1, random.randint(10, 20), 1024)
+            self._cluster.rados_write(1, random.randint(10, 20), 1024)
+
+            # Give the cluster a chance to update
+            self._cluster.advance(interval)
 
             self._complete.wait(interval)
 

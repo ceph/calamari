@@ -26,6 +26,12 @@ class TestMonitoring(ServerTestCase):
         else:
             raise self.failureException("Too many clusters: %s" % clusters)
 
+    def _maps_populated(self, cluster_id):
+        response = self.api.get("cluster/{0}/osd".format(cluster_id))
+        response.raise_for_status()
+        osds = response.json()
+        return bool(len(osds))
+
     def test_detect_simple(self):
         """
         Check that a single cluster, when sending a heartbeat to the
@@ -66,7 +72,6 @@ class TestMonitoring(ServerTestCase):
         """
         pass
 
-    @skipIf(True, "Not implemented yet")
     def test_osd_out(self):
         """
         Check Calamari's reaction to an OSD going down:
@@ -84,6 +89,7 @@ class TestMonitoring(ServerTestCase):
 
         # Pick an OSD and check its initial status
         cluster_id = self.api.get("cluster").json()[0]['id']
+        wait_until_true(lambda: self._maps_populated(cluster_id))
         osd_id = 0
         osd_url = "cluster/{0}/osd/{1}".format(cluster_id, osd_id)
 
@@ -94,7 +100,7 @@ class TestMonitoring(ServerTestCase):
 
         # Cause it to 'spontaneously' (as far as calamari is concerned)
         # be marked out
-        self.ceph_ctl.mark_osd_out(0)
+        self.ceph_ctl.mark_osd_in(osd_id, False)
 
         # Wait for the status to filter up to the REST API
         wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 0,
@@ -106,7 +112,7 @@ class TestMonitoring(ServerTestCase):
                         timeout=HEARTBEAT_INTERVAL*3)
 
         # Bring the OSD back into the cluster
-        self.ceph_ctl.mark_osd_in(0)
+        self.ceph_ctl.mark_osd_in(osd_id, True)
 
         # Wait for the status
         wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL*3)
