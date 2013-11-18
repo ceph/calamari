@@ -54,19 +54,14 @@ class StatsSender(threading.Thread):
     A baby version of diamond+CephCollector, sending
     fictional statistics to graphite.
     """
-    def __init__(self, fqdn, cluster=None):
+    def __init__(self, fqdn, cluster):
         super(StatsSender, self).__init__()
         self._handler = GraphiteHandler({
             'host': 'localhost'
         })
         self._complete = threading.Event()
         self._fqdn = fqdn
-
-        # Cluster may be in or out of process
-        if cluster is None:
-            self._cluster = xmlrpclib.ServerProxy('http://localhost:%s' % XMLRPC_PORT, allow_none=True)
-        else:
-            self._cluster = cluster
+        self._cluster = cluster
 
     def run(self):
         while not self._complete.is_set():
@@ -125,12 +120,21 @@ class MinionLauncher(object):
         open(config_filename, 'w').write(config_str)
 
         self.cmdline = ['-c', os.path.dirname(config_filename)]
+        self._stats_sender = None
 
-        self._stats_sender = StatsSender(self.fqdn, cluster)
+        # Cluster may be in or out of process
+        if cluster is None:
+            self._cluster = xmlrpclib.ServerProxy('http://localhost:%s' % XMLRPC_PORT, allow_none=True)
+        else:
+            self._cluster = cluster
 
     def start(self):
         print "Calling salt_minion.start"
-        self.ps = subprocess.Popen(['minion-child'] + self.cmdline, stdin=subprocess.PIPE)
+        # TODO: send stdout and stderr somewhere other than the screen to avoid spamming
+        # during test runs
+        self.ps = subprocess.Popen(['minion-child'] + self.cmdline,
+                                   stdin=subprocess.PIPE)
+        self._stats_sender = StatsSender(self.fqdn, self._cluster)
         self._stats_sender.start()
 
     def stop(self):

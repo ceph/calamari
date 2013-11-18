@@ -34,7 +34,7 @@ class MinionSim(threading.Thread):
         self._count = count
         self._server = None
         self._server_available = threading.Event()
-        self.minions = []
+        self.minions = {}
 
         config_file = os.path.join(self._config_dir, 'cluster.json')
         if not os.path.exists(config_file):
@@ -49,16 +49,16 @@ class MinionSim(threading.Thread):
 
         for i in range(0, self._count):
             hostname, fqdn = get_dns(i)
-            self.minions.append(MinionLauncher(self._config_dir, hostname, fqdn, self.cluster))
+            self.minions[fqdn] = MinionLauncher(self._config_dir, hostname, fqdn, self.cluster)
 
         # Quick smoke test that these methods aren't going
         # to throw exceptions (rather stop now than get exceptions
         # remotely)
-        for minion in self.minions:
+        for minion in self.minions.values():
             self.cluster.get_stats(minion.fqdn)
 
     def get_minion_fqdns(self):
-        return [m.fqdn for m in self.minions]
+        return [m.fqdn for m in self.minions.values()]
 
     def start(self):
         super(MinionSim, self).start()
@@ -69,8 +69,7 @@ class MinionSim(threading.Thread):
         load_gen = LoadGenerator(self.cluster)
         load_gen.start()
 
-        for minion in self.minions:
-            minion.start()
+        self.start_minions()
 
         self._server_available.set()
 
@@ -79,14 +78,12 @@ class MinionSim(threading.Thread):
         self._server.server_close()
         log.debug("XMLRPC server terminated, stopping threads")
 
+        log.debug("Stopping load gen")
         load_gen.stop()
-        for minion in self.minions:
-            minion.stop()
-
-        log.debug("Joining threads")
         load_gen.join()
-        for minion in self.minions:
-            minion.join()
+
+        log.debug("Stopping minions")
+        self.halt_minions()
 
         log.debug("Saving state")
         self.cluster.save()
@@ -94,6 +91,23 @@ class MinionSim(threading.Thread):
 
     def stop(self):
         self._server.shutdown()
+
+    def halt_minions(self):
+        for minion in self.minions.values():
+            minion.stop()
+        for minion in self.minions.values():
+            minion.join()
+
+    def start_minions(self):
+        for minion in self.minions.values():
+            minion.start()
+
+    def halt_minion(self, minion_id):
+        self.minions[minion_id].stop()
+        self.minions[minion_id].join()
+
+    def start_minion(self, minion_id):
+        self.minions[minion_id].start()
 
 
 def main():

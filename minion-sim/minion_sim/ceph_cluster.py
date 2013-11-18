@@ -528,6 +528,13 @@ class CephCluster(object):
         }
         json.dump(dump, open(self._filename, 'w'))
 
+    def get_service_fqdns(self, service_type):
+        """
+        Given a service type (mon or osd), return an iterable
+        of FQDNs of servers where that type of service is running.
+        """
+        return self._service_locations[service_type].values()
+
     def __init__(self, filename):
         self._filename = filename
         data = json.load(open(self._filename))

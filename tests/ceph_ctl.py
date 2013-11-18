@@ -37,8 +37,27 @@ class CephControl(object):
         """
         raise NotImplementedError()
 
-    def mark_osd_out(self, osd_id, out=True):
+    def shutdown(self):
+        """
+        This cluster will not be used further by the test.
+
+        If you created a cluster just for the test, tear it down here.  If the
+        cluster was already up, just stop talking to it.
+        """
         raise NotImplementedError()
+
+    def mark_osd_in(self, osd_id, osd_in=True):
+        raise NotImplementedError()
+
+    def get_server_fqdns(self):
+        raise NotImplementedError()
+
+    def go_dark(self, dark=True):
+        """
+        Emulate the condition where network connectivity between
+        the calamari server and the ceph cluster is lost.
+        """
+        pass
 
 
 class DevCephControl(CephControl):
@@ -55,9 +74,6 @@ class DevCephControl(CephControl):
         self._sim = MinionSim(self._config_dir, server_count)
         self._sim.start()
 
-    def get_server_fqdns(self):
-        return self._sim.get_minion_fqdns()
-
     def shutdown(self):
         log.info("%s.shutdown" % self.__class__.__name__)
 
@@ -66,9 +82,26 @@ class DevCephControl(CephControl):
             self._sim.join()
         shutil.rmtree(self._config_dir)
 
+    def get_server_fqdns(self):
+        return self._sim.get_minion_fqdns()
+
     def mark_osd_in(self, osd_id, osd_in=True):
         self._sim.cluster.set_osd_state(osd_id, osd_in=1 if osd_in else 0)
 
+    def go_dark(self, dark=True, minion_id=None):
+        if minion_id:
+            if dark:
+                self._sim.halt_minion(minion_id)
+            else:
+                self._sim.start_minion(minion_id)
+        else:
+            if dark:
+                self._sim.halt_minions()
+            else:
+                self._sim.start_minions()
+
+    def get_service_fqdns(self, service_type):
+        return self._sim.cluster.get_service_fqdns(service_type)
 
 class RealCephControl(CephControl):
     """
