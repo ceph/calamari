@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404
+
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -6,49 +6,111 @@ from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import permission_classes
 from rest_framework import status
+
 from django.views.decorators.cache import never_cache
-from ceph.models import Cluster
 from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer,\
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer
+
+import zerorpc
+from zerorpc.exceptions import LostRemote
+from cthulhu.manager.rpc import CTHULHU_RPC_URL
+
+import pytz
+
+from graphite.render.attime import parseATTime
+from graphite.render.datalib import fetchData
 
 
-class Space(APIView):
-    model = Cluster
+def get_latest_graphite(metric):
+    """
+    Get the latest value of a named graphite metric
+    """
 
-    def get(self, request, cluster_pk):
-        cluster = get_object_or_404(Cluster, pk=cluster_pk)
+    tzinfo = pytz.timezone("UTC")
+    until_time = parseATTime('now', tzinfo)
+    from_time = parseATTime('-10min', tzinfo)
+    series = fetchData({
+        'startTime': from_time,
+        'endTime': until_time,
+        'localOnly': False},
+        metric
+    )
+    try:
+        return [k for k in series[0] if k is not None][-1]
+    except IndexError:
+        return None
 
-        #if not cluster.space:
-        #    return Response({}, status.HTTP_202_ACCEPTED)
-        return Response(ClusterSpaceSerializer(cluster).data)
+
+class DataObject(object):
+    """
+    A convenience for converting dicts from the backend into
+    objects, because django_rest_framework expects objects
+    """
+    def __init__(self, data):
+        self.__dict__.update(data)
 
 
-class Health(APIView):
-    model = Cluster
+class RPCView(APIView):
+    def __init__(self, *args, **kwargs):
+        super(RPCView, self).__init__(*args, **kwargs)
+        self.client = zerorpc.Client()
+        self.client.connect(CTHULHU_RPC_URL)
 
-    def get(self, request, cluster_pk):
-        cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.health:
+    def handle_exception(self, exc):
+        try:
+            return super(RPCView, self).handle_exception(exc)
+        except LostRemote as e:
+            return Response({'detail': "RPC error ('%s')" % e},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
+
+
+class Space(RPCView):
+    def get(self, request, fsid):
+        def to_bytes(kb):
+            if kb is not None:
+                return kb * 1024
+            else:
+                return None
+
+        cluster = self.client.get_cluster(fsid)
+
+        df_path = lambda stat_name: "ceph.{0}.df.{1}".format(cluster['name'], stat_name)
+        space = {
+            'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
+            'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
+            'free_bytes': to_bytes(get_latest_graphite(df_path('totaL_avail')))
+        }
+
+        return Response(ClusterSpaceSerializer(DataObject({
+            'space': space
+        })).data)
+
+
+class Health(RPCView):
+    def get(self, request, fsid):
+        health = self.client.get_sync_object(fsid, 'health')
+        return Response(ClusterHealthSerializer(DataObject({
+            'report': health,
+            'cluster_update_time': self.client.get_cluster(fsid)['update_time']
+        })).data)
+
+
+class HealthCounters(RPCView):
+    def get(self, request, fsid):
+        counters = self.client.get_derived_object(fsid, 'counters')
+        if not counters:
             return Response({}, status.HTTP_202_ACCEPTED)
-        return Response(ClusterHealthSerializer(cluster).data)
+
+        return Response(ClusterHealthCountersSerializer(DataObject({
+            'counters': counters,
+            'cluster_update_time': self.client.get_cluster(fsid)['update_time']
+        })).data)
 
 
-class HealthCounters(APIView):
-    model = Cluster
-
-    def get(self, request, cluster_pk):
-        cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.counters:
-            return Response({}, status.HTTP_202_ACCEPTED)
-        return Response(ClusterHealthCountersSerializer(cluster).data)
-
-
-class OSDList(APIView):
-    model = Cluster
-
-    def _filter_by_pg_state(self, cluster, pg_states):
+class OSDList(RPCView):
+    def _filter_by_pg_state(self, osds, pg_states, osds_by_pg_state):
         """Filter the cluster OSDs by PG states.
 
         Note that we can't do any nice DB querying here because we aren't
@@ -62,36 +124,57 @@ class OSDList(APIView):
         """
         pg_states = set(map(lambda s: s.lower(), pg_states.split(",")))
         target_osds = set([])
-        for state, osds in cluster.osds_by_pg_state.iteritems():
+        for state, osds in osds_by_pg_state.iteritems():
             if state in pg_states:
                 target_osds |= set(osds)
-        cluster.osds[:] = [o for o in cluster.osds if o['id'] in target_osds]
+        return [o for o in osds if o['id'] in target_osds]
 
-    def get(self, request, cluster_pk):
-        cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.osds:
-            return Response([], status.HTTP_202_ACCEPTED)
+    def get(self, request, fsid):
+        osds = self.client.get_derived_object(fsid, 'osds')
+        osds_by_pg_state = self.client.get_derived_object(fsid, 'osds_by_pg_state')
+
         pg_states = request.QUERY_PARAMS.get('pg_states', None)
         if pg_states:
-            if not cluster.pgs:
+            if not osds_by_pg_state:
                 return Response([], status.HTTP_202_ACCEPTED)
-            self._filter_by_pg_state(cluster, pg_states)
-        return Response(OSDListSerializer(cluster).data)
+            self._filter_by_pg_state(osds, pg_states, osds_by_pg_state)
+
+        osd_list = DataObject({
+            #'osds': [DataObject({'osd': o}) for o in osds],
+            'osds': osds,
+            'osds_by_pg_state': osds_by_pg_state
+        })
+
+        return Response(OSDListSerializer(osd_list).data)
 
 
-class OSDDetail(APIView):
-    model = Cluster
-
-    def get(self, request, cluster_pk, osd_id):
-        cluster = get_object_or_404(Cluster, pk=cluster_pk)
-        if not cluster.has_osd(osd_id):
-            return Response({}, status.HTTP_202_ACCEPTED)
-        return Response(OSDDetailSerializer(cluster, osd_id).data)
+class OSDDetail(RPCView):
+    def get(self, request, fsid, osd_id):
+        data = self.client.get(fsid, 'osd', int(osd_id))
+        osd = DataObject({'osd': data})
+        return Response(OSDDetailSerializer(osd).data)
 
 
-class ClusterViewSet(viewsets.ModelViewSet):
-    queryset = Cluster.objects.all()
-    serializer_class = ClusterSerializer
+class OSDMap(RPCView):
+    def get(self, request, fsid):
+        data = self.client.get_sync_object(fsid, 'osd_map')
+        osd_map = DataObject({'version': data['epoch'], 'data': data})
+        return Response(OSDMapSerializer(osd_map).data)
+
+
+class RPCViewSet(viewsets.ViewSetMixin, RPCView):
+    pass
+
+
+class ClusterViewSet(RPCViewSet):
+    def list(self, request):
+        clusters = [DataObject(c) for c in self.client.list_clusters()]
+
+        return Response(ClusterSerializer(clusters, many=True).data)
+
+    def retrieve(self, request, pk):
+        cluster = DataObject(self.client.get_cluster(pk))
+        return Response(ClusterSerializer(cluster).data)
 
 
 class UserViewSet(viewsets.ModelViewSet):

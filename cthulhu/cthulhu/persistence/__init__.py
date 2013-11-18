@@ -26,16 +26,16 @@ WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
 OKAY_STATES = set(['active', 'clean'])
 
 
-def get_or_create(cluster_name):
+def get_or_create(cluster_name, cluster_fsid):
     # Note that this is a sleazy "only ever one cluster" implementation
     try:
         cluster = Cluster.objects.get()
     except Cluster.DoesNotExist:
-        cluster = Cluster.objects.create(name=cluster_name)
+        cluster = Cluster.objects.create(name=cluster_name, id=cluster_fsid)
     else:
-        if cluster.name != cluster_name:
-            cluster.name = cluster_name
-            cluster.save()
+        if cluster.name != cluster_name or cluster.id != cluster_fsid:
+            cluster.delete()
+            cluster = Cluster.objects.create(name=cluster_name, id=cluster_fsid)
 
     return cluster
 
@@ -61,7 +61,6 @@ def populate_counters(osd_map, mds_map, mon_status, pg_brief_map):
     cluster = Cluster.objects.get()
 
     cluster.counters = {
-        #'pool': _calculate_pool_counters(),
         'osd': _calculate_osd_counters(osd_map),
         'mds': _calculate_mds_counters(mds_map),
         'mon': _calculate_mon_counters(mon_status),
@@ -149,143 +148,3 @@ def populate_osds_and_pgs(osd_map, osd_tree, pgs):
     cluster.osds = map(fixup_osd, osd_map['osds'])
 
     cluster.save()
-
-
-def _calculate_mon_counters(mon_status):
-    mons = mon_status['monmap']['mons']
-    quorum = mon_status['quorum']
-    ok, warn, crit = 0, 0, 0
-    for mon in mons:
-        rank = mon['rank']
-        if rank in quorum:
-            ok += 1
-        # TODO: use 'have we had a salt heartbeat recently' here instead
-        #elif self.try_mon_connect(mon):
-        #    warn += 1
-        else:
-            crit += 1
-    return {
-        'ok': {
-            'count': ok,
-            'states': {} if ok == 0 else {'in': ok},
-        },
-        'warn': {
-            'count': warn,
-            'states': {} if warn == 0 else {'up': warn},
-        },
-        'critical': {
-            'count': crit,
-            'states': {} if crit == 0 else {'out': crit},
-        }
-    }
-
-
-def _pg_counter_helper(states, classifier, count, stats):
-    matched_states = classifier.intersection(states)
-    if len(matched_states) > 0:
-        stats[0] += count
-        for state in matched_states:
-            stats[1][state] += count
-        return True
-    return False
-
-
-def _calculate_pg_counters(pg_map):
-    # Although the mon already has a copy of this (in 'status' output),
-    # it's such a simple thing to recalculate here and simplifies our
-    # sync protocol.
-    pgs_by_state = defaultdict(int)
-    for pg in pg_map:
-        pgs_by_state[pg['state']] += 1
-
-    ok, warn, crit = [[0, defaultdict(int)] for _ in range(3)]
-    for state_name, count in pgs_by_state.items():
-        states = map(lambda s: s.lower(), state_name.split("+"))
-        if _pg_counter_helper(states, CRIT_STATES, count, crit):
-            pass
-        elif _pg_counter_helper(states, WARN_STATES, count, warn):
-            pass
-        elif _pg_counter_helper(states, OKAY_STATES, count, ok):
-            pass
-    return {
-        'ok': {
-            'count': ok[0],
-            'states': ok[1],
-        },
-        'warn': {
-            'count': warn[0],
-            'states': warn[1],
-        },
-        'critical': {
-            'count': crit[0],
-            'states': crit[1],
-        },
-    }
-#
-#
-#def _calculate_pool_counters():
-#    fields = ['num_objects_unfound', 'num_objects_missing_on_primary',
-#              'num_deep_scrub_errors', 'num_shallow_scrub_errors',
-#              'num_scrub_errors', 'num_objects_degraded']
-#    counts = defaultdict(lambda: 0)
-#    pools = self.client.get_pg_pools()
-#    for pool in imap(lambda p: p['stat_sum'], pools):
-#        for key, value in pool.items():
-#            counts[key] += min(value, 1)
-#    for delkey in set(counts.keys()) - set(fields):
-#        del counts[delkey]
-#    counts['total'] = len(pools)
-#    return counts
-
-
-def _calculate_osd_counters(osd_map):
-    osds = osd_map['osds']
-    counters = {
-        'total': len(osds),
-        'not_up_not_in': 0,
-        'not_up_in': 0,
-        'up_not_in': 0,
-        'up_in': 0
-    }
-    for osd in osds:
-        up, inn = osd['up'], osd['in']
-        if not up and not inn:
-            counters['not_up_not_in'] += 1
-        elif not up and inn:
-            counters['not_up_in'] += 1
-        elif up and not inn:
-            counters['up_not_in'] += 1
-        elif up and inn:
-            counters['up_in'] += 1
-    warn_count = counters['up_not_in'] + counters['not_up_in']
-    warn_states = {}
-    if counters['up_not_in'] > 0:
-        warn_states['up/out'] = counters['up_not_in']
-    if counters['not_up_in'] > 0:
-        warn_states['down/in'] = counters['not_up_in']
-    return {
-        'ok': {
-            'count': counters['up_in'],
-            'states': {} if counters['up_in'] == 0 else {'up/in': counters['up_in']},
-        },
-        'warn': {
-            'count': warn_count,
-            'states': {} if warn_count == 0 else warn_states,
-        },
-        'critical': {
-            'count': counters['not_up_not_in'],
-            'states': {} if counters['not_up_not_in'] == 0 else {'down/out': counters['not_up_not_in']},
-        },
-    }
-
-
-def _calculate_mds_counters(mds_map):
-    total = mds_map['max_mds']
-    up = len(mds_map['up'])
-    inn = len(mds_map['in'])
-    return {
-        'total': total,
-        'up_in': inn,
-        'up_not_in': up-inn,
-        'not_up_not_in': total-up,
-    }

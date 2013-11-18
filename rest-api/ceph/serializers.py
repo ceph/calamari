@@ -1,44 +1,36 @@
 
 from django.contrib.auth.models import User
+from django.utils import dateformat
 
 from rest_framework import serializers
 from ceph.models import Cluster
-from ceph.management.commands.ceph_refresh import CephRestClient
+import dateutil.parser
 
 
-class ClusterSerializer(serializers.ModelSerializer):
-    cluster_update_time_unix = serializers.SerializerMethodField(
-        'get_cluster_update_time_unix')
-    cluster_update_attempt_time_unix = serializers.SerializerMethodField(
-        'get_cluster_update_attempt_time_unix')
+def to_unix(t):
+    if t is None:
+        return None
+    return int(dateformat.format(t, 'U')) * 1000
 
+
+class ClusterSerializer(serializers.Serializer):
     class Meta:
-        model = Cluster
-        fields = ('id', 'name', 'api_base_url',
-                  'cluster_update_time', 'cluster_update_time_unix',
-                  'cluster_update_attempt_time', 'cluster_update_attempt_time_unix',
-                  'cluster_update_error_msg', 'cluster_update_error_isclient')
+        fields = ('update_time', 'update_time_unix', 'id', 'name')
 
-        # only kraken updates this stuff. we don't want to expose it through
-        # the rest API, so these read-only fields won't be altered.
-        read_only_fields = ('cluster_update_time',
-                            'cluster_update_attempt_time', 'cluster_update_error_msg',
-                            'cluster_update_error_isclient')
+    update_time = serializers.Field()
+    name = serializers.Field()
+    id = serializers.Field()
 
-    def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
+    # FIXME: we should not be sending out time in two formats: if API consumers want
+    # unix timestamps they can do the conversion themselves.
+    update_time_unix = serializers.SerializerMethodField('get_update_time_unix')
 
-    def get_cluster_update_attempt_time_unix(self, obj):
-        return obj.cluster_update_attempt_time_unix
+    def get_update_time_unix(self, obj):
+        update_time = dateutil.parser.parse(obj.update_time)
+        return to_unix(update_time)
 
-    def validate_api_base_url(self, attrs, source):
-        try:
-            # Will use the CephRestClient default connection timeout
-            client = CephRestClient(attrs[source])
-            client.get_health()
-        except Exception:
-            raise serializers.ValidationError("Could not contact the API URL provided.")
-        return attrs
+    # NB calamari 1.0 had cluster_atttempt_time, which no longer makes sense
+    # because we're listening for events, not polling.  TODO: expunge from GUI code.
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -66,106 +58,40 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class ClusterSpaceSerializer(serializers.ModelSerializer):
-    cluster = serializers.SerializerMethodField('get_cluster')
-    cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
-
-    # backwards compatibility during transition
-    report = serializers.SerializerMethodField('get_report')
-    added = serializers.SerializerMethodField('get_added')
-    added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
-
+class ClusterSpaceSerializer(serializers.Serializer):
     space = serializers.Field()
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'space',
-                  'added', 'added_ms', 'report')
-
-    def get_cluster(self, obj):
-        return obj.id
-
-    def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
-
-    def get_space(self, obj):
-        return obj.space
-
-    def get_report(self, obj):
-        # This was a redundant field in calamari 1.0 (it had 'report' and 'space'
-        # where the only difference was bytes vs KB and different attribute names)
-        return None
-        #return dict([(m, get_latest(m)) for m in ['total_space', 'total_used', 'total_avail']])
-        #return {
-        #    'total_used': obj.space['used_bytes']/1024,
-        #    'total_space': obj.space['capacity_bytes']/1024,
-        #    'total_avail': obj.space['free_bytes']/1024,
-        #}
+        fields = ('space',)
 
 
-        #return dict([(m, get_latest(m)) for m in ['total_space', 'total_used', 'total_avail']])
-
-    def get_added(self, obj):
-        return obj.cluster_update_time
-
-
-class ClusterHealthSerializer(serializers.ModelSerializer):
-    cluster = serializers.SerializerMethodField('get_cluster')
-    cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
-
-    # backwards compatibility during transition
-    report = serializers.SerializerMethodField('get_report')
-    added = serializers.SerializerMethodField('get_added')
-    added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
+class ClusterHealthSerializer(serializers.Serializer):
+    report = serializers.Field()
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'report',
-                  'added', 'added_ms')
+        fields = ('report', 'cluster_update_time', 'cluster_update_time_unix')
 
-    def get_cluster(self, obj):
-        return obj.id
+    # FIXME: should not be copying this field onto health counters etc, clients should get
+    # it by querying the cluster directly.
+    cluster_update_time = serializers.Field()
+    cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
 
     def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
-
-    def get_report(self, obj):
-        return obj.health
-
-    def get_added(self, obj):
-        return obj.cluster_update_time
+        update_time = dateutil.parser.parse(obj.cluster_update_time)
+        return to_unix(update_time)
 
 
 class ClusterHealthCountersSerializer(serializers.ModelSerializer):
-    cluster = serializers.SerializerMethodField('get_cluster')
-    cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
-
-    # backwards compatibility during transition
-    report = serializers.SerializerMethodField('get_report')
-    added = serializers.SerializerMethodField('get_added')
-    added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
     pg = serializers.SerializerMethodField('get_pg')
     mds = serializers.SerializerMethodField('get_mds')
-    pool = serializers.SerializerMethodField('get_pool')
     mon = serializers.SerializerMethodField('get_mon')
     osd = serializers.SerializerMethodField('get_osd')
 
     class Meta:
         model = Cluster
-        fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix',
-                  'added', 'added_ms', 'pg', 'mds', 'pool', 'mon', 'osd')
-
-    def get_cluster(self, obj):
-        return obj.id
-
-    def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
-
-    def get_report(self, obj):
-        return obj.health
-
-    def get_added(self, obj):
-        return obj.cluster_update_time
+        fields = ('pg', 'mds', 'mon', 'osd', 'cluster_update_time', 'cluster_update_time_unix')
 
     def get_pg(self, obj):
         return obj.counters['pg']
@@ -173,84 +99,46 @@ class ClusterHealthCountersSerializer(serializers.ModelSerializer):
     def get_mds(self, obj):
         return obj.counters['mds']
 
-    def get_pool(self, obj):
-        return None
-        #return obj.counters['pool']
-
     def get_mon(self, obj):
         return obj.counters['mon']
 
     def get_osd(self, obj):
         return obj.counters['osd']
 
-
-class OSDListSerializer(serializers.ModelSerializer):
-    cluster = serializers.SerializerMethodField('get_cluster')
+    # FIXME: should not be copying this field onto health counters etc, clients should get
+    # it by querying the cluster directly.
+    cluster_update_time = serializers.Field()
     cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
-    pg_state_counts = serializers.SerializerMethodField('get_pg_state_counts')
-
-    # backwards compatibility during transition
-    added = serializers.SerializerMethodField('get_added')
-    added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
-    epoch = serializers.SerializerMethodField('get_epoch')
-    osds = serializers.SerializerMethodField('get_osds')
-
-    class Meta:
-        model = Cluster
-        fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'osds',
-                  'added', 'added_ms', 'epoch', 'pg_state_counts')
-
-    def get_cluster(self, obj):
-        return obj.id
-
-    def get_osds(self, obj):
-        if obj.osds:
-            for osd in obj.osds:
-                osd['osd'] = osd['id']
-        return obj.osds
 
     def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
+        update_time = dateutil.parser.parse(obj.cluster_update_time)
+        return to_unix(update_time)
 
-    def get_added(self, obj):
-        return obj.cluster_update_time
 
-    def get_epoch(self, obj):
-        return 0
+class OSDDetailSerializer(serializers.Serializer):
+    class Meta:
+        # FIXME: should just be returning the OSD as the object
+        fields = ('osd',)
+
+    osd = serializers.Field()
+
+
+class OSDListSerializer(serializers.Serializer):
+    # TODO: the OSD list resource should just return a list, so that
+    # this serializer class isn't necessary
+    osds = serializers.Field()
+    pg_state_counts = serializers.SerializerMethodField('get_pg_state_counts')
 
     def get_pg_state_counts(self, obj):
         return dict((s, len(v)) for s, v in obj.osds_by_pg_state.iteritems())
 
-
-class OSDDetailSerializer(serializers.ModelSerializer):
-    cluster = serializers.SerializerMethodField('get_cluster')
-    cluster_update_time_unix = serializers.SerializerMethodField('get_cluster_update_time_unix')
-    osd = serializers.SerializerMethodField('get_osd')
-
-    # backwards compatibility during transition
-    added = serializers.SerializerMethodField('get_added')
-    added_ms = serializers.SerializerMethodField('get_cluster_update_time_unix')
-
-    def __init__(self, cluster, osd_id, *args, **kwargs):
-        self.osd_id = osd_id
-        super(OSDDetailSerializer, self).__init__(cluster, *args, **kwargs)
-
     class Meta:
-        model = Cluster
-        fields = ('cluster', 'cluster_update_time', 'cluster_update_time_unix', 'osd',
-                  'added', 'added_ms')
+        fields = ('osds', 'pg_state_counts')
 
-    def get_cluster(self, obj):
-        return obj.id
 
-    def get_cluster_update_time_unix(self, obj):
-        return obj.cluster_update_time_unix
+class OSDMapSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('version', 'data')
 
-    def get_osd(self, obj):
-        osd = obj.get_osd(self.osd_id)
-        # backwards compat during transition
-        osd['osd'] = osd['id']
-        return osd
-
-    def get_added(self, obj):
-        return obj.cluster_update_time
+    version = serializers.IntegerField()
+    data = serializers.Field()

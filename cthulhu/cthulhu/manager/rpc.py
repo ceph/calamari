@@ -1,0 +1,158 @@
+import threading
+import traceback
+import zerorpc
+from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER
+
+
+CTHULHU_RPC_URL = 'tcp://127.0.0.1:5050'
+from cthulhu.manager.log import log
+
+
+class NotFound(Exception):
+    def __init__(self, object_type, object_id):
+        self.object_type = object_type
+        self.object_id = object_id
+
+    def __str__(self):
+        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+
+
+class RpcInterface(object):
+    def __init__(self, manager):
+        self._manager = manager
+
+    def _fs_resolve(self, fs_id):
+        try:
+            return self._manager.monitors[fs_id]
+        except KeyError:
+            raise NotFound(CLUSTER, fs_id)
+
+    def _osd_resolve(self, cluster, osd_id):
+        osdmap = cluster._sync_objects.get(OsdMap)
+        if osdmap is None:
+            raise NotFound(OSD, osd_id)
+
+        for osd in osdmap.data['osds']:
+            if osd['osd'] == osd_id:
+                return osd
+        raise NotFound(OSD, osd_id)
+
+    def _pool_resolve(self, cluster, pool_id):
+        osdmap = cluster._sync_objects.get(OsdMap)
+        if osdmap is None:
+            raise NotFound(POOL, pool_id)
+
+        for pool in osdmap.data['pools']:
+            if pool['pool'] == pool_id:
+                return pool
+        raise NotFound(POOL, pool_id)
+
+    def get_cluster(self, fs_id):
+        cluster = self._manager.monitors[fs_id]
+        return {
+            'id': cluster._fsid,
+            'name': cluster._name,
+            'update_time': cluster._update_time.isoformat()
+        }
+
+    def list_clusters(self):
+        result = []
+        for fsid in self._manager.monitors.keys():
+            result.append(self.get_cluster(fsid))
+        return result
+
+    def get_sync_object(self, fs_id, object_type):
+        """
+        Get one of the objects that ClusterMonitor keeps a copy of from the mon, such
+        as the cluster maps.
+
+        :param fs_id: The fsid of a cluster
+        :param object_type: String, one of SYNC_OBJECT_TYPES
+        """
+        obj =  self._fs_resolve(fs_id)._sync_objects.get(SYNC_OBJECT_STR_TYPE[object_type])
+        return obj.data if obj is not None else None
+
+    def get_derived_object(self, fs_id, object_type):
+        """
+        Get one of the objects that ClusterMonitor generates from the sync objects, typically
+        something in a "frontend-friendly" format or augmented with extra info.
+
+        :param fs_id: The fsid of a cluster
+        :param object_type: String, name of the derived object
+        """
+        obj = self._fs_resolve(fs_id)._derived_objects.get(object_type, None)
+        return obj
+
+    def update(self, fs_id, object_type, object_id, attributes):
+        """
+        Modify an object in a cluster.
+        """
+        cluster = self._fs_resolve(fs_id)
+
+        if object_type == OSD:
+            # Run a resolve to throw exception if it's unknown
+            self._osd_resolve(cluster, object_id)
+            if not 'id' in attributes:
+                attributes['id'] = object_id
+
+            req = cluster.request_change(OSD, [attributes])
+            return {'id': req.request_id}
+        else:
+            raise NotImplementedError(object_type)
+
+    def get(self, fs_id, object_type, object_id):
+        """
+        Get one object from a particular cluster.
+        """
+
+        cluster = self._fs_resolve(fs_id)
+        if object_type == OSD:
+            return self._osd_resolve(cluster, object_id)
+        elif object_type == POOL:
+            return self._pool_resolve(cluster, object_id)
+        else:
+            raise NotImplementedError(object_type)
+
+    def list(self, fs_id, object_type):
+        """
+        Get many objects
+        """
+
+        cluster = self._fs_resolve(fs_id)
+        if object_type == OSD:
+            return cluster._sync_objects.get(OsdMap).data['osds']
+        elif object_type == POOL:
+            return cluster._sync_objects.get(OsdMap).data['pools']
+        else:
+            raise NotImplementedError(object_type)
+
+
+class RpcThread(threading.Thread):
+    """
+    Present a ZeroRPC API for users
+    to request state changes.
+    """
+    def __init__(self, manager):
+        super(RpcThread, self).__init__()
+        self._manager = manager
+        self._complete = threading.Event()
+        self._server = zerorpc.Server(RpcInterface(manager))
+
+    def stop(self):
+        log.info("%s stopping" % self.__class__.__name__)
+
+        self._complete.set()
+        if self._server:
+            self._server.stop()
+
+    def run(self):
+        try:
+            log.info("%s bind..." % self.__class__.__name__)
+            self._server.bind(CTHULHU_RPC_URL)
+            log.info("%s run..." % self.__class__.__name__)
+            self._server.run()
+        except:
+            log.error(traceback.format_exc())
+            raise
+
+        log.info("%s complete..." % self.__class__.__name__)

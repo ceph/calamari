@@ -5,27 +5,6 @@ import jsonfield
 import pytz
 
 
-def get_latest(metric):
-    # Local imports so that this module can be imported outside a django
-    # app (the graphite imports look for settings.*)
-    from graphite.render.attime import parseATTime
-    from graphite.render.datalib import fetchData
-
-    tzinfo = pytz.timezone("UTC")
-    until_time = parseATTime('now', tzinfo)
-    from_time = parseATTime('-10min', tzinfo)
-    series = fetchData({
-        'startTime': from_time,
-        'endTime': until_time,
-        'localOnly': False},
-        metric
-    )
-    try:
-        return [k for k in series[0] if k is not None][-1]
-    except IndexError:
-        return None
-
-
 class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
@@ -33,7 +12,7 @@ class Cluster(models.Model):
     name = models.CharField(max_length=256, unique=True)
 
     # FIXME put in proper max-length for a fsid
-    #fsid = models.CharField(max_length=256, unique=True)
+    id = models.CharField(max_length=256, unique=True, primary_key=True)
 
     api_base_url = models.CharField(max_length=200)
 
@@ -102,17 +81,3 @@ class Cluster(models.Model):
     def has_osd(self, osd_id):
         return self.get_osd(osd_id) is not None
 
-    @property
-    def space(self):
-        def to_bytes(kb):
-            if kb is not None:
-                return kb * 1024
-            else:
-                return None
-
-        df_path = lambda stat_name: "ceph.{0}.df.{1}".format(self.name, stat_name)
-        return {
-            'used_bytes': to_bytes(get_latest(df_path('total_used'))),
-            'capacity_bytes': to_bytes(get_latest(df_path('total_space'))),
-            'free_bytes': to_bytes(get_latest(df_path('totaL_avail')))
-        }
