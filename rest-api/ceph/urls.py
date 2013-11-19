@@ -5,6 +5,8 @@ from ceph import views
 router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'user', views.UserViewSet)
 router.register(r'cluster', views.ClusterViewSet, base_name='cluster')
+router.register(r'pool', views.PoolViewSet, base_name='cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool')
+
 
 urlpatterns = patterns(
     '',
@@ -19,5 +21,10 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/space$', views.Space.as_view(), name='osd-space'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', views.OSDList.as_view(), name='cluster-osd-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', views.OSDDetail.as_view(),
-        name='cluster-osd-detail')
+        name='cluster-osd-detail'),
+
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool$', views.PoolViewSet.as_view({'get': 'list'}),
+        name='cluster-pool-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/(?P<pool_id>\d+)$', views.PoolViewSet.as_view({'get': 'retrieve'}),
+        name='cluster-pool-detail'),
 )

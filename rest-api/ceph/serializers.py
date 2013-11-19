@@ -142,3 +142,14 @@ class OSDMapSerializer(serializers.Serializer):
 
     version = serializers.IntegerField()
     data = serializers.Field()
+
+
+class PoolSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset')
+
+    name = serializers.CharField(source='pool_name')
+    id = serializers.CharField(source='pool')
+    size = serializers.IntegerField()
+    pg_num = serializers.IntegerField()
+    crush_ruleset = serializers.IntegerField()

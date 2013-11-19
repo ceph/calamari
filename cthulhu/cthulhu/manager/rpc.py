@@ -122,6 +122,7 @@ class RpcInterface(object):
         if object_type == OSD:
             return cluster._sync_objects.get(OsdMap).data['osds']
         elif object_type == POOL:
+            print cluster._sync_objects.get(OsdMap).data['pools']
             return cluster._sync_objects.get(OsdMap).data['pools']
         else:
             raise NotImplementedError(object_type)

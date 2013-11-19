@@ -11,7 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer,\
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, PoolSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -175,6 +175,17 @@ class ClusterViewSet(RPCViewSet):
     def retrieve(self, request, pk):
         cluster = DataObject(self.client.get_cluster(pk))
         return Response(ClusterSerializer(cluster).data)
+
+
+class PoolViewSet(RPCViewSet):
+    def list(self, request, fsid):
+        pools = [DataObject(p) for p in self.client.list(fsid, 'pool')]
+
+        return Response(PoolSerializer(pools, many=True).data)
+
+    def retrieve(self, request, fsid, pool_id):
+        pool = DataObject(self.client.get(fsid, 'pool', int(pool_id)))
+        return Response(PoolSerializer(pool).data)
 
 
 class UserViewSet(viewsets.ModelViewSet):
