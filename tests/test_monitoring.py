@@ -135,6 +135,15 @@ class TestMonitoring(ServerTestCase):
 
             self.ceph_ctl.go_dark(dark=False, minion_id=mon_fqdn)
 
+    @skipIf(True, "not implemented yet")
+    def test_recovery(self):
+        """
+        Check that calamari persists enough data about the monitored cluster
+        that it can service REST API read operations even if it restarts
+        while the cluster is unavailable.
+        """
+        pass
+
     def _wait_for_cluster(self):
         self.clear()
         self.ceph_ctl.configure(3)
@@ -160,4 +169,3 @@ class TestMonitoring(ServerTestCase):
         response.raise_for_status()
         osds = response.json()
         return bool(len(osds))
-
