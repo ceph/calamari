@@ -26,7 +26,7 @@ Description: Inktank package to configure ceph-rest-api under nginx
  of your monitor machines.
 
 Package: calamari-webapp
-Architecture: all
+Architecture: i386 amd64 arm arm64
 Depends: apache2, libapache2-mod-wsgi, libcairo2
 Description: Inktank package containing the Calamari management webapp
  Calamari is a webapp to monitor and control a Ceph cluster via a web
