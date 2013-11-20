@@ -6,12 +6,17 @@ import socket
 import subprocess
 import xmlrpclib
 import signal
+from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
 
 log = logging.getLogger(__name__)
 
 # Assumes running nosetests from root of git repo
 TREE_ROOT = os.path.abspath("./")
+
+API_URL = "http://localhost:8000/api/v1/"
+API_USERNAME = 'admin'
+API_PASSWORD = 'admin'
 
 
 class CalamariControl(object):
@@ -23,15 +28,78 @@ class CalamariControl(object):
     installation running on a dedicated host.
     """
 
+    def __init__(self):
+        self._api = None
+
     def start(self):
         raise NotImplementedError()
 
+    def stop(self):
+        raise NotImplementedError()
 
-class DevCalamariControl(object):
+    @property
+    def api_url(self):
+        return API_URL
+
+    @property
+    def api_username(self):
+        return API_USERNAME
+
+    @property
+    def api_password(self):
+        return API_PASSWORD
+
+    @property
+    def api(self):
+        if self._api is None:
+            # Calamari is up, we can login to it
+            self._api = AuthenticatedHttpClient(
+                self.api_url,
+                self.api_username,
+                self.api_password)
+            self._api.login()
+
+        return self._api
+
+    def configure(self, no_minions=False, no_clusters=True):
+        """
+        Assert some aspects of the server state, fixing up
+        if possible, else raising an exception.
+
+        Tests call this to say "I need calamari to be
+        up and running" or "I need calamari to be offline
+        initially" or "I need calamari to initially have
+        no clusters" or "I need calamari to initially have
+        no pools".
+
+        The idea is that tests generally can
+        be quite liberal about the starting state of
+        the system, but specific about the things that
+        will affect the validity of their checks.
+
+        A badly behaved calamari instance can break this: the only
+        way to get around that is to provision a fully fresh instance
+        for each test.
+        """
+        if no_minions:
+            # The salt master should recognise no minions
+            self.calamari_ctl.clear_keys()
+
+        if no_clusters:
+            # Initially there should be no clusters
+            response = self.api.get("cluster")
+            response.raise_for_status()
+            for cluster in response.json():
+                response = self.api.delete("cluster/%s" % cluster['id'])
+                response.raise_for_status()
+
+
+class EmbeddedCalamariControl(CalamariControl):
     """
     Runs a dev-mode calamari server by invoking supervisord directly
     """
     def __init__(self):
+        super(EmbeddedCalamariControl, self).__init__()
         self._ps = None
         self._rpc = None
 
@@ -133,3 +201,15 @@ class DevCalamariControl(object):
         rc = self._ps.wait()
         if rc != 0:
             raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
+
+
+class ExternalCalamariControl(CalamariControl):
+    """
+    Already got a calamari instance running, and you want to point
+    the tests at that?  Use this class.
+    """
+    def start(self):
+        pass
+
+    def stop(self):
+        pass

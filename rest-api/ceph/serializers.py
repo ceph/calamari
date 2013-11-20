@@ -148,8 +148,19 @@ class PoolSerializer(serializers.Serializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset')
 
+    # Required in creation
     name = serializers.CharField(source='pool_name')
-    id = serializers.CharField(source='pool')
-    size = serializers.IntegerField()
     pg_num = serializers.IntegerField()
-    crush_ruleset = serializers.IntegerField()
+
+    # Not required in creation
+    id = serializers.CharField(source='pool', required=False)
+    size = serializers.IntegerField(required=False)
+    crush_ruleset = serializers.IntegerField(required=False)
+
+
+class RequestSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'state')
+
+    id = serializers.CharField()
+    state = serializers.CharField()

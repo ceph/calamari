@@ -28,21 +28,21 @@ class RpcInterface(object):
             raise NotFound(CLUSTER, fs_id)
 
     def _osd_resolve(self, cluster, osd_id):
-        osdmap = cluster._sync_objects.get(OsdMap)
+        osdmap = cluster.get_sync_object(OsdMap)
         if osdmap is None:
             raise NotFound(OSD, osd_id)
 
-        for osd in osdmap.data['osds']:
+        for osd in osdmap['osds']:
             if osd['osd'] == osd_id:
                 return osd
         raise NotFound(OSD, osd_id)
 
     def _pool_resolve(self, cluster, pool_id):
-        osdmap = cluster._sync_objects.get(OsdMap)
+        osdmap = cluster.get_sync_object(OsdMap)
         if osdmap is None:
             raise NotFound(POOL, pool_id)
 
-        for pool in osdmap.data['pools']:
+        for pool in osdmap['pools']:
             if pool['pool'] == pool_id:
                 return pool
         raise NotFound(POOL, pool_id)
@@ -61,6 +61,9 @@ class RpcInterface(object):
             result.append(self.get_cluster(fsid))
         return result
 
+    def delete_cluster(self, fs_id):
+        self._manager.delete_cluster(fs_id)
+
     def get_sync_object(self, fs_id, object_type):
         """
         Get one of the objects that ClusterMonitor keeps a copy of from the mon, such
@@ -69,8 +72,7 @@ class RpcInterface(object):
         :param fs_id: The fsid of a cluster
         :param object_type: String, one of SYNC_OBJECT_TYPES
         """
-        obj =  self._fs_resolve(fs_id)._sync_objects.get(SYNC_OBJECT_STR_TYPE[object_type])
-        return obj.data if obj is not None else None
+        return self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
 
     def get_derived_object(self, fs_id, object_type):
         """
@@ -80,8 +82,7 @@ class RpcInterface(object):
         :param fs_id: The fsid of a cluster
         :param object_type: String, name of the derived object
         """
-        obj = self._fs_resolve(fs_id)._derived_objects.get(object_type, None)
-        return obj
+        return self._fs_resolve(fs_id).get_derived_object(object_type)
 
     def update(self, fs_id, object_type, object_id, attributes):
         """
@@ -95,8 +96,31 @@ class RpcInterface(object):
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
-            req = cluster.request_change(OSD, [attributes])
-            return {'id': req.request_id}
+            return cluster.request_update(OSD, object_id, attributes)
+        elif object_type == POOL:
+            if not 'id' in attributes:
+                attributes['id'] = object_id
+
+            return cluster.request_update( POOL, object_id, attributes)
+        else:
+            raise NotImplementedError(object_type)
+
+    def create(self, fs_id, object_type, attributes):
+        """
+        Create a new object in a cluster
+        """
+        cluster = self._fs_resolve(fs_id)
+
+        if object_type == POOL:
+            return cluster.request_create(POOL, attributes)
+        else:
+            raise NotImplementedError(object_type)
+
+    def delete(self, fs_id, object_type, object_id):
+        cluster = self._fs_resolve(fs_id)
+
+        if object_type == POOL:
+            return cluster.request_delete(POOL, object_id)
         else:
             raise NotImplementedError(object_type)
 
@@ -120,12 +144,22 @@ class RpcInterface(object):
 
         cluster = self._fs_resolve(fs_id)
         if object_type == OSD:
-            return cluster._sync_objects.get(OsdMap).data['osds']
+            return cluster.get_sync_object(OsdMap)['osds']
         elif object_type == POOL:
-            print cluster._sync_objects.get(OsdMap).data['pools']
-            return cluster._sync_objects.get(OsdMap).data['pools']
+            return cluster.get_sync_object(OsdMap)['pools']
         else:
             raise NotImplementedError(object_type)
+
+    def get_request(self, fs_id, request_id):
+        """
+        Get a JSON representation of a UserRequest
+        """
+        cluster = self._fs_resolve(fs_id)
+        request = cluster.get_request(request_id)
+        return {
+            'id': request.id,
+            'state': request.state
+        }
 
 
 class RpcThread(threading.Thread):

@@ -10,7 +10,7 @@ setup(
     license="Inktank Ceph Enterprise Software License",
     entry_points={
         'console_scripts': [
-            'cthulhu-manager = cthulhu.manager.cluster_monitor:main'
+            'cthulhu-manager = cthulhu.manager.manager:main'
         ]
     }
 )

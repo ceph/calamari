@@ -146,20 +146,43 @@ def rados_commands(cluster_name, commands):
         ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict)
         if ret != 0:
             return {
+                'error': True,
                 'results': results,
                 'err_outbuf': outbuf,
-                'err_outs': outs
+                'err_outs': outs,
+                'versions': None
             }
         if outbuf:
             results.append(json.loads(outbuf))
         else:
             results.append(None)
 
+    # Return map versions after executing commands, so that the Calamari server
+    # knows which versions to wait for in order to make the results of this
+    # command readable for its own clients.
+    # TODO: not all commands will require version info on completion, consider making
+    # this optional.
+    # TODO: we should endeavor to return something clean even if we can't talk to RADOS
+    # enough to get version info
+    # TODO: use the cluster_handle we already have here instead of letting terse_status
+    # create a new one (true other places in this module, requires general cleanup)
+
+
+    # FIXME 1: We probably can't assume that <clustername>.client.admin.keyring is always
+    # present, although this is the case on a nicely ceph-deploy'd system
+    # FIXME 2: It shouldn't really be necessary to fire up a RADOS client to obtain this
+    # information, instead we should be able to get it from the mon admin socket.
+    cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
+    cluster_handle.connect()
+    versions = cluster_status(cluster_handle, cluster_name)['versions']
+
     # Success
     return {
+        'error': False,
         'results': results,
         'err_outbuf': '',
-        'err_outs': ''
+        'err_outs': '',
+        'versions': versions
     }
 
 
@@ -292,8 +315,6 @@ def terse_status():
 
         if not mon_status['quorum']:
             continue
-        else:
-            election_epoch = mon_status['election_epoch']
 
         # FIXME 1: We probably can't assume that <clustername>.client.admin.keyring is always
         # present, although this is the case on a nicely ceph-deploy'd system
@@ -302,52 +323,60 @@ def terse_status():
         cluster_handle = rados.Rados(name='client.admin', clustername=fsid_names[fsid], conffile='')
         cluster_handle.connect()
 
-        # FIXME: error handling leaves a little to be desired: handle case where the cluster becomes
-        # unavailable partway through these queries
-        # Get map versions from 'status'
-        ret, outbuf, outs = json_command(cluster_handle, prefix='status', argdict={'format': 'json'})
-        assert ret == 0
-        status = json.loads(outbuf)
-        mon_epoch = status['monmap']['epoch']
-        osd_epoch = status['osdmap']['osdmap']['epoch']
-        #pg_version = status['pgmap']['version']
-        mds_epoch = status['mdsmap']['epoch']
-
-        # FIXME: even on a healthy system, 'health detail' contains some statistics
-        # that change on their own, such as 'lasted_updated' and the mon space usage.
-        # Get digest of health
-        ret, outbuf, outs = json_command(cluster_handle, prefix='health', argdict={
-            'format': 'json',
-            'detail': 'detail'
-        })
-        assert ret == 0
-        health_digest = md5(outbuf)
-
-        # Get digest of brief pg info
-        ret, outbuf, outs = json_command(cluster_handle, prefix='pg dump', argdict={
-            'format': 'json', 'dumpcontents': ['pgs_brief'], 'fooffd': 'asdasd'})
-        assert ret == 0
-        pgs_brief_digest = md5(outbuf)
-
-        # TODO: send 'brief pg' hash instead of pg_version, as we would not want to keep
-        # up with a full PG map dump for every new version (which is like every second).
-
-        clusters[fsid] = {
-            'name': fsid_names[fsid],
-            'fsid': fsid,
-            'versions': {
-                'mon_status': election_epoch,
-                'mon_map': mon_epoch,
-                'osd_map': osd_epoch,
-                'osd_tree': osd_epoch,
-                'mds_map': mds_epoch,
-                #'pg_map': pg_version,
-                'pg_brief': pgs_brief_digest,
-                'health': health_digest
-            }
-        }
+        clusters[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
 
     return services, clusters
+
+
+def cluster_status(cluster_handle, cluster_name):
+    from ceph_argparse import json_command
+
+    # FIXME: error handling leaves a little to be desired: handle case where the cluster becomes
+    # unavailable partway through these queries
+    # Get map versions from 'status'
+
+    ret, outbuf, outs = json_command(cluster_handle, prefix='mon_status', argdict={'format': 'json'})
+    assert ret == 0
+    mon_status = json.loads(outbuf)
+
+    ret, outbuf, outs = json_command(cluster_handle, prefix='status', argdict={'format': 'json'})
+    assert ret == 0
+    status = json.loads(outbuf)
+
+    fsid = status['fsid']
+    mon_epoch = status['monmap']['epoch']
+    osd_epoch = status['osdmap']['osdmap']['epoch']
+    mds_epoch = status['mdsmap']['epoch']
+
+    # FIXME: even on a healthy system, 'health detail' contains some statistics
+    # that change on their own, such as 'lasted_updated' and the mon space usage.
+    # Get digest of health
+    ret, outbuf, outs = json_command(cluster_handle, prefix='health', argdict={
+        'format': 'json',
+        'detail': 'detail'
+    })
+    assert ret == 0
+    health_digest = md5(outbuf)
+
+    # Get digest of brief pg info
+    ret, outbuf, outs = json_command(cluster_handle, prefix='pg dump', argdict={
+        'format': 'json', 'dumpcontents': ['pgs_brief'], 'fooffd': 'asdasd'})
+    assert ret == 0
+    pgs_brief_digest = md5(outbuf)
+
+    return {
+        'name': cluster_name,
+        'fsid': fsid,
+        'versions': {
+            'mon_status': mon_status['election_epoch'],
+            'mon_map': mon_epoch,
+            'osd_map': osd_epoch,
+            'osd_tree': osd_epoch,
+            'mds_map': mds_epoch,
+            'pg_brief': pgs_brief_digest,
+            'health': health_digest
+        }
+    }
 
 
 def heartbeat():

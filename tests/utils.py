@@ -7,10 +7,10 @@ class WaitTimeout(Exception):
 
 def wait_until_true(condition, timeout=10):
     elapsed = 0
-    frequency = 1
+    period = 1
     while not condition():
         if elapsed >= timeout:
             raise WaitTimeout("After %s seconds" % elapsed)
-        elapsed += frequency
-        time.sleep(frequency)
+        elapsed += period
+        time.sleep(period)
     return elapsed

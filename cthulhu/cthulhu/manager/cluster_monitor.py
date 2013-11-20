@@ -1,25 +1,10 @@
+import uuid
 from pytz import utc
 from cthulhu.manager import derived
-from cthulhu.manager.rpc import RpcThread
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, MonStatus, MdsMap, PgBrief, OsdMap, OsdTree, Health, CEPH_OBJECT_TYPES, OSD
+from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, CEPH_OBJECT_TYPES, OSD, POOL, OsdMap
 
-
-def enable_gevent():
-    # We are using gevent because:
-    #
-    # - ZeroRPC requires it
-    # - It is nice and efficient anyway.
-
-    from gevent.monkey import patch_all
-    patch_all()
-    import zmq.green
-    import salt.utils.event
-    salt.utils.event.zmq = zmq.green
-
-enable_gevent()
 
 import datetime
-import json
 import traceback
 import dateutil
 from dateutil.tz import tzlocal
@@ -31,7 +16,7 @@ import salt.client
 from salt.client import condition_kwarg
 import zmq
 
-from cthulhu import persistence
+#from cthulhu import persistence
 
 from cthulhu.manager.log import log
 
@@ -54,26 +39,65 @@ class PublishError(Exception):
 class SyncObjects(object):
     """
     A collection of versioned objects, keyed by their class (which
-    must be a SyncObject subclass)
+    must be a SyncObject subclass).
+
+    The objects are immutable, so it is safe to hand out references: new
+    versions are new objects.
     """
     def __init__(self):
         self._objects = dict([(t, None) for t in SYNC_OBJECT_TYPES])
+        self._lock = threading.Lock()
 
     def set_map(self, typ, version, map_data):
-        self._objects[typ] = typ(version, map_data)
+        with self._lock:
+            self._objects[typ] = typ(version, map_data)
 
     def get_version(self, typ):
-        return self._objects[typ].version if self._objects[typ] else None
+        with self._lock:
+            return self._objects[typ].version if self._objects[typ] else None
 
     def get(self, typ):
-        return self._objects[typ]
+        with self._lock:
+            return self._objects[typ]
 
-    @property
-    def version(self):
-        return tuple(self.get_version(t) for t in SYNC_OBJECT_TYPES)
 
-    def __repr__(self):
-        return "<%s>: %s" % (self.__class__.__name__, self.version)
+class DerivedObjects(dict):
+    """
+    Store for items which we generate as a function of sync objects, decorated
+    versions etc.  Basically just a dict with locking.
+    """
+    def __init__(self):
+        super(DerivedObjects, self).__init__()
+        self._lock = threading.Lock()
+
+    def get(self, key, default=None):
+        with self._lock:
+            return super(DerivedObjects, self).get(key, default)
+
+    def set(self, key, value):
+        with self._lock:
+            self[key] = value
+
+
+class CompletionCondition(object):
+    """
+    A check associated with a COMPLETING UserRequest.  This is to be
+    checked once at the time the UserRequest has entered the COMPLETING
+    state, then again each time on of the dependency sync objects is updated.
+    """
+
+    # Which sync objects can affect this?
+    depends = []
+
+    def apply(self, sync_objects):
+        """
+        May indicate:
+
+         - Complete (return True)
+         - Not yet complete (return False)
+         - Will never complete, or internal error (raise exception)
+        """
+        raise NotImplementedError()
 
 
 class UserRequest(object):
@@ -81,22 +105,49 @@ class UserRequest(object):
     A request acts on one or more Ceph-managed objects, i.e.
     mon, mds, osd, pg.
 
-    XXX Should requests include predicition of their side effects,
-    e.g. an osd operation will have side effects on PGs?
+    Amist the terminology mess of 'jobs', 'commands', 'operations', this class
+    is named for clarity: it's an operation at an end-user level of
+    granularity, something that might be a button in the UI.
 
-    XXX Where should we generate severities/warnings for potential
-    events?  e.g. setting one OSD to down may need no confirmation,
-    setting more than one might be a warning, setting more than N when
-    replication is at level N might be a severe warning about making
-    some PGs unavailable?
+    UserRequests are usually remotely executed on a mon.  However, there
+    may be a final step of updating the state of ClusterMonitor in order
+    that subsequent REST API consumer reads return values consistent with
+    the job having completed, e.g. waiting for the OSD map to be up
+    to date before calling a pool creation complete.  For this reason,
+    UserRequests have a local ID and completion state that is independent
+    of their remote ID (salt jid).
+
+    Requests have the following lifecycle:
+     NEW object is created, knows where it should run what commands remotely, and what
+         it should call back when remote commands complete.
+     SUBMITTED remote commands have been published using salt and we have obtained a
+               salt JID.
+     COMPLETING remote commands have completed, and any completion conditions
+                are now being awaited.
+     COMPLETE no further action, this instance will remain constant from this point on.
+              this does not indicate anything about success or failure.
     """
 
-    def __init__(self, minion_id, cluster_name, commands):
-        # A request is always initiated at a known epoch, the maps
-        # at this epoch were the ones used to decide whether this
-        # job was valid.
+    NEW = 'new'
+    SUBMITTED = 'submitted'
+    COMPLETING = 'completing'
+    COMPLETE = 'complete'
+    states = [NEW, SUBMITTED, COMPLETING, COMPLETE]
 
+    def __init__(self, minion_id, cluster_name, commands,
+                 completion_callback=None, completion_condition=None):
+        """
+        :param completion_callback: A callable, invoked after remote execution is complete but
+                                    before the state changes to COMPLETING.
+        :param completion_condition: A CompletionCondition instance, which we will start testing
+                                     one remote execution is complete and the completion callback
+                                     has executed.
+        """
         self.requested_at = datetime.datetime.now(tzlocal())
+
+        # This is actually kind of overkill compared with having a counter,
+        # somewhere but it's easy.
+        self.id = uuid.uuid4().__str__()
 
         self._minion_id = minion_id
         self._cluster_name = cluster_name
@@ -104,21 +155,40 @@ class UserRequest(object):
 
         self._jid = None
 
-        self.is_complete = False
-        self.result = False
+        self.result = None
+        self.state = self.NEW
+
+        self._completion_callback = completion_callback
+        self._completion_condition = completion_condition
 
     @property
     def submitted(self):
-        return self._jid is not None
+        return self.state == self.SUBMITTED
 
     @property
-    def request_id(self):
+    def completing(self):
+        return self.state == self.COMPLETING
+
+    @property
+    def jid(self):
         return self._jid
 
+    def set_completion_condition(self, condition):
+        """
+        Set a completion condition after construction, e.g. if
+        the parameters for completion are not known until after
+        the remote execution completes.
+        """
+        assert not self._completion_condition
+        self._completion_condition = condition
+
     def submit(self):
+        """
+        Start remote execution phase by publishing a job to salt.
+        """
+        log.debug("Request.submit: %s/%s/%s" % (self._minion_id, self._cluster_name, self._commands))
         assert not self.submitted
 
-        # We are out of date: request an up to date copy
         client = salt.client.LocalClient(SALT_CONFIG_PATH)
         pub_data = client.run_job(self._minion_id, 'ceph.rados_commands', [self._cluster_name, self._commands])
         if not pub_data:
@@ -127,181 +197,142 @@ class UserRequest(object):
             raise PublishError("Failed to publish job")
         self._jid = pub_data['jid']
 
-    def complete(self, result):
-        self.is_complete = True
+        self.state = self.SUBMITTED
+
+    def complete_jid(self, result):
+        """
+        Call this when remote execution is done.
+        """
         self.result = result
-        log.info("Request %s completed with result=%s" % (self.request_id, self.result))
+        log.info("Request %s JID %s completed with result=%s" % (self.id, self._jid, self.result))
+        if self._completion_callback:
+            try:
+                log.debug("Request %s calling completion callback" % self.id)
+                self._completion_callback(self)
+            except:
+                log.exception("Calling completion callback for %s/%s" % (self.id, self.jid))
+                # TODO: mark errored
+                self.complete()
+
+        if not self._completion_condition:
+            log.debug("Request %s no completion condition skipping to complete" % self.id)
+            self.complete()
+        else:
+            log.debug("Request %s going to state COMPLETING until condition is met" % self.id)
+            self.state = self.COMPLETING
+
+    @property
+    def completion_condition(self):
+        return self._completion_condition
+
+    def complete(self):
+        """
+        Call this when:
+         - Remote execution is done
+         - Completion callback has been called
+         - Completion condition has been met
+        """
+        self.state = self.COMPLETE
 
 
-class RequestCollection(dict):
+class OsdMapModifyingRequest(UserRequest):
+    """
+    Specialization of UserRequest which waits for Calamari's copy of
+    the OsdMap sync object to catch up after execution of RADOS commands.
+    """
+
+    def __init__(self, minion_id, cluster_name, commands):
+        super(OsdMapModifyingRequest, self).__init__(minion_id, cluster_name, commands)
+
+        class OsdVersionCompletion(object):
+            """
+            A CompletionCondition which waits for the synchronized
+            OSD map version to be >= a certain value.
+            """
+
+            depends = [OsdMap]
+
+            def __init__(self, version):
+                self._version = version
+
+            def apply(self, sync_objects):
+                osd_map = sync_objects.get(OsdMap)
+                result = osd_map.version >= self._version
+                if result:
+                    log.debug("OsdVersionCompletion passed (%s >= %s)" % (osd_map.version, self._version))
+                else:
+                    log.debug("OsdVersionCompletion pending (%s < %s)" % (osd_map.version, self._version))
+                return result
+
+        def completion(request):
+            """
+            When the pool creation command has completed, set a completion
+            condition for the calamari server to wait for the post-creation
+            version of the OSD map to get synced up.
+            """
+
+            # TODO: to be snappier, instead of waiting for the OSD map to just show up,
+            # send out a request for it here.  To avoid redundant/overlapping requests
+            # will probaly want to have SyncObjects track which objects we're waiting
+            # for and ignore requests to get objects which we're already getting.
+
+            post_create_version = request.result['versions']['osd_map']
+            log.debug("Request %s: Adding a completion condition for OSD map version %s" %
+                      (request.id, post_create_version))
+            request.set_completion_condition(OsdVersionCompletion(post_create_version))
+
+        self._completion_callback = completion
+
+
+class RequestCollection(object):
+    """
+    Manage a collection of UserRequests, indexed by
+    salt JID and request ID.
+
+    Requests don't appear in this collection until they have
+    made it at least as far as SUBMITTED state.
+
+    """
     def __init__(self):
         super(RequestCollection, self).__init__()
         self._shlock = threading2.SHLock()
+
+        self._by_request_id = {}
+        self._by_jid = {}
 
     def put(self, request):
         assert request.submitted
 
         self._shlock.acquire(shared=False)
         try:
-            self[request.request_id] = request
+            self._by_request_id[request.id] = request
+            self._by_jid[request.jid] = request
         finally:
             self._shlock.release()
 
-    def get_one(self, request_id):
+    def get_by_id(self, request_id):
         self._shlock.acquire(shared=True)
         try:
-            return self[request_id]
+            return self._by_request_id[request_id]
         finally:
             self._shlock.release()
 
-    def get_all(self):
+    def get_by_jid(self, jid):
         self._shlock.acquire(shared=True)
         try:
-            return self.values()
+            return self._by_jid[jid]
         finally:
             self._shlock.release()
 
-
-class DiscoveryThread(threading.Thread):
-    def __init__(self, manager):
-        super(DiscoveryThread, self).__init__()
-
-        self._manager = manager
-        self._complete = threading.Event()
-
-    def stop(self):
-        self._complete.set()
-
-    def run(self):
-        log.info("%s running" % self.__class__.__name__)
-        event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
-        event.subscribe("ceph/heartbeat/")
-
-        while not self._complete.is_set():
-            data = event.get_event()
-            if data is not None:
-                try:
-                    if 'tag' in data and data['tag'].startswith("ceph/heartbeat/"):
-                        cluster_data = data['data']
-                        if not cluster_data['fsid'] in self._manager.monitors:
-                            self._manager.on_discovery(data['id'], cluster_data)
-                        else:
-                            log.debug("%s: heartbeat from existing cluster %s" % (
-                                self.__class__.__name__, cluster_data['fsid']))
-                    else:
-                        # This does not concern us, ignore it
-                        #log.debug("DiscoveryThread ignoring: %s" % data)
-                        pass
-                except:
-                    log.error("Exception handling message: %s" % traceback.format_exc())
-                    log.debug("Message content: %s" % data)
-
-        log.info("%s complete" % self.__class__.__name__)
-
-
-class Manager(object):
-    """
-    Manage a collection of ClusterMonitors.
-
-    Subscribe to ceph/heartbeat events, and create a ClusterMonitor
-    for any FSID we haven't seen before.
-    """
-
-    def __init__(self):
-        self._complete = threading.Event()
-
-        self._request_thread = RpcThread(self)
-        self._discovery_thread = DiscoveryThread(self)
-        self._notification_thread = NotificationThread()
-
-        # FSID to ClusterMonitor
-        self.monitors = {}
-
-    def stop(self):
-        log.info("%s stopping" % self.__class__.__name__)
-        for monitor in self.monitors.values():
-            monitor.stop()
-        self._request_thread.stop()
-        self._discovery_thread.stop()
-        self._notification_thread.stop()
-
-    def start(self):
-        log.info("%s starting" % self.__class__.__name__)
-        self._request_thread.start()
-        self._discovery_thread.start()
-        self._notification_thread.start()
-
-    def join(self):
-        log.info("%s joining" % self.__class__.__name__)
-        self._request_thread.join()
-        self._discovery_thread.join()
-        self._notification_thread.join()
-        for monitor in self.monitors.values():
-            monitor.join()
-
-    def on_discovery(self, minion_id, heartbeat_data):
-        log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
-        cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'], self._notification_thread)
-        self.monitors[heartbeat_data['fsid']] = cluster_monitor
-
-        persistence.get_or_create(
-            heartbeat_data['name'],
-            heartbeat_data['fsid']
-        )
-
-        # Run before passing on the heartbeat, because otherwise the
-        # syncs resulting from the heartbeat might not be received
-        # by the monitor.
-        cluster_monitor.start()
-        cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
-
-
-class NotificationThread(threading.Thread):
-    """
-    Responsible for:
-     - Listening for Websockets clients connecting, and subscribing them
-       to the ceph: topics
-     - Publishing messages to Websockets topics on behalf of other
-       python code.
-    """
-    def __init__(self):
-        super(NotificationThread, self).__init__()
-        self._complete = threading.Event()
-        self._pub = None
-        self._ready = threading.Event()
-
-    def stop(self):
-        self._complete.set()
-
-    def publish(self, topic, message):
-        self._ready.wait()
-        self._pub.send(b'publish', zmq.SNDMORE)
-        self._pub.send(topic, zmq.SNDMORE)
-        self._pub.send(json.dumps(message))
-
-    def run(self):
-        ctx = zmq.Context(1)
-        sub = ctx.socket(zmq.SUB)
-        sub.connect('tcp://172.16.79.128:7002')
-        sub.setsockopt(zmq.SUBSCRIBE, b"")
-        self._pub = ctx.socket(zmq.PUB)
-        self._pub.connect('tcp://172.16.79.128:7003')
-        self._ready.set()
-        while not self._complete.is_set():
-            try:
-                parts = sub.recv_multipart(flags=zmq.NOBLOCK)
-            except zmq.ZMQError:
-                self._complete.wait(timeout=1)
-                continue
-
-            if parts[1] == b'connect':
-                self._pub.send(b'subscribe', zmq.SNDMORE)
-                self._pub.send(parts[0], zmq.SNDMORE)
-                self._pub.send(b'ceph:completion')
-
-                self._pub.send(b'subscribe', zmq.SNDMORE)
-                self._pub.send(parts[0], zmq.SNDMORE)
-                self._pub.send(b'ceph:sync')
+    def get_all(self, state=None):
+        self._shlock.acquire(shared=True)
+        try:
+            if not state:
+                return self._by_request_id.values()
+            else:
+                return [r for r in self._by_request_id.values() if r.state == state]
+        finally:
+            self._shlock.release()
 
 
 class ClusterMonitor(threading.Thread):
@@ -335,7 +366,7 @@ class ClusterMonitor(threading.Thread):
 
         self._sync_objects = SyncObjects()
 
-        self._derived_objects = {}
+        self._derived_objects = DerivedObjects()
 
         ctx = zmq.Context(1)
         pub = ctx.socket(zmq.PUB)
@@ -343,6 +374,15 @@ class ClusterMonitor(threading.Thread):
         self._notification_socket = pub
 
         self._notifier = notifier
+
+    def get_request(self, request_id):
+        return self._requests.get_by_id(request_id)
+
+    def get_sync_object(self, object_type):
+        return self._sync_objects.get(object_type).data
+
+    def get_derived_object(self, object_type):
+        return self._derived_objects.get(object_type)
 
     def run(self):
         event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
@@ -440,7 +480,7 @@ class ClusterMonitor(threading.Thread):
                     'since': old_version
                 }))
 
-        persistence.heartbeat()
+#        persistence.heartbeat()
         self._update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
     def on_sync_object(self, minion_id, data):
@@ -478,36 +518,54 @@ class ClusterMonitor(threading.Thread):
                         derived_objects = generator.generate(dependency_data)
                         self._derived_objects.update(derived_objects)
 
-            ## FIXME: should push persistence ops to a queue instead of doing it in the here and now
-            #if sync_type in [OsdMap, MdsMap, MonStatus, PgBrief]:
-            #    if None not in map(lambda t: self._sync_objects.get_version(t), [OsdMap, MdsMap, MonStatus, PgBrief]):
-            #        persistence.populate_counters(
-            #            self._sync_objects.get(OsdMap).data,
-            #            self._sync_objects.get(MdsMap).data,
-            #            self._sync_objects.get(MonStatus).data,
-            #            self._sync_objects.get(PgBrief).data
-            #        )
-            #
-            #if sync_type in [OsdMap, PgBrief, OsdTree]:
-            #    if None not in map(lambda t: self._sync_objects.get_version(t), [OsdMap, OsdTree, PgBrief]):
-            #        persistence.populate_osds_and_pgs(
-            #            self._sync_objects.get(OsdMap).data,
-            #            self._sync_objects.get(OsdTree).data,
-            #            self._sync_objects.get(PgBrief).data
-            #        )
-            #
-            #if sync_type is Health:
-            #    persistence.populate_health(data['data'])
+            # UserRequests may post CompletionConditions which depend on the state
+            # of sync objects, check if there are any of these out there and
+            for user_request in self._requests.get_all(state=UserRequest.COMPLETING):
+                cc = user_request.completion_condition
+                if sync_type in cc.depends:
+                    try:
+                        if cc.apply(self._sync_objects):
+                            user_request.complete()
+                    except:
+                        # TODO: mark errored
+                        user_request.complete()
+
+            # TODO: for this sync object and any regenerated derived objects, push
+            # them to the queue for persistence.
 
     def on_completion(self, data):
         jid = data['jid']
         result = data['return']
-        log.debug("on_completion: jid=%s" % jid)
+        log.debug("on_completion: jid=%s data=%s" % (jid, data))
 
-        request = self._requests.get_one(jid)
-        request.complete(result)
+        request = self._requests.get_by_jid(jid)
 
-        self._notifier.publish('ceph:completion', {'jid': jid})
+        if not data['success']:
+            log.error("Remote execution failed for request %s: %s" % (request.id, result))
+            # TODO: mark errored
+            request.complete()
+        else:
+
+            if request.state != UserRequest.SUBMITTED:
+                # Unexpected, ignore.
+                log.error("Received completion for request %s/%s in state %s" % (
+                    request.id, request.jid, request.state
+                ))
+                return
+
+            request.complete_jid(result)
+
+            if request.state == UserRequest.COMPLETING:
+                try:
+                    if request.completion_condition.apply(self._sync_objects):
+                        request.complete()
+                except:
+                    log.exception("Checking completion condition")
+                    # TODO: mark errored
+                    request.complete()
+
+        # TODO: publish this at actual completion rather than jid completion
+        #self._notifier.publish('ceph:completion', {'jid': jid})
 
     def set_favorite(self, minion_id):
         self._favorite_mon = minion_id
@@ -516,7 +574,66 @@ class ClusterMonitor(threading.Thread):
         # outstanding jobs which were using it, then
         # synthesize failures for them.
 
-    def request_change(self, obj_type, patches):
+    def request_create(self, obj_type, attributes):
+        if obj_type not in CEPH_OBJECT_TYPES:
+            raise ValueError("{0} is not one of {1}".format(obj_type, CEPH_OBJECT_TYPES))
+
+        if self._favorite_mon is None:
+            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
+
+        if obj_type == POOL:
+            # TODO: handle errors in a way that caller can show to a user, e.g.
+            # if the name is wrong we should be sending a structured errors dict
+            # that they can use to associate the complaint with the 'name' field.
+            commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
+            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+
+            req.submit()
+            self._requests.put(req)
+            return {
+                'request_id': req.id
+            }
+        else:
+            raise NotImplementedError(obj_type)
+
+    def _resolve_pool(self, pool_id):
+        for pool in self._sync_objects.get(OsdMap).data['pools']:
+            if pool['pool'] == pool_id:
+                return pool
+        else:
+            raise ValueError("Pool %s not found" % pool_id)
+
+    def request_delete(self, obj_type, obj_id):
+        if obj_type not in CEPH_OBJECT_TYPES:
+            raise ValueError("{0} is not one of {1}".format(obj_type, CEPH_OBJECT_TYPES))
+
+        if self._favorite_mon is None:
+            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
+
+        if obj_type == POOL:
+
+            # Resolve pool ID to name
+            pool_name = self._resolve_pool(obj_id)['pool_name']
+
+            # TODO: perhaps the REST API should have something in the body to
+            # make it slightly harder to accidentally delete a pool, to respect
+            # the severity of this operation since we're hiding the --yes-i-really-really-want-to
+            # stuff here
+            # TODO: handle errors in a way that caller can show to a user, e.g.
+            # if the name is wrong we should be sending a structured errors dict
+            # that they can use to associate the complaint with the 'name' field.
+            commands = [('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
+            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+
+            req.submit()
+            self._requests.put(req)
+            return {
+                'request_id': req.id
+            }
+        else:
+            raise NotImplementedError(obj_type)
+
+    def request_update(self, obj_type, obj_id, attributes):
         """
 
         This function requires a read lock on the cluster map.
@@ -525,59 +642,79 @@ class ClusterMonitor(threading.Thread):
         :param obj_type: OSD, MDS, MON or PG
         :param patches: List of dicts, each dict must have at least 'id' attribute.
         """
-        log.debug("Request_change: %s/%s" % (obj_type, patches))
-        if self._favorite_mon is None:
-            log.error("request_change: don't have a favourite to run on")
-            raise ClusterUnavailable()
 
         if obj_type not in CEPH_OBJECT_TYPES:
             raise ValueError("{0} is not one of {1}".format(obj_type, CEPH_OBJECT_TYPES))
 
-        # TODO Acquire cluster map read lock and request collection read lock
-        # TODO Validate the requested change against the cluster map and ongoing requests
+        if self._favorite_mon is None:
+            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
 
-        # TODO: Use some per-object-type logic to work out what commands are
-        # needed to 'make it so' for the patches passed in.
-        commands = []
         if obj_type == OSD:
-            for p in patches:
-                if p['in'] == 0:
-                    commands.append(('osd out', {'ids': [p['id'].__str__()]}))
-                else:
-                    commands.append(('osd in', {'ids': [p['id'].__str__()]}))
+            commands = []
+            if attributes['in'] == 0:
+                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
+            else:
+                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
 
-        # TODO: provide some per-object-type ability to emit human readable descriptions
-        # of what we are doing.
+            # TODO: provide some per-object-type ability to emit human readable descriptions
+            # of what we are doing.
 
-        # TOOD: provide some machine-readable indication of which objects are affected
-        # by a particular request.
-        # Perhaps subclass Request for each type of object, and have that subclass provide
-        # both the patches->commands mapping and the human readable and machine readable
-        # descriptions of it?
-        req = UserRequest(self._favorite_mon, self._name, commands)
+            # TOOD: provide some machine-readable indication of which objects are affected
+            # by a particular request.
+            # Perhaps subclass Request for each type of object, and have that subclass provide
+            # both the patches->commands mapping and the human readable and machine readable
+            # descriptions of it?
+            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
 
-        try:
-            req.submit()
-        except ClusterUnavailable:
-            # TODO: Handle mon going away: interrogate salt to find a connected mon
-            # and make that the new favourite.
-            raise
+            try:
+                req.submit()
+            except ClusterUnavailable:
+                # TODO: Handle mon going away: interrogate salt to find a connected mon
+                # and make that the new favourite.
+                raise
 
-        self._requests.put(req)
+            self._requests.put(req)
+            return {
+                'request_id': req.id
+            }
+        elif obj_type == POOL:
+            # TODO: this is a primitive form of adding PGs, not yet sufficient for
+            # real use because it leaves pgp_num unset.
+            commands = []
+            if 'pg_num' in attributes:
+                # TODO: also set pgp_num, although ceph annoyingly doesn't
+                # let us do this until all the PGs are created, unless there
+                # is some hidden way to set it at the same time as pg_Num?
+                pool_name = self._resolve_pool(obj_id)['pool_name']
+                commands.append(('osd pool set', {
+                    'pool': pool_name,
+                    'var': 'pg_num',
+                    'val': attributes['pg_num']
+                }))
+            else:
+                raise NotImplementedError(attributes)
 
-        return req
+            # TODO: provide some per-object-type ability to emit human readable descriptions
+            # of what we are doing.
 
+            # TOOD: provide some machine-readable indication of which objects are affected
+            # by a particular request.
+            # Perhaps subclass Request for each type of object, and have that subclass provide
+            # both the patches->commands mapping and the human readable and machine readable
+            # descriptions of it?
+            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
 
-def main():
-    m = Manager()
-    m.start()
+            try:
+                req.submit()
+            except ClusterUnavailable:
+                # TODO: Handle mon going away: interrogate salt to find a connected mon
+                # and make that the new favourite.
+                raise
 
-    try:
-        complete = threading.Event()
-        while not complete.is_set():
-            complete.wait(timeout=1)
-    except KeyboardInterrupt:
-        # TODO signal handling
-        log.info("KeyboardInterrupt: stopping")
-        m.stop()
-        m.join()
+            self._requests.put(req)
+
+            return {
+                'request_id': req.id
+            }
+        else:
+            raise NotImplementedError(obj_type)

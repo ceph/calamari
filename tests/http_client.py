@@ -20,12 +20,21 @@ class AuthenticatedHttpClient(requests.Session):
 
     def request(self, method, url, **kwargs):
         url = self._api_url + url
-        return super(AuthenticatedHttpClient, self).request(method, url, **kwargs)
+        response = super(AuthenticatedHttpClient, self).request(method, url, **kwargs)
+        if response.status_code >= 500:
+            # For the benefit of test logs
+            print "%s: %s" % (response.status_code, response.content)
+        return response
 
     def post(self, url, data=None, **kwargs):
         if isinstance(data, dict):
             data = json.dumps(data)
-        super(AuthenticatedHttpClient, self).post(url, data, **kwargs)
+        return super(AuthenticatedHttpClient, self).post(url, data, **kwargs)
+
+    def patch(self, url, data=None, **kwargs):
+        if isinstance(data, dict):
+            data = json.dumps(data)
+        return super(AuthenticatedHttpClient, self).patch(url, data, **kwargs)
 
     def login(self):
         """

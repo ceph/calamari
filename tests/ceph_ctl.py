@@ -60,7 +60,7 @@ class CephControl(object):
         pass
 
 
-class DevCephControl(CephControl):
+class EmbeddedCephControl(CephControl):
     """
     Simulated ceph cluster, using minion_sim
     """
@@ -103,8 +103,23 @@ class DevCephControl(CephControl):
     def get_service_fqdns(self, service_type):
         return self._sim.cluster.get_service_fqdns(service_type)
 
-class RealCephControl(CephControl):
-    """
-    TODO: hook into a real life ceph cluster (provisioned with teuthology?)
-    """
-    pass
+
+class ExternalCephControl(CephControl):
+    def configure(self, server_count):
+        # I hope you only wanted three, because I ain't buying
+        # any more servers...
+        assert server_count == 3
+
+        # Ensure all OSDs are initially up
+
+        # Ensure there are initially no pools but the default ones.
+
+    def get_server_fqdns(self):
+        return ["gravel%s.rockery" % n for n in range(0, 3)]
+
+    def get_service_fqdns(self, service_type):
+        # I run OSDs and mons in the same places (on all three servers)
+        return self.get_server_fqdns()
+
+    def shutdown(self):
+        pass

@@ -11,7 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer,\
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, PoolSerializer
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, PoolSerializer, RequestSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -132,11 +132,11 @@ class OSDList(RPCView):
     def get(self, request, fsid):
         osds = self.client.get_derived_object(fsid, 'osds')
         osds_by_pg_state = self.client.get_derived_object(fsid, 'osds_by_pg_state')
+        if not osds or not osds_by_pg_state:
+            return Response([], status.HTTP_202_ACCEPTED)
 
         pg_states = request.QUERY_PARAMS.get('pg_states', None)
         if pg_states:
-            if not osds_by_pg_state:
-                return Response([], status.HTTP_202_ACCEPTED)
             self._filter_by_pg_state(osds, pg_states, osds_by_pg_state)
 
         osd_list = DataObject({
@@ -176,6 +176,10 @@ class ClusterViewSet(RPCViewSet):
         cluster = DataObject(self.client.get_cluster(pk))
         return Response(ClusterSerializer(cluster).data)
 
+    def delete(self, request, pk):
+        self.client.delete_cluster(pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class PoolViewSet(RPCViewSet):
     def list(self, request, fsid):
@@ -187,10 +191,40 @@ class PoolViewSet(RPCViewSet):
         pool = DataObject(self.client.get(fsid, 'pool', int(pool_id)))
         return Response(PoolSerializer(pool).data)
 
+    def create(self, request, fsid):
+        serializer = PoolSerializer(data=request.DATA)
+        if serializer.is_valid():
+            create_response = self.client.create(fsid, 'pool', request.DATA)
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, fsid, pool_id):
+        delete_response = self.client.delete(fsid, 'pool', int(pool_id))
+        return Response(delete_response)
+
+    def update(self, request, fsid, pool_id):
+        updates = request.DATA
+        print updates
+        # TODO: validation, but we don't want to check all fields are present (because
+        # this is a PATCH), just that those present are valid.  rest_framework serializer
+        # may or may not be able to do that out the box.
+        return Response(self.client.update(fsid, 'pool', int(pool_id), updates))
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+
+class RequestViewSet(RPCViewSet):
+    def retrieve(self, request, fsid, request_id):
+        user_request = DataObject(self.client.get_request(fsid, request_id))
+        return Response(RequestSerializer(user_request).data)
 
 
 @api_view(['GET'])

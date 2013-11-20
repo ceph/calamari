@@ -1,22 +1,7 @@
 from django.utils.unittest.case import skipIf
 import time
-from tests.server_testcase import ServerTestCase
+from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL, OSD_RECOVERY_PERIOD, CALAMARI_RESYNC_PERIOD
 from tests.utils import wait_until_true, WaitTimeout
-
-
-# The tests need to have a rough idea of how often
-# calamari checks things, so that they can set
-# sane upper bounds on waits
-HEARTBEAT_INTERVAL = 120
-
-# How long should calamari take to re-establish
-# sync after a mon goes down?
-CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 6
-
-# Roughly how long should it take for one OSD to
-# recover its PGs after an outage?  This is a 'finger in the air'
-# number that depends on the ceph cluster used in testing.
-OSD_RECOVERY_PERIOD = 600
 
 
 class TestMonitoring(ServerTestCase):
@@ -144,28 +129,10 @@ class TestMonitoring(ServerTestCase):
         """
         pass
 
-    def _wait_for_cluster(self):
-        self.clear()
-        self.ceph_ctl.configure(3)
-        self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
-        wait_until_true(self._cluster_detected, timeout=HEARTBEAT_INTERVAL*3)
-        cluster_id = self.api.get("cluster").json()[0]['id']
-        wait_until_true(lambda: self._maps_populated(cluster_id))
-        return cluster_id
-
-    def _cluster_detected(self, expected=1):
-        response = self.api.get("cluster")
-        response.raise_for_status()
-        clusters = response.json()
-        if len(clusters) < expected:
-            return False
-        elif len(clusters) == expected:
-            return True
-        else:
-            raise self.failureException("Too many clusters: %s" % clusters)
-
-    def _maps_populated(self, cluster_id):
-        response = self.api.get("cluster/{0}/osd".format(cluster_id))
-        response.raise_for_status()
-        osds = response.json()
-        return bool(len(osds))
+    @skipIf(True, "not implemented yet")
+    def test_cluster_removal(self):
+        """
+        Check that if a cluster stops communicating with calamari server,
+        and we request for the cluster to be removed, it goes away.
+        """
+        pass
