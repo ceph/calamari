@@ -61,7 +61,7 @@ class CalamariControl(object):
 
         return self._api
 
-    def configure(self, no_minions=False, no_clusters=True):
+    def configure(self, no_clusters=True):
         """
         Assert some aspects of the server state, fixing up
         if possible, else raising an exception.
@@ -81,9 +81,6 @@ class CalamariControl(object):
         way to get around that is to provision a fully fresh instance
         for each test.
         """
-        if no_minions:
-            # The salt master should recognise no minions
-            self.calamari_ctl.clear_keys()
 
         if no_clusters:
             # Initially there should be no clusters
@@ -133,7 +130,7 @@ class EmbeddedCalamariControl(CalamariControl):
         XXX temporary
         This method will go away once key handling can be driven via the REST API
         """
-        subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-D", "-y"])
+        subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-D", "-y"], stderr=subprocess.PIPE)
 
     def authorize_keys(self, minion_ids):
         """
@@ -145,7 +142,7 @@ class EmbeddedCalamariControl(CalamariControl):
         """
 
         def _fqdns_present():
-            data = json.loads(subprocess.check_output(["salt-key", "-c", "salt/etc/salt", "-L", "--out=json"]))
+            data = json.loads(subprocess.check_output(["salt-key", "-c", "salt/etc/salt", "-L", "--out=json"], stderr=subprocess.PIPE))
             all_present = len(set(minion_ids) & set(data['minions_pre'])) == len(minion_ids)
             log.debug("checking keys, found %s (%s)" % (data['minions_pre'], all_present))
 
@@ -156,7 +153,7 @@ class EmbeddedCalamariControl(CalamariControl):
         for minion_id in minion_ids:
             log.debug("Authorising key for %s" % minion_id)
 
-            subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-y", "-a", minion_id])
+            subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-y", "-a", minion_id], stderr=subprocess.PIPE)
 
     def start(self):
         config_path = os.path.join(TREE_ROOT, "supervisord.conf")
@@ -193,6 +190,9 @@ class EmbeddedCalamariControl(CalamariControl):
                 self._ps.send_signal(signal.SIGKILL)
             self._ps.wait()
             raise
+
+        # Because we are embedded, we are probably talking to some
+        self.clear_keys()
 
     def stop(self):
         log.info("%s.stop" % self.__class__.__name__)

@@ -130,7 +130,12 @@ def md5(raw):
     return hasher.hexdigest()
 
 
-def rados_commands(cluster_name, commands):
+def rados_commands(fsid, cluster_name, commands):
+    """
+    Passing in both fsid and cluster_name, because the caller
+    should always know both, and it saves this function the trouble
+    of looking up one from the other.
+    """
     import rados
     from ceph_argparse import json_command
 
@@ -139,6 +144,9 @@ def rados_commands(cluster_name, commands):
     cluster_handle.connect()
 
     results = []
+
+    # TODO: clarify what err_outbuf and err_outs really are, maybe give them
+    # more obvious names.
 
     # Each command is a 2-tuple of a prefix followed by an argument dictionary
     for i, (prefix, argdict) in enumerate(commands):
@@ -150,7 +158,8 @@ def rados_commands(cluster_name, commands):
                 'results': results,
                 'err_outbuf': outbuf,
                 'err_outs': outs,
-                'versions': None
+                'versions': None,
+                'fsid': fsid
             }
         if outbuf:
             results.append(json.loads(outbuf))
@@ -167,14 +176,17 @@ def rados_commands(cluster_name, commands):
     # TODO: use the cluster_handle we already have here instead of letting terse_status
     # create a new one (true other places in this module, requires general cleanup)
 
-
     # FIXME 1: We probably can't assume that <clustername>.client.admin.keyring is always
     # present, although this is the case on a nicely ceph-deploy'd system
     # FIXME 2: It shouldn't really be necessary to fire up a RADOS client to obtain this
     # information, instead we should be able to get it from the mon admin socket.
     cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
     cluster_handle.connect()
-    versions = cluster_status(cluster_handle, cluster_name)['versions']
+    status = cluster_status(cluster_handle, cluster_name)
+
+    # For all RADOS commands, we include the cluster map versions
+    # in the response, so that the caller knows which versions to
+    # wait for in order to see the consequences of their actions.
 
     # Success
     return {
@@ -182,7 +194,8 @@ def rados_commands(cluster_name, commands):
         'results': results,
         'err_outbuf': '',
         'err_outs': '',
-        'versions': versions
+        'versions': status['versions'],
+        'fsid': fsid
     }
 
 

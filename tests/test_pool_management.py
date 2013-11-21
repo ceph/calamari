@@ -6,7 +6,7 @@ from tests.utils import wait_until_true
 # TODO: This would be lower/more aggressive if we didn't have to wait
 # for a full upgrade cycle for OSD maps to update (should be updating
 # them more aggressively as part of the UserRequest)
-operation_timeout = HEARTBEAT_INTERVAL * 3
+operation_timeout = HEARTBEAT_INTERVAL
 
 
 class TestPoolManagement(ServerTestCase):
@@ -80,6 +80,7 @@ class TestPoolManagement(ServerTestCase):
 
         pool_name = 'test1'
 
+        # TODO: in creation, support setting crush ruleset
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
 

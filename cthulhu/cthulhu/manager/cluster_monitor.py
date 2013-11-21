@@ -1,3 +1,4 @@
+import re
 import uuid
 from pytz import utc
 from cthulhu.manager import derived
@@ -134,9 +135,14 @@ class UserRequest(object):
     COMPLETE = 'complete'
     states = [NEW, SUBMITTED, COMPLETING, COMPLETE]
 
-    def __init__(self, minion_id, cluster_name, commands,
+    def __init__(self, minion_id, fsid, cluster_name, commands,
                  completion_callback=None, completion_condition=None):
         """
+        Requiring cluster_name and fsid is redundant (ideally everything would
+        speak in terms of fsid) but convenient, because the librados interface
+        wants a cluster name when you create a client, and otherwise we would
+        have to look up via ceph.conf.
+
         :param completion_callback: A callable, invoked after remote execution is complete but
                                     before the state changes to COMPLETING.
         :param completion_condition: A CompletionCondition instance, which we will start testing
@@ -150,6 +156,7 @@ class UserRequest(object):
         self.id = uuid.uuid4().__str__()
 
         self._minion_id = minion_id
+        self._fsid = fsid
         self._cluster_name = cluster_name
         self._commands = commands
 
@@ -190,7 +197,7 @@ class UserRequest(object):
         assert not self.submitted
 
         client = salt.client.LocalClient(SALT_CONFIG_PATH)
-        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands', [self._cluster_name, self._commands])
+        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands', [self._fsid, self._cluster_name, self._commands])
         if not pub_data:
             # FIXME: LocalClient uses 'print' to record the
             # details of what went wrong :-(
@@ -241,8 +248,8 @@ class OsdMapModifyingRequest(UserRequest):
     the OsdMap sync object to catch up after execution of RADOS commands.
     """
 
-    def __init__(self, minion_id, cluster_name, commands):
-        super(OsdMapModifyingRequest, self).__init__(minion_id, cluster_name, commands)
+    def __init__(self, minion_id, fsid, cluster_name, commands):
+        super(OsdMapModifyingRequest, self).__init__(minion_id, fsid, cluster_name, commands)
 
         class OsdVersionCompletion(object):
             """
@@ -388,30 +395,50 @@ class ClusterMonitor(threading.Thread):
         event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
 
         while not self._complete.is_set():
-            data = event.get_event()
-            if data is not None:
+            ev = event.get_event(full=True)
+
+            if ev is not None:
+                data = ev['data']
+                tag = ev['tag']
+                log.debug("Event tag=%s" % tag)
+
+                # I am interested in the following tags:
+                # - salt/job/<jid>/ret/<minion id> where jid is one that I started
+                #   (this includes ceph.rados_command and ceph.get_cluster_object)
+                # - ceph/heartbeat/<fsid> where fsid is my fsid
+
                 try:
-                    if 'tag' in data and data['tag'].startswith("ceph/heartbeat/{0}".format(self._fsid)):
+                    if tag.startswith("ceph/heartbeat/{0}".format(self._fsid)):
                         # A ceph.heartbeat beacon
                         self.on_heartbeat(data['id'], data['data'])
-                    elif 'fun' in data and data['fun'] == 'ceph.get_cluster_object' and 'return' in data:
-                        # A ceph.get_cluster_object response
-                        # FIXME: ordering: should be tracking ongoing jids for each type of object
-                        # we might have a sync out for, and
-                        # FIXME: filtering: chop these down to only the jobs for this cluster, ideally
-                        # I would like to prefix my cluster ID to JIDs
-                        if not data['success']:
-                            log.error("on_sync_object: failure from %s: %s" % (data['id'], data['return']))
+                    elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
+                        # It would be much nicer to put the FSID at the start of
+                        # the tag, if salt would only let us add custom tags to our jobs.
+                        # Instead we enforce a convention that all calamari jobs must include
+                        # fsid in their return value.
+                        if 'fsid' not in data['return'] or data['return']['fsid'] != self._fsid:
+                            log.debug("Ignoring job return, not for my FSID")
                             continue
-                        self.on_sync_object(data['id'], data['return'])
-                    elif 'fun' in data and data['fun'] == 'ceph.rados_commands' and 'return' in data:
-                        # A ceph.rados_commands response
-                        self.on_completion(data)
+
+                        if data['fun'] == 'ceph.get_cluster_object':
+                            # A ceph.get_cluster_object response
+                            # FIXME: ordering: should be tracking ongoing jids for each type of object
+                            # we might have a sync out for, and
+                            # FIXME: filtering: chop these down to only the jobs for this cluster, ideally
+                            # I would like to prefix my cluster ID to JIDs
+                            if not data['success']:
+                                log.error("on_sync_object: failure from %s: %s" % (data['id'], data['return']))
+                                continue
+                            self.on_sync_object(data['id'], data['return'])
+                        elif 'ceph.rados_commands':
+                            # A ceph.rados_commands response
+                            self.on_completion(data)
                     else:
                         # This does not concern us, ignore it
                         pass
                 except:
-                    log.error("Exception handling message: %s" % traceback.format_exc())
+                    # Because this is our main event handling loop,
+                    log.exception("Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
 
         log.info("%s complete" % self.__class__.__name__)
@@ -586,7 +613,7 @@ class ClusterMonitor(threading.Thread):
             # if the name is wrong we should be sending a structured errors dict
             # that they can use to associate the complaint with the 'name' field.
             commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
-            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             req.submit()
             self._requests.put(req)
@@ -623,7 +650,7 @@ class ClusterMonitor(threading.Thread):
             # if the name is wrong we should be sending a structured errors dict
             # that they can use to associate the complaint with the 'name' field.
             commands = [('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
-            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             req.submit()
             self._requests.put(req)
@@ -664,7 +691,7 @@ class ClusterMonitor(threading.Thread):
             # Perhaps subclass Request for each type of object, and have that subclass provide
             # both the patches->commands mapping and the human readable and machine readable
             # descriptions of it?
-            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             try:
                 req.submit()
@@ -702,7 +729,7 @@ class ClusterMonitor(threading.Thread):
             # Perhaps subclass Request for each type of object, and have that subclass provide
             # both the patches->commands mapping and the human readable and machine readable
             # descriptions of it?
-            req = OsdMapModifyingRequest(self._favorite_mon, self._name, commands)
+            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             try:
                 req.submit()

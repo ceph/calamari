@@ -5,6 +5,11 @@ from tests.utils import wait_until_true, WaitTimeout
 
 
 class TestMonitoring(ServerTestCase):
+    def setUp(self):
+        super(TestMonitoring, self).setUp()
+        self.ceph_ctl.configure(3)
+        self.calamari_ctl.configure()
+
     def test_detect_simple(self):
         """
         Check that a single cluster, when sending a heartbeat to the
@@ -40,7 +45,7 @@ class TestMonitoring(ServerTestCase):
 
         # Wait for the status to filter up to the REST API
         wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 0,
-                        timeout=HEARTBEAT_INTERVAL*3)
+                        timeout=HEARTBEAT_INTERVAL)
 
         # Wait for the health status to reflect the degradation
         # NB this is actually a bit racy, because we assume the PGs remain degraded long enough
@@ -48,13 +53,13 @@ class TestMonitoring(ServerTestCase):
         # which case the cluster would never appear unhealthy and this would be an invalid check.
         health_url = "cluster/{0}/health".format(cluster_id)
         wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_WARN",
-                        timeout=HEARTBEAT_INTERVAL*3)
+                        timeout=HEARTBEAT_INTERVAL)
 
         # Bring the OSD back into the cluster
         self.ceph_ctl.mark_osd_in(osd_id, True)
 
         # Wait for the status
-        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL*3)
+        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL)
 
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover
@@ -73,19 +78,19 @@ class TestMonitoring(ServerTestCase):
         cluster_id = self._wait_for_cluster()
 
         def update_time():
-            return self.api.get("cluster/%s" % cluster_id).json()['cluster_update_time']
+            return self.api.get("cluster/%s" % cluster_id).json()['update_time']
 
         # Lose contact with the cluster
         self.ceph_ctl.go_dark()
         initial_update_time = update_time()
-        time.sleep(HEARTBEAT_INTERVAL * 3)
+        time.sleep(HEARTBEAT_INTERVAL)
         # The update time should not have been incremented
         self.assertEqual(initial_update_time, update_time())
 
         # Regain contact with the cluster
         self.ceph_ctl.go_dark(False)
         # The update time should start incrementing again
-        wait_until_true(lambda: update_time() != initial_update_time, timeout=HEARTBEAT_INTERVAL * 3)
+        wait_until_true(lambda: update_time() != initial_update_time, timeout=HEARTBEAT_INTERVAL)
         self.assertNotEqual(initial_update_time, update_time())
 
     def test_mon_down(self):
@@ -101,7 +106,7 @@ class TestMonitoring(ServerTestCase):
         mon_fqdns = self.ceph_ctl.get_service_fqdns('mon')
 
         def update_time():
-            return self.api.get("cluster/%s" % cluster_id).json()['cluster_update_time']
+            return self.api.get("cluster/%s" % cluster_id).json()['update_time']
 
         # I don't know which if any of the mons the calamari server
         # might be preferentially accepting data from, but I want
@@ -126,6 +131,15 @@ class TestMonitoring(ServerTestCase):
         Check that calamari persists enough data about the monitored cluster
         that it can service REST API read operations even if it restarts
         while the cluster is unavailable.
+        """
+        pass
+
+    @skipIf(True, "not implemented yet")
+    def test_two_clusters(self):
+        """
+        Check that if two ceph clusters are talking to the calamari server,
+        then both are detected, and each one is presenting its own data
+        via the REST API.
         """
         pass
 

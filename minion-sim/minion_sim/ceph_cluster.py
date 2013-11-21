@@ -43,6 +43,41 @@ def flatten_dictionary(data, sep='.', prefix=None):
             yield (fullname, value)
 
 
+def _pool_template(name, pool_id, pg_num):
+    """
+    Format as in OSD map dump
+    """
+    return {
+                'pool': pool_id,
+                'pool_name': name,
+                "flags": 0,
+                "flags_names": "",
+                "type": 1,
+                "size": 2,
+                "min_size": 1,
+                "crush_ruleset": 2,
+                "object_hash": 2,
+                "pg_num": pg_num,
+                "pg_placement_num": 64,
+                "crash_replay_interval": 0,
+                "last_change": "1",
+                "auid": 0,
+                "snap_mode": "selfmanaged",
+                "snap_seq": 0,
+                "snap_epoch": 0,
+                "pool_snaps": {},
+                "removed_snaps": "[]",
+                "quota_max_bytes": 0,
+                "quota_max_objects": 0,
+                "tiers": [],
+                "tier_of": -1,
+                "read_tier": -1,
+                "write_tier": -1,
+                "cache_mode": "none",
+                "properties": []
+            }
+
+
 def pseudorandom_subset(possible_values, n_select, selector):
     result = []
     for i in range(0, n_select):
@@ -150,35 +185,7 @@ class CephCluster(object):
 
         for i, pool in enumerate(['data', 'metadata', 'rbd']):
             # TODO these should actually have a different crush ruleset etc each
-            objects['osd_map']['pools'].append({
-                'pool': i,
-                'pool_name': pool,
-                "flags": 0,
-                "flags_names": "",
-                "type": 1,
-                "size": 2,
-                "min_size": 1,
-                "crush_ruleset": 2,
-                "object_hash": 2,
-                "pg_num": 64,
-                "pg_placement_num": 64,
-                "crash_replay_interval": 0,
-                "last_change": "1",
-                "auid": 0,
-                "snap_mode": "selfmanaged",
-                "snap_seq": 0,
-                "snap_epoch": 0,
-                "pool_snaps": {},
-                "removed_snaps": "[]",
-                "quota_max_bytes": 0,
-                "quota_max_objects": 0,
-                "tiers": [],
-                "tier_of": -1,
-                "read_tier": -1,
-                "write_tier": -1,
-                "cache_mode": "none",
-                "properties": []
-            })
+            objects['osd_map']['pools'].append(_pool_template(pool, i, 64))
 
         objects['osd_tree'] = {"nodes": [
             {
@@ -367,6 +374,28 @@ class CephCluster(object):
 
         self._pg_monitor()
         self._update_health()
+
+    def pool_create(self, pool_name, pg_num):
+        if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
+            return
+
+        new_id = max([p['pool'] for p in self._objects['osd_map']['pools']]) + 1
+
+        self._objects['osd_map']['pools'].append(
+            _pool_template(pool_name, new_id, pg_num)
+        )
+        self._objects['osd_map']['epoch'] += 1
+
+    def pool_update(self, pool_name, var, val):
+        pool = [p for p in self._objects['osd_map']['pools'] if p['pool_name'] == pool_name][0]
+        if pool[var] != val:
+            pool[var] = val
+            self._objects['osd_map']['epoch'] += 1
+
+    def pool_delete(self, pool_name):
+        if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
+            self._objects['osd_map']['pools'] = [p for p in self._objects['osd_map']['pools'] if p['pool_name'] != pool_name]
+            self._objects['osd_map']['epoch'] += 1
 
     def _pg_monitor(self, recovery_credits=0):
         """

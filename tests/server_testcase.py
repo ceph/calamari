@@ -16,22 +16,32 @@ log = logging.getLogger(__name__)
 
 # The tests need to have a rough idea of how often
 # calamari checks things, so that they can set
-# sane upper bounds on waits
+# sane upper bounds on wait.
+
+# This is how long you should wait if you're waiting
+# for something to happen roughly 'on the next heartbeat'.
 HEARTBEAT_INTERVAL = 120
 
 # How long should calamari take to re-establish
 # sync after a mon goes down?
-CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 6
+CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 
 # Roughly how long should it take for one OSD to
 # recover its PGs after an outage?  This is a 'finger in the air'
-# number that depends on the ceph cluster used in testing.
+# number that depends on the ceph cluster used in testing.  It's
+# how long you should wait calamari to report a cluster healthy
+# after you've cycled an OSD in-out-in.
 OSD_RECOVERY_PERIOD = 600
+
+
+CALAMARI_CTL = EmbeddedCalamariControl
+CEPH_CTL = EmbeddedCephControl
+FORCE_KEYS = True
 
 
 class ServerTestCase(TestCase):
     def setUp(self):
-        self.calamari_ctl = ExternalCalamariControl()
+        self.calamari_ctl = CALAMARI_CTL()
         self.calamari_ctl.start()
 
         try:
@@ -44,7 +54,13 @@ class ServerTestCase(TestCase):
             # Let's give calamari something to monitor, though
             # it's up to the test whether they want to
             # actually fire it up/interact with it.
-            self.ceph_ctl = ExternalCephControl()
+            self.ceph_ctl = CEPH_CTL()
+
+            # Bit awkward, if this is a simulated ceph cluster then it will
+            # probably reuse some domain names and we want to make sure
+            # that calamari doesn't have any keys kicking around.
+            if isinstance(self.ceph_ctl, EmbeddedCephControl):
+                self.calamari_ctl.clear_keys()
 
         except:
             self.calamari_ctl.stop()
@@ -52,11 +68,15 @@ class ServerTestCase(TestCase):
 
     def tearDown(self):
         log.info("%s.teardown" % self.__class__.__name__)
-        self.calamari_ctl.stop()
+        # Prefer to shut down ceph cluster first, otherwise minions go through
+        # a confusing "I can't reach my master" phase rather than a nice smooth
+        # shutdown.
         self.ceph_ctl.shutdown()
+        self.calamari_ctl.stop()
 
     def _wait_for_cluster(self):
-        #self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
+        if FORCE_KEYS:
+            self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
         wait_until_true(self._cluster_detected, timeout=HEARTBEAT_INTERVAL*3)
         cluster_id = self.api.get("cluster").json()[0]['id']
         wait_until_true(lambda: self._maps_populated(cluster_id))

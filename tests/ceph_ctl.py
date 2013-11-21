@@ -65,12 +65,10 @@ class EmbeddedCephControl(CephControl):
     Simulated ceph cluster, using minion_sim
     """
     def __init__(self):
-        self._config_dir = None
+        self._config_dir = tempfile.mkdtemp()
         self._sim = None
 
     def configure(self, server_count):
-        self._config_dir = tempfile.mkdtemp()
-
         self._sim = MinionSim(self._config_dir, server_count)
         self._sim.start()
 

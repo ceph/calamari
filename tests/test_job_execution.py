@@ -26,3 +26,11 @@ class TestJobExecution(ServerTestCase):
         we get a clean immediate failure.
         """
         pass
+
+    @skipIf(True, "not implemented yet")
+    def test_minion_exception(self):
+        """
+        Test that if a salt minion module throws an exception, the job gets
+        marked as complete.
+        """
+        pass

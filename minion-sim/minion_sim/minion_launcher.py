@@ -129,7 +129,6 @@ class MinionLauncher(object):
             self._cluster = cluster
 
     def start(self):
-        print "Calling salt_minion.start"
         # TODO: send stdout and stderr somewhere other than the screen to avoid spamming
         # during test runs
         self.ps = subprocess.Popen(['minion-child'] + self.cmdline,
@@ -138,7 +137,16 @@ class MinionLauncher(object):
         self._stats_sender.start()
 
     def stop(self):
-        self.ps.send_signal(signal.SIGTERM)
+        try:
+            self.ps.send_signal(signal.SIGTERM)
+        except OSError as e:
+            if e.errno == errno.ESRCH:
+                print "Process not found, killing minion %s" % self.ps.pid
+                # Process not found, i.e. it's already dead.
+                pass
+            else:
+                raise
+
         self._stats_sender.stop()
 
     def join(self):

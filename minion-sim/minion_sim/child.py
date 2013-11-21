@@ -45,6 +45,34 @@ def main():
     def get_cluster_object(cluster_name, sync_type, since):
         return cluster.get_cluster_object(cluster_name, sync_type, since)
 
+    def rados_commands(fsid, cluster_name, commands):
+        services = cluster.get_services(fqdn)
+        fsid = None
+        for service in services:
+            fsid = service['fsid']
+        assert fsid is not None
+
+        for command in commands:
+            prefix, args = command
+            if prefix == "osd pool create":
+                cluster.pool_create(args['pool'], args['pg_num'])
+            elif prefix == "osd pool set":
+                cluster.pool_update(args['pool'], args['var'], args['val'])
+            elif prefix == "osd pool delete":
+                cluster.pool_delete(args['pool'])
+            else:
+                raise NotImplementedError()
+
+        status = cluster.get_heartbeat(fsid)
+        return {
+            'error': False,
+            'results': [None for n in commands],
+            'err_outbuf': '',
+            'err_outs': '',
+            'fsid': fsid,
+            'versions': status['versions']
+        }
+
     import salt.loader
 
     old_minion_mods = salt.loader.minion_mods
@@ -54,6 +82,7 @@ def main():
         data = old_minion_mods(opts)
         data['ceph.heartbeat'] = heartbeat
         data['ceph.get_cluster_object'] = get_cluster_object
+        data['ceph.rados_commands'] = rados_commands
         __salt__ = data
         return data
 
