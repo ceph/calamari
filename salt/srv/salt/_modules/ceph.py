@@ -369,6 +369,8 @@ def cluster_status(cluster_handle, cluster_name):
         'detail': 'detail'
     })
     assert ret == 0
+    # FIXME: because we're including the part with time skew data, this changes
+    # all the time, should just skip that part.
     health_digest = md5(outbuf)
 
     # Get digest of brief pg info

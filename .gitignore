@@ -13,3 +13,4 @@ virtualenv
 **/.tmp
 **/dist
 **/node_modules
+.coverage.*

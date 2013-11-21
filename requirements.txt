@@ -4,9 +4,15 @@ argparse==1.2.1
 django-filter==0.6
 django-jsonfield==0.9.10
 djangorestframework==2.3.6
-#psycopg2==2.5.1
 requests==1.2.3
 wsgiref==0.1.2
+
+# Gevent 1.0.x requires cython but doesn't do a good job of depending on it
+cython
+-e git+git://github.com/surfly/gevent.git@1.0rc3#egg=gevent
+
+# Stock coverage doesn't play nicely with gevent
+-e git+https://github.com/portante/coverage.git
 
 # Graphite and its friends
 #pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
@@ -19,7 +25,6 @@ pytz
 -e git+https://github.com/tobiasherp/M2Crypto.git#egg=m2crypto
 salt
 pyzmq
-cherrypy
 python-dateutil
 threading2
 zerorpc
