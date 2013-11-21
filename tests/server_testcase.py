@@ -1,5 +1,6 @@
 import logging
 from django.utils.unittest.case import TestCase
+from requests import ConnectionError
 from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 from tests.http_client import AuthenticatedHttpClient
@@ -40,12 +41,29 @@ FORCE_KEYS = True
 
 
 class ServerTestCase(TestCase):
+
+    def _api_connectable(self):
+        """
+        Return true if we can complete an HTTP request without
+        raising ConnectionError.
+        """
+        try:
+            self.api.get("auth/login/")
+        except ConnectionError:
+            return False
+        else:
+            return True
+
     def setUp(self):
         self.calamari_ctl = CALAMARI_CTL()
         self.calamari_ctl.start()
 
         try:
             self.api = self.calamari_ctl.api
+
+            # The calamari REST API goes through a brief period between process
+            # startup and servicing connections
+            wait_until_true(self._api_connectable)
 
             # Calamari REST API will return 503s until the backend is fully up
             # and responding to ZeroRPC requests.
