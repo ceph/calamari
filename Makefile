@@ -225,8 +225,8 @@ install-ui:
 
 install-graphite-venv: build-graphite-venv
 	@echo "install-graphite-venv"
-	$(INSTALL) -d $(DESTDIR)/opt/graphite
-	cp -a graphite $(DESTDIR)/opt/graphite
+	$(INSTALL) -d $(DESTDIR)/opt
+	cp -a graphite $(DESTDIR)/opt
 	# graphite local_settings.py
 	@$(INSTALL) -D $(APACHEOG) -m 644 conf/graphite/local_settings.py \
 		$(DESTDIR)/opt/graphite/webapp/graphite/local_settings.py
