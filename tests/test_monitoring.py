@@ -81,14 +81,14 @@ class TestMonitoring(ServerTestCase):
             return self.api.get("cluster/%s" % cluster_id).json()['update_time']
 
         # Lose contact with the cluster
-        self.ceph_ctl.go_dark()
+        self.ceph_ctl.go_dark(cluster_id)
         initial_update_time = update_time()
         time.sleep(HEARTBEAT_INTERVAL)
         # The update time should not have been incremented
         self.assertEqual(initial_update_time, update_time())
 
         # Regain contact with the cluster
-        self.ceph_ctl.go_dark(False)
+        self.ceph_ctl.go_dark(cluster_id, dark=False)
         # The update time should start incrementing again
         wait_until_true(lambda: update_time() != initial_update_time, timeout=HEARTBEAT_INTERVAL)
         self.assertNotEqual(initial_update_time, update_time())
@@ -103,7 +103,7 @@ class TestMonitoring(ServerTestCase):
           one mon is available to calamari.
         """
         cluster_id = self._wait_for_cluster()
-        mon_fqdns = self.ceph_ctl.get_service_fqdns('mon')
+        mon_fqdns = self.ceph_ctl.get_service_fqdns(cluster_id, 'mon')
 
         def update_time():
             return self.api.get("cluster/%s" % cluster_id).json()['update_time']
@@ -112,7 +112,7 @@ class TestMonitoring(ServerTestCase):
         # might be preferentially accepting data from, but I want
         # to ensure that it can survive any of them going away.
         for mon_fqdn in mon_fqdns:
-            self.ceph_ctl.go_dark(minion_id=mon_fqdn)
+            self.ceph_ctl.go_dark(cluster_id, minion_id=mon_fqdn)
             last_update_time = update_time()
 
             # This will give a timeout exception if calamari did not
@@ -123,7 +123,7 @@ class TestMonitoring(ServerTestCase):
                 self.fail("Failed to recover from killing %s in %s seconds" % (
                     mon_fqdn, CALAMARI_RESYNC_PERIOD))
 
-            self.ceph_ctl.go_dark(dark=False, minion_id=mon_fqdn)
+            self.ceph_ctl.go_dark(cluster_id, dark=False, minion_id=mon_fqdn)
 
     @skipIf(True, "not implemented yet")
     def test_recovery(self):
@@ -134,19 +134,40 @@ class TestMonitoring(ServerTestCase):
         """
         pass
 
-    @skipIf(True, "not implemented yet")
+    def test_cluster_removal(self):
+        """
+        Check that if a cluster stops communicating with calamari server,
+        and we request for the cluster to be removed, it goes away.
+        """
+        cluster_id = self._wait_for_cluster()
+        self.ceph_ctl.go_dark(cluster_id)
+
+        r = self.api.get("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 200)
+        r = self.api.delete("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 204)
+        r = self.api.get("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 404)
+
+
+class TestMultiCluster(ServerTestCase):
     def test_two_clusters(self):
         """
         Check that if two ceph clusters are talking to the calamari server,
         then both are detected, and each one is presenting its own data
         via the REST API.
         """
-        pass
 
-    @skipIf(True, "not implemented yet")
-    def test_cluster_removal(self):
-        """
-        Check that if a cluster stops communicating with calamari server,
-        and we request for the cluster to be removed, it goes away.
-        """
-        pass
+        self.ceph_ctl.configure(3, cluster_count=2)
+        self.calamari_ctl.configure()
+
+        cluster_a, cluster_b = self._wait_for_cluster(2)
+
+        osd_map_a = self.api.get("cluster/%s/osd_map" % cluster_a).json()
+        osd_map_b = self.api.get("cluster/%s/osd_map" % cluster_b).json()
+
+        print osd_map_a
+        print osd_map_b
+
+        self.assertEqual(osd_map_a['data']['fsid'], cluster_a)
+        self.assertEqual(osd_map_b['data']['fsid'], cluster_b)

@@ -5,7 +5,6 @@ import os
 import threading
 import time
 from minion_sim.ceph_cluster import CephCluster
-from minion_sim.constants import XMLRPC_PORT
 from minion_sim.load_gen import LoadGenerator
 from minion_sim.minion_launcher import MinionLauncher
 
@@ -20,21 +19,18 @@ log.addHandler(logging.StreamHandler())
 log.addHandler(logging.FileHandler('minion_sim.sim.log'))
 
 
-def get_dns(index):
-    hostname = "{0}{1:03d}".format(PREFIX, index)
-    fqdn = "{0}.{1}".format(hostname, DOMAIN)
-
-    return hostname, fqdn
-
-
 class MinionSim(threading.Thread):
-    def __init__(self, config_dir, count):
+    def __init__(self, config_dir, count, port=8761, prefix=PREFIX, domain=DOMAIN):
         super(MinionSim, self).__init__()
         self._config_dir = config_dir
         self._count = count
         self._server = None
         self._server_available = threading.Event()
         self.minions = {}
+
+        def get_dns(index):
+            host = "{0}{1:03d}".format(prefix, index)
+            return host, "{0}.{1}".format(host, domain)
 
         config_file = os.path.join(self._config_dir, 'cluster.json')
         if not os.path.exists(config_file):
@@ -44,12 +40,14 @@ class MinionSim(threading.Thread):
 
         # An XMLRPC service for the minions' fake ceph plugins to
         # get their state
-        self._server = SimpleXMLRPCServer(("localhost", XMLRPC_PORT), allow_none=True)
+        self._server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
         self._server.register_instance(self.cluster)
+
+        rpc_url = "http://localhost:%s" % port
 
         for i in range(0, self._count):
             hostname, fqdn = get_dns(i)
-            self.minions[fqdn] = MinionLauncher(self._config_dir, hostname, fqdn, self.cluster)
+            self.minions[fqdn] = MinionLauncher(rpc_url, self._config_dir, hostname, fqdn, self.cluster)
 
         # Quick smoke test that these methods aren't going
         # to throw exceptions (rather stop now than get exceptions

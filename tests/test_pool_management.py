@@ -1,4 +1,4 @@
-from django.utils.unittest.case import skipIf
+
 from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL
 from tests.utils import wait_until_true
 

@@ -8,7 +8,6 @@ import random
 KB = 1024
 GIGS = 1024 * 1024 * 1024
 
-
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler())
@@ -48,34 +47,34 @@ def _pool_template(name, pool_id, pg_num):
     Format as in OSD map dump
     """
     return {
-                'pool': pool_id,
-                'pool_name': name,
-                "flags": 0,
-                "flags_names": "",
-                "type": 1,
-                "size": 2,
-                "min_size": 1,
-                "crush_ruleset": 2,
-                "object_hash": 2,
-                "pg_num": pg_num,
-                "pg_placement_num": 64,
-                "crash_replay_interval": 0,
-                "last_change": "1",
-                "auid": 0,
-                "snap_mode": "selfmanaged",
-                "snap_seq": 0,
-                "snap_epoch": 0,
-                "pool_snaps": {},
-                "removed_snaps": "[]",
-                "quota_max_bytes": 0,
-                "quota_max_objects": 0,
-                "tiers": [],
-                "tier_of": -1,
-                "read_tier": -1,
-                "write_tier": -1,
-                "cache_mode": "none",
-                "properties": []
-            }
+        'pool': pool_id,
+        'pool_name': name,
+        "flags": 0,
+        "flags_names": "",
+        "type": 1,
+        "size": 2,
+        "min_size": 1,
+        "crush_ruleset": 2,
+        "object_hash": 2,
+        "pg_num": pg_num,
+        "pg_placement_num": 64,
+        "crash_replay_interval": 0,
+        "last_change": "1",
+        "auid": 0,
+        "snap_mode": "selfmanaged",
+        "snap_seq": 0,
+        "snap_epoch": 0,
+        "pool_snaps": {},
+        "removed_snaps": "[]",
+        "quota_max_bytes": 0,
+        "quota_max_objects": 0,
+        "tiers": [],
+        "tier_of": -1,
+        "read_tier": -1,
+        "write_tier": -1,
+        "cache_mode": "none",
+        "properties": []
+    }
 
 
 def pseudorandom_subset(possible_values, n_select, selector):
@@ -97,7 +96,7 @@ class CephCluster(object):
     """
 
     @staticmethod
-    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2*GIGS):
+    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2 * GIGS):
         """
         Generate initial state for a cluster
         """
@@ -149,14 +148,16 @@ class CephCluster(object):
 
         # OSD map
         # =======
+        osd_count = len(osd_hosts) * osds_per_host
+
         osd_stats = {}
         objects['osd_map'] = {
+            'fsid': fsid,
+            'max_osd': osd_count,
             'epoch': 1,
             'osds': [],
             'pools': []
         }
-
-        osd_count = len(osd_hosts) * osds_per_host
 
         for i in range(0, osd_count):
             # TODO populate public_addr and cluster_addr from imagined
@@ -394,7 +395,8 @@ class CephCluster(object):
 
     def pool_delete(self, pool_name):
         if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
-            self._objects['osd_map']['pools'] = [p for p in self._objects['osd_map']['pools'] if p['pool_name'] != pool_name]
+            self._objects['osd_map']['pools'] = [p for p in self._objects['osd_map']['pools'] if
+                                                 p['pool_name'] != pool_name]
             self._objects['osd_map']['epoch'] += 1
 
     def _pg_monitor(self, recovery_credits=0):
@@ -534,7 +536,7 @@ class CephCluster(object):
                     stats["ceph.{0}.pool.{1}.{2}".format(self._name, pool_id, k)] = v
 
             total_space = sum([o['total_bytes'] for o in self._osd_stats.values()])
-            
+
             df_stats = {
                 'total_space': total_space,
                 'total_used': total_used,
@@ -563,6 +565,10 @@ class CephCluster(object):
         of FQDNs of servers where that type of service is running.
         """
         return self._service_locations[service_type].values()
+
+    @property
+    def fsid(self):
+        return self._fsid
 
     def __init__(self, filename):
         self._filename = filename

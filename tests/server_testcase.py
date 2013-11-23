@@ -3,7 +3,6 @@ from django.utils.unittest.case import TestCase
 from requests import ConnectionError
 from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
-from tests.http_client import AuthenticatedHttpClient
 
 
 # TODO: make these configurable or perhaps query them
@@ -35,13 +34,18 @@ CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 OSD_RECOVERY_PERIOD = 600
 
 
-CALAMARI_CTL = EmbeddedCalamariControl
-CEPH_CTL = EmbeddedCephControl
-FORCE_KEYS = True
+if True:
+    CALAMARI_CTL = EmbeddedCalamariControl
+    CEPH_CTL = EmbeddedCephControl
+    FORCE_KEYS = True
+else:
+    # TODO: config file or something to allow selecting mode
+    CALAMARI_CTL = ExternalCalamariControl
+    CEPH_CTL = ExternalCephControl
+    FORCE_KEYS = False
 
 
 class ServerTestCase(TestCase):
-
     def _api_connectable(self):
         """
         Return true if we can complete an HTTP request without
@@ -92,13 +96,23 @@ class ServerTestCase(TestCase):
         self.ceph_ctl.shutdown()
         self.calamari_ctl.stop()
 
-    def _wait_for_cluster(self):
+    def _wait_for_cluster(self, cluster_count=1):
+        """
+        Return an ID if cluster_count is 1, else return a list of IDs.
+        """
         if FORCE_KEYS:
             self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
-        wait_until_true(self._cluster_detected, timeout=HEARTBEAT_INTERVAL*3)
-        cluster_id = self.api.get("cluster").json()[0]['id']
-        wait_until_true(lambda: self._maps_populated(cluster_id))
-        return cluster_id
+        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL*3)
+        if cluster_count == 1:
+            cluster_id = self.api.get("cluster").json()[0]['id']
+            wait_until_true(lambda: self._maps_populated(cluster_id))
+            return cluster_id
+        else:
+            result = []
+            for cluster in self.api.get("cluster").json():
+                wait_until_true(lambda: self._maps_populated(cluster['id']))
+                result.append(cluster['id'])
+            return result
 
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")

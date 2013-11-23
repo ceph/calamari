@@ -2,7 +2,6 @@ import os
 import sys
 import xmlrpclib
 import yaml
-from minion_sim.constants import XMLRPC_PORT
 
 
 # Because salt minion will be calling functions
@@ -17,6 +16,9 @@ def main():
     The difference is that it substitutes some modules with mocked versions
     that get their data from an XMLRPC test-driving interface instead of
     from the real system.
+
+    Set RPC_URL environment variable to point to an XMLRPC CephCluster simulator.
+
     """
     # Dirty arg parsing, I assume I will always be invoked with -c <config>
     config_file = sys.argv[2]
@@ -25,7 +27,9 @@ def main():
 
     __salt__ = None
 
-    cluster = xmlrpclib.ServerProxy('http://localhost:%s' % XMLRPC_PORT, allow_none=True)
+    rpc_url = os.environ['RPC_URL']
+
+    cluster = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
 
     # Monkey-patch in a mock version of the ceph module
     def heartbeat():

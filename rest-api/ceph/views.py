@@ -10,8 +10,9 @@ from rest_framework import status
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.models import User
 
-from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer,\
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, PoolSerializer, RequestSerializer
+from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, \
+    PoolSerializer, RequestSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -173,8 +174,12 @@ class ClusterViewSet(RPCViewSet):
         return Response(ClusterSerializer(clusters, many=True).data)
 
     def retrieve(self, request, pk):
-        cluster = DataObject(self.client.get_cluster(pk))
-        return Response(ClusterSerializer(cluster).data)
+        cluster_data = self.client.get_cluster(pk)
+        if not cluster_data:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        else:
+            cluster = DataObject(cluster_data)
+            return Response(ClusterSerializer(cluster).data)
 
     def delete(self, request, pk):
         self.client.delete_cluster(pk)

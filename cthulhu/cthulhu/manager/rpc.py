@@ -48,12 +48,19 @@ class RpcInterface(object):
         raise NotFound(POOL, pool_id)
 
     def get_cluster(self, fs_id):
-        cluster = self._manager.monitors[fs_id]
-        return {
-            'id': cluster._fsid,
-            'name': cluster._name,
-            'update_time': cluster._update_time.isoformat()
-        }
+        """
+        Returns a dict, or None if not found
+        """
+        try:
+            cluster = self._manager.monitors[fs_id]
+        except KeyError:
+            return None
+        else:
+            return {
+                'id': cluster._fsid,
+                'name': cluster._name,
+                'update_time': cluster._update_time.isoformat()
+            }
 
     def list_clusters(self):
         result = []
@@ -101,7 +108,7 @@ class RpcInterface(object):
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
-            return cluster.request_update( POOL, object_id, attributes)
+            return cluster.request_update(POOL, object_id, attributes)
         else:
             raise NotImplementedError(object_type)
 

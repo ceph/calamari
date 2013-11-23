@@ -8,7 +8,6 @@ import xmlrpclib
 from diamond.metric import Metric
 from jinja2 import Template
 from diamond.handler.graphite import GraphiteHandler
-from minion_sim.constants import XMLRPC_PORT
 
 
 STATS_PERIOD = 10
@@ -90,7 +89,7 @@ class MinionLauncher(object):
     Responsible for creating the filesystem tree for this salt
     minion, writing out a config file and then starting/stopping it.
     """
-    def __init__(self, config_dir, hostname, fqdn, cluster=None):
+    def __init__(self, rpc_url, config_dir, hostname, fqdn, cluster=None):
         super(MinionLauncher, self).__init__()
 
         self.ps = None
@@ -119,20 +118,25 @@ class MinionLauncher(object):
         config_filename = os.path.join(path, 'etc/salt/minion')
         open(config_filename, 'w').write(config_str)
 
+        self._rpc_url = rpc_url
+
         self.cmdline = ['-c', os.path.dirname(config_filename)]
         self._stats_sender = None
 
         # Cluster may be in or out of process
         if cluster is None:
-            self._cluster = xmlrpclib.ServerProxy('http://localhost:%s' % XMLRPC_PORT, allow_none=True)
+            self._cluster = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
         else:
             self._cluster = cluster
 
     def start(self):
         # TODO: send stdout and stderr somewhere other than the screen to avoid spamming
         # during test runs
+
+        env = os.environ.copy()
+        env['RPC_URL'] = self._rpc_url
         self.ps = subprocess.Popen(['minion-child'] + self.cmdline,
-                                   stdin=subprocess.PIPE)
+                                   stdin=subprocess.PIPE, env=env)
         self._stats_sender = StatsSender(self.fqdn, self._cluster)
         self._stats_sender.start()
 

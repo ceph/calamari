@@ -2,6 +2,7 @@ import logging
 import shutil
 import tempfile
 from minion_sim.sim import MinionSim
+from itertools import chain
 
 
 log = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class CephControl(object):
     the test if this cluster can't handle that".
     """
 
-    def configure(self, server_count):
+    def configure(self, server_count, cluster_count=1):
         """
         Tell me about the kind of system you would like.
 
@@ -46,15 +47,15 @@ class CephControl(object):
         """
         raise NotImplementedError()
 
-    def mark_osd_in(self, osd_id, osd_in=True):
+    def mark_osd_in(self, fsid, osd_id, osd_in=True):
         raise NotImplementedError()
 
     def get_server_fqdns(self):
         raise NotImplementedError()
 
-    def go_dark(self, dark=True):
+    def go_dark(self, fsid, dark=True, minion_id=None):
         """
-        Emulate the condition where network connectivity between
+        Create the condition where network connectivity between
         the calamari server and the ceph cluster is lost.
         """
         pass
@@ -62,51 +63,60 @@ class CephControl(object):
 
 class EmbeddedCephControl(CephControl):
     """
-    Simulated ceph cluster, using minion_sim
+    One or more simulated ceph clusters
     """
     def __init__(self):
-        self._config_dir = tempfile.mkdtemp()
-        self._sim = None
+        self._config_dirs = {}
+        self._sims = {}
 
-    def configure(self, server_count):
-        self._sim = MinionSim(self._config_dir, server_count)
-        self._sim.start()
+    def configure(self, server_count, cluster_count=1):
+        for i in range(0, cluster_count):
+            domain = "cluster%d.com" % i
+            config_dir = tempfile.mkdtemp()
+            sim = MinionSim(config_dir, server_count, port=8761 + i, domain=domain)
+            fsid = sim.cluster.fsid
+            self._config_dirs[fsid] = config_dir
+            self._sims[fsid] = sim
+            sim.start()
 
     def shutdown(self):
         log.info("%s.shutdown" % self.__class__.__name__)
 
-        if self._sim:
-            self._sim.stop()
-            self._sim.join()
-        shutil.rmtree(self._config_dir)
+        for sim in self._sims.values():
+            sim.stop()
+            sim.join()
+
+        for config_dir in self._config_dirs.values():
+            shutil.rmtree(config_dir)
 
     def get_server_fqdns(self):
-        return self._sim.get_minion_fqdns()
+        return list(chain(*[s.get_minion_fqdns() for s in self._sims.values()]))
 
-    def mark_osd_in(self, osd_id, osd_in=True):
-        self._sim.cluster.set_osd_state(osd_id, osd_in=1 if osd_in else 0)
+    def mark_osd_in(self, fsid, osd_id, osd_in=True):
+        self._sims[fsid].cluster.set_osd_state(osd_id, osd_in=1 if osd_in else 0)
 
-    def go_dark(self, dark=True, minion_id=None):
+    def go_dark(self, fsid, dark=True, minion_id=None):
         if minion_id:
             if dark:
-                self._sim.halt_minion(minion_id)
+                self._sims[fsid].halt_minion(minion_id)
             else:
-                self._sim.start_minion(minion_id)
+                self._sims[fsid].start_minion(minion_id)
         else:
             if dark:
-                self._sim.halt_minions()
+                self._sims[fsid].halt_minions()
             else:
-                self._sim.start_minions()
+                self._sims[fsid].start_minions()
 
-    def get_service_fqdns(self, service_type):
-        return self._sim.cluster.get_service_fqdns(service_type)
+    def get_service_fqdns(self, fsid, service_type):
+        return self._sims[fsid].cluster.get_service_fqdns(service_type)
 
 
 class ExternalCephControl(CephControl):
-    def configure(self, server_count):
+    def configure(self, server_count, cluster_count=1):
         # I hope you only wanted three, because I ain't buying
         # any more servers...
         assert server_count == 3
+        assert cluster_count == 1
 
         # Ensure all OSDs are initially up
 

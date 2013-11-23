@@ -4,9 +4,7 @@ from pytz import utc
 from cthulhu.manager import derived
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, CEPH_OBJECT_TYPES, OSD, POOL, OsdMap
 
-
 import datetime
-import traceback
 import dateutil
 from dateutil.tz import tzlocal
 import threading
@@ -45,6 +43,7 @@ class SyncObjects(object):
     The objects are immutable, so it is safe to hand out references: new
     versions are new objects.
     """
+
     def __init__(self):
         self._objects = dict([(t, None) for t in SYNC_OBJECT_TYPES])
         self._lock = threading.Lock()
@@ -67,6 +66,7 @@ class DerivedObjects(dict):
     Store for items which we generate as a function of sync objects, decorated
     versions etc.  Basically just a dict with locking.
     """
+
     def __init__(self):
         super(DerivedObjects, self).__init__()
         self._lock = threading.Lock()
@@ -197,7 +197,8 @@ class UserRequest(object):
         assert not self.submitted
 
         client = salt.client.LocalClient(SALT_CONFIG_PATH)
-        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands', [self._fsid, self._cluster_name, self._commands])
+        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
+                                  [self._fsid, self._cluster_name, self._commands])
         if not pub_data:
             # FIXME: LocalClient uses 'print' to record the
             # details of what went wrong :-(
@@ -300,6 +301,7 @@ class RequestCollection(object):
     made it at least as far as SUBMITTED state.
 
     """
+
     def __init__(self):
         super(RequestCollection, self).__init__()
         self._shlock = threading2.SHLock()
@@ -354,6 +356,7 @@ class ClusterMonitor(threading.Thread):
     This class spawns two threads, one to listen to salt events and
     another to listen to user requests.
     """
+
     def __init__(self, fsid, cluster_name, notifier):
         super(ClusterMonitor, self).__init__()
 
@@ -501,13 +504,12 @@ class ClusterMonitor(threading.Thread):
 
                 # We are out of date: request an up to date copy
                 client = salt.client.LocalClient(SALT_CONFIG_PATH)
-                client.run_job(minion_id, 'ceph.get_cluster_object', condition_kwarg([], {
-                    'cluster_name': cluster_data['name'],
-                    'sync_type': sync_type.str,
-                    'since': old_version
-                }))
+                client.run_job(minion_id, 'ceph.get_cluster_object',
+                               condition_kwarg([], {'cluster_name': cluster_data['name'],
+                                                    'sync_type': sync_type.str,
+                                                    'since': old_version}))
 
-#        persistence.heartbeat()
+        # persistence.heartbeat()
         self._update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
     def on_sync_object(self, minion_id, data):
@@ -557,8 +559,8 @@ class ClusterMonitor(threading.Thread):
                         # TODO: mark errored
                         user_request.complete()
 
-            # TODO: for this sync object and any regenerated derived objects, push
-            # them to the queue for persistence.
+                        # TODO: for this sync object and any regenerated derived objects, push
+                        # them to the queue for persistence.
 
     def on_completion(self, data):
         jid = data['jid']
@@ -591,8 +593,8 @@ class ClusterMonitor(threading.Thread):
                     # TODO: mark errored
                     request.complete()
 
-        # TODO: publish this at actual completion rather than jid completion
-        #self._notifier.publish('ceph:completion', {'jid': jid})
+                    # TODO: publish this at actual completion rather than jid completion
+                    #self._notifier.publish('ceph:completion', {'jid': jid})
 
     def set_favorite(self, minion_id):
         self._favorite_mon = minion_id
@@ -649,7 +651,8 @@ class ClusterMonitor(threading.Thread):
             # TODO: handle errors in a way that caller can show to a user, e.g.
             # if the name is wrong we should be sending a structured errors dict
             # that they can use to associate the complaint with the 'name' field.
-            commands = [('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
+            commands = [
+                ('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
             req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             req.submit()
@@ -667,7 +670,7 @@ class ClusterMonitor(threading.Thread):
         This function requires a read lock and briefly a write lock on the request collection.
 
         :param obj_type: OSD, MDS, MON or PG
-        :param patches: List of dicts, each dict must have at least 'id' attribute.
+        :param attributes: Dict of attributes and values to update, akin to HTTP PATCH.
         """
 
         if obj_type not in CEPH_OBJECT_TYPES:
