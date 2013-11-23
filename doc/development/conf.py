@@ -38,6 +38,13 @@ source_suffix = '.rst'
 # The master toctree document.
 master_doc = 'index'
 
+#extensions.append('rst2pdf.pdfbuilder')
+#pdf_documents = [
+#        ('pdf', "CalamariDevelopment", "Calamari Development", "Inktank Inc.")
+#]
+#pdf_stylesheets = ['a4', 'tenpoint']
+#pdf_break_level = 2
+
 # General information about the project.
 project = u'Calamari Development'
 copyright = u'2013, Inktank Inc.'

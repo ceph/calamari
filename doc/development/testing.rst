@@ -18,7 +18,7 @@ Assuming you've already got a nice development environment set up (such that
 you can run Calamari services with supervisor without errors), you can execute
 the server tests very simply:
 
-::
+.. code-block:: bash
 
     calamari $ nosetests tests/
 

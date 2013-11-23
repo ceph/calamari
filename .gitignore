@@ -13,4 +13,6 @@ virtualenv
 **/.tmp
 **/dist
 **/node_modules
-.coverage.*
+.coverage*
+_build
+htmlcov

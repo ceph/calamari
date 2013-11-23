@@ -19,6 +19,7 @@ Contents
    :maxdepth: 2
 
    testing
+   coding_style
    coverage
 
 
