@@ -182,6 +182,7 @@ class ModelAdapter(object):
 
         # map osd id to pg states
         pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
+        pg_counts_by_osd = defaultdict(int)
         # map osd id to set of pools
         pools_by_osd = defaultdict(lambda: set([]))
         # map pg state to osd ids
@@ -205,6 +206,9 @@ class ModelAdapter(object):
         for pg in self.cluster.pgs:
             pool_id = int(pg['pgid'].split(".")[0])
             acting = set(pg['acting'])
+            for osd_id in acting:
+                pg_counts_by_osd[osd_id] += 1
+
             for state in pg['state']:
                 osds_by_pg_state[state] |= acting
                 for osd_id in acting:
@@ -223,6 +227,7 @@ class ModelAdapter(object):
             data = dict((k, osd[k]) for k in self.OSD_FIELDS)
             data.update({'id': osd_id})
             data.update({'pg_states': pg_states_by_osd[osd_id]})
+            data.update({'pg_count': pg_counts_by_osd[osd_id]})
             data.update({'pools': list(pools_by_osd[osd_id])})
             data.update({'host': self.crush_osd_hostnames["osd.%d" % (osd_id,)]})
             return data
