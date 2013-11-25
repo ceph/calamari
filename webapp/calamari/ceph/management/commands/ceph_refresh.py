@@ -8,7 +8,7 @@ import socket
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 from datetime import datetime
-from ceph.models import Cluster, Pool
+from ceph.models import Cluster, Pool, Server, ServiceStatus
 from django.db.models import Q
 
 # Addresses to ignore during monitor ping test
@@ -67,6 +67,13 @@ class CephRestClient(object):
         "Get the raw `ceph osd dump` output"
         return self._query("osd/dump")["output"]
 
+    def get_mon_status(self):
+        """
+        Equivalent to 'ceph mon_status', i.e. the monitor
+        status including the quorum state and mon map.
+        """
+        return self._query("mon_status")["output"]
+
     def get_pg_pools(self):
         "Get the raw `ceph pg/dump?dumpcontents=pools` output"
         return self._query("pg/dump?dumpcontents=pools")["output"]
@@ -106,6 +113,7 @@ class ModelAdapter(object):
         self.client = client
         self.cluster = cluster
         self.mon_timeout = mon_timeout
+        self._crush_osd_hostnames = None
 
     def refresh(self):
         "Call each _populate* method, then save the model instance"
@@ -207,26 +215,6 @@ class ModelAdapter(object):
                 osds_by_pg_state.iteritems())
         self.cluster.osds_by_pg_state = osds_by_pg_state
 
-        # get the osd tree. we'll use it to get hostnames
-        osd_tree = self.client.get_osd_tree()
-        nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
-
-        # FIXME: this assumes that an osd node is a direct descendent of a
-        #
-        # host. It also assumes that these node types are called 'osd', and
-        # 'host' respectively. This is probably not as general as we would like
-        # it. Some clusters might have weird crush maps. This also assumes that
-        # the host name in the crush map is the same host name reported by
-        # Diamond. It is fragile.
-        host_by_osd_name = defaultdict(lambda: None)
-        for node in osd_tree["nodes"]:
-            if node["type"] == "host":
-                host = node["name"]
-                for id in node["children"]:
-                    child = nodes_by_id[id]
-                    if child["type"] == "osd":
-                        host_by_osd_name[child["name"]] = host
-
         # helper to modify each osd object
         def fixup_osd(osd):
             osd_id = osd['osd']
@@ -234,7 +222,7 @@ class ModelAdapter(object):
             data.update({'id': osd_id})
             data.update({'pg_states': pg_states_by_osd[osd_id]})
             data.update({'pools': list(pools_by_osd[osd_id])})
-            data.update({'host': host_by_osd_name["osd.%d" % (osd_id,)]})
+            data.update({'host': self.crush_osd_hostnames["osd.%d" % (osd_id,)]})
             return data
 
         # add the pg states to each osd
@@ -249,6 +237,166 @@ class ModelAdapter(object):
             'mon': self._calculate_mon_counters(),
             'pg': self._calculate_pg_counters(),
         }
+
+    @property
+    def crush_osd_hostnames(self):
+        if self._crush_osd_hostnames is None:
+            osd_tree = self.client.get_osd_tree()
+            nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
+            self._crush_osd_hostnames = defaultdict(lambda: None)
+
+            # FIXME: this assumes that an osd node is a direct descendent of a
+            #
+            # host. It also assumes that these node types are called 'osd', and
+            # 'host' respectively. This is probably not as general as we would like
+            # it. Some clusters might have weird crush maps. This also assumes that
+            # the host name in the crush map is the same host name reported by
+            # Diamond. It is fragile.
+            for node in osd_tree["nodes"]:
+                if node["type"] == "host":
+                    host = node["name"]
+                    for id in node["children"]:
+                        child = nodes_by_id[id]
+                        if child["type"] == "osd":
+                            self._crush_osd_hostnames[child["name"]] = host
+
+        return self._crush_osd_hostnames
+
+    def _reverse_dns(self, addr):
+        """
+        Attempt reverse DNS lookup on an IPv4 or IPv6 address string,
+        return a short hostname string if found, else return None.
+        """
+        hostname, aliaslist, _ = socket.gethostbyaddr(addr)
+        osd_names = aliaslist + [hostname]
+        osd_shortnames = [name for name in osd_names if '.' not in name]
+        if osd_shortnames:
+            # there could be multiples; just use the first
+            return osd_shortnames[0]
+        else:
+            # there could be no shortnames; if there are any names,
+            # use the first, truncated at '.'
+            if osd_names:
+                return osd_names[0].split('.')[0]
+
+        return None
+
+    def _short_addr(self, addr):
+        """
+        Convert a Ceph 192.168.0.1:6800/0 address into a naked
+        IP address.
+        """
+        if addr.startswith('['):
+            # ipv6: [<addr>]:port/nonce
+            addr = addr.split(']:')[0]
+            # split got the ]; remove the [
+            return addr[1:]
+        else:
+            # ipv4: addr:port/nonce
+            return addr.split(':')[0]
+
+    def _register_service(self, service_addr, service_type, service_id, name, in_cluster):
+        """
+        Create or updated ServiceStatus record and Server record as required.
+        If the ServiceStatus record is new, try to guess the 'name' attribute
+        of the Server record.
+        """
+        server, server_created = Server.objects.get_or_create(cluster=self.cluster, addr=service_addr)
+
+        service_status, created = ServiceStatus.objects.get_or_create(
+            server=server, type=service_type, service_id=service_id
+        )
+        if not created and service_status.in_cluster != in_cluster:
+            service_status.in_cluster = in_cluster
+            service_status.save()
+        elif created:
+            service_status.name = name
+            service_status.in_cluster = in_cluster
+            service_status.save()
+
+            # This service is either new to us, or it is on a different server.
+            # Let's check if it used to be on another server, and remove
+            # the old record.
+            ServiceStatus.objects.filter(
+                ~Q(server=server),
+                server__cluster=self.cluster,
+                type=ServiceStatus.OSD,
+                service_id=service_id,
+            ).delete()
+
+            # First time we've seen this service here, let's see if we
+            # can help Server out with his 'name' and/or 'hostname'
+            if server.hostname is None:
+                if service_type == ServiceStatus.OSD:
+                    # First time we've seen this OSD on this host, perhaps we can help
+                    # the server out by learning its hostname from CRUSH
+                    server.hostname = self.crush_osd_hostnames[name]
+                    if server.hostname is None:
+                        # Can't get hostname from CRUSH, fall back to reverse DNS
+                        hostname = self._reverse_dns(service_addr)
+                        if hostname is not None:
+                            server.hostname = hostname
+                            server.name = server.hostname
+                            server.save()
+                    else:
+                        server.name = server.hostname
+                        server.save()
+                elif service_type == ServiceStatus.MON:
+                    # See if we can do reverse DNS
+                    hostname = self._reverse_dns(service_addr)
+                    if hostname is not None:
+                        server.hostname = hostname
+                        server.name = server.hostname
+                        server.save()
+                    else:
+                        # Oh dear, we couldn't get any hostname, let's use the mon
+                        # name
+                        server.name = name
+                        server.save()
+
+            # If none of the friendly-name guessing worked, fall back to IP adress
+            if server.name is None:
+                server.name = service_addr
+
+        return service_status
+
+    def _populate_servers(self):
+        # To get the addrs of MONs and their in-ness
+        mon_status = self.client.get_mon_status()
+
+        # To get the public_addr of OSDs and their in-ness
+        osd_map = self.client.get_osds()
+
+        old_service_status_ids = set(ServiceStatus.objects.filter(
+            server__cluster=self.cluster).values_list('id', flat=True))
+        old_server_addrs = set(Server.objects.filter(
+            cluster=self.cluster).values_list('addr', flat=True))
+
+        for osd in osd_map['osds']:
+            addr = self._short_addr(osd['public_addr'].split(":")[0])
+            service_status = self._register_service(
+                addr, ServiceStatus.OSD,
+                service_id=osd['osd'],
+                name="osd.%s" % osd['osd'],
+                in_cluster=osd['in'])
+            old_service_status_ids.discard(service_status.id)
+            old_server_addrs.discard(addr)
+
+        for mon in mon_status['monmap']['mons']:
+            addr = self._short_addr(mon['addr'].split(":")[0])
+            service_status = self._register_service(
+                addr, ServiceStatus.MON,
+                service_id=mon['rank'],
+                name="mon.%s" % mon['name'],
+                in_cluster=mon['rank'] in mon_status['quorum'])
+            old_service_status_ids.discard(service_status.id)
+            old_server_addrs.discard(addr)
+
+        # Clear out any services that were not seen in the maps
+        ServiceStatus.objects.filter(id__in=list(old_service_status_ids)).delete()
+
+        # Clear out any servers that no services were reported on
+        Server.objects.filter(addr__in=list(old_server_addrs)).delete()
 
     def _calculate_pool_counters(self):
         fields = ['num_objects_unfound', 'num_objects_missing_on_primary',

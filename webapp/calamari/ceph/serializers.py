@@ -1,7 +1,7 @@
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from ceph.models import Cluster, Pool
+from ceph.models import Cluster, Pool, Server, ServiceStatus
 from ceph.management.commands.ceph_refresh import CephRestClient
 
 
@@ -238,3 +238,17 @@ class OSDDetailSerializer(serializers.ModelSerializer):
 class PoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pool
+
+
+class ServiceStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceStatus
+        fields = ('type', 'service_id', 'name', 'in_cluster')
+
+
+class ServerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Server
+        fields = ('addr', 'hostname', 'name', 'services')
+
+    services = ServiceStatusSerializer(source='servicestatus_set', many=True)

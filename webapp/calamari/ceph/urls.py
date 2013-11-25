@@ -17,4 +17,5 @@ urlpatterns = patterns('',
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/pool$', views.PoolViewSet.as_view({'get': 'list'}), name='pool-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/pool/(?P<pool_pk>\d+)$', views.PoolViewSet.as_view({'get': 'retrieve'}),
         name='pool-detail'),
-    )
+    url(r'^cluster/(?P<cluster_pk>[0-9]+)/server', views.ServerViewSet.as_view({'get': 'list'}), name='server-list')
+)
