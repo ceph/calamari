@@ -184,3 +184,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ]
 }
+
+
+CRUSH_HOST_TYPE = 'host'
+CRUSH_OSD_TYPE = 'osd'

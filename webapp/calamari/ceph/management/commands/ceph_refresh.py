@@ -10,6 +10,8 @@ from django.utils.timezone import utc
 from datetime import datetime
 from ceph.models import Cluster, Pool, Server, ServiceStatus
 from django.db.models import Q
+from calamari.settings import CRUSH_OSD_TYPE, CRUSH_HOST_TYPE
+
 
 # Addresses to ignore during monitor ping test
 _MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
@@ -245,20 +247,27 @@ class ModelAdapter(object):
             nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
             self._crush_osd_hostnames = defaultdict(lambda: None)
 
-            # FIXME: this assumes that an osd node is a direct descendent of a
-            #
-            # host. It also assumes that these node types are called 'osd', and
-            # 'host' respectively. This is probably not as general as we would like
-            # it. Some clusters might have weird crush maps. This also assumes that
-            # the host name in the crush map is the same host name reported by
-            # Diamond. It is fragile.
+            def find_descendents(cursor, fn):
+                if fn(cursor):
+                    return [cursor]
+                else:
+                    found = []
+                    for child_id in cursor['children']:
+                        found.extend(find_descendents(nodes_by_id[child_id], fn))
+                    return found
+
+            # This assumes that:
+            # - The host and OSD types exist and have the names set
+            #   in CRUSH_HOST_TYPE and CRUSH_OSD_TYPE
+            # - That OSDs are descendents of hosts
+            # - That hosts have the 'name' attribute set to their hostname
+            # - That OSDs have the 'name' attribute set to osd.<osd id>
+            # - That OSDs are not descendents of OSDs
             for node in osd_tree["nodes"]:
-                if node["type"] == "host":
+                if node["type"] == CRUSH_HOST_TYPE:
                     host = node["name"]
-                    for id in node["children"]:
-                        child = nodes_by_id[id]
-                        if child["type"] == "osd":
-                            self._crush_osd_hostnames[child["name"]] = host
+                    for osd in find_descendents(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
+                        self._crush_osd_hostnames[osd["name"]] = host
 
         return self._crush_osd_hostnames
 
