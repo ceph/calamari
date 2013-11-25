@@ -1,20 +1,18 @@
-import json
-from itertools import imap
-from collections import defaultdict
+
+
 from django.contrib.auth.models import User
-from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import ObjectDoesNotExist
-from ceph.models import Cluster
+from ceph.models import Cluster, Pool
 from ceph.serializers import *
-from rest_framework import viewsets, generics
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, link
+from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import permission_classes
 from rest_framework import status
 from django.views.decorators.cache import never_cache
+
 
 class Space(APIView):
     model = Cluster
@@ -108,3 +106,14 @@ def user_me(request):
     return Response({
         'message': 'Session expired or invalid',
     }, status.HTTP_401_UNAUTHORIZED)
+
+
+class PoolViewSet(viewsets.ViewSet):
+    def list(self, request, cluster_pk):
+        queryset = Pool.objects.filter(cluster_id=cluster_pk)
+        return Response(PoolSerializer(queryset.all(), many=True).data)
+
+    def retrieve(self, request, cluster_pk, pool_pk):
+        return Response(PoolSerializer(Pool.objects.get(
+            cluster_id=cluster_pk, id=pool_pk
+        )).data)

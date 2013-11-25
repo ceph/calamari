@@ -8,7 +8,8 @@ import socket
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 from datetime import datetime
-from ceph.models import Cluster
+from ceph.models import Cluster, Pool
+from django.db.models import Q
 
 # Addresses to ignore during monitor ping test
 _MON_ADDR_IGNORES = ("0.0.0.0", "0:0:0:0:0:0:0:0", "::")
@@ -130,6 +131,41 @@ class ModelAdapter(object):
             'detail': data['detail'],
             'summary': data['summary'],
         }
+
+    def _populate_pools(self):
+        """
+        Populate Pool model.
+        """
+        osd_map_pools = self.client.get_osds()['pools']
+        df_pools = self.client.get_space_stats()['pools']
+
+        # Any pools in the database but not the OSD map are to be deleted
+        dead_pools = Pool.objects.filter(
+            ~Q(pool_id__in=[p['pool'] for p in osd_map_pools]),
+            cluster_id=self.cluster.id)
+        dead_pools.delete()
+
+        for pool in osd_map_pools:
+            pool_id = pool['pool']
+
+            stats = None
+            for pool_stats in df_pools:
+                if pool_stats['id'] == pool_id:
+                    stats = pool_stats['stats']
+            if stats is None:
+                continue
+
+            attrs = dict(
+                name=pool['pool_name'],
+                quota_max_bytes=pool['quota_max_bytes'],
+                quota_max_objects=pool['quota_max_bytes'],
+                used_bytes=stats['bytes_used'],
+                used_objects=stats['objects']
+            )
+
+            updated = Pool.objects.filter(cluster_id=self.cluster.id, pool_id=pool_id).update(**attrs)
+            if updated == 0:
+                Pool.objects.create(cluster_id=self.cluster.id, pool_id=pool_id, **attrs)
 
     def _populate_osds_and_pgs(self):
         "Fill in the PG and OSD lists"

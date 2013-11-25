@@ -2,6 +2,8 @@ from django.utils import dateformat
 from django.db import models
 import jsonfield
 
+
+
 class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
@@ -73,3 +75,18 @@ class Cluster(models.Model):
 
     def has_osd(self, osd_id):
         return self.get_osd(osd_id) is not None
+
+
+class Pool(models.Model):
+    """
+    This functionality was retrofitted to Calamari 1.x, which does not have south.
+    To avoid adding a dependeny for this one piece of data, simply create a new table
+    instead of adding to Cluster, as plain django syncdb can handle new tables.
+    """
+    cluster = models.ForeignKey(Cluster)
+    pool_id = models.IntegerField()
+    name = models.TextField()
+    quota_max_bytes = models.BigIntegerField()
+    quota_max_objects = models.BigIntegerField()
+    used_objects = models.BigIntegerField()
+    used_bytes = models.BigIntegerField()

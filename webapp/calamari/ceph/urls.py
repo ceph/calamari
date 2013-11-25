@@ -14,4 +14,7 @@ urlpatterns = patterns('',
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/space$', views.Space.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd$', views.OSDList.as_view(), name='osd-list'),
     url(r'^cluster/(?P<cluster_pk>[0-9]+)/osd/(?P<osd_id>\d+)$', views.OSDDetail.as_view(), name='osd-detail'),
-)
+    url(r'^cluster/(?P<cluster_pk>[0-9]+)/pool$', views.PoolViewSet.as_view({'get': 'list'}), name='pool-list'),
+    url(r'^cluster/(?P<cluster_pk>[0-9]+)/pool/(?P<pool_pk>\d+)$', views.PoolViewSet.as_view({'get': 'retrieve'}),
+        name='pool-detail'),
+    )

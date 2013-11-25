@@ -1,10 +1,9 @@
-import sys
-import time
-import requests
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from ceph.models import Cluster
+from ceph.models import Cluster, Pool
 from ceph.management.commands.ceph_refresh import CephRestClient
+
 
 class ClusterSerializer(serializers.ModelSerializer):
     cluster_update_time_unix = serializers.SerializerMethodField(
@@ -234,3 +233,8 @@ class OSDDetailSerializer(serializers.ModelSerializer):
 
     def get_added(self, obj):
         return obj.cluster_update_time
+
+
+class PoolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pool
