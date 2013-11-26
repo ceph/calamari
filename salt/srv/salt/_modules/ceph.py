@@ -16,6 +16,10 @@ _REST_CLIENT_DEFAULT_TIMEOUT = 10.0
 import json
 
 
+def fire_event(data, tag):
+    __salt__['event.fire_master'](data, tag)  # noqa
+
+
 # >>> XXX unclean borrowed from open source ceph code XXX
 def admin_socket(asok_path, cmd, format=''):
     """
@@ -51,7 +55,7 @@ def admin_socket(asok_path, cmd, format=''):
 
     try:
         cmd_json = do_sockio(asok_path,
-            json.dumps({"prefix":"get_command_descriptions"}))
+                             json.dumps({"prefix": "get_command_descriptions"}))
     except Exception as e:
         #raise RuntimeError('exception getting command descriptions: ' + str(e))
         return None
@@ -117,7 +121,6 @@ class CephRestClient(object):
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
-              'osd_tree',
               'mds_map',
               'pg_map',
               'pg_brief',
@@ -232,11 +235,7 @@ def get_cluster_object(cluster_name, sync_type, since):
         'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
         'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
         'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
-        # FIXME: this should really be inlined with the OSD map we return, as it is derived from it: it's
-        # not a separate thing.  Same deal for CRUSH map when that is added.
-        'osd_tree': ('osd tree', {}, lambda d, r: d['epoch']),
         'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-        #'pg_map': ('pg dump', {}, lambda d, r: d['version']),
         'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
         'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
     }[sync_type]
@@ -245,12 +244,23 @@ def get_cluster_object(cluster_name, sync_type, since):
     assert ret == 0
 
     data = json.loads(raw)
+    version = version_fn(data, raw)
 
-    if sync_type == 'osd_tree':
-        # XXX HACKHACKHACK
-        version = status['osdmap']['osdmap']['epoch']
-    else:
-        version = version_fn(data, raw)
+    # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
+    # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
+    # send back to the calamari server.
+    if sync_type == 'osd_map':
+        ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
+            'format': 'json',
+            'epoch': version
+        })
+        assert ret == 0
+        data['tree'] = json.loads(raw)
+        # FIXME: crush dump does not support an epoch argument, so this is potentially
+        # from a higher-versioned OSD map than the one we've just read
+        ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs)
+        assert ret == 0
+        data['crush'] = json.loads(raw)
 
     return {
         'type': sync_type,
@@ -282,7 +292,6 @@ def terse_status():
 
     try:
         import rados
-        from ceph_argparse import json_command
     except ImportError:
         return None
 
@@ -386,7 +395,6 @@ def cluster_status(cluster_handle, cluster_name):
             'mon_status': mon_status['election_epoch'],
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
-            'osd_tree': osd_epoch,
             'mds_map': mds_epoch,
             'pg_brief': pgs_brief_digest,
             'health': health_digest
@@ -400,9 +408,9 @@ def heartbeat():
     """
     services, clusters = terse_status()
 
-    __salt__['event.fire_master'](services, 'ceph/services')
+    fire_event(services, 'ceph/services')
     for fsid, cluster_data in clusters.items():
-        __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
+        fire_event(cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
 
     # Return the emitted data because it's useful if debugging with salt-call
     return services, clusters

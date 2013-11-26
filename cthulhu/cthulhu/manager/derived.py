@@ -1,5 +1,5 @@
 from collections import defaultdict
-from cthulhu.manager.types import OsdMap, OsdTree, PgBrief, MdsMap, MonStatus
+from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',
@@ -14,12 +14,12 @@ OKAY_STATES = set(['active', 'clean'])
 
 
 class OsdPgDetail(object):
-    depends = [OsdMap, PgBrief, OsdTree]
+    depends = [OsdMap, PgBrief]
 
     @classmethod
     def generate(cls, data):
         osd_map = data[OsdMap]
-        osd_tree = data[OsdTree]
+        osd_tree = osd_map['tree']
         pgs_brief = data[PgBrief]
         # map osd id to pg states
         pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))

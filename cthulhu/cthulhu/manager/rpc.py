@@ -1,7 +1,7 @@
 import threading
 import traceback
 import zerorpc
-from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER
+from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
 
 CTHULHU_RPC_URL = 'tcp://127.0.0.1:5050'
@@ -154,6 +154,8 @@ class RpcInterface(object):
             return cluster.get_sync_object(OsdMap)['osds']
         elif object_type == POOL:
             return cluster.get_sync_object(OsdMap)['pools']
+        elif object_type == CRUSH_RULE:
+            return cluster.get_sync_object(OsdMap)['crush']['rules']
         else:
             raise NotImplementedError(object_type)
 
@@ -167,6 +169,11 @@ class RpcInterface(object):
             'id': request.id,
             'state': request.state
         }
+
+    def list_requests(self, fs_id):
+        cluster = self._fs_resolve(fs_id)
+        requests = cluster.list_requests()
+        return [{'id': r.id, 'state': r.state} for r in requests]
 
 
 class RpcThread(threading.Thread):

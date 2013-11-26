@@ -1,4 +1,4 @@
-
+from collections import defaultdict
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, \
-    PoolSerializer, RequestSerializer
+    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -22,6 +22,7 @@ import pytz
 
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
+from cthulhu.manager.types import CRUSH_RULE
 
 
 def get_latest_graphite(metric):
@@ -186,14 +187,31 @@ class ClusterViewSet(RPCViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class PoolDataObject(DataObject):
+    """
+    Slightly dressed up version of the raw pool from osd dump
+    """
+
+    FLAG_HASHPSPOOL = 1
+    FLAG_FULL = 2
+
+    @property
+    def hashpspool(self):
+        return bool(self.flags & self.FLAG_HASHPSPOOL)
+
+    @property
+    def full(self):
+        return bool(self.flags & self.FLAG_FULL)
+
+
 class PoolViewSet(RPCViewSet):
     def list(self, request, fsid):
-        pools = [DataObject(p) for p in self.client.list(fsid, 'pool')]
+        pools = [PoolDataObject(p) for p in self.client.list(fsid, 'pool')]
 
         return Response(PoolSerializer(pools, many=True).data)
 
     def retrieve(self, request, fsid, pool_id):
-        pool = DataObject(self.client.get(fsid, 'pool', int(pool_id)))
+        pool = PoolDataObject(self.client.get(fsid, 'pool', int(pool_id)))
         return Response(PoolSerializer(pool).data)
 
     def create(self, request, fsid):
@@ -214,7 +232,6 @@ class PoolViewSet(RPCViewSet):
 
     def update(self, request, fsid, pool_id):
         updates = request.DATA
-        print updates
         # TODO: validation, but we don't want to check all fields are present (because
         # this is a PATCH), just that those present are valid.  rest_framework serializer
         # may or may not be able to do that out the box.
@@ -230,6 +247,34 @@ class RequestViewSet(RPCViewSet):
     def retrieve(self, request, fsid, request_id):
         user_request = DataObject(self.client.get_request(fsid, request_id))
         return Response(RequestSerializer(user_request).data)
+
+    def list(self, request, fsid):
+        return Response(RequestSerializer([
+            DataObject(r) for r in self.client.list_requests(fsid)
+        ], many=True).data)
+
+
+class CrushRuleViewSet(RPCViewSet):
+    def list(self, request, fsid):
+        rules = self.client.list(fsid, CRUSH_RULE)
+        return Response(CrushRuleSerializer([
+            DataObject(r) for r in rules
+        ], many=True).data)
+
+
+class CrushRuleSetViewSet(RPCViewSet):
+    def list(self, request, fsid):
+        rules = self.client.list(fsid, CRUSH_RULE)
+        rulesets_data = defaultdict(list)
+        for rule in rules:
+            rulesets_data[rule['ruleset']].append(rule)
+
+        rulesets = [DataObject({
+            'id': rd_id,
+            'rules': [DataObject(r) for r in rd_rules]
+        }) for (rd_id, rd_rules) in rulesets_data.items()]
+
+        return Response(CrushRuleSetSerializer(rulesets, many=True).data)
 
 
 @api_view(['GET'])

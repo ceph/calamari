@@ -146,16 +146,52 @@ class OSDMapSerializer(serializers.Serializer):
 
 class PoolSerializer(serializers.Serializer):
     class Meta:
-        fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset')
+        fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                  'pgp_num', 'hashpspool', 'full')
 
     # Required in creation
     name = serializers.CharField(source='pool_name')
     pg_num = serializers.IntegerField()
 
-    # Not required in creation
+    # Not required in creation, immutable
     id = serializers.CharField(source='pool', required=False)
+
+    # May be set in creation or updates
     size = serializers.IntegerField(required=False)
+    min_size = serializers.IntegerField(required=False)
+    crash_replay_interval = serializers.IntegerField(required=False)
     crush_ruleset = serializers.IntegerField(required=False)
+    # In 'ceph osd pool set' it's called pgp_num, but in 'ceph osd dump' it's called
+    # pg_placement_num :-/
+    pgp_num = serializers.IntegerField(source='pg_placement_num', required=False)
+
+    # This is settable by 'ceph osd pool set' but in 'ceph osd dump' it only appears
+    # within the 'flags' integer.  We synthesize a boolean from the flags.
+    hashpspool = serializers.BooleanField(required=False)
+
+    # This is synthesized from ceph's 'flags' attribute, read only.
+    full = serializers.BooleanField(required=False)
+
+
+class CrushRuleSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+
+    id = serializers.IntegerField(source='rule_id')
+    name = serializers.CharField(source='rule_name')
+    ruleset = serializers.IntegerField()
+    type = serializers.IntegerField()
+    min_size = serializers.IntegerField()
+    max_size = serializers.IntegerField()
+    steps = serializers.Field()
+
+
+class CrushRuleSetSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'rules',)
+
+    id = serializers.IntegerField()
+    rules = CrushRuleSerializer(many=True)
 
 
 class RequestSerializer(serializers.Serializer):

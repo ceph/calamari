@@ -21,7 +21,7 @@ class AuthenticatedHttpClient(requests.Session):
     def request(self, method, url, **kwargs):
         url = self._api_url + url
         response = super(AuthenticatedHttpClient, self).request(method, url, **kwargs)
-        if response.status_code >= 500:
+        if response.status_code >= 400:
             # For the benefit of test logs
             print "%s: %s" % (response.status_code, response.content)
         return response

@@ -1,22 +1,21 @@
 import re
 import uuid
-from pytz import utc
-from cthulhu.manager import derived
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, CEPH_OBJECT_TYPES, OSD, POOL, OsdMap
-
 import datetime
+import threading
+
+from pytz import utc
 import dateutil
 from dateutil.tz import tzlocal
-import threading
 import threading2
+
 import salt
 import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
 import zmq
 
-#from cthulhu import persistence
-
+from cthulhu.manager import derived
+from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, CEPH_OBJECT_TYPES, OSD, POOL, OsdMap
 from cthulhu.manager.log import log
 
 
@@ -25,6 +24,9 @@ SALT_RUN_PATH = './salt/var/run/salt/master'
 # FIXME: this should be a function of the ceph.heartbeat schedule period which
 # we should query from the salt pillar
 FAVORITE_TIMEOUT_S = 60
+
+# Valid values for the 'var' argument to 'ceph osd pool set'
+POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval", "pg_num", "pgp_num", "crush_ruleset", "hashpspool"]
 
 
 class ClusterUnavailable(Exception):
@@ -385,6 +387,9 @@ class ClusterMonitor(threading.Thread):
 
         self._notifier = notifier
 
+    def list_requests(self):
+        return self._requests.get_all()
+
     def get_request(self, request_id):
         return self._requests.get_by_id(request_id)
 
@@ -615,44 +620,22 @@ class ClusterMonitor(threading.Thread):
             # if the name is wrong we should be sending a structured errors dict
             # that they can use to associate the complaint with the 'name' field.
             commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
-            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
-            req.submit()
-            self._requests.put(req)
-            return {
-                'request_id': req.id
-            }
-        else:
-            raise NotImplementedError(obj_type)
+            # Which attributes must we set after the initial create?
+            post_create_attrs = attributes.copy()
+            del post_create_attrs['name']
+            del post_create_attrs['pg_num']
+            if 'pgp_num' in post_create_attrs:
+                del post_create_attrs['pgp_num']
 
-    def _resolve_pool(self, pool_id):
-        for pool in self._sync_objects.get(OsdMap).data['pools']:
-            if pool['pool'] == pool_id:
-                return pool
-        else:
-            raise ValueError("Pool %s not found" % pool_id)
+            commands.extend(self._pool_attribute_commands(
+                attributes['name'],
+                post_create_attrs
+            ))
 
-    def request_delete(self, obj_type, obj_id):
-        if obj_type not in CEPH_OBJECT_TYPES:
-            raise ValueError("{0} is not one of {1}".format(obj_type, CEPH_OBJECT_TYPES))
+            log.debug("Post-create attributes: %s" % post_create_attrs)
+            log.debug("Commands: %s" % post_create_attrs)
 
-        if self._favorite_mon is None:
-            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
-
-        if obj_type == POOL:
-
-            # Resolve pool ID to name
-            pool_name = self._resolve_pool(obj_id)['pool_name']
-
-            # TODO: perhaps the REST API should have something in the body to
-            # make it slightly harder to accidentally delete a pool, to respect
-            # the severity of this operation since we're hiding the --yes-i-really-really-want-to
-            # stuff here
-            # TODO: handle errors in a way that caller can show to a user, e.g.
-            # if the name is wrong we should be sending a structured errors dict
-            # that they can use to associate the complaint with the 'name' field.
-            commands = [
-                ('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
             req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
 
             req.submit()
@@ -710,18 +693,10 @@ class ClusterMonitor(threading.Thread):
         elif obj_type == POOL:
             # TODO: this is a primitive form of adding PGs, not yet sufficient for
             # real use because it leaves pgp_num unset.
-            commands = []
-            if 'pg_num' in attributes:
-                # TODO: also set pgp_num, although ceph annoyingly doesn't
-                # let us do this until all the PGs are created, unless there
-                # is some hidden way to set it at the same time as pg_Num?
-                pool_name = self._resolve_pool(obj_id)['pool_name']
-                commands.append(('osd pool set', {
-                    'pool': pool_name,
-                    'var': 'pg_num',
-                    'val': attributes['pg_num']
-                }))
-            else:
+            pool_name = self._resolve_pool(obj_id)['pool_name']
+
+            commands = self._pool_attribute_commands(pool_name, attributes)
+            if not commands:
                 raise NotImplementedError(attributes)
 
             # TODO: provide some per-object-type ability to emit human readable descriptions
@@ -743,6 +718,64 @@ class ClusterMonitor(threading.Thread):
 
             self._requests.put(req)
 
+            return {
+                'request_id': req.id
+            }
+        else:
+            raise NotImplementedError(obj_type)
+
+    def _pool_attribute_commands(self, pool_name, attributes):
+        commands = []
+        for var in POOL_PROPERTIES:
+            if var in attributes:
+                # TODO: when setting pg_num also set pgp_num, although ceph annoyingly
+                # doesn't let us do this until all the PGs are created, unless there
+                # is some hidden way to set it at the same time as pg_Num?
+
+                val = attributes[var]
+                if isinstance(val, bool):
+                    val = "true" if val else "false"
+
+                commands.append(('osd pool set', {
+                    'pool': pool_name,
+                    'var': var,
+                    'val': val
+                }))
+
+        return commands
+
+    def _resolve_pool(self, pool_id):
+        for pool in self._sync_objects.get(OsdMap).data['pools']:
+            if pool['pool'] == pool_id:
+                return pool
+        else:
+            raise ValueError("Pool %s not found" % pool_id)
+
+    def request_delete(self, obj_type, obj_id):
+        if obj_type not in CEPH_OBJECT_TYPES:
+            raise ValueError("{0} is not one of {1}".format(obj_type, CEPH_OBJECT_TYPES))
+
+        if self._favorite_mon is None:
+            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
+
+        if obj_type == POOL:
+
+            # Resolve pool ID to name
+            pool_name = self._resolve_pool(obj_id)['pool_name']
+
+            # TODO: perhaps the REST API should have something in the body to
+            # make it slightly harder to accidentally delete a pool, to respect
+            # the severity of this operation since we're hiding the --yes-i-really-really-want-to
+            # stuff here
+            # TODO: handle errors in a way that caller can show to a user, e.g.
+            # if the name is wrong we should be sending a structured errors dict
+            # that they can use to associate the complaint with the 'name' field.
+            commands = [
+                ('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
+            req = OsdMapModifyingRequest(self._favorite_mon, self._fsid, self._name, commands)
+
+            req.submit()
+            self._requests.put(req)
             return {
                 'request_id': req.id
             }

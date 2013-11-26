@@ -22,6 +22,13 @@ urlpatterns = patterns(
 
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
         views.RequestViewSet.as_view({'get': 'retrieve'}), name='cluster-request-detail'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request$',
+        views.RequestViewSet.as_view({'get': 'list'}), name='cluster-request-list'),
+
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/crush_rule_set$', views.CrushRuleSetViewSet.as_view({'get': 'list'}),
+        name='cluster-crush_rule_set-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/crush_rule$', views.CrushRuleViewSet.as_view({'get': 'list'}),
+        name='cluster-crush_rule-list'),
 
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool$', views.PoolViewSet.as_view({'get': 'list', 'post': 'create'}),
         name='cluster-pool-list'),

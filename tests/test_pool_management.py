@@ -27,15 +27,17 @@ class TestPoolManagement(ServerTestCase):
                 return pool
         return None
 
-    def _create(self, cluster_id, pool_name, pg_num=64):
+    def _create(self, cluster_id, pool_name, pg_num=64, optionals={}):
         # Check that the pool we're going to create doesn't already exist
         self.assertEqual(self._filter_pool(self.api.get("cluster/%s/pool" % cluster_id).json(), pool_name), None)
 
         # Create the pool
-        r = self.api.post("cluster/%s/pool" % cluster_id, {
+        args = {
             'name': pool_name,
             'pg_num': pg_num
-        })
+        }
+        args.update(optionals)
+        r = self.api.post("cluster/%s/pool" % cluster_id, args)
         r.raise_for_status()
         request_id = r.json()['request_id']
         wait_until_true(lambda: self._request_complete(cluster_id, request_id), timeout=operation_timeout)
@@ -94,6 +96,67 @@ class TestPoolManagement(ServerTestCase):
         self._assert_visible(cluster_id, pool_name, visible=False)
 
         # TODO: check on the cluster that it's really gone, not just on calamari server
+
+    def test_create_args(self):
+        """
+        Test that when non-default attributes are passed to create, they
+
+        """
+
+        # Some non-default values
+        optionals = {
+            'size': 3,
+            'min_size': 2,
+            'crash_replay_interval': 120,
+            'crush_ruleset': 1,
+            'hashpspool': True
+        }
+
+        cluster_id = self._wait_for_cluster()
+        pool_name = 'test1'
+        self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+        for var, val in optionals.items():
+            self.assertEqual(pool[var], val, "pool[%s]!=%s (actually %s)" % (
+                var, val, pool[var]
+            ))
+
+    def test_modification(self):
+        """
+        Check that valid modifications to a pool are accepted and actioned.
+        """
+
+        cluster_id = self._wait_for_cluster()
+        pool_name = 'test1'
+        self._create(cluster_id, pool_name, pg_num=64)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+
+        # Some non-default values
+        mods = {
+            'size': 3,
+            'min_size': 2,
+            'crash_replay_interval': 120,
+            'pg_num': 256,
+            # NB skipping pgp_num because setting pg_num will
+            # set it automatically
+            #'pgp_num': 256,
+            'crush_ruleset': 1,
+            'hashpspool': True
+        }
+        for var, val in mods.items():
+            # Sanity check we really are changing something, that the new val is diff
+            self.assertNotEqual(pool[var], val)
+            try:
+                self._update(cluster_id, pool_id, {var: val})
+                pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+                self.assertEqual(pool[var], val)
+                # TODO: call out to the ceph cluster to check the
+                # value landed
+            except:
+                print "Exception updating %s:%s" % (var, val)
+                raise
 
     def test_coherency(self):
         """
