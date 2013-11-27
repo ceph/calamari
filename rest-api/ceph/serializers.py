@@ -147,7 +147,7 @@ class OSDMapSerializer(serializers.Serializer):
 class PoolSerializer(serializers.Serializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                  'pgp_num', 'hashpspool', 'full')
+                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
 
     # Required in creation
     name = serializers.CharField(source='pool_name')
@@ -171,6 +171,9 @@ class PoolSerializer(serializers.Serializer):
 
     # This is synthesized from ceph's 'flags' attribute, read only.
     full = serializers.BooleanField(required=False)
+
+    quota_max_objects = serializers.IntegerField(required=False)
+    quota_max_bytes = serializers.IntegerField(required=False)
 
 
 class CrushRuleSerializer(serializers.Serializer):

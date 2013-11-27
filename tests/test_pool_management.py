@@ -61,7 +61,9 @@ class TestPoolManagement(ServerTestCase):
     def _update(self, cluster_id, pool_id, attrs):
         r = self.api.patch("cluster/%s/pool/%s" % (cluster_id, pool_id), attrs)
         r.raise_for_status()
-        wait_until_true(lambda: self._request_complete(cluster_id, r.json()['request_id']), timeout=operation_timeout)
+        request_id = r.json()['request_id']
+        wait_until_true(lambda: self._request_complete(cluster_id, request_id), timeout=operation_timeout)
+        return self.api.get("cluster/%s/request/%s" % (cluster_id, request_id)).json()
 
     def _delete(self, cluster_id, pool_id):
         # Delete the pool
@@ -99,8 +101,8 @@ class TestPoolManagement(ServerTestCase):
 
     def test_create_args(self):
         """
-        Test that when non-default attributes are passed to create, they
-
+        Test that when non-default attributes are passed to create, they are
+        accepted and reflected on the created pool.
         """
 
         # Some non-default values
@@ -109,7 +111,9 @@ class TestPoolManagement(ServerTestCase):
             'min_size': 2,
             'crash_replay_interval': 120,
             'crush_ruleset': 1,
-            'hashpspool': True
+            'hashpspool': True,
+            'quota_max_objects': 42,
+            'quota_max_bytes': 42000000
         }
 
         cluster_id = self._wait_for_cluster()
@@ -143,7 +147,9 @@ class TestPoolManagement(ServerTestCase):
             # set it automatically
             #'pgp_num': 256,
             'crush_ruleset': 1,
-            'hashpspool': True
+            'hashpspool': True,
+            'quota_max_objects': 42,
+            'quota_max_bytes': 42000000
         }
         for var, val in mods.items():
             # Sanity check we really are changing something, that the new val is diff
@@ -157,6 +163,24 @@ class TestPoolManagement(ServerTestCase):
             except:
                 print "Exception updating %s:%s" % (var, val)
                 raise
+
+    def test_rename(self):
+        """
+        What it sounds like:
+
+        - can we rename a pool?
+        - what happens if the name is bad?
+        - what happens if the name collides with another pool?
+        """
+        cluster_id = self._wait_for_cluster()
+        pool_name = 'test1'
+        self._create(cluster_id, pool_name, pg_num=64)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        new_name = 'test1_changed'
+        self._update(cluster_id, pool_id, {'name': new_name})
+        self._assert_visible(cluster_id, pool_name, visible=False)
+        self._assert_visible(cluster_id, new_name)
 
     def test_coherency(self):
         """

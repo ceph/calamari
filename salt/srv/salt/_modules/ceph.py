@@ -161,7 +161,7 @@ def rados_commands(fsid, cluster_name, commands):
                 'results': results,
                 'err_outbuf': outbuf,
                 'err_outs': outs,
-                'versions': None,
+                'versions': cluster_status(cluster_handle, cluster_name)['versions'],
                 'fsid': fsid
             }
         if outbuf:
@@ -179,14 +179,6 @@ def rados_commands(fsid, cluster_name, commands):
     # TODO: use the cluster_handle we already have here instead of letting terse_status
     # create a new one (true other places in this module, requires general cleanup)
 
-    # FIXME 1: We probably can't assume that <clustername>.client.admin.keyring is always
-    # present, although this is the case on a nicely ceph-deploy'd system
-    # FIXME 2: It shouldn't really be necessary to fire up a RADOS client to obtain this
-    # information, instead we should be able to get it from the mon admin socket.
-    cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
-    cluster_handle.connect()
-    status = cluster_status(cluster_handle, cluster_name)
-
     # For all RADOS commands, we include the cluster map versions
     # in the response, so that the caller knows which versions to
     # wait for in order to see the consequences of their actions.
@@ -197,7 +189,7 @@ def rados_commands(fsid, cluster_name, commands):
         'results': results,
         'err_outbuf': '',
         'err_outs': '',
-        'versions': status['versions'],
+        'versions': cluster_status(cluster_handle, cluster_name)['versions'],
         'fsid': fsid
     }
 

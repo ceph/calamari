@@ -215,6 +215,7 @@ class UserRequest(object):
         """
         self.result = result
         log.info("Request %s JID %s completed with result=%s" % (self.id, self._jid, self.result))
+
         if self._completion_callback:
             try:
                 log.debug("Request %s calling completion callback" % self.id)
@@ -741,6 +742,22 @@ class ClusterMonitor(threading.Thread):
                     'var': var,
                     'val': val
                 }))
+
+        # Quota setting ('osd pool set-quota') is separate to the main 'set' operation
+        for attr_name, set_name in [('quota_max_bytes', 'max_bytes'), ('quota_max_objects', 'max_objects')]:
+            if attr_name in attributes:
+                commands.append(('osd pool set-quota', {
+                    'pool': pool_name,
+                    'field': set_name,
+                    'val': attributes[attr_name].__str__()  # set-quota wants a string in case it has units in
+                }))
+
+        # Renames come last (the preceeding commands reference the pool by its old name)
+        if 'name' in attributes:
+            commands.append(('osd pool rename', {
+                "srcpool": pool_name,
+                "destpool": attributes['name']
+            }))
 
         return commands
 
