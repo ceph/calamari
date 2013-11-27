@@ -1,0 +1,3 @@
+[submodule "clients"]
+	path = clients
+	url = git@github.com:inktankstorage/clients
