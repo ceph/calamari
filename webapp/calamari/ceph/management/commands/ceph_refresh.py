@@ -116,9 +116,12 @@ class ModelAdapter(object):
         self.cluster = cluster
         self.mon_timeout = mon_timeout
         self._crush_osd_hostnames = None
+        self._osd_name_to_server = {}
 
     def refresh(self):
         "Call each _populate* method, then save the model instance"
+        self._refresh_servers()
+
         attrs = filter(lambda a: a.startswith('_populate_'), dir(self))
         for attr in attrs:
             getattr(self, attr)()
@@ -224,12 +227,19 @@ class ModelAdapter(object):
         # helper to modify each osd object
         def fixup_osd(osd):
             osd_id = osd['osd']
+
+            server = self._osd_name_to_server["osd.%d" % (osd_id,)]
+            if server.hostname:
+                host = server.hostname
+            else:
+                host = server.addr
+
             data = dict((k, osd[k]) for k in self.OSD_FIELDS)
             data.update({'id': osd_id})
             data.update({'pg_states': pg_states_by_osd[osd_id]})
             data.update({'pg_count': pg_counts_by_osd[osd_id]})
             data.update({'pools': list(pools_by_osd[osd_id])})
-            data.update({'host': self.crush_osd_hostnames["osd.%d" % (osd_id,)]})
+            data.update({'host': host})
             return data
 
         # add the pg states to each osd
@@ -281,7 +291,12 @@ class ModelAdapter(object):
         Attempt reverse DNS lookup on an IPv4 or IPv6 address string,
         return a short hostname string if found, else return None.
         """
-        hostname, aliaslist, _ = socket.gethostbyaddr(addr)
+        try:
+            hostname, aliaslist, _ = socket.gethostbyaddr(addr)
+        except socket.error:
+            # Not found
+            return None
+
         osd_names = aliaslist + [hostname]
         osd_shortnames = [name for name in osd_names if '.' not in name]
         if osd_shortnames:
@@ -372,9 +387,17 @@ class ModelAdapter(object):
             if server.name is None:
                 server.name = service_addr
 
+        if service_type == ServiceStatus.OSD:
+            # Stash the server's hostname (which we hopefully got from CRUSH or
+            # reverse DNS) for use in populating the 'host' attribute of osds in
+            # _populate_osds
+            self._osd_name_to_server[name] = server
+
         return service_status
 
-    def _populate_servers(self):
+    # This isn't a _populate_ method because it needs to be called explicitly
+    # before the others (specifically before _populate_osds)
+    def _refresh_servers(self):
         # To get the addrs of MONs and their in-ness
         mon_status = self.client.get_mon_status()
 
@@ -388,10 +411,11 @@ class ModelAdapter(object):
 
         for osd in osd_map['osds']:
             addr = self._short_addr(osd['public_addr'].split(":")[0])
+            osd_name = "osd.%s" % osd['osd']
             service_status = self._register_service(
                 addr, ServiceStatus.OSD,
                 service_id=osd['osd'],
-                name="osd.%s" % osd['osd'],
+                name=osd_name,
                 in_cluster=osd['in'])
             old_service_status_ids.discard(service_status.id)
             old_server_addrs.discard(addr)
