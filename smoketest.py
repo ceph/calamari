@@ -6,32 +6,30 @@
 # basic functionality
 #
 
-import logging
+import datetime
 import os
 import sys
 import select
 from subprocess import Popen, PIPE, check_output, CalledProcessError
 import textwrap
 import webbrowser
-import paramiko
 
 yaml = '''roles:
 - [mon.0, osd.0, osd.1, osd.2, client.0]
 
 tasks:
-- chef:
 - install:
    branch: dumpling
 - ceph:
 - interactive:
 '''
 
-#yamlshort = '''roles:
-#- [client.0]
-#
-#tasks:
-#- interactive:
-#'''
+yamlshort = '''roles:
+- [client.0]
+
+tasks:
+- interactive:
+'''
 
 OWNER='calamari-autotest@odds'
 #REPODIR='packages'
@@ -95,17 +93,32 @@ def show_fds_and_watch(proc, infd, outfd, errfd, timeout,
                 wr_red('UNKNOWN FD OUTPUT ON ' + str(fd) + '\n')
     return None, host
 
+def distro_version(release):
+    relmap = dict({
+        'precise':('ubuntu', '12.04'),
+        'wheezy':('debian', '7.0'),
+        'rhel':('rhel', '6.4'),
+        'centos':('centos', '6.4'),
+    })
+
+    return relmap[release]
+
 def make_cluster(yamlfile, release):
-    #cmd = 'teuthology --machine-type=vps --lock ' \
-    #      '--owner=' + OWNER + ' ' + yamlfile
-    cmd = 'teuthology --machine-type=mira --lock ' \
-          '--owner=' + OWNER + ' ' + yamlfile
+
+    distro, version = distro_version(release)
+    #cmd = 'teuthology --machine-type=mira --lock ' \
+    #      '--owner={owner} {yamlfile}'
+    cmd = 'teuthology --machine-type=vps --lock --os-type={distro} ' \
+          '--os-version={version} --owner={owner} {yamlfile}'
+    cmd = cmd.format(
+        distro=distro, version=version, owner=OWNER, yamlfile=yamlfile
+    )
     proc = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
     proc_infd = proc.stdin.fileno()
     proc_outfd = proc.stdout.fileno()
     proc_errfd = proc.stderr.fileno()
     returncode, host = show_fds_and_watch(
-        proc, proc_infd, proc_outfd, proc_errfd, 100,
+        proc, proc_infd, proc_outfd, proc_errfd, 600,
         host_leadin='INFO:teuthology.task.internal:roles: ubuntu@',
         terminator='Ceph test interactive mode',
     )
@@ -128,20 +141,19 @@ def install_repokey(host, flavor):
     if flavor == 'deb':
         return run_cmd('ssh ubuntu@{host} "wget -q -O- http://download.inktank.com/keys/release.asc | sudo apt-key add -"'.format(host=host))
     elif flavor == 'rpm':
-        return run_cmd('ssh ubuntu@{host} "rpm --import http://download.inktank.com/keys/release.asc"'.format(host=host))
+        return run_cmd('ssh ubuntu@{host} "sudo rpm --import http://download.inktank.com/keys/release.asc"'.format(host=host))
     else:
        return False
 
 def write_file(contents, path, host):
     proc = Popen(
-        'ssh ubuntu@{host}'.format(host=host),
+        'ssh ubuntu@{host} sudo dd of={path}'.format(host=host, path=path),
         stdin=PIPE,
         stdout=PIPE,
         stderr=PIPE,
         shell=True,
     )
-    out, err = proc.communicate('echo "{contents}" | \
-        sudo dd of={path}'.format(path=path, contents=contents))
+    out, err = proc.communicate(contents)
     if proc.returncode:
         if err:
             wr_red(err)
@@ -152,7 +164,7 @@ def write_file(contents, path, host):
 def install_repo(host, release, flavor):
     if flavor == 'deb':
         contents='deb https://{username}:{password}@download.inktank.com' \
-                 '/{packages}/deb {release} main'.format( 
+                 '/{packages}/deb {release} main'.format(
                      username='dmick', password='dmick', packages=PKGDIR,
                      release=release)
         if not write_file(
@@ -160,28 +172,31 @@ def install_repo(host, release, flavor):
         ):
             wr_red('write sources.list.d failed')
             return False
-        return run_cmd('sudo apt-get update')
+        run_cmd('ssh ubuntu@{} '
+            '"sudo apt-get install apt-transport-https"'.format(host))
+        return run_cmd('ssh ubuntu@{} "sudo apt-get update"'.format(host))
     elif flavor == 'rpm':
+        distro, version = distro_version(release)
         contents=textwrap.dedent('''
         [inktank]
         name=Inktank Storage, Inc.
-        baseurl=https://{username}:{password}@download.inktank.com/{packages}/rpm/{release}
+        baseurl=https://{username}:{password}@download.inktank.com/{packages}/rpm/{distro}{version}
         gpgcheck=1
         enabled=1
         '''.format(username='dmick', password='dmick', packages=PKGDIR,
-            release=release))
+            distro=distro, version=version))
         if not write_file(
             contents, '/etc/yum.repos.d/inktank.repo', host
         ):
             wr_red('write yum.repos.d failed')
             return False
-        return run_cmd('sudo yum makecache')
+        return run_cmd('ssh ubuntu@{} "sudo yum makecache"'.format(host))
     else:
        return False
 
 def install_package(package, host, flavor):
     if flavor == 'deb':
-        pkgcmd = 'DEBIAN_FRONTEND=noninteractive sudo -E apt-get -y' \
+        pkgcmd = 'DEBIAN_FRONTEND=noninteractive sudo -E apt-get -y ' \
                  'install {package}'
     elif flavor == 'rpm':
         pkgcmd = 'sudo yum -y install {package}'
@@ -190,22 +205,7 @@ def install_package(package, host, flavor):
         return False
     pkgcmd = pkgcmd.format(package=package)
 
-    logging.getLogger('paramiko').addHandler(logging.StreamHandler())
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, username='ubuntu')
-    try:
-        i, o, e = ssh.exec_command(pkgcmd.format(host=host))
-        for l in o:
-            sys.stdout.write(l)
-        for l in e:
-            wr_err(l)
-        ssh.close()
-        return True
-    except Exception as e:
-        wr_red(e)
-        ssh.close()
-        return False
+    return run_cmd(('ssh ubuntu@{host} ' + pkgcmd).format(host=host))
 
 def setup_realname_crushmap(host):
     script = textwrap.dedent('''
@@ -215,14 +215,51 @@ def setup_realname_crushmap(host):
         crushtool -c /tmp/mymap.txt -o /tmp/mymap.new
         ceph osd setcrushmap -i /tmp/mymap.new
     '''.format(host=host))
-    if not write_file(script, '/tmp/crushedit', host): return False
-    return run_cmd('ssh {host} bash -x /tmp/crushedit'.format(host=host))
+    if not write_file(script, '/tmp/crushedit', host):
+        return False
+    return run_cmd('ssh ubuntu@{host} bash -x /tmp/crushedit'.format(host=host))
+
+def edit_diamond_config(host):
+    cmd = 'ssh ubuntu@{host} ' \
+          '"sudo sed -i s/calamari/{host}/ /etc/diamond/diamond.conf"'
+    if not run_cmd(cmd.format(host=host)):
+        return False
+    cmd = 'ssh ubuntu@{host} "sudo service diamond restart"'
+    return run_cmd(cmd.format(host=host))
+
+def disable_default_nginx(host, flavor):
+    script = textwrap.dedent('''
+        if [ -f /etc/nginx/conf.d/default.conf ]; then
+            mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.disabled
+        fi
+        if [ -f /etc/nginx/sites-enabled/default ] ; then
+            rm /etc/nginx/sites-enabled/default
+        fi
+        service nginx restart
+        service {service} restart
+    ''')
+    service = {'rpm':'httpd', 'deb':'apache2'}[flavor]
+    script = script.format(service=service)
+    write_file(script, '/tmp/disable.nginx', host)
+    cmd = 'ssh ubuntu@{host} sudo bash /tmp/disable.nginx'.format(host=host)
+    return run_cmd(cmd)
+
+def setup_localhost_cluster(host, flavor):
+    package = {'rpm':'sqlite', 'deb':'sqlite3'}[flavor]
+    if not install_package(package, host, flavor):
+        return False
+    sqlcmd = 'insert into ceph_cluster (name, api_base_url) ' \
+             'values ("{host}", "http://{host}:5000/api/v0.1/");'.format(
+              host=host)
+    write_file(sqlcmd, '/tmp/create.cluster.sql', host)
+    cmd = 'ssh ubuntu@{host} "cat /tmp/create.cluster.sql | sudo sqlite3 /opt/calamari/webapp/calamari/db.sqlite3"'.format(host=host)
+    return run_cmd(cmd)
 
 def main():
     release=sys.argv[1] if len(sys.argv) >= 2 else 'precise'
     if release in ['precise', 'wheezy']:
         flavor = 'deb'
-    elif release in ['rhel6.4', 'centos6.4']:
+    elif release in ['rhel', 'centos']:
         flavor = 'rpm'
     else:
         wr_red('Unsupported release ' + release)
@@ -232,22 +269,28 @@ def main():
         yamlfile = os.tmpnam()
         f = open(yamlfile, 'w+')
         f.write(yaml)
-        # f.write(yamlshort)
+        #f.write(yamlshort)
         f.close()
+        start = datetime.datetime.now()
         proc, host, returncode = make_cluster(yamlfile, release)
         if returncode:
             return returncode
-        sys.stdout.write('Set up cluster on '+host+'\n' )
-        setup_realname_crushmap(host)
+        setuptime = datetime.datetime.now() - start
+
+        sys.stdout.write('Set up cluster on {} in {}m{}s\n'.format(
+            host, setuptime.seconds/60, setuptime.seconds%60))
+        setup_realname_crushmap(host.split('.')[0])
         if not install_repokey(host, flavor) or \
            not install_repo(host, release, flavor) or \
            not install_package('calamari-agent', host, flavor) or \
+           not edit_diamond_config(host) or \
            not install_package('calamari-restapi', host, flavor) or \
-           not install_package('calamari-webapp', host, flavor):
+           not install_package('calamari-webapp', host, flavor) or \
+           not disable_default_nginx(host, flavor):
             return 1
-        #XXX how do I do this outside the GUI?
-        #setup_localhost_cluster(host)
-        webbrowser.open('http://{host}/dashboard'.format(host))
+
+        setup_localhost_cluster(host, flavor)
+        webbrowser.open('http://{host}/'.format(host=host))
         sys.stdout.write('Hit <return> to tear down\n')
         _ = sys.stdin.readline()
         # kill teuthology, vm
