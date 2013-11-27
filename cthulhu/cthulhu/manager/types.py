@@ -37,9 +37,6 @@ POOL = 'pool'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
 
-# The types that RpcInterface accepts operations on
-CEPH_OBJECT_TYPES = [OSD, POOL, CLUSTER]
-
 # The objects that ClusterMonitor keeps copies of from the mon
 SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgBrief, Health]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)

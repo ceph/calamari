@@ -1,4 +1,5 @@
 from collections import defaultdict
+import threading
 from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -11,6 +12,25 @@ WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
                    'splitting', 'degraded', 'remapped', 'scrubbing', 'repair',
                    'wait_backfill', 'backfilling', 'backfill_toofull'])
 OKAY_STATES = set(['active', 'clean'])
+
+
+class DerivedObjects(dict):
+    """
+    Store for items which we generate as a function of sync objects, decorated
+    versions etc.  Basically just a dict with locking.
+    """
+
+    def __init__(self):
+        super(DerivedObjects, self).__init__()
+        self._lock = threading.Lock()
+
+    def get(self, key, default=None):
+        with self._lock:
+            return super(DerivedObjects, self).get(key, default)
+
+    def set(self, key, value):
+        with self._lock:
+            self[key] = value
 
 
 class OsdPgDetail(object):
