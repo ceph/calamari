@@ -55,6 +55,8 @@ class DataObject(object):
 
 
 class RPCView(APIView):
+    serializer = None
+
     def __init__(self, *args, **kwargs):
         super(RPCView, self).__init__(*args, **kwargs)
         self.client = zerorpc.Client()
@@ -67,8 +69,29 @@ class RPCView(APIView):
             return Response({'detail': "RPC error ('%s')" % e},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
 
+    def metadata(self, request):
+        ret = super(RPCView, self).metadata(request)
+
+        actions = {}
+        # TODO: get the fields marked up with whether they are:
+        # - [allowed|required|forbidden] during [creation|update] (6 possible kinds of field)
+        # e.g. on a pool
+        # id is forbidden during creation and update
+        # pg_num is required during create and optional during update
+        # pgp_num is optional during create or update
+        # nothing is required during update
+        if hasattr(self, 'update'):
+            actions['PATCH'] = self.serializer().metadata()
+        if hasattr(self, 'create'):
+            actions['POST'] = self.serializer().metadata()
+        ret['actions'] = actions
+
+        return ret
+
 
 class Space(RPCView):
+    serializer = ClusterSpaceSerializer
+
     def get(self, request, fsid):
         def to_bytes(kb):
             if kb is not None:
@@ -91,6 +114,8 @@ class Space(RPCView):
 
 
 class Health(RPCView):
+    serializer = ClusterHealthSerializer
+
     def get(self, request, fsid):
         health = self.client.get_sync_object(fsid, 'health')
         return Response(ClusterHealthSerializer(DataObject({
@@ -100,6 +125,8 @@ class Health(RPCView):
 
 
 class HealthCounters(RPCView):
+    serializer = ClusterHealthCountersSerializer
+
     def get(self, request, fsid):
         counters = self.client.get_derived_object(fsid, 'counters')
         if not counters:
@@ -112,6 +139,8 @@ class HealthCounters(RPCView):
 
 
 class OSDList(RPCView):
+    serializer = OSDListSerializer
+
     def _filter_by_pg_state(self, osds, pg_states, osds_by_pg_state):
         """Filter the cluster OSDs by PG states.
 
@@ -151,6 +180,8 @@ class OSDList(RPCView):
 
 
 class OSDDetail(RPCView):
+    serializer = OSDDetailSerializer
+
     def get(self, request, fsid, osd_id):
         data = self.client.get(fsid, 'osd', int(osd_id))
         osd = DataObject({'osd': data})
@@ -158,6 +189,8 @@ class OSDDetail(RPCView):
 
 
 class OSDMap(RPCView):
+    serializer = OSDMapSerializer
+
     def get(self, request, fsid):
         data = self.client.get_sync_object(fsid, 'osd_map')
         osd_map = DataObject({'version': data['epoch'], 'data': data})
@@ -169,6 +202,8 @@ class RPCViewSet(viewsets.ViewSetMixin, RPCView):
 
 
 class ClusterViewSet(RPCViewSet):
+    serializer = ClusterSerializer
+
     def list(self, request):
         clusters = [DataObject(c) for c in self.client.list_clusters()]
 
@@ -205,6 +240,8 @@ class PoolDataObject(DataObject):
 
 
 class PoolViewSet(RPCViewSet):
+    serializer = PoolSerializer
+
     def list(self, request, fsid):
         pools = [PoolDataObject(p) for p in self.client.list(fsid, 'pool')]
 
@@ -244,6 +281,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class RequestViewSet(RPCViewSet):
+    serializer = RequestSerializer
+
     def retrieve(self, request, fsid, request_id):
         user_request = DataObject(self.client.get_request(fsid, request_id))
         return Response(RequestSerializer(user_request).data)
@@ -255,6 +294,8 @@ class RequestViewSet(RPCViewSet):
 
 
 class CrushRuleViewSet(RPCViewSet):
+    serializer = CrushRuleSerializer
+
     def list(self, request, fsid):
         rules = self.client.list(fsid, CRUSH_RULE)
         return Response(CrushRuleSerializer([
@@ -263,6 +304,8 @@ class CrushRuleViewSet(RPCViewSet):
 
 
 class CrushRuleSetViewSet(RPCViewSet):
+    serializer = CrushRuleSetSerializer
+
     def list(self, request, fsid):
         rules = self.client.list(fsid, CRUSH_RULE)
         rulesets_data = defaultdict(list)
