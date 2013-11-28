@@ -2,6 +2,8 @@
 
 case "$1" in
 	remove)
+		a2dismod wsgi
+		a2dismod proxy_http
 		a2dismod proxy
 		a2dissite calamari.conf
 		a2dissite graphite.conf
