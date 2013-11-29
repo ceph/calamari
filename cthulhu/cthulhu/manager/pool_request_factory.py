@@ -1,9 +1,7 @@
-
-
+from cthulhu.log import log
 from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.types import OsdMap
 from cthulhu.manager.user_request import OsdMapModifyingRequest
-from cthulhu.manager.log import log
 
 # Valid values for the 'var' argument to 'ceph osd pool set'
 POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval", "pg_num", "pgp_num", "crush_ruleset", "hashpspool"]

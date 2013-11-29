@@ -1,6 +1,7 @@
 import re
 import datetime
 import threading
+from dateutil.tz import tzutc
 
 from pytz import utc
 import dateutil
@@ -10,14 +11,15 @@ import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
 import zmq
+from cthulhu.log import log
 
 from cthulhu.manager import derived
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL
-from cthulhu.manager.log import log
 from cthulhu.manager.user_request import RequestCollection, UserRequest
+
 from cthulhu.config import SALT_CONFIG_PATH, SALT_RUN_PATH, FAVORITE_TIMEOUT_S
 
 
@@ -64,7 +66,7 @@ class ClusterMonitor(threading.Thread):
     another to listen to user requests.
     """
 
-    def __init__(self, fsid, cluster_name, notifier):
+    def __init__(self, fsid, cluster_name, notifier, persister):
         super(ClusterMonitor, self).__init__()
 
         # Which mon we are currently using for running requests,
@@ -96,6 +98,12 @@ class ClusterMonitor(threading.Thread):
             OSD: OsdRequestFactory,
             POOL: PoolRequestFactory
         }
+
+        self._persister = persister
+
+    def stop(self):
+        log.info("%s stopping" % self.__class__.__name__)
+        self._complete.set()
 
     def list_requests(self):
         return self._requests.get_all()
@@ -155,15 +163,12 @@ class ClusterMonitor(threading.Thread):
                         # This does not concern us, ignore it
                         pass
                 except:
-                    # Because this is our main event handling loop,
+                    # Because this is our main event handling loop, swallow exceptions
+                    # instead of letting them end the world.
                     log.exception("Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
 
         log.info("%s complete" % self.__class__.__name__)
-
-    def stop(self):
-        log.info("%s stopping" % self.__class__.__name__)
-        self._complete.set()
 
     def is_favorite(self, minion_id):
         """
@@ -264,18 +269,15 @@ class ClusterMonitor(threading.Thread):
 
             # UserRequests may post CompletionConditions which depend on the state
             # of sync objects, check if there are any of these out there and
-            for user_request in self._requests.get_all(state=UserRequest.COMPLETING):
-                cc = user_request.completion_condition
-                if sync_type in cc.depends:
-                    try:
-                        if cc.apply(self._sync_objects):
-                            user_request.complete()
-                    except:
-                        # TODO: mark errored
-                        user_request.complete()
+            for user_request in self._requests.get_all(state=UserRequest.SUBMITTED):
+                user_request.on_map(sync_type, self._sync_objects)
 
-                        # TODO: for this sync object and any regenerated derived objects, push
-                        # them to the queue for persistence.
+            # TODO: get datetime out of map instead of setting it to now
+            if isinstance(data['version'], int):
+                version = data['version']
+            else:
+                version = None
+            self._persister.update(self._fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
 
     def on_completion(self, data):
         jid = data['jid']

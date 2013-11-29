@@ -5,7 +5,7 @@ import salt
 import salt.client
 import threading2
 from cthulhu.config import SALT_CONFIG_PATH
-from cthulhu.manager.log import log
+from cthulhu.log import log
 from cthulhu.manager.types import OsdMap
 
 

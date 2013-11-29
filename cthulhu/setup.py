@@ -10,7 +10,8 @@ setup(
     license="Inktank Ceph Enterprise Software License",
     entry_points={
         'console_scripts': [
-            'cthulhu-manager = cthulhu.manager.manager:main'
+            'cthulhu-manager = cthulhu.manager.manager:main',
+            'calamari-ctl = cthulhu.calamari_ctl:main'
         ]
     }
 )

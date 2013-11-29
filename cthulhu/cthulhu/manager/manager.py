@@ -1,12 +1,17 @@
 import json
 import threading
+import signal
+
 import gevent
 import salt
-import signal
+import sqlalchemy
 import zmq
+
+from cthulhu.log import log
+from cthulhu.config import DB_PATH
 from cthulhu.manager.cluster_monitor import ClusterMonitor, SALT_RUN_PATH
-from cthulhu.manager.log import log
 from cthulhu.manager.rpc import RpcThread
+from cthulhu.persistence.sync_objects import Persister
 
 
 def enable_gevent():
@@ -74,10 +79,17 @@ class Manager(object):
 
         self._rpc_thread = RpcThread(self)
         self._discovery_thread = DiscoveryThread(self)
-        self._notification_thread = NotificationThread()
 
         # FSID to ClusterMonitor
         self.monitors = {}
+
+        self._notifier = NotificationThread()
+        # TODO: catch and handle DB connection problems gracefully
+        try:
+            self._persister = Persister(DB_PATH)
+        except sqlalchemy.exc.ArgumentError as e:
+            log.error("Database error: %s" % e)
+            raise
 
     def delete_cluster(self, fs_id):
         """
@@ -95,25 +107,28 @@ class Manager(object):
             monitor.stop()
         self._rpc_thread.stop()
         self._discovery_thread.stop()
-        self._notification_thread.stop()
+        self._notifier.stop()
 
     def start(self):
         log.info("%s starting" % self.__class__.__name__)
         self._rpc_thread.start()
         self._discovery_thread.start()
-        self._notification_thread.start()
+        self._notifier.start()
+        self._persister.start()
 
     def join(self):
         log.info("%s joining" % self.__class__.__name__)
         self._rpc_thread.join()
         self._discovery_thread.join()
-        self._notification_thread.join()
+        self._notifier.join()
+        self._persister.join()
         for monitor in self.monitors.values():
             monitor.join()
 
     def on_discovery(self, minion_id, heartbeat_data):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
-        cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'], self._notification_thread)
+        cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
+                                         self._notifier, self._persister)
         self.monitors[heartbeat_data['fsid']] = cluster_monitor
 
         #persistence.get_or_create(

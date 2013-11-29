@@ -6,6 +6,7 @@ django-jsonfield==0.9.10
 djangorestframework==2.3.6
 requests==1.2.3
 wsgiref==0.1.2
+sqlalchemy==0.8.3
 
 # This is only needed for development environments
 # Frozen version because 2.1.0 is broken:

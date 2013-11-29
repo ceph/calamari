@@ -1,11 +1,11 @@
 import threading
 import traceback
 import zerorpc
+from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
 
 CTHULHU_RPC_URL = 'tcp://127.0.0.1:5050'
-from cthulhu.manager.log import log
 
 
 class NotFound(Exception):
