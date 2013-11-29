@@ -1,6 +1,11 @@
 import threading
 import traceback
 import zerorpc
+
+from salt.key import Key
+import salt.config
+
+from cthulhu.config import SALT_CONFIG_PATH
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
@@ -174,6 +179,72 @@ class RpcInterface(object):
         cluster = self._fs_resolve(fs_id)
         requests = cluster.list_requests()
         return [{'id': r.id, 'state': r.state} for r in requests]
+
+    @property
+    def salt_key(self):
+        return Key(salt.config.master_config(SALT_CONFIG_PATH))
+
+    def minion_status(self, status_filter):
+        """
+        Return a list of salt minion keys
+
+        :param minion_status: A status, one of acc, pre, rej, all
+        """
+        keys = self.salt_key.list_keys()
+        result = []
+
+        key_to_status = {
+            'minions_pre': 'pre',
+            'minions_rejected': 'rejected',
+            'minions': 'accepted'
+        }
+
+        for key, status in key_to_status.items():
+            for minion in keys[key]:
+                if not status_filter or status == status_filter:
+                    result.append({
+                        'id': minion,
+                        'status': status
+                    })
+
+        return result
+
+    def minion_accept(self, minion_id):
+        """
+        :param minion_id: A minion ID, or a glob
+        """
+        return self.salt_key.accept(minion_id)
+
+    def minion_reject(self, minion_id):
+        """
+        :param minion_id: A minion ID, or a glob
+        """
+        return self.salt_key.reject(minion_id)
+
+    def minion_delete(self, minion_id):
+        """
+        :param minion_id: A minion ID, or a glob
+        """
+        return self.salt_key.delete_key(minion_id)
+
+    def minion_get(self, minion_id):
+        result = self.salt_key.name_match(minion_id, full=True)
+        if not result:
+            return None
+
+        if 'minions' in result:
+            status = "accepted"
+        elif "minions_pre" in result:
+            status = "pre"
+        elif "minions_rejected" in result:
+            status = "rejected"
+        else:
+            raise ValueError(result)
+
+        return {
+            'id': minion_id,
+            'status': status
+        }
 
 
 class RpcThread(threading.Thread):

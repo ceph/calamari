@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, \
-    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer
+    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -327,6 +327,40 @@ class CrushRuleSetViewSet(RPCViewSet):
         }) for (rd_id, rd_rules) in rulesets_data.items()]
 
         return Response(CrushRuleSetSerializer(rulesets, many=True).data)
+
+
+class SaltKeyViewSet(RPCViewSet):
+    serializer = SaltKeySerializer
+
+    def list(self, request):
+        return Response(self.serializer(self.client.minion_status(None), many=True).data)
+
+    def partial_update(self, request, pk):
+        valid_status = ['accepted', 'rejected']
+        if not 'status' in request.DATA:
+            return Response({
+                'status': "This field is mandatory"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        elif request.DATA['status'] not in valid_status:
+            return Response({'status': "Must be one of %s" % ",".join(valid_status)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if request.DATA['status'] == 'accepted':
+                self.client.minion_accept(pk)
+            else:
+                self.client.minion_reject(pk)
+
+        # TODO validate transitions, cannot go from rejected to accepted.
+        # TODO handle 404
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def delete(self, request, pk):
+        # TODO handle 404
+        self.client.minion_delete(pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, pk):
+        return Response(self.serializer(self.client.minion_get(pk)).data)
 
 
 @api_view(['GET'])

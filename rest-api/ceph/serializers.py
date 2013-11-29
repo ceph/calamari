@@ -203,3 +203,11 @@ class RequestSerializer(serializers.Serializer):
 
     id = serializers.CharField()
     state = serializers.CharField()
+
+
+class SaltKeySerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'status')
+
+    id = serializers.CharField()
+    status = serializers.CharField()

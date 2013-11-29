@@ -1,5 +1,4 @@
 from ConfigParser import ConfigParser
-import json
 import logging
 import os
 import socket
@@ -126,25 +125,16 @@ class EmbeddedCalamariControl(CalamariControl):
         return up
 
     def clear_keys(self):
-        """
-        XXX temporary
-        This method will go away once key handling can be driven via the REST API
-        """
-        subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-D", "-y"], stderr=subprocess.PIPE)
+        for key in self.api.get("salt_key").json():
+            r = self.api.delete("salt_key/%s" % key['id'])
+            r.raise_for_status()
 
     def authorize_keys(self, minion_ids):
-        """
-        XXX temporary
-        This method will go away once key handling can be driven via the REST API
-
-        Wait for the minion ids to show up in an unauthorized state, and then authorize
-        them all
-        """
-
         def _fqdns_present():
-            data = json.loads(subprocess.check_output(["salt-key", "-c", "salt/etc/salt", "-L", "--out=json"], stderr=subprocess.PIPE))
-            all_present = len(set(minion_ids) & set(data['minions_pre'])) == len(minion_ids)
-            log.debug("checking keys, found %s (%s)" % (data['minions_pre'], all_present))
+            found_ids = [m['id'] for m in self.api.get("salt_key").json()]
+            all_present = len(set(minion_ids) & set(found_ids)) == len(minion_ids)
+
+            log.debug("checking keys, found %s (%s)" % (found_ids, all_present))
 
             return all_present
 
@@ -152,8 +142,8 @@ class EmbeddedCalamariControl(CalamariControl):
 
         for minion_id in minion_ids:
             log.debug("Authorising key for %s" % minion_id)
-
-            subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-y", "-a", minion_id], stderr=subprocess.PIPE)
+            r = self.api.patch("salt_key/%s" % minion_id, {'status': 'accepted'})
+            r.raise_for_status()
 
     def restart(self):
         processes = [ps['group'] for ps in self._rpc.supervisor.getAllProcessInfo()]

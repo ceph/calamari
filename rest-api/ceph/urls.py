@@ -5,6 +5,7 @@ from ceph import views
 router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'user', views.UserViewSet)
 router.register(r'cluster', views.ClusterViewSet, base_name='cluster')
+router.register(r'salt_key', views.SaltKeyViewSet, base_name='salt_key')
 
 
 urlpatterns = patterns(
