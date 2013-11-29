@@ -32,17 +32,26 @@ def get_latest_graphite(metric):
 
     tzinfo = pytz.timezone("UTC")
     until_time = parseATTime('now', tzinfo)
-    from_time = parseATTime('-10min', tzinfo)
-    series = fetchData({
-        'startTime': from_time,
-        'endTime': until_time,
-        'localOnly': False},
-        metric
-    )
-    try:
-        return [k for k in series[0] if k is not None][-1]
-    except IndexError:
-        return None
+
+    def _get(from_time):
+        series = fetchData({
+            'startTime': from_time,
+            'endTime': until_time,
+            'localOnly': False},
+            metric
+        )
+        try:
+            return [k for k in series[0] if k is not None][-1]
+        except IndexError:
+            return None
+
+    # In case the cluster has been offline for some time, try looking progressively
+    # further back in time for data.  This would not be necessary if graphite simply
+    # let us ask for the latest value (Calamari issue #6876)
+    for trange in ['-1min', '-10min', '-60min', '-1d', '-7d']:
+        val = _get(parseATTime(trange, tzinfo))
+        if val:
+            return val
 
 
 class DataObject(object):

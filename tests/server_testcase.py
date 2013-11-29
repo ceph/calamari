@@ -34,7 +34,7 @@ CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 OSD_RECOVERY_PERIOD = 600
 
 
-if False:
+if True:
     CALAMARI_CTL = EmbeddedCalamariControl
     CEPH_CTL = EmbeddedCephControl
     FORCE_KEYS = True

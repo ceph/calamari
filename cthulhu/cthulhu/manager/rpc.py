@@ -57,9 +57,9 @@ class RpcInterface(object):
             return None
         else:
             return {
-                'id': cluster._fsid,
-                'name': cluster._name,
-                'update_time': cluster._update_time.isoformat()
+                'id': cluster.fsid,
+                'name': cluster.name,
+                'update_time': cluster.update_time.isoformat()
             }
 
     def list_clusters(self):

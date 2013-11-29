@@ -188,7 +188,7 @@ class CephCluster(object):
             # TODO these should actually have a different crush ruleset etc each
             objects['osd_map']['pools'].append(_pool_template(pool, i, 64))
 
-        objects['osd_tree'] = {"nodes": [
+        tree = {"nodes": [
             {
                 "id": -1,
                 "name": "default",
@@ -205,7 +205,7 @@ class CephCluster(object):
                 if s['type'] != 'osd':
                     continue
 
-                objects['osd_tree']['nodes'].append({
+                tree['nodes'].append({
                     "id": s['id'],
                     "name": "osd.%s" % s['id'],
                     "exists": 1,
@@ -218,7 +218,7 @@ class CephCluster(object):
                 })
 
             # Entry for the host itself
-            objects['osd_tree']['nodes'].append({
+            tree['nodes'].append({
                 "id": host_tree_id,
                 "name": get_hostname(fqdn),
                 "type": "host",
@@ -228,6 +228,8 @@ class CephCluster(object):
                 ]
             })
             host_tree_id -= 1
+
+        objects['osd_map']['tree'] = tree
 
         # Mon status
         # ==========

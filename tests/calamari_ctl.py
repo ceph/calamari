@@ -155,6 +155,14 @@ class EmbeddedCalamariControl(CalamariControl):
 
             subprocess.check_call(["salt-key", "-c", "salt/etc/salt", "-y", "-a", minion_id], stderr=subprocess.PIPE)
 
+    def restart(self):
+        processes = [ps['group'] for ps in self._rpc.supervisor.getAllProcessInfo()]
+        for ps in processes:
+            self._rpc.supervisor.stopProcessGroup(ps)
+        for ps in processes:
+            self._rpc.supervisor.startProcessGroup(ps)
+        wait_until_true(self._services_up)
+
     def start(self):
         config_path = os.path.join(TREE_ROOT, "supervisord.conf")
         assert os.path.exists(config_path)

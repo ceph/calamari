@@ -1,17 +1,21 @@
+import hashlib
 import json
 import threading
 import signal
+from dateutil.tz import tzutc
 
 import gevent
 import salt
-import sqlalchemy
 import zmq
+
+import sqlalchemy
+from sqlalchemy import create_engine
 
 from cthulhu.log import log
 from cthulhu.config import DB_PATH
 from cthulhu.manager.cluster_monitor import ClusterMonitor, SALT_RUN_PATH
 from cthulhu.manager.rpc import RpcThread
-from cthulhu.persistence.sync_objects import Persister
+from cthulhu.persistence.sync_objects import Persister, Session, SyncObject
 
 
 def enable_gevent():
@@ -84,9 +88,12 @@ class Manager(object):
         self.monitors = {}
 
         self._notifier = NotificationThread()
-        # TODO: catch and handle DB connection problems gracefully
         try:
-            self._persister = Persister(DB_PATH)
+            # Prepare persistence
+            engine = create_engine(DB_PATH)
+            Session.configure(bind=engine)
+
+            self._persister = Persister()
         except sqlalchemy.exc.ArgumentError as e:
             log.error("Database error: %s" % e)
             raise
@@ -101,6 +108,8 @@ class Manager(object):
         victim.join()
         del self.monitors[fs_id]
 
+        self._expunge(fs_id)
+
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
         for monitor in self.monitors.values():
@@ -109,8 +118,57 @@ class Manager(object):
         self._discovery_thread.stop()
         self._notifier.stop()
 
+    def _expunge(self, fsid):
+        session = Session()
+        session.query(SyncObject).filter_by(fsid=fsid).delete()
+        session.commit()
+
+    def _recover(self):
+        # I want the most recent version of every sync_object
+        session = Session()
+        fsids = [row[0] for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
+        for fsid in fsids:
+
+            cluster_monitor = ClusterMonitor(fsid, 'ceph', self._notifier, self._persister)
+            self.monitors[fsid] = cluster_monitor
+
+            object_types = [row[0] for row in session.query(SyncObject.sync_type).filter_by(fsid=fsid).distinct()]
+            for sync_type in object_types:
+                latest_record = session.query(SyncObject).filter_by(
+                    fsid=fsid, sync_type=sync_type).order_by(
+                        SyncObject.version.desc(), SyncObject.when.desc())[0]
+
+                # FIXME: bit of a hack because records persisted only store their 'version'
+                # if it's a real counter version, underlying problem is that we have
+                # underlying data (health, pg_brief) without usable version counters.
+                def md5(raw):
+                    hasher = hashlib.md5()
+                    hasher.update(raw)
+                    return hasher.hexdigest()
+
+                if latest_record.version:
+                    version = latest_record.version
+                else:
+                    version = md5(latest_record.data)
+
+                when = latest_record.when
+                when = when.replace(tzinfo=tzutc())
+                if cluster_monitor.update_time is None or when > cluster_monitor.update_time:
+                    cluster_monitor.update_time = when
+
+                cluster_monitor.inject_sync_object(sync_type, version, json.loads(latest_record.data))
+
+        for monitor in self.monitors.values():
+            log.info("Recovery: Cluster %s with update time %s" % (monitor.fsid, monitor.update_time))
+            monitor.start()
+
     def start(self):
         log.info("%s starting" % self.__class__.__name__)
+
+        # Before we start listening to the outside world, recover
+        # our last known state from persistent storage
+        self._recover()
+
         self._rpc_thread.start()
         self._discovery_thread.start()
         self._notifier.start()

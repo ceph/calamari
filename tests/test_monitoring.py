@@ -1,4 +1,4 @@
-from django.utils.unittest.case import skipIf
+
 import time
 from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL, OSD_RECOVERY_PERIOD, CALAMARI_RESYNC_PERIOD
 from tests.utils import wait_until_true, WaitTimeout
@@ -125,14 +125,23 @@ class TestMonitoring(ServerTestCase):
 
             self.ceph_ctl.go_dark(cluster_id, dark=False, minion_id=mon_fqdn)
 
-    @skipIf(True, "not implemented yet")
     def test_recovery(self):
         """
         Check that calamari persists enough data about the monitored cluster
         that it can service REST API read operations even if it restarts
         while the cluster is unavailable.
         """
-        pass
+        cluster_id = self._wait_for_cluster()
+        self.ceph_ctl.go_dark(cluster_id)
+
+        r = self.api.get("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 200)
+
+        self.calamari_ctl.restart()
+
+        # Remember meeeee!
+        r = self.api.get("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 200)
 
     def test_cluster_removal(self):
         """
@@ -146,6 +155,15 @@ class TestMonitoring(ServerTestCase):
         self.assertEqual(r.status_code, 200)
         r = self.api.delete("cluster/%s" % cluster_id)
         self.assertEqual(r.status_code, 204)
+        r = self.api.get("cluster/%s" % cluster_id)
+        self.assertEqual(r.status_code, 404)
+
+        # Test that once it's gone, if we restart cthulhu
+        # it's still not visible (checking its not erroneously
+        # recovered from DB state)
+
+        self.calamari_ctl.restart()
+
         r = self.api.get("cluster/%s" % cluster_id)
         self.assertEqual(r.status_code, 404)
 

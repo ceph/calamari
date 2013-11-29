@@ -9,10 +9,9 @@ import gevent.queue
 import gevent.greenlet
 import gevent.event
 
-from sqlalchemy import Column, String, Text, DateTime, Integer
+from sqlalchemy import Column, String, Text, DateTime, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 
 from cthulhu.log import log
 
@@ -31,6 +30,8 @@ class SyncObject(Base):
     when = Column(DateTime)
     data = Column(Text)
 
+    def __repr__(self):
+        return "<SyncObject %s/%s/%s>" % (self.fsid, self.sync_type, self.version if self.version else self.when)
 
 def initialize(db_path):
     engine = create_engine(db_path)
@@ -42,14 +43,12 @@ class Persister(gevent.greenlet.Greenlet):
     Asynchronously persist a queue of SyncObject updates to a
     database.
     """
-    def __init__(self, db_path):
+    def __init__(self):
         super(Persister, self).__init__()
 
         self._queue = gevent.queue.Queue()
         self._complete = gevent.event.Event()
 
-        engine = create_engine(db_path)
-        Session.configure(bind=engine)
         self._session = Session()
 
     def update(self, fsid, sync_type, version, when, data):

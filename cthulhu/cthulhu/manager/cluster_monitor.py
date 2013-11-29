@@ -69,22 +69,19 @@ class ClusterMonitor(threading.Thread):
     def __init__(self, fsid, cluster_name, notifier, persister):
         super(ClusterMonitor, self).__init__()
 
+        self.fsid = fsid
+        self.name = cluster_name
+        self.update_time = None
+
         # Which mon we are currently using for running requests,
         # identified by minion ID
         self._favorite_mon = None
-
-        self._fsid = fsid
-        self._name = cluster_name
-        self._update_time = None
-
         self._last_heartbeat = {}
-
-        self._requests = RequestCollection()
 
         self._complete = threading.Event()
 
         self._sync_objects = SyncObjects()
-
+        self._requests = RequestCollection()
         self._derived_objects = DerivedObjects()
 
         ctx = zmq.Context(1)
@@ -134,7 +131,7 @@ class ClusterMonitor(threading.Thread):
                 # - ceph/heartbeat/<fsid> where fsid is my fsid
 
                 try:
-                    if tag.startswith("ceph/heartbeat/{0}".format(self._fsid)):
+                    if tag.startswith("ceph/heartbeat/{0}".format(self.fsid)):
                         # A ceph.heartbeat beacon
                         self.on_heartbeat(data['id'], data['data'])
                     elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
@@ -142,7 +139,7 @@ class ClusterMonitor(threading.Thread):
                         # the tag, if salt would only let us add custom tags to our jobs.
                         # Instead we enforce a convention that all calamari jobs must include
                         # fsid in their return value.
-                        if 'fsid' not in data['return'] or data['return']['fsid'] != self._fsid:
+                        if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
                             log.debug("Ignoring job return, not for my FSID")
                             continue
 
@@ -220,7 +217,7 @@ class ClusterMonitor(threading.Thread):
             new_version = cluster_data['versions'][sync_type.str]
             # FIXME: for versions (not hashes) check for greater than, not just inequality
             if new_version != old_version:
-                log.info("Advanced version %s/%s %s->%s" % (self._fsid, sync_type.str, old_version, new_version))
+                log.info("Advanced version %s/%s %s->%s" % (self.fsid, sync_type.str, old_version, new_version))
 
                 # We are out of date: request an up to date copy
                 client = salt.client.LocalClient(SALT_CONFIG_PATH)
@@ -230,7 +227,28 @@ class ClusterMonitor(threading.Thread):
                                                     'since': old_version}))
 
         # persistence.heartbeat()
-        self._update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+        self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+
+    def inject_sync_object(self, sync_type, version, data):
+        sync_type = SYNC_OBJECT_STR_TYPE[sync_type]
+        self._sync_objects.set_map(sync_type, version, data)
+
+        # The frontend would like us to maintain some derived objects that
+        # munge together the PG and OSD maps into an easier-to-consume form.
+        for generator in derived.generators:
+            if sync_type in generator.depends:
+                dependency_data = {}
+                for t in generator.depends:
+                    obj = self._sync_objects.get(t)
+                    if obj is not None:
+                        dependency_data[t] = obj.data
+                    else:
+                        dependency_data[t] = None
+
+                if None not in dependency_data.values():
+                    log.debug("Updating %s" % generator.__name__)
+                    derived_objects = generator.generate(dependency_data)
+                    self._derived_objects.update(derived_objects)
 
     def on_sync_object(self, minion_id, data):
         if minion_id != self._favorite_mon:
@@ -248,24 +266,7 @@ class ClusterMonitor(threading.Thread):
                 'data': data['data']
             })
 
-            self._sync_objects.set_map(sync_type, data['version'], data['data'])
-
-            # The frontend would like us to maintain some derived objects that
-            # munge together the PG and OSD maps into an easier-to-consume form.
-            for generator in derived.generators:
-                if sync_type in generator.depends:
-                    dependency_data = {}
-                    for t in generator.depends:
-                        obj = self._sync_objects.get(t)
-                        if obj is not None:
-                            dependency_data[t] = obj.data
-                        else:
-                            dependency_data[t] = None
-
-                    if None not in dependency_data.values():
-                        log.debug("Updating %s" % generator.__name__)
-                        derived_objects = generator.generate(dependency_data)
-                        self._derived_objects.update(derived_objects)
+            self.inject_sync_object(data['type'], data['version'], data['data'])
 
             # UserRequests may post CompletionConditions which depend on the state
             # of sync objects, check if there are any of these out there and
@@ -277,7 +278,7 @@ class ClusterMonitor(threading.Thread):
                 version = data['version']
             else:
                 version = None
-            self._persister.update(self._fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
+            self._persister.update(self.fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
 
     def on_completion(self, data):
         jid = data['jid']
@@ -346,11 +347,3 @@ class ClusterMonitor(threading.Thread):
 
     def request_update(self, obj_type, obj_id, attributes):
         self.request('update', obj_type, obj_id, attributes)
-
-    @property
-    def fsid(self):
-        return self._fsid
-
-    @property
-    def name(self):
-        return self._name
