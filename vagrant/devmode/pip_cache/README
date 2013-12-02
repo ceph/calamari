@@ -1,0 +1,2 @@
+This is where the VMs cache pip packages, so that they don't
+re-download everything when you do a new 'vagrant up'

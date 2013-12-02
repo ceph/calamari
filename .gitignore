@@ -16,3 +16,4 @@ virtualenv
 .coverage*
 _build
 htmlcov
+pip_cache
