@@ -22,3 +22,11 @@ cthulhu_mod:
     - cwd: /home/vagrant/calamari/cthulhu
     - require:
       - sls: virtualenv
+
+calamari_web_mod:
+  cmd.run:
+    - user: vagrant
+    - name: "source ../env/bin/activate && python setup.py develop"
+    - cwd: /home/vagrant/calamari/calamari-web
+    - require:
+      - sls: virtualenv

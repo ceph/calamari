@@ -17,3 +17,7 @@ virtualenv
 _build
 htmlcov
 pip_cache
+*.egg-info
+*.db
+*.pid
+build/

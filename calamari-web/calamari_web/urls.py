@@ -6,7 +6,8 @@ from settings import STATIC_DOC_ROOT, DEBUG, GRAPHITE_API_PREFIX
 # from django.contrib import admin
 # admin.autodiscover()
 
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     url(r'^$', 'calamari.views.home'),
 
     url(r'^api/v1/', include('ceph.urls')),

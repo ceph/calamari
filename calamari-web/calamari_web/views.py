@@ -26,6 +26,7 @@ REGISTERED = "Inktank, Inc."
 HOSTNAME = "calamari.inktank.com"
 IPADDR = "10.10.2.3"
 
+
 @api_view(['GET'])
 @permission_classes((AllowAny,))
 def info(request):
@@ -36,6 +37,7 @@ def info(request):
         "hostname": HOSTNAME,
         "ipaddr": IPADDR
     })
+
 
 @api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
@@ -66,20 +68,24 @@ def login(request):
     request.session.set_test_cookie()
     return Response({})
 
+
 @api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
 def logout(request):
     auth_logout(request)
     return Response({'message': 'Logged out'})
 
+
 def home(request):
     return HttpResponseRedirect(reverse('dashboard', kwargs={'path': ''}))
+
 
 @login_required
 def serve_dir_or_index(request, path, document_root):
     if len(path) == 0:
         path = 'index.html'
     return static_serve(request, path, document_root)
+
 
 @login_required
 def dashboard(request, path, document_root):

@@ -137,10 +137,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
+    'calamari_web',
     'rest_framework',
     'ceph',
     'graphite.render',
@@ -259,10 +256,10 @@ LDAP_URI = None
 JAVASCRIPT_DEBUG = False
 GRAPHITE_API_PREFIX = "/graphite"
 if DEBUG:
-    TEMPLATE_DIRS = os.path.join(os.environ['VIRTUAL_ENV'],  "lib/python2.7/site-packages/graphite/templates")
-    CONTENT_DIR = os.path.join(os.environ['VIRTUAL_ENV'],  "webapp/content/")
+    TEMPLATE_DIRS = os.path.join(os.environ['VIRTUAL_ENV'], "lib/python2.7/site-packages/graphite/templates")
+    CONTENT_DIR = os.path.join(os.environ['VIRTUAL_ENV'], "webapp/content/")
     STATICFILES_DIRS = STATICFILES_DIRS + (
-        os.path.join(os.environ['VIRTUAL_ENV'],  "webapp/content/"),
+        os.path.join(os.environ['VIRTUAL_ENV'], "webapp/content/"),
     )
     STATIC_URL = "/content/"
 

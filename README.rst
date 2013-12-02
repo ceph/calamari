@@ -67,6 +67,7 @@ Calamari server consists of multiple modules, link them into your virtualenv:
     pushd rest-api ; python setup.py develop ; popd
     pushd cthulhu ; python setup.py develop ; popd
     pushd minion-sim ; python setup.py develop ; popd
+    pushd calamari-web ; python setup.py develop ; popd
 
 ``carbon`` needs its configuration files:
 
