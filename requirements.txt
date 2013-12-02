@@ -7,22 +7,25 @@ djangorestframework==2.3.6
 requests==1.2.3
 wsgiref==0.1.2
 sqlalchemy==0.8.3
+supervisor
 
 # This is only needed for development environments
 # Frozen version because 2.1.0 is broken:
 #   https://bitbucket.org/tarek/flake8/pull-request/39
-flake8==2.0.0
+https://bitbucket.org/megies/flake8-1/get/422dc5e.tar.gz
+nose==1.3.0
 
 # Gevent 1.0.x requires cython but doesn't do a good job of depending on it
 cython
 -e git+git://github.com/surfly/gevent.git@1.0rc3#egg=gevent
 
 # Stock coverage doesn't play nicely with gevent
--e git+https://github.com/portante/coverage.git
+-e git+https://github.com/portante/coverage.git#egg=coverage
 
 # Graphite and its friends
 #pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 #pip install graphite-web --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
+Twisted==11.1.0
 django-tagging
 whisper
 pytz
@@ -34,3 +37,6 @@ pyzmq
 python-dateutil
 threading2
 zerorpc
+
+# For minion-sim
+diamond
