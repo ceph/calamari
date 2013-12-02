@@ -23,7 +23,7 @@
 # The user to run the salt-master as. Salt will update all permissions to
 # allow the specified user to run the master. If the modified files cause
 # conflicts set verify_env to False.
-user: john
+user: vagrant
 
 # Max open files
 # Each minion connecting to the master uses AT LEAST one file descriptor, the
@@ -53,19 +53,19 @@ user: john
 #ret_port: 4506
 
 # Specify the location of the daemon process ID file
-pidfile: /Users/john/git/calamari/salt/var/run/salt-master.pid
+pidfile: /home/vagrant/calamari/salt/var/run/salt-master.pid
 
-extension_modules: /Users/john/git/calamari/salt/srv/salt/_modules
+extension_modules: /home/vagrant/calamari/salt/srv/salt/_modules
 
 # The root directory prepended to these options: pki_dir, cachedir,
 # sock_dir, log_file, autosign_file, extension_modules, key_logfile, pidfile.
 #root_dir: /
 
 # Directory used to store public key data
-pki_dir: /Users/john/git/calamari/salt/etc/salt/pki
+pki_dir: /home/vagrant/calamari/salt/etc/salt/pki
 
 # Directory to store job and cache data
-cachedir: /Users/john/git/calamari/salt/var/cache/salt/master
+cachedir: /home/vagrant/calamari/salt/var/cache/salt/master
 
 # Verify and set permissions on configuration directories at startup
 #verify_env: True
@@ -90,7 +90,7 @@ cachedir: /Users/john/git/calamari/salt/var/cache/salt/master
 #color: True
 
 # Set the directory used to hold unix sockets
-sock_dir:  /Users/john/git/calamari/salt/var/run/salt/master
+sock_dir:  /home/vagrant/calamari/salt/var/run/salt/master
 
 # The master can take a while to start up when lspci and/or dmidecode is used
 # to populate the grains for the master. Enable if you want to see GPU hardware
@@ -267,7 +267,7 @@ sock_dir:  /Users/john/git/calamari/salt/var/run/salt/master
 
 file_roots:
   base:
-    - /Users/john/git/calamari/salt/srv/salt
+    - /home/vagrant/calamari/salt/srv/salt
 
 # The hash_type is the hash to use when discovering the hash of a file on
 # the master server. The default is md5, but sha1, sha224, sha256, sha384
@@ -360,7 +360,7 @@ file_roots:
 
 pillar_roots:
   base:
-    - /Users/john/git/calamari/salt/srv/pillar
+    - /home/vagrant/calamari/salt/srv/pillar
 
 #ext_pillar:
 #  - hiera: /etc/hiera.yaml
@@ -470,11 +470,11 @@ pillar_roots:
 # location. Remote logging works best when configured to use rsyslogd(8) (e.g.:
 # ``file:///dev/log``), with rsyslogd(8) configured for network logging. The URI
 # format is: <file|udp|tcp>://<host|socketpath>:<port-if-required>/<log-facility>
-log_file:  /Users/john/git/calameri/salt/var/log/salt/master
+log_file:  /home/vagrant/calameri/salt/var/log/salt/master
 #log_file: file:///dev/log
 #log_file: udp://loghost:10514
 
-key_logfile: /Users/john/git/calamari/salt/var/log/salt/key
+key_logfile: /home/vagrant/calamari/salt/var/log/salt/key
 
 # The level of messages to send to the console.
 # One of 'garbage', 'trace', 'debug', info', 'warning', 'error', 'critical'.
