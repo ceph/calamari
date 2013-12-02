@@ -3,17 +3,17 @@ from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.contrib.auth.forms import AuthenticationForm
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.static import serve as static_serve
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseRedirect
-from django.conf import settings
+from django.http import HttpResponseRedirect
 from rest_framework import status
 from django.core.urlresolvers import reverse
-from ceph.models import Cluster
 from django.shortcuts import redirect
+
+import zerorpc
+from cthulhu.manager.rpc import CTHULHU_RPC_URL
 
 #
 # How this is populated and where this info lives will need to change from its
@@ -83,7 +83,9 @@ def serve_dir_or_index(request, path, document_root):
 
 @login_required
 def dashboard(request, path, document_root):
-    clusters = Cluster.objects.all()
+    client = zerorpc.Client()
+    client.connect(CTHULHU_RPC_URL)
+    clusters = client.list_clusters()
     if not clusters:
         return redirect("/admin/#cluster")
     return serve_dir_or_index(request, path, document_root)
