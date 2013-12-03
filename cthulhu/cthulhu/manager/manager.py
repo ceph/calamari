@@ -136,7 +136,7 @@ class Manager(object):
             for sync_type in object_types:
                 latest_record = session.query(SyncObject).filter_by(
                     fsid=fsid, sync_type=sync_type).order_by(
-                        SyncObject.version.desc(), SyncObject.when.desc())[0]
+                    SyncObject.version.desc(), SyncObject.when.desc())[0]
 
                 # FIXME: bit of a hack because records persisted only store their 'version'
                 # if it's a real counter version, underlying problem is that we have
@@ -169,6 +169,7 @@ class Manager(object):
         # our last known state from persistent storage
         self._recover()
 
+        self._rpc_thread.bind()
         self._rpc_thread.start()
         self._discovery_thread.start()
         self._notifier.start()

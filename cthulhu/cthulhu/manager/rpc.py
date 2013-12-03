@@ -257,6 +257,7 @@ class RpcThread(threading.Thread):
         self._manager = manager
         self._complete = threading.Event()
         self._server = zerorpc.Server(RpcInterface(manager))
+        self._bound = False
 
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
@@ -265,10 +266,15 @@ class RpcThread(threading.Thread):
         if self._server:
             self._server.stop()
 
+    def bind(self):
+        log.info("%s bind..." % self.__class__.__name__)
+        self._server.bind(CTHULHU_RPC_URL)
+        self._bound = True
+
     def run(self):
+        assert self._bound
+
         try:
-            log.info("%s bind..." % self.__class__.__name__)
-            self._server.bind(CTHULHU_RPC_URL)
             log.info("%s run..." % self.__class__.__name__)
             self._server.run()
         except:
