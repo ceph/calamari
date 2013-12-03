@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.utils import dateformat
 
 from rest_framework import serializers
-from ceph.models import Cluster
 import dateutil.parser
 
 
@@ -62,7 +61,6 @@ class ClusterSpaceSerializer(serializers.Serializer):
     space = serializers.Field()
 
     class Meta:
-        model = Cluster
         fields = ('space',)
 
 
@@ -70,7 +68,6 @@ class ClusterHealthSerializer(serializers.Serializer):
     report = serializers.Field()
 
     class Meta:
-        model = Cluster
         fields = ('report', 'cluster_update_time', 'cluster_update_time_unix')
 
     # FIXME: should not be copying this field onto health counters etc, clients should get
@@ -83,14 +80,13 @@ class ClusterHealthSerializer(serializers.Serializer):
         return to_unix(update_time)
 
 
-class ClusterHealthCountersSerializer(serializers.ModelSerializer):
+class ClusterHealthCountersSerializer(serializers.Serializer):
     pg = serializers.SerializerMethodField('get_pg')
     mds = serializers.SerializerMethodField('get_mds')
     mon = serializers.SerializerMethodField('get_mon')
     osd = serializers.SerializerMethodField('get_osd')
 
     class Meta:
-        model = Cluster
         fields = ('pg', 'mds', 'mon', 'osd', 'cluster_update_time', 'cluster_update_time_unix')
 
     def get_pg(self, obj):

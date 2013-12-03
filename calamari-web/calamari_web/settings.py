@@ -111,7 +111,7 @@ SESSION_COOKIE_NAME = "calamari_sessionid"
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'calamari.middleware.AngularCSRFRename',
+    'calamari_web.middleware.AngularCSRFRename',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -119,10 +119,10 @@ MIDDLEWARE_CLASSES = (
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'calamari.urls'
+ROOT_URLCONF = 'calamari_web.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
-WSGI_APPLICATION = 'calamari.wsgi.application'
+WSGI_APPLICATION = 'calamari_web.wsgi.application'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".

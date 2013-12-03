@@ -8,15 +8,15 @@ from settings import STATIC_DOC_ROOT, DEBUG, GRAPHITE_API_PREFIX
 
 urlpatterns = patterns(
     '',
-    url(r'^$', 'calamari.views.home'),
+    url(r'^$', 'calamari_web.views.home'),
 
     url(r'^api/v1/', include('ceph.urls')),
-    url(r'^api/v1/auth/login', 'calamari.views.login'),
-    url(r'^api/v1/auth/logout', 'calamari.views.logout'),
+    url(r'^api/v1/auth/login', 'calamari_web.views.login'),
+    url(r'^api/v1/auth/logout', 'calamari_web.views.logout'),
     url(r'^api/v1/auth2/', include('rest_framework.urls', namespace='rest_framework')),
-    url(r'^api/v1/info', 'calamari.views.info'),
+    url(r'^api/v1/info', 'calamari_web.views.info'),
 
-    url(r'^admin/(?P<path>.*)$', 'calamari.views.serve_dir_or_index',
+    url(r'^admin/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_DOC_ROOT}),
 
     url(r'^login/$', 'django.views.static.serve',
@@ -25,7 +25,7 @@ urlpatterns = patterns(
     url(r'^login/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/login/' % STATIC_DOC_ROOT}),
 
-    url(r'^dashboard/(?P<path>.*)$', 'calamari.views.dashboard',
+    url(r'^dashboard/(?P<path>.*)$', 'calamari_web.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_DOC_ROOT},
         name='dashboard'),
 
