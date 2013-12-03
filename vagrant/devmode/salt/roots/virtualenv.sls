@@ -28,6 +28,10 @@ carbon:
     - install_options:
       - "--prefix=/home/vagrant/calamari/env"
       - "--install-lib=/home/vagrant/calamari/env/lib/python2.7/site-packages"
+  require:
+    # Carbon inserts its packages into twisted's folders so it only works
+    # if installed after twisted (graphite packaging is wonky generally)
+    pip: pip_pkgs
 
 graphite-web:
   pip:
