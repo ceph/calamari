@@ -1,5 +1,8 @@
 import json
+import logging
 import requests
+
+log = logging.getLogger(__name__)
 
 
 class AuthenticatedHttpClient(requests.Session):
@@ -38,7 +41,10 @@ class AuthenticatedHttpClient(requests.Session):
 
     def login(self):
         """
+        Authenticate with the Django auth system as
+        it is exposed in the Calamari REST API.
         """
+        log.info("Logging in as %s" % self._username)
         response = self.get("auth/login/")
         response.raise_for_status()
         self.headers['X-XSRF-TOKEN'] = response.cookies['XSRF-TOKEN']

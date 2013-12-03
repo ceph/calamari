@@ -1,6 +1,5 @@
 import logging
 from django.utils.unittest.case import TestCase
-from requests import ConnectionError
 from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
@@ -37,27 +36,13 @@ OSD_RECOVERY_PERIOD = 600
 if True:
     CALAMARI_CTL = EmbeddedCalamariControl
     CEPH_CTL = EmbeddedCephControl
-    FORCE_KEYS = True
 else:
     # TODO: config file or something to allow selecting mode
     CALAMARI_CTL = ExternalCalamariControl
     CEPH_CTL = ExternalCephControl
-    FORCE_KEYS = False
 
 
 class ServerTestCase(TestCase):
-    def _api_connectable(self):
-        """
-        Return true if we can complete an HTTP request without
-        raising ConnectionError.
-        """
-        try:
-            self.api.get("auth/login/")
-        except ConnectionError:
-            return False
-        else:
-            return True
-
     def setUp(self):
         self.calamari_ctl = CALAMARI_CTL()
 
@@ -66,26 +51,13 @@ class ServerTestCase(TestCase):
 
             self.api = self.calamari_ctl.api
 
-            # The calamari REST API goes through a brief period between process
-            # startup and servicing connections
-            wait_until_true(self._api_connectable)
-
-            # Calamari REST API will return 503s until the backend is fully up
-            # and responding to ZeroRPC requests.
-            wait_until_true(lambda: self.api.get("cluster").status_code != 503, timeout=30)
-
             # Let's give calamari something to monitor, though
             # it's up to the test whether they want to
             # actually fire it up/interact with it.
             self.ceph_ctl = CEPH_CTL()
 
-            # Bit awkward, if this is a simulated ceph cluster then it will
-            # probably reuse some domain names and we want to make sure
-            # that calamari doesn't have any keys kicking around.
-            if isinstance(self.ceph_ctl, EmbeddedCephControl):
-                self.calamari_ctl.clear_keys()
-
         except:
+            log.exception("Exception during setup, tearing down")
             self.calamari_ctl.stop()
             raise
 
@@ -101,8 +73,7 @@ class ServerTestCase(TestCase):
         """
         Return an ID if cluster_count is 1, else return a list of IDs.
         """
-        if FORCE_KEYS:
-            self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
+        self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
         wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL * 3)
         if cluster_count == 1:
             cluster_id = self.api.get("cluster").json()[0]['id']

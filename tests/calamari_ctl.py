@@ -5,6 +5,8 @@ import socket
 import subprocess
 import xmlrpclib
 import signal
+import errno
+from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
 
@@ -28,6 +30,7 @@ class CalamariControl(object):
     """
 
     def __init__(self):
+        log.info("CalamariControl.__init__")
         self._api = None
 
     def start(self):
@@ -51,12 +54,13 @@ class CalamariControl(object):
     @property
     def api(self):
         if self._api is None:
-            # Calamari is up, we can login to it
-            self._api = AuthenticatedHttpClient(
+            log.info("Initializing API")
+            api = AuthenticatedHttpClient(
                 self.api_url,
                 self.api_username,
                 self.api_password)
-            self._api.login()
+            api.login()
+            self._api = api
 
         return self._api
 
@@ -124,8 +128,22 @@ class EmbeddedCalamariControl(CalamariControl):
 
         return up
 
+    def _api_connectable(self):
+        """
+        Return true if we can complete an HTTP request without
+        raising ConnectionError.
+        """
+        try:
+            self.api.get("auth/login/")
+        except ConnectionError:
+            return False
+        else:
+            return True
+
     def clear_keys(self):
-        for key in self.api.get("salt_key").json():
+        r_keys = self.api.get("salt_key")
+        r_keys.raise_for_status()
+        for key in r_keys.json():
             r = self.api.delete("salt_key/%s" % key['id'])
             r.raise_for_status()
 
@@ -189,6 +207,14 @@ class EmbeddedCalamariControl(CalamariControl):
             self._ps.wait()
             raise
 
+        # The calamari REST API goes through a brief period between process
+        # startup and servicing connections
+        wait_until_true(self._api_connectable)
+
+        # Calamari REST API will return 503s until the backend is fully up
+        # and responding to ZeroRPC requests.
+        wait_until_true(lambda: self.api.get("cluster").status_code != 503, timeout=30)
+
         # Because we are embedded, we should act like a fresh instance
         # and not let any old keys linger
         self.clear_keys()
@@ -196,11 +222,18 @@ class EmbeddedCalamariControl(CalamariControl):
     def stop(self):
         log.info("%s.stop" % self.__class__.__name__)
         if self._ps:
-            self._ps.send_signal(signal.SIGINT)
-            stdout, stderr = self._ps.communicate()
-            rc = self._ps.wait()
-            if rc != 0:
-                raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
+            try:
+                self._ps.send_signal(signal.SIGINT)
+            except OSError as e:
+                if e.errno == errno.ESRCH:
+                    return
+                else:
+                    raise
+            else:
+                stdout, stderr = self._ps.communicate()
+                rc = self._ps.wait()
+                if rc != 0:
+                    raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
 
 
 class ExternalCalamariControl(CalamariControl):
