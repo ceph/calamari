@@ -41,7 +41,7 @@ class TestMonitoring(ServerTestCase):
 
         # Cause it to 'spontaneously' (as far as calamari is concerned)
         # be marked out
-        self.ceph_ctl.mark_osd_in(osd_id, False)
+        self.ceph_ctl.mark_osd_in(cluster_id, osd_id, False)
 
         # Wait for the status to filter up to the REST API
         wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 0,
@@ -56,7 +56,7 @@ class TestMonitoring(ServerTestCase):
                         timeout=HEARTBEAT_INTERVAL)
 
         # Bring the OSD back into the cluster
-        self.ceph_ctl.mark_osd_in(osd_id, True)
+        self.ceph_ctl.mark_osd_in(cluster_id, osd_id, True)
 
         # Wait for the status
         wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL)
@@ -64,7 +64,7 @@ class TestMonitoring(ServerTestCase):
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover
         wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_OK",
-                        timeout=OSD_RECOVERY_PERIOD*2)
+                        timeout=OSD_RECOVERY_PERIOD * 2)
 
     def test_cluster_down(self):
         """
