@@ -101,7 +101,7 @@ class OsdPgDetail(object):
             data = dict((k, osd[k]) for k in OSD_FIELDS)
             data.update({'id': osd_id})
             data.update({'osd': osd_id})
-            data.update({'pg_states': pg_states_by_osd[osd_id]})
+            data.update({'pg_states': dict(pg_states_by_osd[osd_id])})
             data.update({'pools': list(pools_by_osd[osd_id])})
             data.update({'host': host_by_osd_name["osd.%d" % (osd_id,)]})
             return data
@@ -188,15 +188,15 @@ class HealthCounters(object):
         return {
             'ok': {
                 'count': ok[0],
-                'states': ok[1],
+                'states': dict(ok[1]),
             },
             'warn': {
                 'count': warn[0],
-                'states': warn[1],
+                'states': dict(warn[1]),
             },
             'critical': {
                 'count': crit[0],
-                'states': crit[1],
+                'states': dict(crit[1]),
             },
         }
     #
