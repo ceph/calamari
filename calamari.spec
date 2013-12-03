@@ -68,17 +68,13 @@ all hosts in the cluster running ceph daemons of any kind.
 # the Pickle handler.  Another option would be to add a 
 # host= .conf fragment in /etc/diamond/handlers/GraphiteHandler.conf,   
 # since that would override the options in /etc/diamond/diamond.conf
+#
+# Also, increase diamond polling interval for all collectors
 
-sed 's/host = graphite/host = calamari/' \
+sed -e 's/host = graphite/host = calamari/' \
+    -e 's/# interval = 300/interval = 60/' \
                 < /etc/diamond/diamond.conf.example \
                 > /etc/diamond/diamond.conf
-# increase diamond polling interval for all collectors
-echo "interval = 30" >> /etc/diamond/diamond.conf
-cp /etc/default/diamond /etc/default/diamond.orig
-#sed -i 's/ENABLE_DIAMOND=".*"/ENABLE_DIAMOND="yes"/' \
-#                /etc/default/diamond
-#sed -i 's/DIAMOND_USER=".*"/DIAMOND_USER="root"/' \
-#                /etc/default/diamond
 chkconfig --add diamond
 service diamond start
 exit 0
