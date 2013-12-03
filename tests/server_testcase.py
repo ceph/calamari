@@ -60,9 +60,10 @@ class ServerTestCase(TestCase):
 
     def setUp(self):
         self.calamari_ctl = CALAMARI_CTL()
-        self.calamari_ctl.start()
 
         try:
+            self.calamari_ctl.start()
+
             self.api = self.calamari_ctl.api
 
             # The calamari REST API goes through a brief period between process
@@ -102,7 +103,7 @@ class ServerTestCase(TestCase):
         """
         if FORCE_KEYS:
             self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
-        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL*3)
+        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL * 3)
         if cluster_count == 1:
             cluster_id = self.api.get("cluster").json()[0]['id']
             wait_until_true(lambda: self._maps_populated(cluster_id))

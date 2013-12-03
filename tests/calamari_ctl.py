@@ -189,16 +189,18 @@ class EmbeddedCalamariControl(CalamariControl):
             self._ps.wait()
             raise
 
-        # Because we are embedded, we are probably talking to some
+        # Because we are embedded, we should act like a fresh instance
+        # and not let any old keys linger
         self.clear_keys()
 
     def stop(self):
         log.info("%s.stop" % self.__class__.__name__)
-        self._ps.send_signal(signal.SIGINT)
-        stdout, stderr = self._ps.communicate()
-        rc = self._ps.wait()
-        if rc != 0:
-            raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
+        if self._ps:
+            self._ps.send_signal(signal.SIGINT)
+            stdout, stderr = self._ps.communicate()
+            rc = self._ps.wait()
+            if rc != 0:
+                raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
 
 
 class ExternalCalamariControl(CalamariControl):
