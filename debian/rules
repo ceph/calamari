@@ -2,4 +2,5 @@
 export DH_VERBOSE=1
 
 %:
-	dh $@ --with python2
+	# keep your *(#$& hands off my venvs
+	dh $@ --without python2 --without python3 --without pycentral --without pysupport
