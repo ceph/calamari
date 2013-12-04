@@ -26,6 +26,24 @@ class RpcInterface(object):
     def __init__(self, manager):
         self._manager = manager
 
+    def __getattribute__(self, item):
+        """
+        Wrap functions with logging
+        """
+        if item.startswith('_'):
+            return object.__getattribute__(self, item)
+        else:
+            attr = object.__getattribute__(self, item)
+            if callable(attr):
+                def wrap(*args, **kwargs):
+                    log.debug("RpcInterface >> %s(%s, %s)" % (item, args, kwargs))
+                    rc = attr(*args, **kwargs)
+                    log.debug("RpcInterface << %s" % item)
+                    return rc
+                return wrap
+            else:
+                return attr
+
     def _fs_resolve(self, fs_id):
         try:
             return self._manager.monitors[fs_id]
