@@ -9,3 +9,4 @@ build_deps:
       - g++
       - python-cairo
       - python-m2crypto
+      - make
