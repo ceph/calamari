@@ -262,13 +262,13 @@ class ModelAdapter(object):
             nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
             self._crush_osd_hostnames = defaultdict(lambda: None)
 
-            def find_descendents(cursor, fn):
+            def find_descendants(cursor, fn):
                 if fn(cursor):
                     return [cursor]
                 else:
                     found = []
                     for child_id in cursor['children']:
-                        found.extend(find_descendents(nodes_by_id[child_id], fn))
+                        found.extend(find_descendants(nodes_by_id[child_id], fn))
                     return found
 
             # This assumes that:
@@ -281,7 +281,7 @@ class ModelAdapter(object):
             for node in osd_tree["nodes"]:
                 if node["type"] == CRUSH_HOST_TYPE:
                     host = node["name"]
-                    for osd in find_descendents(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
+                    for osd in find_descendants(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
                         self._crush_osd_hostnames[osd["name"]] = host
 
         return self._crush_osd_hostnames
@@ -324,7 +324,7 @@ class ModelAdapter(object):
             # ipv4: addr:port/nonce
             return addr.split(':')[0]
 
-    def _register_service(self, service_addr, service_type, service_id, name, in_cluster):
+    def _register_service(self, service_addr, service_type, service_id, name):
         """
         Create or updated ServiceStatus record and Server record as required.
         If the ServiceStatus record is new, try to guess the 'name' attribute
@@ -335,12 +335,9 @@ class ModelAdapter(object):
         service_status, created = ServiceStatus.objects.get_or_create(
             server=server, type=service_type, service_id=service_id
         )
-        if not created and service_status.in_cluster != in_cluster:
-            service_status.in_cluster = in_cluster
-            service_status.save()
-        elif created:
+
+        if created:
             service_status.name = name
-            service_status.in_cluster = in_cluster
             service_status.save()
 
             # This service is either new to us, or it is on a different server.
@@ -415,8 +412,7 @@ class ModelAdapter(object):
             service_status = self._register_service(
                 addr, ServiceStatus.OSD,
                 service_id=osd['osd'],
-                name=osd_name,
-                in_cluster=osd['in'])
+                name=osd_name)
             old_service_status_ids.discard(service_status.id)
             old_server_addrs.discard(addr)
 
@@ -425,8 +421,7 @@ class ModelAdapter(object):
             service_status = self._register_service(
                 addr, ServiceStatus.MON,
                 service_id=mon['rank'],
-                name="mon.%s" % mon['name'],
-                in_cluster=mon['rank'] in mon_status['quorum'])
+                name="mon.%s" % mon['name'])
             old_service_status_ids.discard(service_status.id)
             old_server_addrs.discard(addr)
 

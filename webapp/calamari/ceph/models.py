@@ -80,7 +80,7 @@ class Cluster(models.Model):
 class Pool(models.Model):
     """
     This functionality was retrofitted to Calamari 1.x, which does not have south.
-    To avoid adding a dependeny for this one piece of data, simply create a new table
+    To avoid adding a dependency for this one piece of data, simply create a new table
     instead of adding to Cluster, as plain django syncdb can handle new tables.
     """
     class Meta:
@@ -160,6 +160,3 @@ class ServiceStatus(models.Model):
 
     # Human readable name (for mon it is mon.<name>, for OSD it is osd.<service_id>)
     name = models.TextField()
-
-    # For a mon, whether it's in quorum, for an OSD whether it's 'in' the cluster
-    in_cluster = models.BooleanField()

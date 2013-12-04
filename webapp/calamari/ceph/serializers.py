@@ -243,7 +243,7 @@ class PoolSerializer(serializers.ModelSerializer):
 class ServiceStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceStatus
-        fields = ('type', 'service_id', 'name', 'in_cluster')
+        fields = ('type', 'service_id', 'name')
 
 
 class ServerSerializer(serializers.ModelSerializer):
