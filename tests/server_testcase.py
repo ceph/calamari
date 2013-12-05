@@ -74,6 +74,7 @@ class ServerTestCase(TestCase):
         Return an ID if cluster_count is 1, else return a list of IDs.
         """
         self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
+
         wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL * 3)
         if cluster_count == 1:
             cluster_id = self.api.get("cluster").json()[0]['id']

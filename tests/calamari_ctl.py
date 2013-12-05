@@ -64,6 +64,29 @@ class CalamariControl(object):
 
         return self._api
 
+    def clear_keys(self):
+        r_keys = self.api.get("salt_key")
+        r_keys.raise_for_status()
+        for key in r_keys.json():
+            r = self.api.delete("salt_key/%s" % key['id'])
+            r.raise_for_status()
+
+    def authorize_keys(self, minion_ids):
+        def _fqdns_present():
+            found_ids = [m['id'] for m in self.api.get("salt_key").json()]
+            all_present = len(set(minion_ids) & set(found_ids)) == len(minion_ids)
+
+            log.debug("checking keys, looking for %s found %s (%s)" % (minion_ids, found_ids, all_present))
+
+            return all_present
+
+        wait_until_true(_fqdns_present)
+
+        for minion_id in minion_ids:
+            log.debug("Authorising key for %s" % minion_id)
+            r = self.api.patch("salt_key/%s" % minion_id, {'status': 'accepted'})
+            r.raise_for_status()
+
     def configure(self, no_clusters=True):
         """
         Assert some aspects of the server state, fixing up
@@ -139,29 +162,6 @@ class EmbeddedCalamariControl(CalamariControl):
             return False
         else:
             return True
-
-    def clear_keys(self):
-        r_keys = self.api.get("salt_key")
-        r_keys.raise_for_status()
-        for key in r_keys.json():
-            r = self.api.delete("salt_key/%s" % key['id'])
-            r.raise_for_status()
-
-    def authorize_keys(self, minion_ids):
-        def _fqdns_present():
-            found_ids = [m['id'] for m in self.api.get("salt_key").json()]
-            all_present = len(set(minion_ids) & set(found_ids)) == len(minion_ids)
-
-            log.debug("checking keys, found %s (%s)" % (found_ids, all_present))
-
-            return all_present
-
-        wait_until_true(_fqdns_present)
-
-        for minion_id in minion_ids:
-            log.debug("Authorising key for %s" % minion_id)
-            r = self.api.patch("salt_key/%s" % minion_id, {'status': 'accepted'})
-            r.raise_for_status()
 
     def restart(self):
         processes = [ps['group'] for ps in self._rpc.supervisor.getAllProcessInfo()]

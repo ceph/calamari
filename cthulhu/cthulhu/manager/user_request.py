@@ -7,7 +7,7 @@ import salt.client
 import threading2
 from cthulhu.config import SALT_CONFIG_PATH
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap
+from cthulhu.manager.types import OsdMap, PgBrief
 
 
 class PublishError(Exception):
@@ -47,20 +47,15 @@ class UserRequest(object):
     COMPLETE = 'complete'
     states = [NEW, SUBMITTED, COMPLETE]
 
-    def __init__(self, fsid, cluster_name, commands,
-                 completion_callback=None, completion_condition=None):
+    def __init__(self, fsid, cluster_name, commands):
         """
         Requiring cluster_name and fsid is redundant (ideally everything would
         speak in terms of fsid) but convenient, because the librados interface
         wants a cluster name when you create a client, and otherwise we would
         have to look up via ceph.conf.
-
-        :param completion_callback: A callable, invoked after remote execution is complete but
-                                    before the state changes to COMPLETING.
-        :param completion_condition: A CompletionCondition instance, which we will start testing
-                                     one remote execution is complete and the completion callback
-                                     has executed.
         """
+        self.log = log.getChild(self.__class__.__name__)
+
         self.requested_at = datetime.datetime.now(tzlocal())
 
         # This is actually kind of overkill compared with having a counter,
@@ -86,26 +81,35 @@ class UserRequest(object):
         """
         Start remote execution phase by publishing a job to salt.
         """
-        log.debug("Request.submit: %s/%s/%s" % (minion_id, self._cluster_name, self._commands))
         assert self.state == self.NEW
 
+        self._minion_id = minion_id
+        jid = self._submit(self._commands)
+        self._jid = jid
+
+        self.state = self.SUBMITTED
+
+    def _submit(self, commands):
+        self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
+
         client = salt.client.LocalClient(SALT_CONFIG_PATH)
-        pub_data = client.run_job(minion_id, 'ceph.rados_commands',
-                                  [self._fsid, self._cluster_name, self._commands])
+        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
+                                  [self._fsid, self._cluster_name, commands])
         if not pub_data:
             # FIXME: LocalClient uses 'print' to record the
             # details of what went wrong :-(
             raise PublishError("Failed to publish job")
-        self._jid = pub_data['jid']
 
-        self.state = self.SUBMITTED
+        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
+
+        return pub_data['jid']
 
     def complete_jid(self, result):
         """
         Call this when remote execution is done.
         """
         self.result = result
-        log.info("Request %s JID %s completed with result=%s" % (self.id, self._jid, self.result))
+        self.log.info("Request %s JID %s completed with result=%s" % (self.id, self._jid, self.result))
 
         # This is a default behaviour for UserRequests which don't override this method:
         # assume completion of a JID means the job is now done.
@@ -115,6 +119,7 @@ class UserRequest(object):
         """
         Call this when you're all done
         """
+        self.log.info("Request %s completed with error=%s" % (self.id, error))
         self.state = self.COMPLETE
         self.error = error
 
@@ -150,10 +155,72 @@ class OsdMapModifyingRequest(UserRequest):
         osd_map = sync_objects.get(OsdMap)
         ready = osd_map.version >= self._await_version
         if ready:
-            log.debug("OsdMapModifyingRequest passed (%s >= %s)" % (osd_map.version, self._await_version))
+            self.log.debug("check passed (%s >= %s)" % (osd_map.version, self._await_version))
             self.complete()
         else:
-            log.debug("OsdMapModifyingRequest pending (%s < %s)" % (osd_map.version, self._await_version))
+            self.log.debug("check pending (%s < %s)" % (osd_map.version, self._await_version))
+
+
+class PgCreatingRequest(OsdMapModifyingRequest):
+    """
+    Specialization of OsdMapModifyingRequest to issue a request
+    to issue a second set of commands after PGs created by an
+    initial set of commands have left the 'creating' state.
+    """
+    PRE_CREATE = 'pre_create'
+    CREATING = 'creating'
+    POST_CREATE = 'post_create'
+
+    def __init__(self, fsid, cluster_name, commands, post_create_commands, pool_id, pg_count):
+        super(PgCreatingRequest, self).__init__(fsid, cluster_name, commands)
+        self._post_create_commands = post_create_commands
+
+        self._phase = self.PRE_CREATE
+        self._await_osd_version = None
+
+        self._pool_id = pool_id
+        self._pg_count = pg_count
+
+    def complete_jid(self, result):
+        if self._phase == self.PRE_CREATE:
+            # The initial tranche of jobs has completed, start waiting
+            # for PG creation to complete
+            self._await_osd_version = result['versions']['osd_map']
+            self._jid = None
+            self._phase = self.CREATING
+            self.log.debug("PgCreatingRequest PRE_CREATE->CREATING")
+        elif self._phase == self.POST_CREATE:
+            # Act just like an OSD map modification
+            super(PgCreatingRequest, self).complete_jid(result)
+
+    def on_map(self, sync_type, sync_objects):
+        self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
+        if self._phase == self.PRE_CREATE:
+            return
+        elif self._phase == self.CREATING:
+            if sync_type == PgBrief:
+                # Count the PGs in this pool which are not in state 'creating'
+                pgs = sync_objects.get(PgBrief).data
+                pg_counter = 0
+                for pg in pgs:
+                    pg_pool_id = int(pg['pgid'].split(".")[0])
+                    self.log.debug("PgCreatingRequest %s %s %s %s" % (
+                        pg['pgid'], pg_pool_id, self._pool_id, pg['state']
+                    ))
+                    if pg_pool_id != self._pool_id:
+                        continue
+                    else:
+                        states = pg['state'].split("+")
+                        if 'creating' not in states:
+                            pg_counter += 1
+
+                self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s" % (pg_counter, self._pg_count))
+                if pg_counter >= self._pg_count:
+                    self._phase = self.POST_CREATE
+                    self.log.debug("PgCreatingRequest CREATING->POST_CREATE")
+                    self._jid = self._submit(self._post_create_commands)
+        elif self._phase == self.POST_CREATE:
+            super(PgCreatingRequest, self).on_map(sync_type, sync_objects)
 
 
 class RequestCollection(object):
@@ -210,9 +277,12 @@ class RequestCollection(object):
     def on_map(self, sync_type, sync_objects):
         requests = self.get_all(state=UserRequest.SUBMITTED)
         for request in requests:
-
-            with self.update_index(request):
-                request.on_map(sync_type, sync_objects)
+            try:
+                with self.update_index(request):
+                    request.on_map(sync_type, sync_objects)
+            except:
+                log.exception("Request %s threw exception in on_map", request.id)
+                request.complete(error=True)
 
     def update_index(self, request):
         """
@@ -247,6 +317,7 @@ class RequestCollection(object):
         log.debug("on_completion: jid=%s data=%s" % (jid, data))
 
         request = self.get_by_jid(jid)
+        log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
 
         # TODO: tag some detail onto the UserRequest object
         # when a failure occurs

@@ -84,8 +84,8 @@ def main():
                 return {
                     'error': True,
                     'results': [],
-                    'err_outbuf': e,
-                    'err_outs': e,
+                    'err_outbuf': e.__str__(),
+                    'err_outs': e.__str__(),
                     'fsid': fsid,
                     'versions': status['versions']
                 }

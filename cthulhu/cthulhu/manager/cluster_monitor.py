@@ -282,6 +282,12 @@ class ClusterMonitor(threading.Thread):
 
     def on_completion(self, data):
         self._requests.on_completion(data)
+        # FIXME: to protect against an on_sync_object resulting from a job
+        # completion happening just before we process the job completion,
+        # we should send a request on_map callbacks for all the maps it
+        # may be interested in right after a job completion.  Or, we could
+        # just pass all the maps into the job completion callback so that
+        # it can explicitly do a there 'n' then check.
 
     def set_favorite(self, minion_id):
         self._favorite_mon = minion_id

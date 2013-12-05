@@ -123,7 +123,8 @@ class ExternalCephControl(CephControl):
         # Ensure there are initially no pools but the default ones.
 
     def get_server_fqdns(self):
-        return ["gravel%s.rockery" % n for n in range(0, 3)]
+        # FIXME: hardcoded for jcsp's net, should come from a config file
+        return ["gravel%s.rockery" % n for n in range(1, 4)]
 
     def get_service_fqdns(self, service_type):
         # I run OSDs and mons in the same places (on all three servers)

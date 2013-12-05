@@ -11,7 +11,9 @@ GIGS = 1024 * 1024 * 1024
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler())
-log.addHandler(logging.FileHandler("{0}.log".format(__name__)))
+handler = logging.FileHandler("{0}.log".format(__name__))
+handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+log.addHandler(handler)
 
 
 def md5(raw):
@@ -100,6 +102,7 @@ class CephCluster(object):
         """
         Generate initial state for a cluster
         """
+        log.info("Creating ceph_cluster at %s" % filename)
         fsid = uuid.uuid4().__str__()
         name = 'ceph_fake'
 
@@ -188,15 +191,17 @@ class CephCluster(object):
             # TODO these should actually have a different crush ruleset etc each
             objects['osd_map']['pools'].append(_pool_template(pool, i, 64))
 
-        tree = {"nodes": [
-            {
-                "id": -1,
-                "name": "default",
-                "type": "root",
-                "type_id": 6,
-                "children": []
-            }
-        ]}
+        tree = {
+            "nodes": [
+                {
+                    "id": -1,
+                    "name": "default",
+                    "type": "root",
+                    "type_id": 6,
+                    "children": []
+                }
+            ]
+        }
 
         host_tree_id = -2
         for fqdn, services in host_services.items():
@@ -262,6 +267,8 @@ class CephCluster(object):
         # ======
         pg_stats = {}
         objects['pg_brief'] = []
+        # Don't maintain a full PG map but do maintain a version counter.
+        objects['pg_map'] = {"version": 1}
         for pool in objects['osd_map']['pools']:
             n_replicas = pool['size']
             for pg_num in range(pool['pg_num']):
@@ -303,6 +310,7 @@ class CephCluster(object):
                 'mon_status': 1,
                 'osd_map': self._objects['osd_map']['epoch'],
                 'osd_tree': 1,
+                'pg_map': self._objects['pg_map']['version'],
                 'pg_brief': md5(json.dumps(self._objects['pg_brief']))
             }
         }
@@ -378,6 +386,21 @@ class CephCluster(object):
         self._pg_monitor()
         self._update_health()
 
+    def _create_pgs(self, pool_id, new_ids):
+        pool = [p for p in self._objects['osd_map']['pools'] if p['pool'] == pool_id][0]
+        for i in new_ids:
+            pg_id = "%s.%s" % (pool['pool'], i)
+            log.debug("Pool_update created pg %s" % pg_id)
+            osds = pseudorandom_subset(range(0, len(self._objects['osd_map']['osds'])),
+                                       pool['size'], pg_id)
+            self._objects['pg_brief'].append({
+                'pgid': pg_id,
+                'state': 'creating',
+                'up': osds,
+                'acting': osds
+            })
+        self._objects['pg_map']['version'] += 1
+
     def pool_create(self, pool_name, pg_num):
         if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
             return
@@ -388,9 +411,23 @@ class CephCluster(object):
             _pool_template(pool_name, new_id, pg_num)
         )
         self._objects['osd_map']['epoch'] += 1
+        self._create_pgs(new_id, range(0, pg_num))
 
     def pool_update(self, pool_name, var, val):
+        log.info("pool_update %s %s %s" % (pool_name, var, val))
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool_name'] == pool_name][0]
+
+        if var == 'pg_num':
+            log.debug("pool_update creating pgs %s->%s" % (
+                pool['pg_num'], val
+            ))
+            # Growing a pool, creating PGs
+            self._create_pgs(pool['pool'], range(pool['pg_num'], val))
+
+        if var == 'pgp_num':
+            # On the way in it's called pgp_num, on the way out it's called pg_placement_num
+            var = 'pg_placement_num'
+
         if pool[var] != val:
             pool[var] = val
             self._objects['osd_map']['epoch'] += 1
@@ -401,7 +438,7 @@ class CephCluster(object):
                                                  p['pool_name'] != pool_name]
             self._objects['osd_map']['epoch'] += 1
 
-    def _pg_monitor(self, recovery_credits=0):
+    def _pg_monitor(self, recovery_credits=0, creation_credits=0):
         """
         Crude facimile of the PG monitor.  For each PG, based on its
         current state and the state of its OSDs, update it: usually do
@@ -410,6 +447,7 @@ class CephCluster(object):
 
         osds = dict([(osd['osd'], osd) for osd in self._objects['osd_map']['osds']])
 
+        changes = False
         for pg in self._objects['pg_brief']:
             states = set(pg['state'].split('+'))
             primary_osd_id = pg['acting'][0]
@@ -443,14 +481,24 @@ class CephCluster(object):
                 recovery_credits -= 1
                 log.debug("Recovered PG %s" % pg['pgid'])
 
+            if creation_credits > 0 and 'creating' in states:
+                states.discard('creating')
+                creation_credits -= 1
+                log.debug("Completed creation PG %s" % pg['pgid'])
+
             new_state = "+".join(sorted(list(states)))
             if pg['state'] != new_state:
                 log.debug("New PG state %s: %s" % (pg['pgid'], new_state))
+                changes = True
                 pg['state'] = new_state
+
+        if changes:
+            self._objects['pg_map']['version'] += 1
 
     def advance(self, t):
         RECOVERIES_PER_SECOND = 1
-        self._pg_monitor(t * RECOVERIES_PER_SECOND)
+        CREATIONS_PER_SECOND = 10
+        self._pg_monitor(t * RECOVERIES_PER_SECOND, t * CREATIONS_PER_SECOND)
         self._update_health()
 
     def _update_health(self):

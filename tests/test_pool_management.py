@@ -1,7 +1,9 @@
 
+import logging
 from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL
 from tests.utils import wait_until_true
 
+log = logging.getLogger(__name__)
 
 # TODO: This would be lower/more aggressive if we didn't have to wait
 # for a full upgrade cycle for OSD maps to update (should be updating
@@ -149,9 +151,9 @@ class TestPoolManagement(ServerTestCase):
             'size': 3,
             'min_size': 2,
             'crash_replay_interval': 120,
-            'pg_num': 256,
-            # NB skipping pgp_num because setting pg_num will
-            # set it automatically
+            # Leave out pg_num stuff because it's a bit special and
+            # tested separately
+            #'pg_num': 256,
             #'pgp_num': 256,
             'crush_ruleset': 1,
             'hashpspool': True,
@@ -209,6 +211,26 @@ class TestPoolManagement(ServerTestCase):
             pool_id = self._assert_visible(cluster_id, pool_name)['id']
             self._delete(cluster_id, pool_id)
             self._assert_visible(cluster_id, pool_name, visible=False)
+
+    def test_pg_creation(self):
+        """
+        Test that when modifying the 'pg_num' attribute, the PGs really are
+        created and pgp_num is updated appropriately.  This is a separate
+        test to the simple modifications, because updating pgp_num is more
+        complicated (calamari has to wait for PG creation to occur)
+        """
+        cluster_id = self._wait_for_cluster()
+        pool_name = 'test_pg_creation'
+        self._create(cluster_id, pool_name, pg_num=64)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+        updates = {
+            'pg_num': 96,
+            'pgp_num': 96
+        }
+        self._update(cluster_id, pool_id, updates)
+        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+        for k, v in updates.items():
+            self.assertEqual(pool[k], v, "pool[%s]=%s (should be %s)" % (k, pool[k], v))
 
     # TODO: document the creation semantics for REST API consumers: that on creation
     # and pg_num increase, we promise the OSD map will be up to date when the job completes,

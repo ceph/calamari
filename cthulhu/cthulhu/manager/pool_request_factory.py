@@ -1,7 +1,7 @@
 from cthulhu.log import log
 from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.types import OsdMap
-from cthulhu.manager.user_request import OsdMapModifyingRequest
+from cthulhu.manager.user_request import OsdMapModifyingRequest, PgCreatingRequest
 
 # Valid values for the 'var' argument to 'ceph osd pool set'
 POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval", "pg_num", "pgp_num", "crush_ruleset", "hashpspool"]
@@ -71,19 +71,30 @@ class PoolRequestFactory(RequestFactory):
         # real use because it leaves pgp_num unset.
         pool_name = self._resolve_pool(pool_id)['pool_name']
 
-        commands = self._pool_attribute_commands(pool_name, attributes)
-        if not commands:
-            raise NotImplementedError(attributes)
+        if 'pg_num' in attributes and 'pgp_num' in attributes:
+            # Special case when setting pgp_num and pg_num: have to do some extra work
+            # to wait for PG creation between setting these two fields.
+            pgp_num = attributes['pgp_num']
+            del attributes['pgp_num']
+            pre_create_commands = self._pool_attribute_commands(pool_name, attributes)
+            post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
+            expected_pgs = attributes['pg_num']
+            return PgCreatingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name,
+                                     pre_create_commands, post_create_commands, pool_id, expected_pgs)
+        else:
+            commands = self._pool_attribute_commands(pool_name, attributes)
+            if not commands:
+                raise NotImplementedError(attributes)
 
-        # TODO: provide some per-object-type ability to emit human readable descriptions
-        # of what we are doing.
+            # TODO: provide some per-object-type ability to emit human readable descriptions
+            # of what we are doing.
 
-        # TOOD: provide some machine-readable indication of which objects are affected
-        # by a particular request.
-        # Perhaps subclass Request for each type of object, and have that subclass provide
-        # both the patches->commands mapping and the human readable and machine readable
-        # descriptions of it?
-        return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+            # TOOD: provide some machine-readable indication of which objects are affected
+            # by a particular request.
+            # Perhaps subclass Request for each type of object, and have that subclass provide
+            # both the patches->commands mapping and the human readable and machine readable
+            # descriptions of it?
+            return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def create(self, attributes):
         # TODO: handle errors in a way that caller can show to a user, e.g.
