@@ -177,8 +177,8 @@ class EmbeddedCalamariControl(CalamariControl):
         self._ps = subprocess.Popen(
             ["supervisord", "-n", "-c", config_path],
             cwd=os.path.abspath(TREE_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=open("supervisord.out.log", 'w'),
+            stderr=open("supervisord.err.log", 'w')
         )
         if not self._ps:
             raise RuntimeError("Failed to launch supervisor")
