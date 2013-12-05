@@ -31,19 +31,21 @@ def initialize(args):
     user_model = get_user_model()
 
     if args.admin_username and args.admin_password and args.admin_email:
-        user_model.objects.create_superuser(
-            username=args.admin_username,
-            password=args.admin_password,
-            email=args.admin_email
-        )
+        if not user_model.filter(username=args.admin_username).exists():
+            user_model.objects.create_superuser(
+                username=args.admin_username,
+                password=args.admin_password,
+                email=args.admin_email
+            )
     else:
-        # When prompting for details, it's good to let the user know what the account
-        # is (especially that's a web UI one, not a linux system one)
-        log.info("You will now be prompted for login details for the administrative "
-                 "user account.  This is the account you will use to log into the web interface "
-                 "once setup is complete.")
-        # Prompt for user details
-        execute_from_command_line(["", "createsuperuser"])
+        if not user_model.all().count():
+            # When prompting for details, it's good to let the user know what the account
+            # is (especially that's a web UI one, not a linux system one)
+            log.info("You will now be prompted for login details for the administrative "
+                     "user account.  This is the account you will use to log into the web interface "
+                     "once setup is complete.")
+            # Prompt for user details
+            execute_from_command_line(["", "createsuperuser"])
 
 
 def change_password(args):
