@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import datetime
 import uuid
 from dateutil.tz import tzlocal
@@ -159,10 +160,6 @@ class RequestCollection(object):
     """
     Manage a collection of UserRequests, indexed by
     salt JID and request ID.
-
-    Requests don't appear in this collection until they have
-    made it at least as far as SUBMITTED state.
-
     """
 
     def __init__(self):
@@ -171,20 +168,6 @@ class RequestCollection(object):
 
         self._by_request_id = {}
         self._by_jid = {}
-
-    def submit(self, request, minion):
-        """
-        Submit a request and store it.  Do this in one operation
-        to hold the lock over both operations, otherwise a response
-        to a job could arrive before the request was filed here.
-        """
-        self._shlock.acquire(shared=False)
-        request.submit(minion)
-        try:
-            self._by_request_id[request.id] = request
-            self._by_jid[request.jid] = request
-        finally:
-            self._shlock.release()
 
     def get_by_id(self, request_id):
         self._shlock.acquire(shared=True)
@@ -209,3 +192,80 @@ class RequestCollection(object):
                 return [r for r in self._by_request_id.values() if r.state == state]
         finally:
             self._shlock.release()
+
+    def submit(self, request, minion):
+        """
+        Submit a request and store it.  Do this in one operation
+        to hold the lock over both operations, otherwise a response
+        to a job could arrive before the request was filed here.
+        """
+        self._shlock.acquire(shared=False)
+        request.submit(minion)
+        try:
+            self._by_request_id[request.id] = request
+            self._by_jid[request.jid] = request
+        finally:
+            self._shlock.release()
+
+    def on_map(self, sync_type, sync_objects):
+        requests = self.get_all(state=UserRequest.SUBMITTED)
+        for request in requests:
+
+            with self.update_index(request):
+                request.on_map(sync_type, sync_objects)
+
+    def update_index(self, request):
+        """
+        Context manager to acquire across request-modifying operations
+        to ensure lookups like by_jid are up to date if requests
+        were modified in the process
+        """
+
+        @contextmanager
+        def update():
+            # Take write lock across on_map + subsequent by_jid update,
+            # in order to ensure by_jid is up to date before any response
+            # to new jids can arrive.
+            self._shlock.acquire(shared=False)
+            try:
+                old_jid = request.jid
+                yield
+                # Update by_jid in case this triggered a new job
+                if request.jid != old_jid:
+                    if old_jid:
+                        del self._by_jid[old_jid]
+                    if request.jid:
+                        self._by_jid[request.jid] = request
+            finally:
+                self._shlock.release()
+
+        return update()
+
+    def on_completion(self, data):
+        jid = data['jid']
+        result = data['return']
+        log.debug("on_completion: jid=%s data=%s" % (jid, data))
+
+        request = self.get_by_jid(jid)
+
+        # TODO: tag some detail onto the UserRequest object
+        # when a failure occurs
+        if not data['success']:
+            log.error("Remote execution failed for request %s: %s" % (request.id, result))
+            request.complete(error=True)
+        else:
+            if request.state != UserRequest.SUBMITTED:
+                # Unexpected, ignore.
+                log.error("Received completion for request %s/%s in state %s" % (
+                    request.id, request.jid, request.state
+                ))
+                return
+
+            try:
+                with self.update_index(request):
+                    request.complete_jid(result)
+            except Exception:
+                # Ensure that a misbehaving piece of code in a UserRequest subclass
+                # results in a terminated job, not a zombie job
+                log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                request.complete(error=True)

@@ -18,7 +18,7 @@ from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL
-from cthulhu.manager.user_request import RequestCollection, UserRequest
+from cthulhu.manager.user_request import RequestCollection
 
 from cthulhu.config import SALT_CONFIG_PATH, SALT_RUN_PATH, FAVORITE_TIMEOUT_S
 
@@ -271,8 +271,7 @@ class ClusterMonitor(threading.Thread):
             # While UserRequests are running, they need to be kept informed of new
             # map versions, since some requests don't complete until they've seen
             # a certain version of a map.
-            for user_request in self._requests.get_all(state=UserRequest.SUBMITTED):
-                user_request.on_map(sync_type, self._sync_objects)
+            self._requests.on_map(sync_type, self._sync_objects)
 
             # TODO: get datetime out of map instead of setting it to now
             if isinstance(data['version'], int):
@@ -282,30 +281,7 @@ class ClusterMonitor(threading.Thread):
             self._persister.update(self.fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
 
     def on_completion(self, data):
-        jid = data['jid']
-        result = data['return']
-        log.debug("on_completion: jid=%s data=%s" % (jid, data))
-
-        request = self._requests.get_by_jid(jid)
-
-        # TODO: tag some detail onto the UserRequest object
-        # when a failure occurs
-        if not data['success']:
-            log.error("Remote execution failed for request %s: %s" % (request.id, result))
-            request.complete(error=True)
-        else:
-            if request.state != UserRequest.SUBMITTED:
-                # Unexpected, ignore.
-                log.error("Received completion for request %s/%s in state %s" % (
-                    request.id, request.jid, request.state
-                ))
-                return
-
-            try:
-                request.complete_jid(result)
-            except Exception:
-                log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
-                request.complete(error=True)
+        self._requests.on_completion(data)
 
     def set_favorite(self, minion_id):
         self._favorite_mon = minion_id
