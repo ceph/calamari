@@ -268,8 +268,9 @@ class ClusterMonitor(threading.Thread):
 
             self.inject_sync_object(data['type'], data['version'], data['data'])
 
-            # UserRequests may post CompletionConditions which depend on the state
-            # of sync objects, check if there are any of these out there and
+            # While UserRequests are running, they need to be kept informed of new
+            # map versions, since some requests don't complete until they've seen
+            # a certain version of a map.
             for user_request in self._requests.get_all(state=UserRequest.SUBMITTED):
                 user_request.on_map(sync_type, self._sync_objects)
 
@@ -287,12 +288,12 @@ class ClusterMonitor(threading.Thread):
 
         request = self._requests.get_by_jid(jid)
 
+        # TODO: tag some detail onto the UserRequest object
+        # when a failure occurs
         if not data['success']:
             log.error("Remote execution failed for request %s: %s" % (request.id, result))
-            # TODO: mark errored
-            request.complete()
+            request.complete(error=True)
         else:
-
             if request.state != UserRequest.SUBMITTED:
                 # Unexpected, ignore.
                 log.error("Received completion for request %s/%s in state %s" % (
@@ -300,19 +301,11 @@ class ClusterMonitor(threading.Thread):
                 ))
                 return
 
-            request.complete_jid(result)
-
-            if request.state == UserRequest.COMPLETING:
-                try:
-                    if request.completion_condition.apply(self._sync_objects):
-                        request.complete()
-                except:
-                    log.exception("Checking completion condition")
-                    # TODO: mark errored
-                    request.complete()
-
-                    # TODO: publish this at actual completion rather than jid completion
-                    #self._notifier.publish('ceph:completion', {'jid': jid})
+            try:
+                request.complete_jid(result)
+            except Exception:
+                log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                request.complete(error=True)
 
     def set_favorite(self, minion_id):
         self._favorite_mon = minion_id
@@ -326,7 +319,7 @@ class ClusterMonitor(threading.Thread):
         Create and submit UserRequest for a create, update or delete.
         """
         try:
-            request_factory = self._request_factories[obj_type]
+            request_factory = self._request_factories[obj_type](self)
         except KeyError:
             raise ValueError("{0} is not one of {1}".format(obj_type, self._request_factories.keys()))
 
@@ -340,10 +333,10 @@ class ClusterMonitor(threading.Thread):
         }
 
     def request_delete(self, obj_type, obj_id):
-        self.request('delete', obj_type, obj_id)
+        return self.request('delete', obj_type, obj_id)
 
     def request_create(self, obj_type, attributes):
-        self.request('create', obj_type, attributes)
+        return self.request('create', obj_type, attributes)
 
     def request_update(self, obj_type, obj_id, attributes):
-        self.request('update', obj_type, obj_id, attributes)
+        return self.request('update', obj_type, obj_id, attributes)

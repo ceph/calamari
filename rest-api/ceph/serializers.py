@@ -195,10 +195,11 @@ class CrushRuleSetSerializer(serializers.Serializer):
 
 class RequestSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'state')
+        fields = ('id', 'state', 'error')
 
     id = serializers.CharField()
     state = serializers.CharField()
+    error = serializers.BooleanField()
 
 
 class SaltKeySerializer(serializers.Serializer):

@@ -22,7 +22,7 @@ import pytz
 
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
-from cthulhu.manager.types import CRUSH_RULE
+from cthulhu.manager.types import CRUSH_RULE, POOL
 
 
 def get_latest_graphite(metric):
@@ -253,18 +253,18 @@ class PoolViewSet(RPCViewSet):
     serializer = PoolSerializer
 
     def list(self, request, fsid):
-        pools = [PoolDataObject(p) for p in self.client.list(fsid, 'pool')]
+        pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL)]
 
         return Response(PoolSerializer(pools, many=True).data)
 
     def retrieve(self, request, fsid, pool_id):
-        pool = PoolDataObject(self.client.get(fsid, 'pool', int(pool_id)))
+        pool = PoolDataObject(self.client.get(fsid, POOL, int(pool_id)))
         return Response(PoolSerializer(pool).data)
 
     def create(self, request, fsid):
         serializer = PoolSerializer(data=request.DATA)
         if serializer.is_valid():
-            create_response = self.client.create(fsid, 'pool', request.DATA)
+            create_response = self.client.create(fsid, POOL, request.DATA)
             # TODO: handle case where the creation is rejected for some reason (should
             # be passed an errors dict for a clean failure, or a zerorpc exception
             # for a dirty failure)
@@ -274,7 +274,7 @@ class PoolViewSet(RPCViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, fsid, pool_id):
-        delete_response = self.client.delete(fsid, 'pool', int(pool_id))
+        delete_response = self.client.delete(fsid, POOL, int(pool_id))
         return Response(delete_response)
 
     def update(self, request, fsid, pool_id):
@@ -282,7 +282,7 @@ class PoolViewSet(RPCViewSet):
         # TODO: validation, but we don't want to check all fields are present (because
         # this is a PATCH), just that those present are valid.  rest_framework serializer
         # may or may not be able to do that out the box.
-        return Response(self.client.update(fsid, 'pool', int(pool_id), updates))
+        return Response(self.client.update(fsid, POOL, int(pool_id), updates))
 
 
 class UserViewSet(viewsets.ModelViewSet):

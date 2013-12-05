@@ -11,8 +11,15 @@ operation_timeout = HEARTBEAT_INTERVAL
 
 class TestPoolManagement(ServerTestCase):
     def _request_complete(self, cluster_id, request_id):
+        """
+        Return whether a request has completed successfully.
+        If the request has failed, raise an exception.
+        """
         r = self.api.get("cluster/%s/request/%s" % (cluster_id, request_id))
         r.raise_for_status()
+
+        if r.json()['error']:
+            raise self.failureException("Request %s failed" % request_id)
 
         return r.json()['state'] == 'complete'
 

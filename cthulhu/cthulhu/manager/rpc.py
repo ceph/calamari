@@ -190,7 +190,8 @@ class RpcInterface(object):
         request = cluster.get_request(request_id)
         return {
             'id': request.id,
-            'state': request.state
+            'state': request.state,
+            'error': request.error
         }
 
     def list_requests(self, fs_id):

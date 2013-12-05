@@ -8,6 +8,8 @@ import yaml
 # defined in this module
 __context__ = {}
 
+FLAG_HASHPSPOOL = 1
+
 
 def main():
     """
@@ -58,14 +60,35 @@ def main():
 
         for command in commands:
             prefix, args = command
-            if prefix == "osd pool create":
-                cluster.pool_create(args['pool'], args['pg_num'])
-            elif prefix == "osd pool set":
-                cluster.pool_update(args['pool'], args['var'], args['val'])
-            elif prefix == "osd pool delete":
-                cluster.pool_delete(args['pool'])
-            else:
-                raise NotImplementedError()
+            try:
+                if prefix == "osd pool create":
+                    cluster.pool_create(args['pool'], args['pg_num'])
+                elif prefix == "osd pool set":
+                    if args['var'] == 'hashpspool':
+                        # 'set hashpspool' is actually and update to 'flags'
+                        cluster.pool_update(args['pool'], "flags", FLAG_HASHPSPOOL if args['val'] else 0)
+                    else:
+                        cluster.pool_update(args['pool'], args['var'], args['val'])
+                elif prefix == "osd pool set-quota":
+                    # NB set-quota takes a string which it expects to parse
+                    # as numeric size
+                    cluster.pool_update(args['pool'], "quota_%s" % args['field'], int(args['val']))
+                elif prefix == "osd pool rename":
+                    cluster.pool_update(args['srcpool'], 'pool_name', args['destpool'])
+                elif prefix == "osd pool delete":
+                    cluster.pool_delete(args['pool'])
+                else:
+                    raise NotImplementedError()
+            except Exception as e:
+                status = cluster.get_heartbeat(fsid)
+                return {
+                    'error': True,
+                    'results': [],
+                    'err_outbuf': e,
+                    'err_outs': e,
+                    'fsid': fsid,
+                    'versions': status['versions']
+                }
 
         status = cluster.get_heartbeat(fsid)
         return {
