@@ -1,6 +1,5 @@
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 import argparse
-import logging
 import os
 import threading
 import time
@@ -12,11 +11,7 @@ from minion_sim.minion_launcher import MinionLauncher
 PREFIX = 'figment'
 DOMAIN = 'imagination.com'
 
-
-log = logging.getLogger('minion_sim.sim')
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler())
-log.addHandler(logging.FileHandler('minion_sim.sim.log'))
+from minion_sim.log import log
 
 
 class MinionSim(threading.Thread):
@@ -88,6 +83,8 @@ class MinionSim(threading.Thread):
         log.debug("Complete.")
 
     def stop(self):
+        # FIXME should stop the minions before the XMLRPC server, because otherwise
+        # minions start getting XMLRPC errors
         self._server.shutdown()
 
     def halt_minions(self):

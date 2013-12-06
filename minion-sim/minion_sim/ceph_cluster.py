@@ -1,19 +1,12 @@
 from collections import defaultdict
 import hashlib
 import json
-import logging
 import uuid
 import random
+from minion_sim.log import log
 
 KB = 1024
 GIGS = 1024 * 1024 * 1024
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler())
-handler = logging.FileHandler("{0}.log".format(__name__))
-handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-log.addHandler(handler)
 
 
 def md5(raw):

@@ -8,6 +8,7 @@ import xmlrpclib
 from diamond.metric import Metric
 from jinja2 import Template
 from diamond.handler.graphite import GraphiteHandler
+from minion_sim.log import log
 
 
 STATS_PERIOD = 10
@@ -142,6 +143,7 @@ class MinionLauncher(object):
 
     def stop(self):
         try:
+            log.info("Sending SIGTERM to %s" % self.ps.pid)
             self.ps.send_signal(signal.SIGTERM)
         except OSError as e:
             if e.errno == errno.ESRCH:
@@ -154,5 +156,7 @@ class MinionLauncher(object):
         self._stats_sender.stop()
 
     def join(self):
+        log.info("Waiting for %s (%s)" % (self.ps.pid, self.fqdn))
         self.ps.communicate()
+        log.info("Process %s completed" % self.ps.pid)
         self._stats_sender.join()

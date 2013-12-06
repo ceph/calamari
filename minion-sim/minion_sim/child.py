@@ -2,7 +2,7 @@ import os
 import sys
 import xmlrpclib
 import yaml
-
+from minion_sim.log import log
 
 # Because salt minion will be calling functions
 # defined in this module
@@ -115,5 +115,10 @@ def main():
 
     salt.loader.minion_mods = my_minion_mods
 
-    minion = salt.Minion()
-    minion.start()
+    try:
+        minion = salt.Minion()
+        minion.start()
+    except Exception as e:
+        if not isinstance(e, SystemExit):
+            log.exception("minion.start[%s] threw an exception" % fqdn)
+        raise
