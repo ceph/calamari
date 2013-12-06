@@ -209,6 +209,11 @@ class RpcInterface(object):
 
         :param minion_status: A status, one of acc, pre, rej, all
         """
+
+        # FIXME: I think we're supposed to use salt.wheel.Wheel.master_call
+        # for this stuff to call out to the master instead of touching
+        # the files directly (need to set up some auth to do that though)
+
         keys = self.salt_key.list_keys()
         result = []
 

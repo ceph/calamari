@@ -155,6 +155,10 @@ class ClusterMonitor(threading.Thread):
                             self.on_sync_object(data['id'], data['return'])
                         elif 'ceph.rados_commands':
                             # A ceph.rados_commands response
+                            # FIXME: we'll get KeyErrors here if it's a JID from another ClusterMonitor,
+                            # which is handled but generates nasty backtraces in the logs.  We should
+                            # be explicitly checking that this command belongs to use (I *really* wish
+                            # I could explicitly add to the tags of salt jobs to prefix with FSID).
                             self.on_completion(data)
                     else:
                         # This does not concern us, ignore it

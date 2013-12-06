@@ -30,6 +30,7 @@ For example, and update request for a pool called 'foopool' might look like this
 when passed into PoolRequestFactory.update:
 
 ::
+
     pool_id=7
     attributes={
         'quota_max_bytes': 1024000000,
@@ -40,6 +41,7 @@ This is used to construct an OsdMapModifyingRequest with a list of ceph commands
 like this:
 
 ::
+
     commands=[
         ('osd pool set-quota', {'pool': 'foopool', 'field': 'max_bytes', 'val': 1024000000}),
         ('osd pool set-quota', {'pool': 'foopool', 'field': 'max_objects', 'val': 1000000}),
@@ -54,6 +56,27 @@ that epoch to arrive at the Calamari server.
 
 Once the request object has been constructed, it is ready to be executed.
 
+Executing requests are contained in the RequestCollection class, each
+ClusterMonitor has one of these.  They are added in RequestCollection.submit,
+which adds the request to the collection and invokes its submit() method.
+
+The default UserRequest.submit implementation
+
 TODO: write this once i've rearranged things so that request updates
 go through requestcollection so that things that create >1 JID can
 keep the map of JID->request up to date.
+
+Reference: the relevant classes
+-------------------------------
+
+.. autoclass:: cthulhu.manager.user_request.UserRequest
+
+.. autoclass:: cthulhu.manager.rpc.RpcInterface
+
+.. autoclass:: cthulhu.manager.cluster_monitor.ClusterMonitor
+
+.. autoclass:: cthulhu.manager.pool_request_factory.PoolRequestFactory
+
+.. autoclass:: cthulhu.manager.user_request.OsdMapModifyingRequest
+
+.. autoclass:: cthulhu.manager.user_request.RequestCollection

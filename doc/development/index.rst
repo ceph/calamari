@@ -21,7 +21,7 @@ Contents
    testing
    coding_style
    coverage
-
+   requests
 
 Indices and tables
 ==================

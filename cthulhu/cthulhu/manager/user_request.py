@@ -29,15 +29,14 @@ class UserRequest(object):
     the job having completed, e.g. waiting for the OSD map to be up
     to date before calling a pool creation complete.  For this reason,
     UserRequests have a local ID and completion state that is independent
-    of their remote ID (salt jid).
+    of their remote ID (salt jid).  UserRequests may also execute more than
+    one JID in the course of their lifetime.
 
     Requests have the following lifecycle:
-     NEW object is created, knows where it should run what commands remotely, and what
-         it should call back when remote commands complete.
-     SUBMITTED remote commands have been published using salt and we have obtained a
-               salt JID.
-     COMPLETING remote commands have completed, and any completion conditions
-                are now being awaited.
+     NEW object is created, it has all the information needed to do its job
+         other than where it should execute.
+     SUBMITTED the request has started executing, usually this will have involved sending
+               out a salt job, so .jid is often set but not always.
      COMPLETE no further action, this instance will remain constant from this point on.
               this does not indicate anything about success or failure.
     """
