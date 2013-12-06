@@ -20,6 +20,10 @@ API_USERNAME = 'admin'
 API_PASSWORD = 'admin'
 
 
+# We scale this linearly with the number of fqdns expected
+KEY_WAIT_PERIOD = 3
+
+
 class CalamariControl(object):
     """
     Interface for tests to control the Calamari server under test.
@@ -80,7 +84,7 @@ class CalamariControl(object):
 
             return all_present
 
-        wait_until_true(_fqdns_present)
+        wait_until_true(_fqdns_present, timeout=KEY_WAIT_PERIOD * len(minion_ids))
 
         for minion_id in minion_ids:
             log.debug("Authorising key for %s" % minion_id)
