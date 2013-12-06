@@ -78,6 +78,10 @@ STATICFILES_DIRS = (
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../content/"),
 )
 
+STATIC_DOC_ROOT="/opt/calamari/webapp/content/"
+if DEBUG:
+    STATIC_DOC_ROOT="../content"
+
 # List of finder classes that know how to find static files in
 # various locations.
 STATICFILES_FINDERS = (
@@ -161,6 +165,9 @@ LOGGING = {
     }
 }
 
+if DEBUG:
+    LOGGING['handlers']['log_file']['filename'] = "django.log"
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication',
@@ -177,3 +184,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ]
 }
+
+
+CRUSH_HOST_TYPE = 'host'
+CRUSH_OSD_TYPE = 'osd'

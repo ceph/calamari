@@ -2,6 +2,8 @@ from django.utils import dateformat
 from django.db import models
 import jsonfield
 
+
+
 class Cluster(models.Model):
     """
     A cluster being tracked by Calamari.
@@ -73,3 +75,88 @@ class Cluster(models.Model):
 
     def has_osd(self, osd_id):
         return self.get_osd(osd_id) is not None
+
+
+class Pool(models.Model):
+    """
+    This functionality was retrofitted to Calamari 1.x, which does not have south.
+    To avoid adding a dependency for this one piece of data, simply create a new table
+    instead of adding to Cluster, as plain django syncdb can handle new tables.
+    """
+    class Meta:
+        unique_together = (('cluster', 'pool_id'),)
+
+    cluster = models.ForeignKey(Cluster)
+    pool_id = models.IntegerField()
+    name = models.TextField()
+    quota_max_bytes = models.BigIntegerField()
+    quota_max_objects = models.BigIntegerField()
+    used_objects = models.BigIntegerField()
+    used_bytes = models.BigIntegerField()
+
+
+class Server(models.Model):
+    """
+    Store what we know about the status of a server.
+
+    In Calamari 1.x our resolution of hostnames/IPs is not robust, because
+    we are not in contact with all the hosts to gather a full mapping of
+    IPs to hostnames.
+
+    The reliable data we have are:
+
+    - The 'addr' field from the monmap for mons
+    - The 'public_addr' field from the osdmap for OSDs
+
+    The fuzzy data we have are:
+
+    - Reverse DNS on the addresses, which may or may not provide any info
+    - The mon IDs, which may be the hostnames if the cluster was set up
+      with ceph-deploy
+    - The CRUSH map, which may include a 'host' element type as an ancestor
+      of an 'osd' element type, where the ID of the 'host' element is
+      the hostname.
+
+    Because we may or may not have a hostname (which may or may not be correct),
+    the frontend network IP addresses are used as the ID here.  That's a pretty
+    terrible ID, but it works as long as we're within one cluster.
+    """
+
+    class Meta:
+        unique_together = (("addr", "cluster"),)
+
+    cluster = models.ForeignKey(Cluster)
+
+    addr = models.TextField()
+
+    # Hostname, may be guessed from CRUSH map or reverse DNS
+    hostname = models.TextField(null=True, blank=True)
+
+    # Pretty name, may be set from hostname or mon ID
+    name = models.TextField(null=True)
+
+
+class ServiceStatus(models.Model):
+    """
+    Status of a RADOS service (mon or OSD).
+
+    Use this to learn about which services are running on, or
+    were last seen running on, a particular server in a cluster.
+    """
+    MON = 'mon'
+    OSD = 'osd'
+
+    class Meta:
+        unique_together = (("server", "type", "service_id"),)
+
+    # The server where we last saw this service (servers
+    server = models.ForeignKey(Server)
+
+    # OSD or MON?
+    type = models.CharField(max_length='3')
+
+    # OSD ID or mon rank
+    service_id = models.IntegerField()
+
+    # Human readable name (for mon it is mon.<name>, for OSD it is osd.<service_id>)
+    name = models.TextField()
