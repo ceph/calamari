@@ -14,8 +14,8 @@ CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
 	conf/diamond/NetworkCollector.conf \
-	restapi/cephrestapi.conf \
-	restapi/cephrestwsgi.py
+	conf/restapi/cephrestapi.conf \
+	conf/restapi/cephrestwsgi.py
 
 # Strategy for building dist tarball: find what we know is source
 # "grunt clean" doesn't take us back to a pristine source dir, so instead
@@ -176,9 +176,9 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -D conf/diamond/NetworkCollector.conf \
 		$(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
 	# nginx/wsgi for ceph-rest-api
-	@$(INSTALL) -D restapi/cephrestapi.conf \
+	@$(INSTALL) -D conf/restapi/cephrestapi.conf \
 		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
-	@$(INSTALL) -D restapi/cephrestwsgi.py \
+	@$(INSTALL) -D conf/restapi/cephrestwsgi.py \
 		$(DESTDIR)/etc/nginx/cephrestwsgi.py
 	# wsgi conf for calamari
 	@$(INSTALL) -D conf/calamari.wsgi \
@@ -195,7 +195,7 @@ install-deb-conf:
 	@$(INSTALL) -D conf/httpd/debian/calamari.conf \
 		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
 	# upstart job for cephrestapi
-	@$(INSTALL) -D restapi/init/cephrestapi.conf \
+	@$(INSTALL) -D conf/restapi/init/cephrestapi.conf \
 		$(DESTDIR)/etc/init/cephrestapi.conf
 
 install-rh-conf:
@@ -205,14 +205,14 @@ install-rh-conf:
 	@$(INSTALL) -D conf/httpd/rh/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 	# init job for cephrestapi
-	@$(INSTALL) -D restapi/init.d/cephrestapi \
+	@$(INSTALL) -D conf/restapi/init.d/cephrestapi \
 		$(DESTDIR)/etc/init.d/cephrestapi
 
 install-init:
 	@echo "install-init"
 	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache \
 		$(DESTDIR)/etc/init.d/carbon-cache
-	@$(INSTALL) -D $(ROOTOG) conf/upstart/kraken.conf \
+	@$(INSTALL) -D $(ROOTOG) conf/init/kraken.conf \
 		$(DESTDIR)/etc/init/kraken.conf
 
 install-ui:
@@ -242,9 +242,7 @@ clean:
 	for d in $(UI_SUBDIRS); do \
 		echo $$d; \
 		(cd $$d; \
-		npm install --silent; \
-		bower install; \
-		grunt --no-color clean) \
+		if [ -d node_modules ] ; then grunt --no-color clean; fi) \
 	done
 	@rm -f $(CONFIG_JSON)
 	rm -rf graphite
