@@ -17,17 +17,18 @@ THREADS=
 
 SOCKNAME=/tmp/cephrestapi.sock
 PIDFILE=/var/run/cephrestapi.uwsgi.pid
-LOGFILE=/var/log/ceph/uwsgi.log
+LOGFILE=/var/log/uwsgi.log
 
 start() {
-	uwsgi --plugin python -s $SOCKNAME --chmod-socket=777 \
-		--wsgi-file /etc/nginx/cephrestwsgi.py --callable app &
-	echo $? > $PIDFILE
+	uwsgi -d $LOGFILE --plugin python -s $SOCKNAME --chmod-socket=777 \
+		--wsgi-file /etc/nginx/cephrestwsgi.py --callable app \
+		--pidfile $PIDFILE
 }
 
 stop() {
 	if [ -f $PIDFILE ] ; then
 		uwsgi --stop $PIDFILE
+		rm $PIDFILE
 	fi
 }
 
