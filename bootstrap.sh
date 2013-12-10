@@ -172,7 +172,7 @@ service httpd restart
 /etc/init.d/iptables stop
 chkconfig iptables off
 
-cp ${SOURCE}/conf/upstart/kraken.conf /etc/init/kraken.conf
+cp ${SOURCE}/conf/init/kraken.conf /etc/init/kraken.conf
 start kraken
 
 # try to get carbon as current as possible
