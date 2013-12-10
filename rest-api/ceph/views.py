@@ -37,6 +37,7 @@ def get_latest_graphite(metric):
         series = fetchData({
             'startTime': from_time,
             'endTime': until_time,
+            'now': until_time,
             'localOnly': False},
             metric
         )
