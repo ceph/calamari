@@ -129,9 +129,18 @@ class PoolViewSet(viewsets.ViewSet):
 
 class ServerViewSet(viewsets.ViewSet):
     def list(self, request, cluster_pk):
+        # Cache ServiceStatus objects to avoid doing O(N) queries
+        servers = dict([(s.id, s) for s in Server.objects.filter(cluster_id=cluster_pk)])
+        statuses = ServiceStatus.objects.filter(server_id__in=servers.keys())
+        for status in statuses:
+            server = servers[status.server_id]
+            if not hasattr(server, '_servicestatus_set'):
+                server._servicestatus_set = []
+            server._servicestatus_set.append(status)
+
         return Response(
             ServerSerializer(
-                Server.objects.filter(cluster_id=cluster_pk),
+                servers.values(),
                 many=True
             ).data
         )

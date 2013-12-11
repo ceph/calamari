@@ -251,4 +251,4 @@ class ServerSerializer(serializers.ModelSerializer):
         model = Server
         fields = ('addr', 'hostname', 'name', 'services')
 
-    services = ServiceStatusSerializer(source='servicestatus_set', many=True)
+    services = ServiceStatusSerializer(source='_servicestatus_set', many=True)
