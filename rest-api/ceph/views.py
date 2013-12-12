@@ -111,7 +111,7 @@ class Space(RPCView):
 
         cluster = self.client.get_cluster(fsid)
 
-        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(cluster['name'], stat_name)
+        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
         space = {
             'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
             'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
