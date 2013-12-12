@@ -93,31 +93,6 @@ def memoize(function):
     return wrapper
 
 
-class CephRestClient(object):
-    """
-    Wrapper around the Ceph RESTful API.
-
-    The memoize decorator on the _query method is used to avoid making the same
-    round-trip to the rest server. This shouldn't be used if it is important
-    that values can change during the execution of this program, as this
-    effectively adds a cache that is never cleared.
-    """
-
-    def __init__(self, url="http://localhost:5000/api/v0.1/", timeout=_REST_CLIENT_DEFAULT_TIMEOUT):
-        self.__url = url
-        if self.__url[-1] != '/':
-            self.__url += '/'
-        self.timeout = timeout
-
-    @memoize
-    def query(self, endpoint):
-        """Interrogate a Ceph API endpoint"""
-        hdr = {'accept': 'application/json'}
-        r = requests.get(self.__url + endpoint,
-                         headers=hdr, timeout=self.timeout)
-        return r.json()
-
-
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
