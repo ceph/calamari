@@ -31,14 +31,14 @@ def initialize(args):
     user_model = get_user_model()
 
     if args.admin_username and args.admin_password and args.admin_email:
-        if not user_model.filter(username=args.admin_username).exists():
+        if not user_model.objects.filter(username=args.admin_username).exists():
             user_model.objects.create_superuser(
                 username=args.admin_username,
                 password=args.admin_password,
                 email=args.admin_email
             )
     else:
-        if not user_model.all().count():
+        if not user_model.objects.all().count():
             # When prompting for details, it's good to let the user know what the account
             # is (especially that's a web UI one, not a linux system one)
             log.info("You will now be prompted for login details for the administrative "
