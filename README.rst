@@ -40,13 +40,13 @@ than with pip (and because of `m2crypto weirdness`_)
     sudo apt-get install python-cairo python-m2crypto
 
 1. Create a virtualenv
-3. Install dependencies with ``pip -r requirements.txt``.
+3. Install dependencies with ``pip install -r requirements.txt``.
 4. Install graphite and carbon, which require some special command lines:
 
 ::
 
     pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
-    pip install graphite-web --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
+    pip install git+https://github.com/jcsp/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 
 
 5. Grab the `GUI code <https://github.com/inktankstorage/clients>`_, build it and
@@ -84,7 +84,7 @@ Graphite needs some folders created:
 ::
 
     mkdir -p ${VIRTUAL_ENV}/storage/log/webapp
-    mkdir -p ${VIRTUAL_ENV}/storage/index
+    mkdir -p ${VIRTUAL_ENV}/storage
 
 ``salt-master`` needs is configuration files.  ``salt/etc/salt/master`` already exists
 in the git repo, but unfortunately contains some absolute paths that **you'll need to edit**
@@ -176,6 +176,7 @@ Further reading (including running tests)
 Build the docs:
 
 ::
+
     cd docs/
     make html
     open _build/html/index.html
