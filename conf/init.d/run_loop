@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#
+# run_loop <cmd> <sleeptime> <logfile>
+#
+# Run <cmd>, with stdout and stderr append-redirected to <logfile>.
+# Sleep <sleeptime> seconds, and do it again.
+#
+
+cmd=$1
+sleeptime=$2
+logfile=$3
+
+while true; do
+	$cmd 2>&1 >> $logfile
+	sleep $sleeptime
+done

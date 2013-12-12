@@ -1,0 +1,59 @@
+### BEGIN INIT INFO
+# Provides: kraken
+# Required-Start: $local_fs $network $syslog $named
+# Required-Stop: $local_fs $network $syslog $named
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Calamari cluster-polling daemon
+# Description: Kraken is a daemon that polls the Ceph cluster for 
+#  configuration changes and status information.  It runs, by default,
+#  every 30s to get new information and store it for the Calamari
+#  webapp to consume.
+### END INIT INFO
+
+#
+# TODO: logging should be added to kraken, and the
+# redirection of stderr/stdout currently being used for
+# debugging should be removed.
+#
+
+. /lib/lsb/init-functions
+
+# these settings can be changed here
+CALAMARI_ROOT=/opt/calamari
+CALAMARI_REFRESH_FREQ=30
+PIDFILE=/var/run/kraken.pid
+LOGFILE=/var/log/kraken.log
+
+# run command in the Calamari virtualenv
+pybin=$CALAMARI_ROOT/venv/bin/python
+
+# run Django custom command `manage.py ceph_refresh`
+managepy=$CALAMARI_ROOT/webapp/calamari/manage.py
+
+cmd="$pybin $managepy ceph_refresh"
+
+case "$1" in
+
+  start)
+	log_success_msg "Starting Kraken cluster-polling service"
+	/etc/init.d/run_loop "$cmd" $CALAMARI_REFRESH_FREQ $LOGFILE \
+		>/dev/null 2>&1 &
+	echo $! >$PIDFILE
+	;;
+
+  stop)
+	log_success_msg "Stopping Kraken cluster-polling service"
+	kill $(<$PIDFILE)
+	;;
+
+  restart|reload)
+	stop
+	start
+	;;
+
+  *)
+	log_failure_msg "Unknown command $1"
+esac
+
+exit 0

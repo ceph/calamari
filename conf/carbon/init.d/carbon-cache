@@ -2,11 +2,20 @@
 # chkconfig:   - 25 75
 # description: carbon-cache
 # processname: carbon-cache
+### BEGIN INIT INFO
+# Provides:          carbon-cache
+# Required-Start:    $local_fs $network
+# Required-Stop:     $local_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Carbon daemon, caching version
+# Description:       Carbon accepts stats and stores them in a whisper database
+### END INIT INFO
 
 # Copied from github.com/graphite-project.  Bug fix: move PYTHONPATH setting
 # from here down to after GRAPHITE_DIR setting.  
 # See https://github.com/graphite-project/carbon/issues/147
-# also: add --logdir /var/log/carbon
+# also: add --logdir /var/log/carbon, LSB headers
 
 # Source function library.
 if [ -e /etc/rc.d/init.d/functions ]; then

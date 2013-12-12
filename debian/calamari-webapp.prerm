@@ -2,12 +2,17 @@
 
 case "$1" in
 	remove)
+		a2dismod wsgi
+		a2dismod proxy_http
 		a2dismod proxy
 		a2dissite calamari.conf
 		a2dissite graphite.conf
 		a2ensite 000-default
 		service apache2 restart
 		/etc/init.d/carbon-cache stop
+		/etc/init.d/kraken stop
+		update-rc.d -f carbon-cache remove
+		update-rc.d -f kraken remove
 		;;
 	upgrade|deconfigure)
 		:

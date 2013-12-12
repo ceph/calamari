@@ -37,11 +37,11 @@ unconfigure_diamond()
 case "$1" in
 	configure)
 		setup_diamond
-		[ -x /sbin/start ] && (stop diamond || true) && start diamond
+		(service diamond stop || true) && service diamond start
 		;;
 	abort-upgrade|abort-remove|abort-deconfigure)
 		unconfigure_diamond
-		[ -x /sbin/stop ] && (stop diamond || true)
+		[ -x /sbin/stop ] && (service diamond stop || true)
 		:
 		;;
 	*)

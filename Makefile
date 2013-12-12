@@ -158,7 +158,7 @@ $(CONFIG_JSON):
 dpkg:
 	dpkg-buildpackage -b -us -uc
 
-install-common: build install-conf install-init install-ui install-graphite-venv install-calamari-venv
+install-common: build install-conf install-init.d install-ui install-graphite-venv install-calamari-venv
 	@echo "install-common"
 
 install-rpm: install-common install-rh-conf
@@ -210,10 +210,18 @@ install-rh-conf:
 
 install-init:
 	@echo "install-init"
-	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache \
-		$(DESTDIR)/etc/init.d/carbon-cache
 	@$(INSTALL) -D $(ROOTOG) conf/init/kraken.conf \
 		$(DESTDIR)/etc/init/kraken.conf
+
+install-init.d:
+	@$(INSTALL) -D $(ROOTOG) conf/carbon/init.d/carbon-cache \
+		$(DESTDIR)/etc/init.d/carbon-cache
+	@$(INSTALL) -D $(ROOTOG) conf/init.d/kraken \
+		$(DESTDIR)/etc/init.d/kraken
+	@$(INSTALL) -D $(ROOTOG) conf/init.d/run_loop \
+		$(DESTDIR)/etc/init.d/run_loop
+	@$(INSTALL) -D $(ROOTOG) conf/restapi/init.d/cephrestapi \
+		$(DESTDIR)/etc/init.d/cephrestapi
 
 install-ui:
 	@echo "install-ui"

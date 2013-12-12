@@ -15,6 +15,7 @@ calamari()
 	a2dissite 000-default
 	a2ensite calamari.conf
 	a2ensite graphite.conf
+	a2enmod wsgi
 	a2enmod proxy
 	a2enmod proxy_http
 	chown -R www-data:www-data /var/log/calamari
@@ -81,15 +82,15 @@ EOF
 	cat graphite.wsgi.example >> graphite.wsgi
 	# init.d/carbon-cache handled in make install
 	[ -d /var/log/carbon ] || mkdir /var/log/carbon
-	/etc/init.d/carbon-cache stop || true
-	/etc/init.d/carbon-cache start
+	service carbon-cache stop || true
+	service carbon-cache start
 	cd $d
 }
 
 kraken()
 {
-	stop kraken || true
-	start kraken
+	service kraken stop || true
+	service kraken start
 }
 
 case "$1" in
@@ -111,5 +112,15 @@ case "$1" in
 		;;
 esac
 
+#
+# The sort of thing debhelper would add
+#
+if [ -x /etc/init.d/carbon-cache ] ; then 
+	update-rc.d carbon-cache defaults
+fi
+
+if [ -x /etc/init.d/kraken ] ; then 
+	update-rc.d kraken defaults
+fi
 
 exit 0

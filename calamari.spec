@@ -93,6 +93,7 @@ Group:   	System/Filesystems
 Requires:       ceph
 Requires:       nginx
 Requires:       uwsgi
+Requires:       redhat-lsb-core
 %description -n calamari-restapi
 Inktank package to configure ceph-rest-api under nginx.
 This package assumes ceph, nginx and uwsgi exist (with dependencies),
@@ -142,6 +143,7 @@ Group:   	System/Filesystems
 Requires:       httpd
 Requires:	mod_wsgi
 Requires:       cairo
+Requires:       redhat-lsb-core
 %description -n calamari-webapp
 Inktank package containing the Calamari management webapp
 Calamari is a webapp to monitor and control a Ceph cluster via a web
@@ -154,7 +156,8 @@ on the cluster.
 %{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/httpd/conf.d/graphite.conf
 %{_sysconfdir}/init.d/carbon-cache
-%{_sysconfdir}/init/kraken.conf
+%{_sysconfdir}/init.d/kraken
+%{_sysconfdir}/init.d/run_loop
 %dir /var/log/calamari
 %dir /var/log/graphite
 %attr (755, apache, apache) /var/log/calamari
@@ -245,8 +248,9 @@ EOF
 
 kraken()
 {
-	stop kraken || true
-	start kraken
+	service kraken stop || true
+	service kraken start
+	chkconfig kraken on
 }
 
 graphite_seed
@@ -259,6 +263,9 @@ service httpd restart
 exit 0
 
 %preun -n calamari-webapp
+service kraken stop
+service carbon-cache stop
+exit 0
 
 %postun -n calamari-webapp
 # Remove anything left behind in the calamari and graphite
