@@ -40,8 +40,8 @@ than with pip (and because of `m2crypto weirdness`_)
     sudo apt-get install python-cairo python-m2crypto
 
 1. Create a virtualenv
-3. Install dependencies with ``pip install -r requirements.txt``.
-4. Install graphite and carbon, which require some special command lines:
+2. Install dependencies with ``pip install -r requirements.txt``.
+3. Install graphite and carbon, which require some special command lines:
 
 ::
 
@@ -49,7 +49,7 @@ than with pip (and because of `m2crypto weirdness`_)
     pip install git+https://github.com/jcsp/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 
 
-5. Grab the `GUI code <https://github.com/inktankstorage/clients>`_, build it and
+4. Grab the `GUI code <https://github.com/inktankstorage/clients>`_, build it and
    place the build products in ``webapp/content`` so that when it's installed you
    have a ``webapp/content`` directory containing ``admin``, ``dashboard`` and ``login``.
 
