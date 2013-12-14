@@ -7,7 +7,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.static import serve as static_serve
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from rest_framework import status
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
@@ -95,3 +95,48 @@ def dashboard(request, path, document_root):
     if not clusters:
         return redirect("/admin/#cluster")
     return serve_dir_or_index(request, path, document_root)
+
+BOOTSTRAP_TEMPLATE = """
+# Calamari minion bootstrap script.
+#
+# When downloaded from a calamari server instance, this script inspects
+# the command line to determine the server URL, and then downloads
+# calamari-salt-minion from that URL before installing it and configuring
+# it to point to the server address.
+
+import sys
+import subprocess
+
+if len(sys.argv) > 1:
+    BASE_URL = sys.argv[1]
+else:
+    BASE_URL = "{base_url}"
+
+if len(sys.argv) > 2:
+    MASTER = sys.argv[2]
+else:
+    MASTER = "{master}"
+
+# Install dependencies of calamari-salt-minion
+# >>> ubuntu precise specific
+subprocess.check_call(["apt-get", "install", "-y", "python-m2crypto", "python-yaml", "msgpack-python", "python-zmq", "python-jinja2"])
+subprocess.check_call(["wget", "{base_url}bootstrap_data/calamari-salt-minion_0.17.2-1_all.deb"])
+subprocess.check_call(["dpkg", "-i", "calamari-salt-minion_0.17.2-1_all.deb"])
+# <<< ubuntu precies specific
+
+open("/etc/calamari-salt/minion", 'a').write("master: %s\\n" % MASTER)
+"""
+
+def bootstrap(request):
+    # Best effort to work out the URL that the client used to access
+    # this server
+    proto = "https" if request.is_secure() else "http"
+    http_host = request.META['HTTP_HOST']
+    my_url = "{0}://{1}/".format(proto, http_host)
+    my_hostname = http_host.split(":")[0]
+
+    bootstrap_script = BOOTSTRAP_TEMPLATE.format(
+        base_url = my_url, master = my_hostname
+        )
+
+    return HttpResponse(bootstrap_script)
