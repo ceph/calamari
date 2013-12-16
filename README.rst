@@ -16,6 +16,10 @@ This code is meant to be runnable in two ways: in *production mode*
 where it is installed systemwide from packages, or in *development mode*
 where it us running out of a git repo somewhere in your home directory.
 
+*In a hurry?* you don't have to follow the detailed development mode
+installation instructions below if you use the vagrant setup in
+``vagrant/devmode``.
+
 Installing in production mode is not described here because the short
 version is "follow the same instructions we give to users".  Installing
 in development mode is intrinsically a bit custom, so here are some
