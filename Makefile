@@ -175,6 +175,9 @@ install-conf: $(CONFFILES)
 		$(DESTDIR)/etc/diamond/collectors/CephCollector.conf
 	@$(INSTALL) -D conf/diamond/NetworkCollector.conf \
 		$(DESTDIR)/etc/diamond/collectors/NetworkCollector.conf
+	# carbon storage conf
+	@$(INSTALL) -D conf/carbon/storage-schema.conf \
+		$(DESTDIR)/opt/graphite/conf/storage-schema.conf
 	# nginx/wsgi for ceph-rest-api
 	@$(INSTALL) -D conf/restapi/cephrestapi.conf \
 		$(DESTDIR)/etc/nginx/conf.d/cephrestapi.conf
