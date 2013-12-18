@@ -1,0 +1,51 @@
+#!/bin/bash
+
+calamari()
+{
+	d=$(pwd)
+    cd /opt/calamari/webapp/calamari
+	# allow apache access to all
+	# rpm/centos: apache?
+	chown -R www-data.www-data .
+	# centos: ???
+	a2dissite 000-default
+	a2ensite calamari.conf
+	chown -R www-data:www-data /var/log/calamari
+	cd $d
+}
+
+
+carbon()
+{
+	d=$(pwd)
+	cd /opt/calamari/venv/conf
+	if ! grep -q -s 'MAX_CREATES_PER_MINUTE = 10000' carbon.conf; then
+		sed 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' <carbon.conf.example > /etc/graphite/carbon.conf
+	fi
+
+	cp storage-schemas.conf.example /etc/graphite/storage-schemas.conf
+
+	cd $d
+}
+
+case "$1" in
+	configure)
+		carbon
+		calamari
+		service apache2 stop || true
+		service apache2 start
+		# rpm/centos
+		# service httpd restart
+		# chkconfig httpd on
+		;;
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+	*)
+		echo "postinst called with unknown argument $1" >&2
+		exit 1
+		;;
+esac
+
+
+exit 0

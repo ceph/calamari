@@ -1,0 +1,21 @@
+build_deps:
+  pkg.installed:
+    - pkgs:
+      - python-virtualenv
+      - git
+      - python-dev
+      - swig
+      - libzmq-dev
+      - g++
+      - python-cairo
+      - python-m2crypto
+      - make
+      - devscripts
+      - libpq-dev
+      - cython
+      - debhelper
+      - python-mock
+      - python-configobj
+      - cdbs
+      - python-sphinx
+      - libcairo2-dev

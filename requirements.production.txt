@@ -1,0 +1,26 @@
+
+
+# This is the production requirements.txt.  It excludes
+# anything we will be installing an upstream package,
+# and anything that is only used for development/build.
+
+Django==1.5.1
+argparse==1.2.1
+django-filter==0.6
+djangorestframework==2.3.6
+wsgiref==0.1.2
+sqlalchemy==0.8.3
+cython
+gevent>=1.0
+
+Twisted==11.1.0
+django-tagging
+-e git+https://github.com/jcsp/whisper.git@calamari#egg=whisper
+pytz
+
+# Cthulhu
+pyzmq
+python-dateutil
+threading2
+zerorpc
+

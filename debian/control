@@ -6,29 +6,10 @@ Maintainer: Dan Mick <dan.mick@inktank.com>
 Standards-Version: 3.9.2
 Build-Depends: libcairo2-dev, python-pip
 
-Package: calamari-agent
+Package: calamari-server
 Architecture: all
-Depends: diamond (>= 3.4.13-inktank)
-Description: Inktank metapackage to install/configure Diamond collection agent
- This package installs, configures, and starts the Diamond statistics
- collection daemon and collector agents for Ceph clusters.  The data
- will be sent to the administration host named 'calamari', which is
- running the Inktank Ceph Enterprise Manager.  Install this package on
- all hosts in the cluster running ceph daemons of any kind.
-
-Package: calamari-restapi
-Architecture: all
-Depends: ceph, ceph-common, nginx, uwsgi, uwsgi-plugin-python
-Description: Inktank package to configure ceph-rest-api under nginx
- This package assumes ceph, nginx and uwsgi exist (with dependencies),
- and configures all of them to start and run ceph-rest-api in order to
- support Inktank Ceph Enterprise Manager.  Install this package on one
- of your monitor machines.
-
-Package: calamari-webapp
-Architecture: all
-Depends: apache2, libapache2-mod-wsgi, libcairo2
-Description: Inktank package containing the Calamari management webapp
+Depends: apache2, libapache2-mod-wsgi, libcairo2, supervisor, salt-master
+Description: Inktank package containing the Calamari management srever
  Calamari is a webapp to monitor and control a Ceph cluster via a web
- browser.  It depends on having calamari-agent and calamari-restapi deployed
- on the cluster.
+ browser.
+
