@@ -1,5 +1,6 @@
 from collections import defaultdict
-import threading
+import gevent.greenlet
+import gevent.lock
 from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -22,7 +23,7 @@ class DerivedObjects(dict):
 
     def __init__(self):
         super(DerivedObjects, self).__init__()
-        self._lock = threading.Lock()
+        self._lock = gevent.lock.RLock()
 
     def get(self, key, default=None):
         with self._lock:

@@ -56,7 +56,7 @@ class Persister(gevent.greenlet.Greenlet):
             fsid=fsid, sync_type=sync_type, version=version, when=when, data=json.dumps(data)
         ))
 
-    def run(self):
+    def _run(self):
         while not self._complete.is_set():
             try:
                 data = self._queue.get(block=True, timeout=1)

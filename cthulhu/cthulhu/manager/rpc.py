@@ -1,4 +1,4 @@
-import threading
+import gevent.event
 import traceback
 import zerorpc
 
@@ -271,7 +271,7 @@ class RpcInterface(object):
         }
 
 
-class RpcThread(threading.Thread):
+class RpcThread(gevent.greenlet.Greenlet):
     """
     Present a ZeroRPC API for users
     to request state changes.
@@ -279,7 +279,7 @@ class RpcThread(threading.Thread):
     def __init__(self, manager):
         super(RpcThread, self).__init__()
         self._manager = manager
-        self._complete = threading.Event()
+        self._complete = gevent.event.Event()
         self._server = zerorpc.Server(RpcInterface(manager))
         self._bound = False
 
@@ -295,7 +295,7 @@ class RpcThread(threading.Thread):
         self._server.bind(CTHULHU_RPC_URL)
         self._bound = True
 
-    def run(self):
+    def _run(self):
         assert self._bound
 
         try:
