@@ -19,7 +19,7 @@ path = '/opt/calamari/webapp/calamari'
 sys.path.append(path)
 sys.path.append(path + '/calamari')
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'calamari.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'calamari_web.settings'
 
 # The commented out Python below is used for the WSGI authentication on static
 # directories being served by Apache. See notes in calamari.conf about how it

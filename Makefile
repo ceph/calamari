@@ -6,6 +6,8 @@ SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
 
+
+
 # Strategy for building dist tarball: find what we know is source
 # "grunt clean" doesn't take us back to a pristine source dir, so instead
 # we filter out what we know is build product and tar up only what we
@@ -36,24 +38,27 @@ DEBFILES = \
 	rules \
 	source/format
 
-#DISTFILES += $(DEBFILES:%=debian/%)
-
 venv:
 	virtualenv --system-site-packages venv; \
 
 build-venv: venv
 	@echo "build-venv"
+	set -e; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
+	./bin/python ./bin/pip install \
+	  --install-option="--zmq=bundled" \
+	  pyzmq>=13.0; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements.production.txt; \
 	./bin/python ./bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		build/carbon/setup.py; \
 	./bin/python ./bin/pip install \
+	  https://github.com/jcsp/whisper/tarball/calamari; \
+	./bin/python ./bin/pip install \
 		  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
-	  --no-download carbon; \
+	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
@@ -92,20 +97,29 @@ install-rpm: install-common install-rh-conf
 	@echo "install-rpm"
 
 # for deb
-install: install-common install-deb-conf
+install: install-common install-deb-conf install-salt
 	@echo "install"
 
 install-conf: $(CONFFILES)
 	@echo "install-conf"
 	@$(INSTALL) -D conf/calamari.wsgi \
 		$(DESTDIR)/opt/calamari/conf/calamari.wsgi
+	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
 	@$(INSTALL) -D conf/supervisord.production.conf \
-		$(DESTDIR)/etc/supervisord.conf \
+		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
+	@$(INSTALL) -d $(DESTDIR)/etc/graphite
+	@$(INSTALL) -D conf/carbon/carbon.conf \
+		$(DESTDIR)/etc/graphite/carbon.conf
+	@$(INSTALL) -D conf/carbon/storage-schemas.conf \
+		$(DESTDIR)/etc/graphite/storage-schemas.conf
 	# wsgi conf for graphite constructed in postinst
 	# log dirs for Django apps
 	@$(INSTALL) -d $(DESTDIR)/var/log/graphite
 	@$(INSTALL) -d $(DESTDIR)/var/log/calamari
 
+install-salt:
+	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
+	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/
 
 install-deb-conf:
 	@echo "install-deb-conf"
@@ -121,21 +135,14 @@ install-venv: build-venv
 	@echo "install-venv"
 	# copy calamari webapp files into place
 	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
-	cp -rp webapp/* $(DESTDIR)/opt/calamari/webapp
+	cp -rp webapp/calamari $(DESTDIR)/opt/calamari/webapp
 	cp -rp venv $(DESTDIR)/opt/calamari
 
 clean:
-	@echo "XXX skipping clean for my sanity"
-	#rm -rf venv
+	rm -rf venv
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
-	for d in $(UI_SUBDIRS); do \
-		echo $$d; \
-		(cd $$d;  \
-		npm install --silent; \
-		grunt --no-color saveRevision) \
-	done
 	@rm -rf $(PKGDIR)
 	@$(FINDCMD) | cpio --null -p -d $(PKGDIR)
 	@tar -zcf $(TARNAME) $(PKGDIR)

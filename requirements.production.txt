@@ -15,11 +15,10 @@ gevent>=1.0
 
 Twisted==11.1.0
 django-tagging
--e git+https://github.com/jcsp/whisper.git@calamari#egg=whisper
 pytz
 
 # Cthulhu
-pyzmq
+pyzmq>=13.0
 python-dateutil
 threading2
 zerorpc

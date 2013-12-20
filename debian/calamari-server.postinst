@@ -1,6 +1,6 @@
 #!/bin/bash
 
-calamari()
+calamari_httpd()
 {
 	d=$(pwd)
     cd /opt/calamari/webapp/calamari
@@ -14,24 +14,9 @@ calamari()
 	cd $d
 }
 
-
-carbon()
-{
-	d=$(pwd)
-	cd /opt/calamari/venv/conf
-	if ! grep -q -s 'MAX_CREATES_PER_MINUTE = 10000' carbon.conf; then
-		sed 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' <carbon.conf.example > /etc/graphite/carbon.conf
-	fi
-
-	cp storage-schemas.conf.example /etc/graphite/storage-schemas.conf
-
-	cd $d
-}
-
 case "$1" in
 	configure)
-		carbon
-		calamari
+		calamari_httpd
 		service apache2 stop || true
 		service apache2 start
 		# rpm/centos

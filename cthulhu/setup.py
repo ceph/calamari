@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="calamari_cthulhu",
     version="0.1",
-    packages=['cthulhu'],
+    packages=['cthulhu', 'cthulhu.manager', 'cthulhu.persistence'],
     url="http://www.inktank.com/enterprise/",
     author="Inktank Storage Inc.",
     author_email="info@inktank.com",
