@@ -1,10 +1,11 @@
 import re
 import datetime
-import threading
 from dateutil.tz import tzutc
 
 from pytz import utc
 import dateutil
+import gevent.lock
+import gevent
 
 import salt
 import salt.utils.event
@@ -38,7 +39,7 @@ class SyncObjects(object):
 
     def __init__(self):
         self._objects = dict([(t, None) for t in SYNC_OBJECT_TYPES])
-        self._lock = threading.Lock()
+        self._lock = gevent.lock.RLock()
 
     def set_map(self, typ, version, map_data):
         with self._lock:
@@ -53,7 +54,7 @@ class SyncObjects(object):
             return self._objects[typ]
 
 
-class ClusterMonitor(threading.Thread):
+class ClusterMonitor(gevent.greenlet.Greenlet):
     """
     Remote management of a Ceph cluster.
 
@@ -78,7 +79,8 @@ class ClusterMonitor(threading.Thread):
         self._favorite_mon = None
         self._last_heartbeat = {}
 
-        self._complete = threading.Event()
+        self._complete = gevent.event.Event()
+        self.done = gevent.event.Event()
 
         self._sync_objects = SyncObjects()
         self._requests = RequestCollection()
@@ -114,7 +116,7 @@ class ClusterMonitor(threading.Thread):
     def get_derived_object(self, object_type):
         return self._derived_objects.get(object_type)
 
-    def run(self):
+    def _run(self):
         event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
 
         while not self._complete.is_set():
@@ -170,6 +172,7 @@ class ClusterMonitor(threading.Thread):
                     log.debug("Message content: %s" % data)
 
         log.info("%s complete" % self.__class__.__name__)
+        self.done.set()
 
     def is_favorite(self, minion_id):
         """

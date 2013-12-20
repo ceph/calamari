@@ -1,6 +1,6 @@
 import hashlib
 import json
-import threading
+import gevent.event
 import signal
 from dateutil.tz import tzutc
 
@@ -18,32 +18,24 @@ from cthulhu.manager.rpc import RpcThread
 from cthulhu.persistence.sync_objects import Persister, Session, SyncObject
 
 
-def enable_gevent():
-    # We are using gevent because:
-    #
-    # - ZeroRPC requires it
-    # - It is nice and efficient anyway.
-
-    from gevent.monkey import patch_all
-    patch_all()
-    import zmq.green
-    import salt.utils.event
-    salt.utils.event.zmq = zmq.green
-
-enable_gevent()
+from gevent.monkey import patch_all
+patch_all()
+import zmq.green
+import salt.utils.event
+salt.utils.event.zmq = zmq.green
 
 
-class DiscoveryThread(threading.Thread):
+class DiscoveryThread(gevent.greenlet.Greenlet):
     def __init__(self, manager):
         super(DiscoveryThread, self).__init__()
 
         self._manager = manager
-        self._complete = threading.Event()
+        self._complete = gevent.event.Event()
 
     def stop(self):
         self._complete.set()
 
-    def run(self):
+    def _run(self):
         log.info("%s running" % self.__class__.__name__)
         event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
         event.subscribe("ceph/heartbeat/")
@@ -79,7 +71,7 @@ class Manager(object):
     """
 
     def __init__(self):
-        self._complete = threading.Event()
+        self._complete = gevent.event.Event()
 
         self._rpc_thread = RpcThread(self)
         self._discovery_thread = DiscoveryThread(self)
@@ -105,7 +97,7 @@ class Manager(object):
         """
         victim = self.monitors[fs_id]
         victim.stop()
-        victim.join()
+        victim.done.wait()
         del self.monitors[fs_id]
 
         self._expunge(fs_id)
@@ -202,7 +194,7 @@ class Manager(object):
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
 
 
-class NotificationThread(threading.Thread):
+class NotificationThread(gevent.greenlet.Greenlet):
     """
     Responsible for:
      - Listening for Websockets clients connecting, and subscribing them
@@ -212,9 +204,9 @@ class NotificationThread(threading.Thread):
     """
     def __init__(self):
         super(NotificationThread, self).__init__()
-        self._complete = threading.Event()
+        self._complete = gevent.event.Event()
         self._pub = None
-        self._ready = threading.Event()
+        self._ready = gevent.event.Event()
 
     def stop(self):
         self._complete.set()
@@ -225,7 +217,7 @@ class NotificationThread(threading.Thread):
         self._pub.send(topic, zmq.SNDMORE)
         self._pub.send(json.dumps(message))
 
-    def run(self):
+    def _run(self):
         ctx = zmq.Context(1)
         sub = ctx.socket(zmq.SUB)
         sub.connect('tcp://172.16.79.128:7002')
@@ -254,7 +246,7 @@ def main():
     m = Manager()
     m.start()
 
-    complete = threading.Event()
+    complete = gevent.event.Event()
 
     def shutdown():
         log.info("Signal handler: stopping")
