@@ -3,15 +3,21 @@
 calamari_httpd()
 {
 	d=$(pwd)
-    cd /opt/calamari/webapp/calamari
 	# allow apache access to all
-	# rpm/centos: apache?
-	chown -R www-data.www-data .
-	# centos: ???
+	chown -R www-data:www-data /opt/calamari/webapp/calamari
+
+	# www-data shouldn't need to write, but it does because graphite creates index on read
+	chown -R www-data:www-data /var/lib/graphite
+
 	a2dissite 000-default
 	a2ensite calamari.conf
+	a2enmod wsgi
 	chown -R www-data:www-data /var/log/calamari
+	chown -R www-data:www-data /var/lib/calamari_web
 	cd $d
+
+    # Load our salt config
+    service salt-master restart
 }
 
 case "$1" in

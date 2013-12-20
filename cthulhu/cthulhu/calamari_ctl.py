@@ -2,7 +2,9 @@
 import argparse
 import logging
 import os
+import subprocess
 from django.core.management import execute_from_command_line
+import pwd
 from cthulhu import config
 from cthulhu.persistence import sync_objects
 from django.contrib.auth import get_user_model
@@ -46,6 +48,35 @@ def initialize(args):
                      "once setup is complete.")
             # Prompt for user details
             execute_from_command_line(["", "createsuperuser"])
+
+    # Django's static files
+    # FIXME: should swallow the output of this, it's super-verbose by default
+    execute_from_command_line(["", "collectstatic", "--noinput"])
+
+    # Because we've loaded Django, it will have written log files as
+    # this user (probably root).  Fix it so that apache can write them later.
+    # FIXME: make www-data username configurable, it'll be different on centos
+    # FIXME: put this log file path into calamari config so that we
+    # can reason about it without loading django settings.
+    # we can know it without having to load settings.py
+    apache_user = pwd.getpwnam('www-data')
+    from calamari_web.settings import LOGGING, DATABASES
+    for log_handler in LOGGING['handlers'].values():
+        if 'filename' in log_handler:
+            os.chown(log_handler['filename'], apache_user.pw_uid, apache_user.pw_gid)
+
+    # FIXME: this is because of rpc client import importing cthulhu logger :-/ -- should
+    # make that not the case or at least get this path from config instead of hardcoding
+    from cthulhu.config import LOG_PATH
+    os.chown(LOG_PATH, apache_user.pw_uid, apache_user.pw_gid)
+
+    # NB this will cease to be necessary when we switch to postgres by default
+    os.chown(DATABASES['default']['NAME'], apache_user.pw_uid, apache_user.pw_gid)
+
+    # Signal supervisor to restart cthulhu as we have created its database
+    # TODO: be cleaner by using XMLRPC instead of calling out to subprocess,
+    # and don't let user see internal word 'cthulhu'.
+    subprocess.call(['supervisorctl', 'restart', 'cthulhu'])
 
 
 def change_password(args):

@@ -119,6 +119,11 @@ install-conf: $(CONFFILES)
 	# log dirs for Django apps
 	@$(INSTALL) -d $(DESTDIR)/var/log/graphite
 	@$(INSTALL) -d $(DESTDIR)/var/log/calamari
+	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/log/webapp
+	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/whisper
+	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari_web
+	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari
+	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
 install-salt:
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt

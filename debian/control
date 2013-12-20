@@ -8,7 +8,7 @@ Build-Depends: libcairo2-dev, python-pip
 
 Package: calamari-server
 Architecture: all
-Depends: apache2, libapache2-mod-wsgi, libcairo2, supervisor, salt-master
+Depends: apache2, libapache2-mod-wsgi, libcairo2, supervisor, salt-master, python-cairo
 Description: Inktank package containing the Calamari management srever
  Calamari is a webapp to monitor and control a Ceph cluster via a web
  browser.

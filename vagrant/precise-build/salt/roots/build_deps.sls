@@ -13,6 +13,7 @@ install_salt:
 build_deps:
   pkg.installed:
     - pkgs:
+      - build-essential
       - python-virtualenv
       - git
       - python-dev

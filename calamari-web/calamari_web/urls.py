@@ -1,6 +1,6 @@
 from django.conf.urls import patterns, include, url
 
-from settings import STATIC_DOC_ROOT, DEBUG, GRAPHITE_API_PREFIX
+from settings import STATIC_DOC_ROOT, GRAPHITE_API_PREFIX
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -39,22 +39,24 @@ urlpatterns = patterns(
     url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
 )
 
-if DEBUG:
-    # Graphite dashboard client code is not CSRF enabled, but we have
-    # global CSRF protection enabled.  Make exceptions for the views
-    # that the graphite dashboard wants to POST to.
-    from django.views.decorators.csrf import csrf_exempt
+# Graphite dashboard client code is not CSRF enabled, but we have
+# global CSRF protection enabled.  Make exceptions for the views
+# that the graphite dashboard wants to POST to.
+from django.views.decorators.csrf import csrf_exempt
 
-    # By default graphite views are visible to anyone who asks:
-    # we only want to allow logged in users to access graphite
-    # API.
-    from django.contrib.auth.decorators import login_required
+# By default graphite views are visible to anyone who asks:
+# we only want to allow logged in users to access graphite
+# API.
+from django.contrib.auth.decorators import login_required
 
-    def patch_views(mod):
-        for url_pattern in mod.urlpatterns:
-            cb = url_pattern.callback
-            url_pattern._callback = csrf_exempt(login_required(cb))
-    import graphite.metrics.urls
-    import graphite.dashboard.urls
-    patch_views(graphite.metrics.urls)
-    patch_views(graphite.dashboard.urls)
+
+def patch_views(mod):
+    for url_pattern in mod.urlpatterns:
+        cb = url_pattern.callback
+        url_pattern._callback = csrf_exempt(login_required(cb))
+
+
+import graphite.metrics.urls
+import graphite.dashboard.urls
+patch_views(graphite.metrics.urls)
+patch_views(graphite.dashboard.urls)

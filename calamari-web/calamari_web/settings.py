@@ -23,8 +23,7 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             '../db.sqlite3'),
+        'NAME': "/var/lib/calamari_web/frontend.db",
     }
 }
 
@@ -70,16 +69,18 @@ APPEND_SLASH = False
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
-STATIC_ROOT = ''
+
+if DEBUG:
+    STATIC_ROOT = ''
+else:
+    STATIC_ROOT = "/opt/calamari/webapp/content/"
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
 STATIC_URL = '/static/'
 
 # Additional locations of static files
-STATICFILES_DIRS = (
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../content/"),
-)
+STATICFILES_DIRS = tuple()
 
 STATIC_DOC_ROOT = "/opt/calamari/webapp/content/"
 if DEBUG:
@@ -262,14 +263,20 @@ if DEBUG:
         os.path.join(os.environ['VIRTUAL_ENV'], "webapp/content/"),
     )
     STATIC_URL = "/content/"
-
+else:
+    TEMPLATE_DIRS = os.path.join("/opt/calamari/venv/", "lib/python2.7/site-packages/graphite/templates")
+    CONTENT_DIR = os.path.join("/opt/calamari/venv/", "webapp/content/")
+    STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join("/opt/calamari/venv", "webapp/content/"),)
+    STATIC_URL = "/static/"
 
 # <<<
 
 if DEBUG:
     STORAGE_DIR = os.path.join(os.environ['VIRTUAL_ENV'], 'storage')
 else:
-    STORAGE_DIR = ''
+    STORAGE_DIR = '/var/lib/graphite'
+    LOG_DIR = '/var/log/calamari'
+    GRAPHITE_ROOT = '/opt/calamari/venv'
 
 
 ## Set config dependent on flags set in local_settings

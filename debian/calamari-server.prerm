@@ -2,12 +2,10 @@
 
 case "$1" in
 	remove)
-		a2dismod proxy
 		a2dissite calamari.conf
-		a2dissite graphite.conf
 		a2ensite 000-default
 		service apache2 restart
-		/etc/init.d/carbon-cache stop
+		service supervisor restart
 		;;
 	upgrade|deconfigure)
 		:
