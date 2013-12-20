@@ -107,6 +107,9 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
 	@$(INSTALL) -D conf/supervisord.production.conf \
 		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
+	@$(INSTALL) -d $(DESTDIR)/etc/salt/master.d
+	@$(INSTALL) -D conf/salt.master.conf \
+		$(DESTDIR)/etc/salt/master.d/calamari.conf
 	@$(INSTALL) -d $(DESTDIR)/etc/graphite
 	@$(INSTALL) -D conf/carbon/carbon.conf \
 		$(DESTDIR)/etc/graphite/carbon.conf
