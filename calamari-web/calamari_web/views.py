@@ -99,13 +99,19 @@ def dashboard(request, path, document_root):
 BOOTSTRAP_TEMPLATE = """
 # Calamari minion bootstrap script.
 #
-# When downloaded from a calamari server instance, this script inspects
-# the command line to determine the server URL, and then downloads
+# When downloaded from a calamari server instance, downloads
 # calamari-salt-minion from that URL before installing it and configuring
 # it to point to the server address.
+#
+# The calamari server will attempt to infer the HTTP and Salt addresses
+# from the Host: used to download the script, if this fails override them
+# on the command line.
 
 import sys
 import subprocess
+import os
+
+SALT_CONFIG_PATH = "/etc/calamari-salt/"
 
 if len(sys.argv) > 1:
     BASE_URL = sys.argv[1]
@@ -117,15 +123,18 @@ if len(sys.argv) > 2:
 else:
     MASTER = "{master}"
 
-# Install dependencies of calamari-salt-minion
-# >>> ubuntu precise specific
-subprocess.check_call(["apt-get", "install", "-y", "python-m2crypto", "python-yaml", "msgpack-python", "python-zmq", "python-jinja2"])
-subprocess.check_call(["wget", "{base_url}bootstrap_data/calamari-salt-minion_0.17.2-1_all.deb"])
-subprocess.check_call(["dpkg", "-i", "calamari-salt-minion_0.17.2-1_all.deb"])
-# <<< ubuntu precies specific
+# Configure package repository
+# Would be nice to use apt-add-repository, but it's not always there and
+# trying to apt-get install it from the net would be a catch-22
+open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/ubuntu precise main")
 
-open("/etc/calamari-salt/minion", 'a').write("master: %s\\n" % MASTER)
+# Deploy salt minion
+subprocess.check_call(["apt-get", "update"])
+subprocess.check_call(["apt-get", "install", "-y", "--force-yes", "calamari-salt-minion"])
+open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
+
 """
+
 
 def bootstrap(request):
     # Best effort to work out the URL that the client used to access
@@ -136,7 +145,7 @@ def bootstrap(request):
     my_hostname = http_host.split(":")[0]
 
     bootstrap_script = BOOTSTRAP_TEMPLATE.format(
-        base_url = my_url, master = my_hostname
-        )
+        base_url=my_url, master=my_hostname
+    )
 
     return HttpResponse(bootstrap_script)
