@@ -1,0 +1,23 @@
+Plugins
+=======
+
+
+status-check
+------------
+a python module called status-check.py
+which is a salt module and gets installed to _modules/ within the file_roots specified by the master config file
+
+
+How does it get installed:
+third parties will place a directory in /srv/calamari/plugins/XYZ
+
+*** either symlinking happens or this directory is speced in the salt config
+
+How does this get dealt with in dev and prod?
+
+Is it manual or automagic?
+
+
+status-processor
+----------------
+
