@@ -31,3 +31,4 @@ build_deps:
       - cdbs
       - python-sphinx
       - libcairo2-dev
+      - python-m2crypto
