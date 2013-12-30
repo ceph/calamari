@@ -18,6 +18,12 @@ calamari_httpd()
 
     # Load our salt config
     service salt-master restart
+
+    # Load our supervisor config
+    # NB 'service supervisor restart' is broken on precise
+    service supervisor stop
+    sleep 3
+    service supervisor start
 }
 
 case "$1" in
