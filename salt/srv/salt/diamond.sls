@@ -3,12 +3,6 @@ diamond:
   pkg:
     - installed
 
-ceph-collector:
-  file.managed:
-    - name: /usr/share/diamond/collectors/ceph/ceph.py
-    - source: https://raw.github.com/jcsp/Diamond/4907535/src/collectors/ceph/ceph.py
-    - source_hash: md5=2476f251ce7f4c500cbf7d26d2d88236
-
 diamond-config:
   file:
     - managed
@@ -46,13 +40,11 @@ diamond-network-config:
 diamond-service:
   require:
     - pkg: diamond
-    - file: ceph-collector
     - file: diamond-network-config
     - file: diamond-ceph-config
     - file: diamond-config
     - file: diamond-init-config
   watch:
-    - file: ceph-collector
     - file: diamond-network-config
     - file: diamond-ceph-config
     - file: diamond-config

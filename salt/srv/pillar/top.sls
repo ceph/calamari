@@ -2,4 +2,3 @@
 base:
   '*':
       - schedules
-      - diamond
