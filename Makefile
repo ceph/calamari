@@ -1,7 +1,28 @@
-VERSION=1.0.0
+ifndef VERSION
+    VERSION=$(shell ./get-versions.sh VERSION)
+endif
+ifndef REVISION
+    REVISION=$(shell ./get-versions.sh REVISION)
+endif
+ifndef DIST
+    DIST=unstable
+endif
+ifndef BPTAG
+    BPTAG=""
+endif
+ifndef DEBEMAIL
+    DEBEMAIL=dan.mick@inktank.com
+endif
+
+# debian upstream tarballs: {name}_{version}.orig.tar.gz
+# rpm tarball names: apparently whatever you name in Source0, but
+# {name}_{version}.tar.gz will work
 DISTNAMEVER=calamari_$(VERSION)
-PKGDIR=calamari-$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
+
+# tmp dir for building the tarball
+PKGDIR=calamari-$(VERSION)
+
 SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
@@ -58,6 +79,12 @@ DEBFILES = \
 	source/format
 
 #DISTFILES += $(DEBFILES:%=debian/%)
+
+DATESTR=$(shell /bin/echo -n "built on "; date)
+set_deb_version:
+	DEBEMAIL=$(DEBEMAIL) dch \
+		--newversion $(VERSION)-$(REVISION)$(BPTAG) \
+		-D $(DIST) --force-bad-version --force-distribution "$(DATESTR)"
 
 build: build-ui build-venvs $(CONFIG_JSON) $(CONFFILES)
 
