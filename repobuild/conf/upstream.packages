@@ -4,3 +4,4 @@ python-yaml install
 msgpack-python install
 python-zmq install
 python-jinja2 install
+python-crypto install

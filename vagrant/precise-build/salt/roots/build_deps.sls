@@ -32,3 +32,5 @@ build_deps:
       - python-sphinx
       - libcairo2-dev
       - python-m2crypto
+      - python-crypto
+
