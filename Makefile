@@ -35,8 +35,10 @@ CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
 	conf/diamond/NetworkCollector.conf \
+	conf/carbon/storage-schema.conf \
 	conf/restapi/cephrestapi.conf \
-	conf/restapi/cephrestwsgi.py
+	conf/restapi/cephrestwsgi.py \
+	conf/calamari.wsgi
 
 # Strategy for building dist tarball: find what we know is source
 # "grunt clean" doesn't take us back to a pristine source dir, so instead
@@ -52,33 +54,6 @@ FINDCMD =find . \
         -o -name .sass-cache -prune \
         -o -name debian -prune \
         -o -print0
-
-#DISTFILES=$(shell $(FINDCMD) | xargs -0 -n 1 | grep -v ' ')
-#SPACEFILES=$(shell $(FINDCMD) | xargs -0 -n 1 -I % echo \"%\" | grep ' ')
-
-# add in just the debian files we want
-DEBFILES = \
-	calamari-agent.install \
-	calamari-agent.postinst \
-	calamari-agent.prerm \
-	calamari-webapp.init \
-	calamari-webapp.docs \
-	calamari-webapp.install \
-	calamari-webapp.postinst \
-	calamari-webapp.prerm \
-	calamari-webapp.postrm \
-	calamari-restapi.install \
-	calamari-restapi.postinst \
-	calamari-restapi.postrm \
-	calamari-restapi.prerm \
-	changelog \
-	compat \
-	control \
-	copyright \
-	rules \
-	source/format
-
-#DISTFILES += $(DEBFILES:%=debian/%)
 
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
@@ -288,7 +263,7 @@ clean:
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
-	for d in $(UI_SUBDIRS); do \
+	@for d in $(UI_SUBDIRS); do \
 		echo $$d; \
 		(cd $$d;  \
 		npm install --silent; \
