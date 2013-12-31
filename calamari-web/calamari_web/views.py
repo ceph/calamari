@@ -13,7 +13,7 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
 import zerorpc
-from cthulhu.manager.rpc import CTHULHU_RPC_URL
+from cthulhu.config import CTHULHU_RPC_URL
 
 #
 # How this is populated and where this info lives will need to change from its

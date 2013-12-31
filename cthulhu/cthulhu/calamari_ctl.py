@@ -78,6 +78,10 @@ def initialize(args):
     # and don't let user see internal word 'cthulhu'.
     subprocess.call(['supervisorctl', 'restart', 'cthulhu'])
 
+    # TODO: should be generating a SECRET_KEY here for django
+
+    # TODO: optionally generate or install HTTPS certs + hand to apache
+
 
 def change_password(args):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")

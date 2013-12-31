@@ -5,12 +5,9 @@ import zerorpc
 from salt.key import Key
 import salt.config
 
-from cthulhu.config import SALT_CONFIG_PATH
+from cthulhu.config import SALT_CONFIG_PATH, CTHULHU_RPC_URL
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
-
-
-CTHULHU_RPC_URL = 'tcp://127.0.0.1:5050'
 
 
 class NotFound(Exception):

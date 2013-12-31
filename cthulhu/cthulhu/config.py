@@ -9,3 +9,5 @@ FAVORITE_TIMEOUT_S = 60
 DB_PATH = "sqlite:////var/lib/cthulhu/cthulhu.db"
 
 LOG_PATH = "/var/log/calamari/cthulhu.log"
+
+CTHULHU_RPC_URL = 'tcp://127.0.0.1:5050'
