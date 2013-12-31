@@ -5,7 +5,7 @@ import zerorpc
 from salt.key import Key
 import salt.config
 
-from cthulhu.config import SALT_CONFIG_PATH, CTHULHU_RPC_URL
+from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
@@ -198,7 +198,7 @@ class RpcInterface(object):
 
     @property
     def salt_key(self):
-        return Key(salt.config.master_config(SALT_CONFIG_PATH))
+        return Key(salt.config.master_config(config.get('cthulhu', 'salt_config_path')))
 
     def minion_status(self, status_filter):
         """
@@ -289,7 +289,7 @@ class RpcThread(gevent.greenlet.Greenlet):
 
     def bind(self):
         log.info("%s bind..." % self.__class__.__name__)
-        self._server.bind(CTHULHU_RPC_URL)
+        self._server.bind(config.get('cthulhu', 'rpc_url'))
         self._bound = True
 
     def _run(self):

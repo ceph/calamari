@@ -125,6 +125,10 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
+	@$(INSTALL) -d $(DESTDIR)/etc/calamari
+	@$(INSTALL) -D conf/calamari.conf \
+		$(DESTDIR)/etc/calamari/calamari.conf
+
 install-salt:
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
 	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/

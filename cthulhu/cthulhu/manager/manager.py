@@ -12,9 +12,9 @@ import sqlalchemy
 from sqlalchemy import create_engine
 
 from cthulhu.log import log
-from cthulhu.config import DB_PATH
-from cthulhu.manager.cluster_monitor import ClusterMonitor, SALT_RUN_PATH
+from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.rpc import RpcThread
+from cthulhu.manager import config, salt_config
 from cthulhu.persistence.sync_objects import Persister, Session, SyncObject
 
 
@@ -37,7 +37,7 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
 
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
-        event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
+        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
         event.subscribe("ceph/heartbeat/")
 
         while not self._complete.is_set():
@@ -82,7 +82,7 @@ class Manager(object):
         self._notifier = NotificationThread()
         try:
             # Prepare persistence
-            engine = create_engine(DB_PATH)
+            engine = create_engine(config.get('cthulhu', 'db_path'))
             Session.configure(bind=engine)
 
             self._persister = Persister()

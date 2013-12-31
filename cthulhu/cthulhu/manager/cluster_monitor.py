@@ -21,7 +21,9 @@ from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL
 from cthulhu.manager.user_request import RequestCollection
 
-from cthulhu.config import SALT_CONFIG_PATH, SALT_RUN_PATH, FAVORITE_TIMEOUT_S
+from cthulhu.manager import config, salt_config
+
+FAVORITE_TIMEOUT_S = int(config.get('cthulhu', 'favorite_timeout_s'))
 
 
 class ClusterUnavailable(Exception):
@@ -116,8 +118,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def get_derived_object(self, object_type):
         return self._derived_objects.get(object_type)
 
-    def _run(self):
-        event = salt.utils.event.MasterEvent(SALT_RUN_PATH)
+    def run(self):
+        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
 
         while not self._complete.is_set():
             ev = event.get_event(full=True)
@@ -179,7 +181,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         Check if this minion is the one which we are currently treating
         as the primary source of updates, and promote it to be the
         favourite if the favourite has not sent a heartbeat since
-        FAVORITE_TIMEOUT_S.
+        cthulhu->favorite_timeout_s.
 
         :return True if this minion was the favorite or has just been
                 promoted.
@@ -227,7 +229,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 log.info("Advanced version %s/%s %s->%s" % (self.fsid, sync_type.str, old_version, new_version))
 
                 # We are out of date: request an up to date copy
-                client = salt.client.LocalClient(SALT_CONFIG_PATH)
+                client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
                 client.run_job(minion_id, 'ceph.get_cluster_object',
                                condition_kwarg([], {'cluster_name': cluster_data['name'],
                                                     'sync_type': sync_type.str,

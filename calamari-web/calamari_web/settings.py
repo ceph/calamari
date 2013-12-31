@@ -1,8 +1,11 @@
 # Django settings for calamari project.
-import os
 
+import os
 from os.path import dirname, abspath, join
 import sys
+
+from cthulhu.config import CalamariConfig
+config = CalamariConfig()
 
 DEBUG = False
 TEMPLATE_DEBUG = DEBUG
@@ -13,17 +16,13 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-#
-# When using sqlite3 db engine for development make sure that an absolute path
-# is used to point at the database file. Otherwise the current working
-# directory is assumed, and the Kraken service won't be able to find the DB
-# without doing a `chdir`. And, we'd rather have this little bit of complexity
-# here than there.
-#
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': "/var/lib/calamari_web/frontend.db",
+        'ENGINE': config.get("calamari_web", "db_engine"),
+        'NAME': config.get("calamari_web", "db_name"),
+        'USER': config.get("calamari_web", "db_user"),
+        'PASSWORD': config.get("calamari_web", "db_password"),
+        'HOST': config.get("calamari_web", "db_host"),
     }
 }
 
@@ -69,11 +68,7 @@ APPEND_SLASH = False
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
-
-if DEBUG:
-    STATIC_ROOT = ''
-else:
-    STATIC_ROOT = "/opt/calamari/webapp/content/"
+STATIC_ROOT = config.get('calamari_web', 'static_root')
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
@@ -81,10 +76,6 @@ STATIC_URL = '/static/'
 
 # Additional locations of static files
 STATICFILES_DIRS = tuple()
-
-STATIC_DOC_ROOT = "/opt/calamari/webapp/content/"
-if DEBUG:
-    STATIC_DOC_ROOT = "../content"
 
 # List of finder classes that know how to find static files in
 # various locations.
@@ -95,7 +86,7 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = 'tw8l#w5z%pp41j)zmzzk&b7m(xrn+g_*xco)(pygb13f%*1!$#'
+SECRET_KEY = config.get('calamari_web', 'secret_key')
 
 LOGIN_URL = '/login/'
 
@@ -125,12 +116,6 @@ ROOT_URLCONF = 'calamari_web.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'calamari_web.wsgi.application'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
-
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -158,7 +143,8 @@ LOGGING = {
     'handlers': {
         'log_file': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/var/log/calamari/calamari.log'
+            'filename':
+            config.get('calamari_web', 'log_path')
         },
     },
     'loggers': {
@@ -170,8 +156,6 @@ LOGGING = {
     }
 }
 
-if DEBUG:
-    LOGGING['handlers']['log_file']['filename'] = "django.log"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -195,22 +179,16 @@ REST_FRAMEWORK = {
 # Filesystem layout
 WEB_DIR = dirname(abspath(__file__))
 WEBAPP_DIR = dirname(WEB_DIR)
-GRAPHITE_ROOT = dirname(WEBAPP_DIR)
 THIRDPARTY_DIR = join(WEB_DIR, 'thirdparty')
-# Initialize additional path variables
-# Defaults for these are set after local_settings is imported
-CONTENT_DIR = ''
 CSS_DIR = ''
 CONF_DIR = ''
 DASHBOARD_CONF = ''
 GRAPHTEMPLATES_CONF = ''
 WHITELIST_FILE = ''
 INDEX_FILE = ''
-LOG_DIR = ''
 WHISPER_DIR = ''
 RRD_DIR = ''
 DATA_DIRS = []
-
 CLUSTER_SERVERS = []
 
 sys.path.insert(0, WEBAPP_DIR)
@@ -256,27 +234,18 @@ LDAP_URI = None
 # Required by dashboard app
 JAVASCRIPT_DEBUG = False
 GRAPHITE_API_PREFIX = "/graphite"
-if DEBUG:
-    TEMPLATE_DIRS = os.path.join(os.environ['VIRTUAL_ENV'], "lib/python2.7/site-packages/graphite/templates")
-    CONTENT_DIR = os.path.join(os.environ['VIRTUAL_ENV'], "webapp/content/")
-    STATICFILES_DIRS = STATICFILES_DIRS + (
-        os.path.join(os.environ['VIRTUAL_ENV'], "webapp/content/"),
-    )
-    STATIC_URL = "/content/"
-else:
-    TEMPLATE_DIRS = os.path.join("/opt/calamari/venv/", "lib/python2.7/site-packages/graphite/templates")
-    CONTENT_DIR = os.path.join("/opt/calamari/venv/", "webapp/content/")
-    STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join("/opt/calamari/venv", "webapp/content/"),)
-    STATIC_URL = "/static/"
+
+TEMPLATE_DIRS = (os.path.join(config.get('graphite', 'root'), "lib/python2.7/site-packages/graphite/templates"),)
+CONTENT_DIR = os.path.join(config.get('graphite', 'root'), "webapp/content/")
+STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
 
 # <<<
 
-if DEBUG:
-    STORAGE_DIR = os.path.join(os.environ['VIRTUAL_ENV'], 'storage')
-else:
-    STORAGE_DIR = '/var/lib/graphite'
-    LOG_DIR = '/var/log/calamari'
-    GRAPHITE_ROOT = '/opt/calamari/venv'
+STORAGE_DIR = config.get('graphite', 'storage_path')
+LOG_DIR = os.path.dirname(config.get('calamari_web', 'log_path'))
+GRAPHITE_ROOT = '/opt/calamari/venv'
+# Graphite's build-index.sh expects this to be set in environment
+os.environ['GRAPHITE_STORAGE_DIR'] = STORAGE_DIR
 
 
 ## Set config dependent on flags set in local_settings

@@ -33,6 +33,7 @@ class SyncObject(Base):
     def __repr__(self):
         return "<SyncObject %s/%s/%s>" % (self.fsid, self.sync_type, self.version if self.version else self.when)
 
+
 def initialize(db_path):
     engine = create_engine(db_path)
     Base.metadata.create_all(engine)

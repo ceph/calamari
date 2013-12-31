@@ -5,7 +5,7 @@ from dateutil.tz import tzlocal
 import salt
 import salt.client
 import threading2
-from cthulhu.config import SALT_CONFIG_PATH
+from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, PgBrief
 
@@ -91,7 +91,7 @@ class UserRequest(object):
     def _submit(self, commands):
         self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
 
-        client = salt.client.LocalClient(SALT_CONFIG_PATH)
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
                                   [self._fsid, self._cluster_name, commands])
         if not pub_data:

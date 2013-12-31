@@ -5,9 +5,11 @@ import os
 import subprocess
 from django.core.management import execute_from_command_line
 import pwd
-from cthulhu import config
+from django.utils.crypto import get_random_string
 from cthulhu.persistence import sync_objects
 from django.contrib.auth import get_user_model
+from cthulhu.config import CalamariConfig
+import string
 
 
 log = logging.getLogger('calamari_ctl')
@@ -24,16 +26,28 @@ def initialize(args):
     - Prevent the user seeing internals like 'manage.py' which we would
       rather people were not messing with on production systems.
     """
+    log.info("Loading configuration..")
+    config = CalamariConfig()
+
+    # Generate django's SECRET_KEY setting
+    # Do this first, otherwise subsequent django ops will raise ImproperlyConfigured.
+    if not config.get('calamari_web', 'secret_key'):
+        config.set_and_write('calamari_web', 'secret_key', get_random_string(50, string.printable))
+
     # Cthulhu's database
-    sync_objects.initialize(config.DB_PATH)
+    log.info("Initializing database...")
+    sync_objects.initialize(config.get('cthulhu', 'db_path'))
 
     # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
     execute_from_command_line(["", "syncdb", "--noinput"])
+
+    log.info("Initializing web interface...")
     user_model = get_user_model()
 
     if args.admin_username and args.admin_password and args.admin_email:
         if not user_model.objects.filter(username=args.admin_username).exists():
+            log.info("Creating user '%s'" % args.admin_username)
             user_model.objects.create_superuser(
                 username=args.admin_username,
                 password=args.admin_password,
@@ -55,32 +69,21 @@ def initialize(args):
 
     # Because we've loaded Django, it will have written log files as
     # this user (probably root).  Fix it so that apache can write them later.
-    # FIXME: make www-data username configurable, it'll be different on centos
-    # FIXME: put this log file path into calamari config so that we
-    # can reason about it without loading django settings.
-    # we can know it without having to load settings.py
-    apache_user = pwd.getpwnam('www-data')
-    from calamari_web.settings import LOGGING, DATABASES
-    for log_handler in LOGGING['handlers'].values():
-        if 'filename' in log_handler:
-            os.chown(log_handler['filename'], apache_user.pw_uid, apache_user.pw_gid)
+    apache_user = pwd.getpwnam(config.get('calamari_web', 'username'))
+    os.chown(config.get('calamari_web', 'log_path'), apache_user.pw_uid, apache_user.pw_gid)
 
-    # FIXME: this is because of rpc client import importing cthulhu logger :-/ -- should
-    # make that not the case or at least get this path from config instead of hardcoding
-    from cthulhu.config import LOG_PATH
-    os.chown(LOG_PATH, apache_user.pw_uid, apache_user.pw_gid)
-
-    # NB this will cease to be necessary when we switch to postgres by default
-    os.chown(DATABASES['default']['NAME'], apache_user.pw_uid, apache_user.pw_gid)
+    # Handle SQLite case, otherwise no chown is needed
+    if config.get('calamari_web', 'db_engine').endswith("sqlite3"):
+        os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
 
     # Signal supervisor to restart cthulhu as we have created its database
+    log.info("Restarting services...")
     # TODO: be cleaner by using XMLRPC instead of calling out to subprocess,
     # and don't let user see internal word 'cthulhu'.
     subprocess.call(['supervisorctl', 'restart', 'cthulhu'])
 
-    # TODO: should be generating a SECRET_KEY here for django
-
     # TODO: optionally generate or install HTTPS certs + hand to apache
+    log.info("Complete.")
 
 
 def change_password(args):

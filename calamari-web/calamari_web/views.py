@@ -13,7 +13,9 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
 import zerorpc
-from cthulhu.config import CTHULHU_RPC_URL
+
+from cthulhu.config import CalamariConfig
+config = CalamariConfig()
 
 #
 # How this is populated and where this info lives will need to change from its
@@ -90,7 +92,7 @@ def serve_dir_or_index(request, path, document_root):
 @login_required
 def dashboard(request, path, document_root):
     client = zerorpc.Client()
-    client.connect(CTHULHU_RPC_URL)
+    client.connect(config.get('cthulhu', 'rpc_url'))
     clusters = client.list_clusters()
     if not clusters:
         return redirect("/admin/#cluster")

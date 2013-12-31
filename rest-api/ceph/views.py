@@ -16,7 +16,8 @@ from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, Us
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
-from cthulhu.manager.rpc import CTHULHU_RPC_URL
+from cthulhu.config import CalamariConfig
+config = CalamariConfig()
 
 import pytz
 
@@ -70,7 +71,7 @@ class RPCView(APIView):
     def __init__(self, *args, **kwargs):
         super(RPCView, self).__init__(*args, **kwargs)
         self.client = zerorpc.Client()
-        self.client.connect(CTHULHU_RPC_URL)
+        self.client.connect(config.get('cthulhu', 'rpc_url'))
 
     def handle_exception(self, exc):
         try:
@@ -108,8 +109,6 @@ class Space(RPCView):
                 return kb * 1024
             else:
                 return None
-
-        cluster = self.client.get_cluster(fsid)
 
         df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
         space = {

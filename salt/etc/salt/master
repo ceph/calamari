@@ -53,19 +53,19 @@ user: john
 #ret_port: 4506
 
 # Specify the location of the daemon process ID file
-pidfile: /home/john/git/calamari/salt/var/run/salt-master.pid
+pidfile: /Users/john/git/calamari/salt/var/run/salt-master.pid
 
-extension_modules: /home/john/git/calamari/salt/srv/salt/_modules
+extension_modules: /Users/john/git/calamari/salt/srv/salt/_modules
 
 # The root directory prepended to these options: pki_dir, cachedir,
 # sock_dir, log_file, autosign_file, extension_modules, key_logfile, pidfile.
 #root_dir: /
 
 # Directory used to store public key data
-pki_dir: /home/john/git/calamari/salt/etc/salt/pki
+pki_dir: /Users/john/git/calamari/salt/etc/salt/pki
 
 # Directory to store job and cache data
-cachedir: /home/john/git/calamari/salt/var/cache/salt/master
+cachedir: /Users/john/git/calamari/salt/var/cache/salt/master
 
 # Verify and set permissions on configuration directories at startup
 #verify_env: True
@@ -90,7 +90,7 @@ cachedir: /home/john/git/calamari/salt/var/cache/salt/master
 #color: True
 
 # Set the directory used to hold unix sockets
-sock_dir:  /home/john/git/calamari/salt/var/run/salt/master
+sock_dir:  /Users/john/git/calamari/salt/var/run/salt/master
 
 # The master can take a while to start up when lspci and/or dmidecode is used
 # to populate the grains for the master. Enable if you want to see GPU hardware
@@ -267,7 +267,7 @@ sock_dir:  /home/john/git/calamari/salt/var/run/salt/master
 
 file_roots:
   base:
-    - /home/john/git/calamari/salt/srv/salt
+    - /Users/john/git/calamari/salt/srv/salt
 
 # The hash_type is the hash to use when discovering the hash of a file on
 # the master server. The default is md5, but sha1, sha224, sha256, sha384
@@ -360,7 +360,7 @@ file_roots:
 
 pillar_roots:
   base:
-    - /home/john/git/calamari/salt/srv/pillar
+    - /Users/john/git/calamari/salt/srv/pillar
 
 #ext_pillar:
 #  - hiera: /etc/hiera.yaml
@@ -470,11 +470,11 @@ pillar_roots:
 # location. Remote logging works best when configured to use rsyslogd(8) (e.g.:
 # ``file:///dev/log``), with rsyslogd(8) configured for network logging. The URI
 # format is: <file|udp|tcp>://<host|socketpath>:<port-if-required>/<log-facility>
-log_file:  /home/john/git/calamari/salt/var/log/salt/master
+log_file:  /Users/john/git/calamari/salt/var/log/salt/master
 #log_file: file:///dev/log
 #log_file: udp://loghost:10514
 
-key_logfile: /home/john/git/calamari/salt/var/log/salt/key
+key_logfile: /Users/john/git/calamari/salt/var/log/salt/key
 
 # The level of messages to send to the console.
 # One of 'garbage', 'trace', 'debug', info', 'warning', 'error', 'critical'.
@@ -536,4 +536,4 @@ key_logfile: /home/john/git/calamari/salt/var/log/salt/key
 
 reactor:
   - 'salt/minion/*/start':
-    - /home/john/git/calamari/salt/srv/reactor/start.sls
+    - /Users/john/git/calamari/salt/srv/reactor/start.sls
