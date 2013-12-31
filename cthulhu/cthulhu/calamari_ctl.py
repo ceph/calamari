@@ -1,7 +1,10 @@
 
 import argparse
+from contextlib import contextmanager
 import logging
 import os
+import sys
+from StringIO import StringIO
 import subprocess
 from django.core.management import execute_from_command_line
 import pwd
@@ -13,9 +16,25 @@ import string
 
 
 log = logging.getLogger('calamari_ctl')
+log.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 log.addHandler(handler)
+
+
+@contextmanager
+def quiet():
+    sys.stdout = StringIO()
+    sys.stderr = StringIO()
+    try:
+        yield
+    except:
+        log.error(sys.stdout.getvalue())
+        log.error(sys.stderr.getvalue())
+        raise
+    finally:
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
 
 
 def initialize(args):
@@ -40,7 +59,8 @@ def initialize(args):
 
     # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
-    execute_from_command_line(["", "syncdb", "--noinput"])
+    with quiet():
+        execute_from_command_line(["", "syncdb", "--noinput"])
 
     log.info("Initializing web interface...")
     user_model = get_user_model()
@@ -64,8 +84,8 @@ def initialize(args):
             execute_from_command_line(["", "createsuperuser"])
 
     # Django's static files
-    # FIXME: should swallow the output of this, it's super-verbose by default
-    execute_from_command_line(["", "collectstatic", "--noinput"])
+    with quiet():
+        execute_from_command_line(["", "collectstatic", "--noinput"])
 
     # Because we've loaded Django, it will have written log files as
     # this user (probably root).  Fix it so that apache can write them later.
@@ -78,9 +98,7 @@ def initialize(args):
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
-    # TODO: be cleaner by using XMLRPC instead of calling out to subprocess,
-    # and don't let user see internal word 'cthulhu'.
-    subprocess.call(['supervisorctl', 'restart', 'cthulhu'])
+    subprocess.call(['supervisorctl', 'restart', 'cthulhu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     # TODO: optionally generate or install HTTPS certs + hand to apache
     log.info("Complete.")
