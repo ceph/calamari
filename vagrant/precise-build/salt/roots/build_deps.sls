@@ -33,4 +33,5 @@ build_deps:
       - libcairo2-dev
       - python-m2crypto
       - python-crypto
+      - reprepro
 
