@@ -16,11 +16,11 @@ diamond_clone:
     - require:
       - pkg: build_deps
 
-salt_clone:
-  git:
-    - latest
-    - user: vagrant
-    - target: /home/vagrant/calamari-salt
-    - name: /git/calamari-salt
-    - require:
-      - pkg: build_deps
+#salt_clone:
+#  git:
+#    - latest
+#    - user: vagrant
+#    - target: /home/vagrant/calamari-salt
+#    - name: /git/calamari-salt
+#    - require:
+#      - pkg: build_deps
