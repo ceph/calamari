@@ -70,7 +70,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'calamari_web.settings'
 #        db.connection.close()
 
 from gevent import monkey
-monkey.patch_all()
+monkey.patch_all(thread=False)
 
 import django.core.handlers.wsgi
 application = django.core.handlers.wsgi.WSGIHandler()
