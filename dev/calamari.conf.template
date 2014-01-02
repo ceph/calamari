@@ -1,7 +1,7 @@
 
 [cthulhu]
 
-salt_config_path = {{calamari_root}}/salt/etc/salt/master
+salt_config_path = {{calamari_root}}/dev/etc/salt/master
 # FIXME: this should be a function of the ceph.heartbeat schedule period which
 # we should query from the salt pillar
 favorite_timeout_s = 60
@@ -17,7 +17,7 @@ db_name = {{calamari_root}}/dev/frontend.db
 db_user = ""
 db_password = ""
 db_host = ""
-secret_key = "deadbeef"
+secret_key_path = {{calamari_root}}/dev/secret.key
 username = {{calamari_user}}
 static_root = {{calamari_root}}/webapp/content/
 

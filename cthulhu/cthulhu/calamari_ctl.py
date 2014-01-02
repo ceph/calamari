@@ -12,7 +12,6 @@ from django.utils.crypto import get_random_string
 from cthulhu.persistence import sync_objects
 from django.contrib.auth import get_user_model
 from cthulhu.config import CalamariConfig
-import string
 
 
 log = logging.getLogger('calamari_ctl')
@@ -50,8 +49,11 @@ def initialize(args):
 
     # Generate django's SECRET_KEY setting
     # Do this first, otherwise subsequent django ops will raise ImproperlyConfigured.
-    if not config.get('calamari_web', 'secret_key'):
-        config.set_and_write('calamari_web', 'secret_key', get_random_string(50, string.printable))
+    # Write into a file instead of directly, so that package upgrades etc won't spuriously
+    # prompt for modified config unless it really is modified.
+    if not os.path.exists(config.get('calamari_web', 'secret_key_path')):
+        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+        open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
     # Cthulhu's database
     log.info("Initializing database...")

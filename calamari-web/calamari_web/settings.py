@@ -86,7 +86,11 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = config.get('calamari_web', 'secret_key')
+try:
+    SECRET_KEY = open(config.get('calamari_web', 'secret_key_path'), 'r').read()
+except IOError:
+    # calamari-ctl hasn't been run yet, nothing will work yet.
+    SECRET_KEY = ""
 
 LOGIN_URL = '/login/'
 

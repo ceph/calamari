@@ -24,7 +24,3 @@ class CalamariConfig(ConfigParser.SafeConfigParser):
             raise ConfigNotFound("Configuration not found at %s" % self.path)
 
         self.read(self.path)
-
-    def set_and_write(self, section, option, value):
-        self.set(section, option, value)
-        self.write(open(self.path, 'w'))
