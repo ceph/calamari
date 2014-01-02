@@ -176,7 +176,7 @@ class EmbeddedCalamariControl(CalamariControl):
         wait_until_true(self._services_up)
 
     def start(self):
-        config_path = os.path.join(TREE_ROOT, "supervisord.conf")
+        config_path = os.path.join(TREE_ROOT, "dev/supervisord.conf")
         assert os.path.exists(config_path)
         self._ps = subprocess.Popen(
             ["supervisord", "-n", "-c", config_path],
