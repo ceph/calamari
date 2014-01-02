@@ -2,6 +2,7 @@
 diamond:
   pkg:
     - installed
+    - skip_verify: true
 
 diamond-config:
   file:
