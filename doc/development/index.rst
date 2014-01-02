@@ -22,6 +22,7 @@ Contents
    coding_style
    coverage
    requests
+   OSX
 
 Indices and tables
 ==================

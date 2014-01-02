@@ -1,4 +1,7 @@
 
+OS X development tips
+=====================
+
 Things to know:
 
 - You've gotta use brew's python, not the one that comes with OSX, that
