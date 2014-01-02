@@ -113,7 +113,8 @@ import sys
 import subprocess
 import os
 
-SALT_CONFIG_PATH = "/etc/calamari-salt/"
+SALT_PACKAGE = "salt-minion"
+SALT_CONFIG_PATH = "/etc/salt/"
 
 if len(sys.argv) > 1:
     BASE_URL = sys.argv[1]
@@ -132,7 +133,7 @@ open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/u
 
 # Deploy salt minion
 subprocess.check_call(["apt-get", "update"])
-subprocess.check_call(["apt-get", "install", "-y", "--force-yes", "calamari-salt-minion"])
+subprocess.check_call(["apt-get", "install", "-y", "--force-yes", SALT_PACKAGE])
 open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
 
 """
