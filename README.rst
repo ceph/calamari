@@ -74,16 +74,6 @@ Calamari server consists of multiple modules, link them into your virtualenv:
     pushd minion-sim ; python setup.py develop ; popd
     pushd calamari-web ; python setup.py develop ; popd
 
-``carbon`` needs its configuration files:
-
-::
-
-    cp ${VIRTUAL_ENV}/conf/carbon.conf.example ${VIRTUAL_ENV}/conf/carbon.conf
-    cp ${VIRTUAL_ENV}/conf/storage-schemas.conf.example ${VIRTUAL_ENV}/conf/storage-schemas.conf
-
-You may want to increase carbon.conf:MAX_CREATES_PER_MINUTE for nice snappy setup (we also
-do this in the production installer).
-
 Graphite needs some folders created:
 
 ::
@@ -91,21 +81,25 @@ Graphite needs some folders created:
     mkdir -p ${VIRTUAL_ENV}/storage/log/webapp
     mkdir -p ${VIRTUAL_ENV}/storage
 
-``salt-master`` needs is configuration files.  ``salt/etc/salt/master`` already exists
-in the git repo, but unfortunately contains some absolute paths that **you'll need to edit**
-each time you set up a repo.  Also, set the ``user`` variable to your username.
 
-Create the REST API's database:
+The development-mode config files have some absolute paths that need rewriting in
+a fresh checkout, there's a script for this:
 
 ::
 
-    pushd webapp/calamari ; python manage.py syncdb ; popd
+    ~/calamari$ dev/configure.py
+    Calamari repo is at: /home/vagrant/calamari, user is vagrant
+    Writing /home/vagrant/calamari/dev/etc/salt/master
+    Writing /home/vagrant/calamari/dev/calamari.conf
+    Complete.  Now run:
+     1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize`
+     2. supervisord -c dev/supervisord.conf -n
 
 Create the cthulhu service's database:
 
 ::
 
-    calamari-ctl initialize
+    CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize
 
 
 Running the server
@@ -115,7 +109,7 @@ The server processes are run for you by ``supervisord``.  A healthy startup look
 
 ::
 
-    calamari john$ supervisord -n -c ./supervisord.conf
+    calamari john$ supervisord -n -c dev/supervisord.conf
     2013-12-02 10:26:51,922 INFO RPC interface 'supervisor' initialized
     2013-12-02 10:26:51,922 CRIT Server 'inet_http_server' running without any HTTP authentication checking
     2013-12-02 10:26:51,923 INFO supervisord started with pid 31453
