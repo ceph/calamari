@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ ! -d log ] ; then mkdir log ; fi
+
+for r in wheezy precise centos rhel
+do
+	if [ -f log/$r.log ] ; then mv log/$r.log log/$r.log.old ; fi
+	xterm -T $r -l -lf log/$r.log -e "./smoketest.py $r" &
+done
