@@ -96,7 +96,8 @@ build-graphite-venv:
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	virtualenv graphite; \
 	cd graphite; \
-	./bin/python ./bin/pip install whisper; \
+	./bin/python ./bin/pip install \
+	 https://github.com/jcsp/whisper/tarball/calamari; \
 	./bin/python ./bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		build/carbon/setup.py; \
@@ -107,7 +108,7 @@ build-graphite-venv:
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/graphite" \
 	  --install-option="--install-lib=$(SRC)/graphite/webapp" \
-	  graphite-web; \
+	  https://github.com/jcsp/graphite-web/tarball/calamari; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/graphite-requirements.txt; \
 	(find . -type f | xargs grep -l '#!.*'$(SRC) ; \
