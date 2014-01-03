@@ -163,8 +163,8 @@ Authorize the simulated salt minions to connect to the calamari server:
 
 ::
 
-    salt-key -c salt/etc/salt -L
-    salt-key -c salt/etc/salt -A
+    salt-key -c dev/etc/salt -L
+    salt-key -c dev/etc/salt -A
 
 You should see some debug logging in cthulhu.log, and if you visit /api/v1/cluster in your browser
 a Ceph cluster should be appear.
