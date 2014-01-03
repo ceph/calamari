@@ -54,7 +54,7 @@ carbon()
 		sed 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' <carbon.conf.example >carbon.conf
 	fi
 
-	# storage-schema.conf handled in install, we have a custom one
+	# storage-schemas.conf handled in install, we have a custom one
 	# XXX are these necessary?
 	cp storage-aggregation.conf.example storage-aggregation.conf
 	cp relay-rules.conf.example relay-rules.conf
