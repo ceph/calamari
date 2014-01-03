@@ -91,12 +91,19 @@ build-ui:
 # XXX we call 'bin/python bin/pip' rather than pip directly because the
 # #! line in bin/pip can easily be too long; Linux can only handle 128 chars
 
+# NB: we are, as of ca. v1.1, using modified graphite-web and whisper
+# packages to encompass customized functionality.  These changes may
+# make it back upstream or they may not.
+
+WHISPER_TARBALL=https://github.com/inktankstorage/whisper/tarball/calamari
+GRAPHITE_WEB_TARBALL=https://github.com/inktankstorage/graphite-web/tarball/calamari
+
 build-graphite-venv:
 	@echo "build-graphite-venv"
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	virtualenv graphite; \
 	cd graphite; \
-	./bin/python ./bin/pip install whisper; \
+	./bin/python ./bin/pip install $(WHISPER_TARBALL); \
 	./bin/python ./bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		build/carbon/setup.py; \
@@ -107,7 +114,7 @@ build-graphite-venv:
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/graphite" \
 	  --install-option="--install-lib=$(SRC)/graphite/webapp" \
-	  graphite-web; \
+	  $(GRAPHITE_WEB_TARBALL); \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/graphite-requirements.txt; \
 	(find . -type f | xargs grep -l '#!.*'$(SRC) ; \
