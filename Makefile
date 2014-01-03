@@ -35,7 +35,7 @@ CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
 	conf/diamond/NetworkCollector.conf \
-	conf/carbon/storage-schema.conf \
+	conf/carbon/storage-schemas.conf \
 	conf/restapi/cephrestapi.conf \
 	conf/restapi/cephrestwsgi.py \
 	conf/calamari.wsgi
