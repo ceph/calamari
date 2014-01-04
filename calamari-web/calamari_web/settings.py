@@ -247,7 +247,7 @@ STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root
 
 STORAGE_DIR = config.get('graphite', 'storage_path')
 LOG_DIR = os.path.dirname(config.get('calamari_web', 'log_path'))
-GRAPHITE_ROOT = config.get('graphite', 'storage_path')
+GRAPHITE_ROOT = config.get('graphite', 'root')
 # Graphite's build-index.sh expects this to be set in environment
 os.environ['GRAPHITE_STORAGE_DIR'] = STORAGE_DIR
 
