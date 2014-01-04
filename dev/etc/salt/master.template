@@ -55,7 +55,7 @@ user: {{calamari_user}}
 # Specify the location of the daemon process ID file
 pidfile: {{calamari_root}}/dev/var/run/salt-master.pid
 
-extension_modules: {{calamari_root}}/dev/srv/salt/_modules
+extension_modules: {{calamari_root}}/salt/srv/salt/_modules
 
 # The root directory prepended to these options: pki_dir, cachedir,
 # sock_dir, log_file, autosign_file, extension_modules, key_logfile, pidfile.
@@ -188,7 +188,7 @@ sock_dir:  {{calamari_root}}/dev/var/run/salt/master
 
 # Allow minions to push files to the master. This is disabled by default, for
 # security purposes.
-#file_recv: False 
+#file_recv: False
 
 #####    Master Module Management    #####
 ##########################################
@@ -267,7 +267,7 @@ sock_dir:  {{calamari_root}}/dev/var/run/salt/master
 
 file_roots:
   base:
-    - {{calamari_root}}/dev/srv/salt
+    - {{calamari_root}}/salt/srv/salt
 
 # The hash_type is the hash to use when discovering the hash of a file on
 # the master server. The default is md5, but sha1, sha224, sha256, sha384
