@@ -11,6 +11,7 @@ import os
 import sys
 import select
 from subprocess import Popen, PIPE, check_output, CalledProcessError
+import tempfile
 import textwrap
 import webbrowser
 
@@ -32,7 +33,6 @@ tasks:
 '''
 
 OWNER='calamari-autotest@odds'
-#REPODIR='packages'
 PKGDIR='packages-staging'
 
 sgr0 = check_output('tput sgr0', shell=True)
@@ -161,12 +161,12 @@ def write_file(contents, path, host):
     sys.stdout.write(out)
     return True
 
-def install_repo(host, release, flavor):
+def install_repo(host, release, flavor, branch):
     if flavor == 'deb':
         contents='deb https://{username}:{password}@download.inktank.com' \
-                 '/{packages}/deb {release} main'.format(
+                 '/{packages}/{branch}/deb {release} main'.format(
                      username='dmick', password='dmick', packages=PKGDIR,
-                     release=release)
+                     release=release, branch=branch)
         if not write_file(
             contents, '/etc/apt/sources.list.d/inktank.list', host
         ):
@@ -180,11 +180,11 @@ def install_repo(host, release, flavor):
         contents=textwrap.dedent('''
         [inktank]
         name=Inktank Storage, Inc.
-        baseurl=https://{username}:{password}@download.inktank.com/{packages}/rpm/{distro}{version}
+        baseurl=https://{username}:{password}@download.inktank.com/{packages}/{branch}/rpm/{distro}{version}
         gpgcheck=1
         enabled=1
         '''.format(username='dmick', password='dmick', packages=PKGDIR,
-            distro=distro, version=version))
+            distro=distro, version=version, branch=branch))
         if not write_file(
             contents, '/etc/yum.repos.d/inktank.repo', host
         ):
@@ -265,12 +265,14 @@ def main():
         wr_red('Unsupported release ' + release)
         return 1
 
+    branch = sys.argv[2] if len(sys.argv) >= 3 else 'master'
+
+    retcode = 0
     try:
-        yamlfile = os.tmpnam()
-        f = open(yamlfile, 'w+')
-        f.write(yaml)
-        #f.write(yamlshort)
-        f.close()
+        f, yamlfile = tempfile.mkstemp()
+        os.write(f, yaml)
+        #os.write(f, yamlshort)
+        os.close(f)
         start = datetime.datetime.now()
         proc, host, returncode = make_cluster(yamlfile, release)
         if returncode:
@@ -281,7 +283,7 @@ def main():
             host, setuptime.seconds/60, setuptime.seconds%60))
         setup_realname_crushmap(host.split('.')[0])
         if not install_repokey(host, flavor) or \
-           not install_repo(host, release, flavor) or \
+           not install_repo(host, release, flavor, branch) or \
            not install_package('calamari-agent', host, flavor) or \
            not edit_diamond_config(host) or \
            not install_package('calamari-restapi', host, flavor) or \
@@ -295,6 +297,11 @@ def main():
         _ = sys.stdin.readline()
         # kill teuthology, vm
         proc.stdin.close()
+        sys.stdout.write('Waiting for teuthology to exit\n')
+        retcode = proc.wait()
+        if retcode:
+            sys.stderr.write('teuthology exited with status {}\n'.format(retcode))
+        return retcode
 
     finally:
         os.unlink(yamlfile)
