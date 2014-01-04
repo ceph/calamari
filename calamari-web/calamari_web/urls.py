@@ -15,6 +15,7 @@ urlpatterns = patterns(
     url(r'^api/v1/auth/logout', 'calamari_web.views.logout'),
     url(r'^api/v1/auth2/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^api/v1/info', 'calamari_web.views.info'),
+    url(r'^api/v1/grains', 'calamari_web.views.grains'),
 
     url(r'^admin/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_ROOT}),
