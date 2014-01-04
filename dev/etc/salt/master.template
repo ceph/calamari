@@ -360,7 +360,7 @@ file_roots:
 
 pillar_roots:
   base:
-    - {{calamari_root}}/dev/srv/pillar
+    - {{calamari_root}}/salt/srv/pillar
 
 #ext_pillar:
 #  - hiera: /etc/hiera.yaml
@@ -536,4 +536,4 @@ key_logfile: {{calamari_root}}/dev/var/log/salt/key
 
 reactor:
   - 'salt/minion/*/start':
-    - {{calamari_root}}/dev/srv/reactor/start.sls
+    - {{calamari_root}}/salt/srv/reactor/start.sls
