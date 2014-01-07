@@ -80,6 +80,9 @@ class OsdPgDetail(object):
         # get the osd tree. we'll use it to get hostnames
         nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
 
+        # TODO: call out to manager.servers here instead of recalculating
+        # the CRUSH view of the world.
+
         # FIXME: this assumes that an osd node is a direct descendent of a
         #
         # host. It also assumes that these node types are called 'osd', and
@@ -265,8 +268,8 @@ class HealthCounters(object):
         return {
             'total': total,
             'up_in': inn,
-            'up_not_in': up-inn,
-            'not_up_not_in': total-up,
+            'up_not_in': up - inn,
+            'not_up_not_in': total - up,
         }
 
 

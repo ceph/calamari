@@ -12,6 +12,7 @@ wsgiref==0.1.2
 sqlalchemy==0.8.3
 cython
 gevent>=1.0
+argparse
 
 Twisted==11.1.0
 django-tagging

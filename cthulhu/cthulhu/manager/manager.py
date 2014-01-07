@@ -1,17 +1,21 @@
+import argparse
 import hashlib
 import json
+import logging
 import gevent.event
 import signal
 from dateutil.tz import tzutc
 
 import gevent
 import salt
+import sys
 import zmq
 
 import sqlalchemy
 from sqlalchemy import create_engine
 
 from cthulhu.log import log
+import cthulhu.log
 from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager import config, salt_config
@@ -248,6 +252,16 @@ class NotificationThread(gevent.greenlet.Greenlet):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Calamari management service')
+    parser.add_argument('--debug', dest='debug', action='store_true',
+                        default=False, help='print log to stdout')
+
+    args = parser.parse_args()
+    if args.debug:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(cthulhu.log.FORMAT))
+        log.addHandler(handler)
+
     m = Manager()
     m.start()
 

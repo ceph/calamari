@@ -92,6 +92,9 @@ class ServiceState(object):
     A Ceph service, this object is used to track its affinity to a server
     """
     def __init__(self, fsid, service_type, service_id):
+        # It's easy to accidentally pass in int sometimes so enforce consistency
+        assert isinstance(service_id, basestring)
+
         self.fsid = fsid
         self.service_type = service_type
         self.service_id = service_id
@@ -236,7 +239,7 @@ class ServerMonitor(greenlet.Greenlet):
             for osd in osds:
                 # TODO: remove ServiceState for any OSDs for this FSID which are not
                 # mentioned in hostname_to_osds
-                service_id = ServiceId(osd_map['fsid'], 'osd', osd['osd'])
+                service_id = ServiceId(osd_map['fsid'], 'osd', str(osd['osd']))
                 self._register_service(server_state, service_id, running=bool(osd['up']))
 
     def _get_grains(self, fqdn):
@@ -251,9 +254,9 @@ class ServerMonitor(greenlet.Greenlet):
 
     def on_service_heartbeat(self, fqdn, services_data):
         """
-        Call back for when a  ceph.service message is received from a salt minion
+        Call back for when a ceph.service message is received from a salt minion
         """
-
+        log.debug("ServerMonitor.on_service_heartbeat: %s" % fqdn)
         # For any service which was last reported on this server but
         # is now gone, mark it as not running
         try:
@@ -316,6 +319,8 @@ class ServerMonitor(greenlet.Greenlet):
 
             # TODO: emit persistence update for this service
 
+        log.debug("Updating service %s %s %s" % (service_state, service_state.server_state, server_state))
+
         if service_state.server_state != server_state:
             old_server_state = service_state.server_state
             log.info("Associated service %s with server %s (was %s)" % (service_id, server_state, old_server_state))
@@ -342,3 +347,27 @@ class ServerMonitor(greenlet.Greenlet):
         Give me a single ServerState, looked up by FQDN.
         """
         return self.servers[fqdn]
+
+    def remove(self, fqdn):
+        """
+        Forget about this server.  Does not prevent it popping back into
+        existence if we see reference to it in an incoming event.
+        """
+        server_state = self.servers[fqdn]
+        for service in server_state.services.values():
+            service.server_state = None
+            del self.services[service.id]
+            self.fsid_services[service.id.fsid].remove(service)
+
+        del self.hostname_to_server[server_state.hostname]
+        del self.servers[fqdn]
+        # TODO: persist deletion
+
+    def dump(self, server_state):
+        """
+        Convert a ServerState into a serializable format
+        """
+        return {
+            'fqdn': server_state.fqdn,
+            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+        }

@@ -267,20 +267,11 @@ class RpcInterface(object):
             'status': status
         }
 
-    def _server_dump(self, server_state):
-        """
-        Convert a ServerState into a serializable format
-        """
-        return {
-            'fqdn': server_state.fqdn,
-            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
-        }
-
     def server_get(self, fqdn):
-        return self._server_dump(self._manager.servers.get_one(fqdn))
+        return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
 
     def server_list(self):
-        return [self._server_dump(s) for s in self._manager.servers.get_all()]
+        return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
 
 class RpcThread(gevent.greenlet.Greenlet):
