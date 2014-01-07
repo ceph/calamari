@@ -6,6 +6,7 @@ router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'user', views.UserViewSet)
 router.register(r'cluster', views.ClusterViewSet, base_name='cluster')
 router.register(r'salt_key', views.SaltKeyViewSet, base_name='salt_key')
+router.register(r'server', views.ServerViewSet, base_name='server')
 
 
 urlpatterns = patterns(
@@ -40,6 +41,7 @@ urlpatterns = patterns(
 
     # TODO: add views for servers outside of cluster context
 
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$', views.ServerViewSet.as_view({'get': 'retrieve_grains'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server$', views.ServerClusterViewSet.as_view({'get': 'list'}),
         name='cluster-server-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$', views.ServerClusterViewSet.as_view({

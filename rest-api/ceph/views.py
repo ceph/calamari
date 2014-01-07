@@ -383,8 +383,22 @@ class ServerClusterViewSet(RPCViewSet):
             [DataObject(s) for s in self.client.server_list()], many=True).data)
 
     def retrieve(self, request, fsid, fqdn):
-        log.warn("fqdn = %s" % fqdn)
         return Response(self.serializer(DataObject(self.client.server_get(fqdn))).data)
+
+
+class ServerViewSet(RPCViewSet):
+    def retrieve_grains(self, request, fqdn):
+        import salt.config
+        import salt.utils.master
+        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
+        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
+                                                         use_cached_grains=True,
+                                                         grains_fallback=False,
+                                                         opts=salt_config)
+        try:
+            return Response(pillar_util.get_minion_grains()[fqdn])
+        except KeyError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])
