@@ -132,11 +132,10 @@ class OSDListSerializer(serializers.Serializer):
         fields = ('osds', 'pg_state_counts')
 
 
-class OSDMapSerializer(serializers.Serializer):
+class SyncObjectSerializer(serializers.Serializer):
     class Meta:
-        fields = ('version', 'data')
+        fields = ('data',)
 
-    version = serializers.IntegerField()
     data = serializers.Field()
 
 
@@ -212,7 +211,11 @@ class SaltKeySerializer(serializers.Serializer):
 
 class ServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'services')
+        fields = ('fqdn', 'services', 'frontend_addr', 'backend_addr', 'frontend_iface', 'backend_iface')
 
     fqdn = serializers.CharField()
     services = serializers.Field()
+    frontend_addr = serializers.CharField()
+    backend_addr = serializers.CharField()
+    frontend_iface = serializers.CharField()
+    backend_iface = serializers.CharField()

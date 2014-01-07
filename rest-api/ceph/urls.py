@@ -13,7 +13,6 @@ urlpatterns = patterns(
     '',
     url(r'^user/me', views.user_me),
     url(r'^', include(router.urls)),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd_map', views.OSDMap.as_view(), name='cluster-osd-map'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health$', views.Health.as_view(), name='cluster-health'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health_counters$', views.HealthCounters.as_view(),
         name='cluster-health-counters'),
@@ -39,9 +38,14 @@ urlpatterns = patterns(
         'patch': 'update'}),
         name='cluster-pool-detail'),
 
+    # Unadulterated direct access to the maps that cthulhu syncs up from the mons
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
+        views.SyncObject.as_view(), name='cluster-sync-object'),
+
     # TODO: add views for servers outside of cluster context
 
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$', views.ServerViewSet.as_view({'get': 'retrieve_grains'})),
+
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server$', views.ServerClusterViewSet.as_view({'get': 'list'}),
         name='cluster-server-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$', views.ServerClusterViewSet.as_view({

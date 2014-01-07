@@ -17,6 +17,8 @@ from cthulhu.manager import salt_config, config
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
+from cthulhu.manager.types import OsdMap, MonMap
+
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
@@ -333,7 +335,14 @@ class ServerMonitor(greenlet.Greenlet):
     def stop(self):
         self._complete.set()
 
-    def get_cluster_servers(self, fsid):
+    def get_all_cluster(self, fsid):
+        """
+        All the ServerStates which are involved in
+        this cluster (i.e. hosting a service with this FSID)
+        """
+        return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
+
+    def get_one_cluster(self, fsid, fqdn):
         """Give me all the ServerStates which are referred to by
         a service with this FSID"""
         return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
@@ -369,5 +378,71 @@ class ServerMonitor(greenlet.Greenlet):
         """
         return {
             'fqdn': server_state.fqdn,
+            'hostname': server_state.hostname,
             'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+        }
+
+    def _addr_to_iface(self, addr, ip_interfaces):
+        """
+        Resolve an IP address to a network interface.
+
+        :param addr: An address string like "1.2.3.4"
+        :param ip_interfaces: The 'ip_interfaces' salt grain
+        """
+        for iface_name, iface_addrs in ip_interfaces.items():
+            if addr in iface_addrs:
+                return iface_name
+
+        return None
+
+    def dump_cluster(self, server_state, cluster):
+        """
+        Convert a ServerState into a serializable format, including contextual
+        information for the server's membership in a particular cluster.
+
+        :param server_state: The ServerState to be dumped
+        :param cluster: ClusterMonitor context
+        """
+
+        services = [s for s in server_state.services.values() if s.fsid == cluster.fsid]
+
+        frontend_addr = None
+        backend_addr = None
+
+        for service in services:
+            if frontend_addr is None and service.service_type == 'mon':
+                # Go find the mon in the monmap and tell me its addr
+                mon_map = cluster.get_sync_object(MonMap)
+                if mon_map is not None:
+                    mon = [mon for mon in mon_map['mons'] if mon['name'] == service.service_id][0]
+                    frontend_addr = mon['addr'].split(":")[0]
+
+            if (frontend_addr is None or backend_addr is None) and service.service_type == 'osd':
+                # Go find the OSD in the OSD map and tell me its frontend and backend addrs
+                osd_map = cluster.get_sync_object(OsdMap)
+                if osd_map is not None:
+                    osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id][0]
+                    frontend_addr = osd['public_addr'].split(":")[0]
+                    backend_addr = osd['cluster_addr'].split(":")[0]
+
+        frontend_iface = None
+        backend_iface = None
+        try:
+            grains = self._get_grains(server_state.fqdn)
+        except GrainsNotFound:
+            pass
+        else:
+            if frontend_addr:
+                frontend_iface = self._addr_to_iface(frontend_addr, grains['ip_interfaces'])
+            if backend_addr:
+                backend_iface = self._addr_to_iface(backend_addr, grains['ip_interfaces'])
+
+        return {
+            'fqdn': server_state.fqdn,
+            'hostname': server_state.hostname,
+            'services': [{'id': tuple(s.id), 'running': s.running} for s in services],
+            'frontend_addr': frontend_addr,
+            'backend_addr': backend_addr,
+            'frontend_iface': frontend_iface,
+            'backend_iface': backend_iface
         }

@@ -14,8 +14,8 @@ from django.views.decorators.cache import never_cache
 from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, \
-    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer, ServerSerializer
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
+    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer, ServerSerializer, SyncObjectSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -203,13 +203,12 @@ class OSDDetail(RPCView):
         return Response(OSDDetailSerializer(osd).data)
 
 
-class OSDMap(RPCView):
-    serializer = OSDMapSerializer
+class SyncObject(RPCView):
+    serializer = SyncObjectSerializer
 
-    def get(self, request, fsid):
-        data = self.client.get_sync_object(fsid, 'osd_map')
-        osd_map = DataObject({'version': data['epoch'], 'data': data})
-        return Response(OSDMapSerializer(osd_map).data)
+    def get(self, request, fsid, sync_type):
+        obj = DataObject({'data': self.client.get_sync_object(fsid, sync_type)})
+        return Response(SyncObjectSerializer(obj).data)
 
 
 class RPCViewSet(viewsets.ViewSetMixin, RPCView):
@@ -380,10 +379,10 @@ class ServerClusterViewSet(RPCViewSet):
 
     def list(self, request, fsid):
         return Response(self.serializer(
-            [DataObject(s) for s in self.client.server_list()], many=True).data)
+            [DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
 
     def retrieve(self, request, fsid, fqdn):
-        return Response(self.serializer(DataObject(self.client.server_get(fqdn))).data)
+        return Response(self.serializer(DataObject(self.client.server_get_cluster(fqdn, fsid))).data)
 
 
 class ServerViewSet(RPCViewSet):
@@ -399,6 +398,9 @@ class ServerViewSet(RPCViewSet):
             return Response(pillar_util.get_minion_grains()[fqdn])
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def retreive(self, request, fqdn):
+        self.client.server_get(fqdn)
 
 
 @api_view(['GET'])

@@ -273,6 +273,15 @@ class RpcInterface(object):
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
+    def server_get_cluster(self, fqdn, fsid):
+        return self._manager.servers.dump_cluster(self._manager.servers.get_one(fqdn), self._manager.clusters[fsid])
+
+    def server_list_cluster(self, fsid):
+        return [
+            self._manager.servers.dump_cluster(s, self._manager.clusters[fsid])
+            for s in self._manager.servers.get_all_cluster(fsid)
+        ]
+
 
 class RpcThread(gevent.greenlet.Greenlet):
     """
