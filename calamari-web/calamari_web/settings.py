@@ -154,7 +154,7 @@ LOGGING = {
     'loggers': {
         'django.request': {
             'handlers': ['log_file'],
-            'level': 'ERROR',
+            'level': 'WARNING',
             'propagate': True,
         },
     }

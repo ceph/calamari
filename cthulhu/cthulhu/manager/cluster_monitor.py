@@ -18,7 +18,7 @@ from cthulhu.manager import derived
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL
+from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap
 from cthulhu.manager.user_request import RequestCollection
 
 from cthulhu.manager import config, salt_config
@@ -69,7 +69,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     another to listen to user requests.
     """
 
-    def __init__(self, fsid, cluster_name, notifier, persister):
+    def __init__(self, fsid, cluster_name, notifier, persister, servers):
         super(ClusterMonitor, self).__init__()
 
         self.fsid = fsid
@@ -102,6 +102,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         self._persister = persister
 
+        self._servers = servers
+
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
         self._complete.set()
@@ -118,7 +120,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def get_derived_object(self, object_type):
         return self._derived_objects.get(object_type)
 
-    def run(self):
+    def _run(self):
         event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
 
         while not self._complete.is_set():
@@ -274,6 +276,12 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 'version': data['version'],
                 'data': data['data']
             })
+
+            # The ServerMonitor is interested in the OSD map, do this prior
+            # to updating any derived objects so that derived generators have
+            # access to latest view of server state
+            if sync_type == OsdMap:
+                self._servers.on_osd_map(data['data'])
 
             self.inject_sync_object(data['type'], data['version'], data['data'])
 

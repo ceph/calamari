@@ -43,7 +43,7 @@ class RpcInterface(object):
 
     def _fs_resolve(self, fs_id):
         try:
-            return self._manager.monitors[fs_id]
+            return self._manager.clusters[fs_id]
         except KeyError:
             raise NotFound(CLUSTER, fs_id)
 
@@ -72,7 +72,7 @@ class RpcInterface(object):
         Returns a dict, or None if not found
         """
         try:
-            cluster = self._manager.monitors[fs_id]
+            cluster = self._manager.clusters[fs_id]
         except KeyError:
             return None
         else:
@@ -84,7 +84,7 @@ class RpcInterface(object):
 
     def list_clusters(self):
         result = []
-        for fsid in self._manager.monitors.keys():
+        for fsid in self._manager.clusters.keys():
             result.append(self.get_cluster(fsid))
         return result
 
@@ -266,6 +266,21 @@ class RpcInterface(object):
             'id': minion_id,
             'status': status
         }
+
+    def _server_dump(self, server_state):
+        """
+        Convert a ServerState into a serializable format
+        """
+        return {
+            'fqdn': server_state.fqdn,
+            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+        }
+
+    def server_get(self, fqdn):
+        return self._server_dump(self._manager.servers.get_one(fqdn))
+
+    def server_list(self):
+        return [self._server_dump(s) for s in self._manager.servers.get_all()]
 
 
 class RpcThread(gevent.greenlet.Greenlet):

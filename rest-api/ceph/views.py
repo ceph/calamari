@@ -1,4 +1,7 @@
+
 from collections import defaultdict
+import logging
+
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,7 +15,7 @@ from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, OSDMapSerializer, \
-    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer
+    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer, ServerSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -24,6 +27,9 @@ import pytz
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
 from cthulhu.manager.types import CRUSH_RULE, POOL
+
+
+log = logging.getLogger('django.request')
 
 
 def get_latest_graphite(metric):
@@ -330,6 +336,9 @@ class CrushRuleSetViewSet(RPCViewSet):
 
 
 class SaltKeyViewSet(RPCViewSet):
+    """
+    The SaltKey view is distinct from the Server view
+    """
     serializer = SaltKeySerializer
 
     def list(self, request):
@@ -361,6 +370,21 @@ class SaltKeyViewSet(RPCViewSet):
 
     def retrieve(self, request, pk):
         return Response(self.serializer(self.client.minion_get(pk)).data)
+
+
+class ServerClusterViewSet(RPCViewSet):
+    """
+    View of servers within a particular cluster
+    """
+    serializer = ServerSerializer
+
+    def list(self, request, fsid):
+        return Response(self.serializer(
+            [DataObject(s) for s in self.client.server_list()], many=True).data)
+
+    def retrieve(self, request, fsid, fqdn):
+        log.warn("fqdn = %s" % fqdn)
+        return Response(self.serializer(DataObject(self.client.server_get(fqdn))).data)
 
 
 @api_view(['GET'])

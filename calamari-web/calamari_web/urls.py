@@ -1,6 +1,6 @@
 from django.conf.urls import patterns, include, url
 
-from settings import STATIC_ROOT, GRAPHITE_API_PREFIX
+from settings import STATIC_ROOT, GRAPHITE_API_PREFIX, CONTENT_DIR
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -35,6 +35,14 @@ urlpatterns = patterns(
     url(r'^render/?', include('graphite.render.urls')),
     url(r'^metrics/?', include('graphite.metrics.urls')),
     url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
+
+    # XXX this is a hack to make graphite dashboard work in dev mode (full installation
+    # serves this part with apache)
+    url('^content/(?P<path>.*)$', 'django.views.static.serve', {'document_root': CONTENT_DIR}),
+
+    # XXX this is a hack to serve apt repo in dev mode (Full installation serves this with apache)
+    url(r'^ubuntu/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/ubuntu/' % STATIC_ROOT}),
 )
 
 # Graphite dashboard client code is not CSRF enabled, but we have

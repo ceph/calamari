@@ -208,3 +208,11 @@ class SaltKeySerializer(serializers.Serializer):
 
     id = serializers.CharField()
     status = serializers.CharField()
+
+
+class ServerSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('fqdn', 'services')
+
+    fqdn = serializers.CharField()
+    services = serializers.Field()

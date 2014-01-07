@@ -15,11 +15,10 @@ from cthulhu.log import log
 from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager import config, salt_config
+from cthulhu.manager.server_monitor import ServerMonitor
 from cthulhu.persistence.sync_objects import Persister, Session, SyncObject
 
 
-from gevent.monkey import patch_all
-patch_all()
 import zmq.green
 import salt.utils.event
 salt.utils.event.zmq = zmq.green
@@ -41,12 +40,12 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
         event.subscribe("ceph/heartbeat/")
 
         while not self._complete.is_set():
-            data = event.get_event()
+            data = event.get_event(tag="ceph/heartbeat/")
             if data is not None:
                 try:
                     if 'tag' in data and data['tag'].startswith("ceph/heartbeat/"):
                         cluster_data = data['data']
-                        if not cluster_data['fsid'] in self._manager.monitors:
+                        if not cluster_data['fsid'] in self._manager.clusters:
                             self._manager.on_discovery(data['id'], cluster_data)
                         else:
                             log.debug("%s: heartbeat from existing cluster %s" % (
@@ -76,9 +75,6 @@ class Manager(object):
         self._rpc_thread = RpcThread(self)
         self._discovery_thread = DiscoveryThread(self)
 
-        # FSID to ClusterMonitor
-        self.monitors = {}
-
         self._notifier = NotificationThread()
         try:
             # Prepare persistence
@@ -90,21 +86,27 @@ class Manager(object):
             log.error("Database error: %s" % e)
             raise
 
+        # FSID to ClusterMonitor
+        self.clusters = {}
+
+        # Handle all ceph/services messages
+        self.servers = ServerMonitor(self._persister)
+
     def delete_cluster(self, fs_id):
         """
         Note that the cluster will pop right back again if its
         still sending heartbeats.
         """
-        victim = self.monitors[fs_id]
+        victim = self.clusters[fs_id]
         victim.stop()
         victim.done.wait()
-        del self.monitors[fs_id]
+        del self.clusters[fs_id]
 
         self._expunge(fs_id)
 
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
-        for monitor in self.monitors.values():
+        for monitor in self.clusters.values():
             monitor.stop()
         self._rpc_thread.stop()
         self._discovery_thread.stop()
@@ -121,8 +123,8 @@ class Manager(object):
         fsids = [row[0] for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
         for fsid in fsids:
 
-            cluster_monitor = ClusterMonitor(fsid, 'ceph', self._notifier, self._persister)
-            self.monitors[fsid] = cluster_monitor
+            cluster_monitor = ClusterMonitor(fsid, 'ceph', self._notifier, self._persister, self.servers)
+            self.clusters[fsid] = cluster_monitor
 
             object_types = [row[0] for row in session.query(SyncObject.sync_type).filter_by(fsid=fsid).distinct()]
             for sync_type in object_types:
@@ -150,7 +152,7 @@ class Manager(object):
 
                 cluster_monitor.inject_sync_object(sync_type, version, json.loads(latest_record.data))
 
-        for monitor in self.monitors.values():
+        for monitor in self.clusters.values():
             log.info("Recovery: Cluster %s with update time %s" % (monitor.fsid, monitor.update_time))
             monitor.start()
 
@@ -167,20 +169,23 @@ class Manager(object):
         self._notifier.start()
         self._persister.start()
 
+        self.servers.start()
+
     def join(self):
         log.info("%s joining" % self.__class__.__name__)
         self._rpc_thread.join()
         self._discovery_thread.join()
         self._notifier.join()
         self._persister.join()
-        for monitor in self.monitors.values():
+        self.servers.join()
+        for monitor in self.clusters.values():
             monitor.join()
 
     def on_discovery(self, minion_id, heartbeat_data):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
         cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
-                                         self._notifier, self._persister)
-        self.monitors[heartbeat_data['fsid']] = cluster_monitor
+                                         self._notifier, self._persister, self.servers)
+        self.clusters[heartbeat_data['fsid']] = cluster_monitor
 
         #persistence.get_or_create(
         #    heartbeat_data['name'],
