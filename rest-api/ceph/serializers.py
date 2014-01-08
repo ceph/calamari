@@ -209,13 +209,34 @@ class SaltKeySerializer(serializers.Serializer):
     status = serializers.CharField()
 
 
+class ServiceSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('fsid', 'type', 'id', 'running')
+
+    fsid = serializers.SerializerMethodField("get_fsid")
+    type = serializers.SerializerMethodField("get_type")
+    id = serializers.SerializerMethodField("get_id")
+    running = serializers.BooleanField()
+
+    def get_fsid(self, obj):
+        return obj['id'][0]
+
+    def get_type(self, obj):
+        return obj['id'][1]
+
+    def get_id(self, obj):
+        return obj['id'][2]
+
+
 class ServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'services', 'frontend_addr', 'backend_addr', 'frontend_iface', 'backend_iface')
+        fields = ('fqdn', 'services', 'frontend_addr', 'backend_addr', 'frontend_iface', 'backend_iface', 'managed')
 
     fqdn = serializers.CharField()
-    services = serializers.Field()
+    services = ServiceSerializer(many=True)
     frontend_addr = serializers.CharField()
     backend_addr = serializers.CharField()
     frontend_iface = serializers.CharField()
     backend_iface = serializers.CharField()
+
+    managed = serializers.BooleanField()

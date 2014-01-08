@@ -444,5 +444,6 @@ class ServerMonitor(greenlet.Greenlet):
             'frontend_addr': frontend_addr,
             'backend_addr': backend_addr,
             'frontend_iface': frontend_iface,
-            'backend_iface': backend_iface
+            'backend_iface': backend_iface,
+            'managed': server_state.managed
         }
