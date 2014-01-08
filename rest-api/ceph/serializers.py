@@ -230,13 +230,22 @@ class ServiceSerializer(serializers.Serializer):
 
 class ServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'services', 'frontend_addr', 'backend_addr', 'frontend_iface', 'backend_iface', 'managed')
+        fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
+                  'frontend_iface', 'backend_iface', 'managed', 'last_contact')
 
+    # Identifying information
     fqdn = serializers.CharField()
-    services = ServiceSerializer(many=True)
-    frontend_addr = serializers.CharField()
-    backend_addr = serializers.CharField()
-    frontend_iface = serializers.CharField()
-    backend_iface = serializers.CharField()
+    hostname = serializers.CharField()
 
+    # Calamari monitoring status
     managed = serializers.BooleanField()
+    last_contact = serializers.DateTimeField()
+
+    # Ceph usage
+    services = ServiceSerializer(many=True)
+
+    # Ceph network configuration
+    frontend_addr = serializers.CharField()  # may be null if no OSDs or mons on server
+    backend_addr = serializers.CharField()  # may be null if no OSDs on server
+    frontend_iface = serializers.CharField()  # may be null if interface for frontend addr not up
+    backend_iface = serializers.CharField()  # may be null if interface for backend addr not up

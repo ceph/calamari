@@ -6,6 +6,8 @@ individual hosts with no regard to the relations between them.
 """
 from collections import defaultdict, namedtuple
 import json
+import datetime
+from dateutil import tz
 
 from gevent import greenlet
 from gevent import event
@@ -284,6 +286,8 @@ class ServerMonitor(greenlet.Greenlet):
             log.info("Saw server %s for the first time" % server_state)
             # TODO: emit persistence creation for the server
 
+        server_state.last_contact = datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
+
         seen_id_tuples = set()
         for service_name, service in services_data.items():
             id_tuple = ServiceId(service['fsid'], service['type'], service['id'])
@@ -445,5 +449,6 @@ class ServerMonitor(greenlet.Greenlet):
             'backend_addr': backend_addr,
             'frontend_iface': frontend_iface,
             'backend_iface': backend_iface,
-            'managed': server_state.managed
+            'managed': server_state.managed,
+            'last_contact': server_state.last_contact.isoformat()
         }
