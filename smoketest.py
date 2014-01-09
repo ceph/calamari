@@ -32,8 +32,12 @@ tasks:
 - interactive:
 '''
 
-OWNER='calamari-autotest@odds'
+# subdir of download.inktank.com to use for packages.  deb/ and rpm/
+# are assumed to exist as subdirectories.
 PKGDIR='packages-staging'
+
+# description for teuthology-lock
+DESC='Calamari autotesting (smoketest.py)'
 
 sgr0 = check_output('tput sgr0', shell=True)
 red = check_output('tput setaf 1', shell=True)
@@ -109,9 +113,9 @@ def make_cluster(yamlfile, release):
     #cmd = 'teuthology --machine-type=mira --lock ' \
     #      '--owner={owner} {yamlfile}'
     cmd = 'teuthology --machine-type=vps --lock --os-type={distro} ' \
-          '--os-version={version} --owner={owner} {yamlfile}'
+          '--os-version={version} --desc="{desc}" {yamlfile}'
     cmd = cmd.format(
-        distro=distro, version=version, owner=OWNER, yamlfile=yamlfile
+        distro=distro, version=version, desc=DESC, yamlfile=yamlfile
     )
     proc = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
     proc_infd = proc.stdin.fileno()
