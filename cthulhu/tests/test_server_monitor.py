@@ -22,6 +22,9 @@ OSD_MAP = load_fixture('osd_map.json')
 OSD_MAP_MIGRATED = load_fixture('osd_map_migrated.json')
 MON_CEPH_SERVICES_MIGRATED = load_fixture('gravel1.rockery_services_migrated.json')
 
+# After removing osd.1
+OSD_MAP_1_REMOVED = load_fixture('osd_map_1_removed.json')
+
 
 FSID = "d530413f-9030-4daa-aba5-dfe3b6c4bb25"
 MON_CEPH_SERVICES = load_fixture('gravel1.rockery_services.json')
@@ -169,3 +172,25 @@ class TestServiceDetection(TestCase):
         self.assertListEqual(sm.services.keys(), [ServiceId(FSID, 'mon', MON_HOSTNAME)])
         self.assertListEqual([s.id for s in sm.fsid_services[FSID]], [ServiceId(FSID, 'mon', MON_HOSTNAME)])
         self.assertListEqual(sm.hostname_to_server.keys(), [MON_HOSTNAME])
+
+    def test_remove_server(self):
+        """
+        That when an OSD is disappears from the OSD map, it is also removed
+        from ServerMonitor's worldview
+        """
+        sm = ServerMonitor(Mock())
+
+        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+
+        self.assertEqual(len(sm.servers), 2)
+        self.assertEqual(len(sm.services), 3)
+        self.assertEqual(len(sm.fsid_services), 1)
+        self.assertEqual(len(sm.hostname_to_server), 2)
+
+        sm.on_osd_map(OSD_MAP_1_REMOVED)
+
+        self.assertEqual(len(sm.servers), 2)
+        self.assertEqual(len(sm.services), 2)  # decremented by 1
+        self.assertEqual(len(sm.fsid_services), 1)
+        self.assertEqual(len(sm.hostname_to_server), 2)

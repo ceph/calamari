@@ -27,7 +27,6 @@ CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
 # Stuff still to do:
-# - get server names from here in derived.py instead of doing its own crush-munging
 # - any remaining TODO
 # - (maybe) report ceph version in ceph.services
 # - (maybe) add a sanity check of the mons known to ServerMonitor vs those known in
@@ -208,6 +207,14 @@ class ServerMonitor(greenlet.Greenlet):
         server_state.services[service_state.id] = service_state
         self.fsid_services[service_state.fsid].append(service_state)
 
+    def forget_service(self, service_state):
+        log.info("Removing record of service %s" % (service_state,))
+        self.fsid_services[service_state.fsid].remove(service_state)
+        del self.services[service_state.id]
+        if service_state.server_state:
+            del service_state.server_state.services[service_state.id]
+        self._persister.delete_service(service_state.id)
+
     @nosleep
     def on_osd_map(self, osd_map):
         """
@@ -221,6 +228,7 @@ class ServerMonitor(greenlet.Greenlet):
         hostname_to_osds = self.get_hostname_to_osds(osd_map)
         log.debug("ServerMonitor.on_osd_map: got service data for %s servers" % len(hostname_to_osds))
 
+        osds_in_map = set()
         for hostname, osds in hostname_to_osds.items():
             try:
                 server_state = self.hostname_to_server[hostname]
@@ -233,17 +241,18 @@ class ServerMonitor(greenlet.Greenlet):
                     hostname=server_state.hostname,
                     managed=server_state.managed))
 
-            # Managed servers should be telling us about their services
-            # with ceph.services messages, disregard the CRUSH info for
-            # these servers.
-            if server_state.managed:
-                continue
-
             for osd in osds:
-                # TODO: remove ServiceState for any OSDs for this FSID which are not
-                # mentioned in hostname_to_osds
                 service_id = ServiceId(osd_map['fsid'], 'osd', str(osd['osd']))
-                self._register_service(server_state, service_id, running=bool(osd['up']))
+                osds_in_map.add(service_id)
+                if not server_state.managed:
+                    # Only pay attention to these services for unmanaged servers,
+                    # for managed servers rely on ceph/services salt messages
+                    self._register_service(server_state, service_id, running=bool(osd['up']))
+
+        # Remove ServiceState for any OSDs for this FSID which are not
+        # mentioned in hostname_to_osds
+        for stale_service_id in osds_in_map ^ set([s.id for s in self.fsid_services[osd_map['fsid']] if s.service_type == 'osd']):
+            self.forget_service(self.services[stale_service_id])
 
     def _get_grains(self, fqdn):
         pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
