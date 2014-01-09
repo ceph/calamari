@@ -17,6 +17,7 @@ def load_fixture(name):
     )
 
 OSD_MAP = load_fixture('osd_map.json')
+MON_MAP = load_fixture('mon_map.json')
 
 # After migrating osd.1 from gravel2 to gravel1
 OSD_MAP_MIGRATED = load_fixture('osd_map_migrated.json')
@@ -25,6 +26,8 @@ MON_CEPH_SERVICES_MIGRATED = load_fixture('gravel1.rockery_services_migrated.jso
 # After removing osd.1
 OSD_MAP_1_REMOVED = load_fixture('osd_map_1_removed.json')
 
+# After removing mon
+MON_MAP_1_REMOVED = load_fixture('mon_map_1_removed.json')
 
 FSID = "d530413f-9030-4daa-aba5-dfe3b6c4bb25"
 MON_CEPH_SERVICES = load_fixture('gravel1.rockery_services.json')
@@ -34,6 +37,15 @@ MON_FQDN = 'gravel1.rockery'
 OSD_HOSTNAME = 'gravel2'
 OSD_FQDN = 'gravel2.rockery'
 OSD_CEPH_SERVICES = load_fixture('gravel2.rockery_services.json')
+
+MDS1_HOSTNAME = 'gravel1'
+MDS2_HOSTNAME = 'gravel2'
+MDS1_FQDN = "gravel1.rockery"
+MDS2_FQDN = "gravel2.rockery"
+MDS1_SERVICES = load_fixture('mds1_services.json')
+MDS2_SERVICES = load_fixture('mds2_services.json')
+MDS_MAP = load_fixture('mds_map.json')
+MDS_MAP_1_REMOVED = load_fixture('mds_map_1_removed.json')
 
 
 class TestServiceDetection(TestCase):
@@ -173,7 +185,7 @@ class TestServiceDetection(TestCase):
         self.assertListEqual([s.id for s in sm.fsid_services[FSID]], [ServiceId(FSID, 'mon', MON_HOSTNAME)])
         self.assertListEqual(sm.hostname_to_server.keys(), [MON_HOSTNAME])
 
-    def test_remove_server(self):
+    def test_remove_osd(self):
         """
         That when an OSD is disappears from the OSD map, it is also removed
         from ServerMonitor's worldview
@@ -183,14 +195,57 @@ class TestServiceDetection(TestCase):
         sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
-        self.assertEqual(len(sm.servers), 2)
-        self.assertEqual(len(sm.services), 3)
-        self.assertEqual(len(sm.fsid_services), 1)
-        self.assertEqual(len(sm.hostname_to_server), 2)
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'osd', '0'),
+            ServiceId(FSID, 'osd', '1'),
+            ServiceId(FSID, 'mon', MON_HOSTNAME)
+        ])
 
         sm.on_osd_map(OSD_MAP_1_REMOVED)
 
-        self.assertEqual(len(sm.servers), 2)
-        self.assertEqual(len(sm.services), 2)  # decremented by 1
-        self.assertEqual(len(sm.fsid_services), 1)
-        self.assertEqual(len(sm.hostname_to_server), 2)
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'osd', '0'),
+            ServiceId(FSID, 'mon', MON_HOSTNAME)
+        ])
+
+    def test_remove_mon(self):
+        """
+        That when a mon disappears from the mon map, ServerMonitor notices
+        """
+        sm = ServerMonitor(Mock())
+
+        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm.on_mon_map(MON_MAP)
+
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'osd', '0'),
+            ServiceId(FSID, 'osd', '1'),
+            ServiceId(FSID, 'mon', MON_HOSTNAME)
+        ])
+
+        sm.on_mon_map(MON_MAP_1_REMOVED)
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'osd', '0'),
+            ServiceId(FSID, 'osd', '1')
+        ])
+
+    def test_remove_mds(self):
+        """
+        That when an mds disappears from the mds map, ServerMonitor notices
+        """
+        sm = ServerMonitor(Mock())
+
+        sm.on_service_heartbeat(MDS1_FQDN, MDS1_SERVICES)
+        sm.on_service_heartbeat(MDS2_FQDN, MDS2_SERVICES)
+        sm.on_mds_map(FSID, MDS_MAP)
+
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'mds', MDS1_HOSTNAME),
+            ServiceId(FSID, 'mds', MDS2_HOSTNAME)
+        ])
+
+        sm.on_mds_map(FSID, MDS_MAP_1_REMOVED)
+        self.assertListEqual(sm.services.keys(), [
+            ServiceId(FSID, 'mds', MDS1_HOSTNAME)
+        ])

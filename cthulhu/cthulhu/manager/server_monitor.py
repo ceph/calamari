@@ -27,7 +27,6 @@ CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
 # Stuff still to do:
-# - any remaining TODO
 # - (maybe) report ceph version in ceph.services
 # - (maybe) add a sanity check of the mons known to ServerMonitor vs those known in
 #   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
@@ -254,6 +253,36 @@ class ServerMonitor(greenlet.Greenlet):
         for stale_service_id in osds_in_map ^ set([s.id for s in self.fsid_services[osd_map['fsid']] if s.service_type == 'osd']):
             self.forget_service(self.services[stale_service_id])
 
+    @nosleep
+    def on_mds_map(self, fsid, mds_map):
+        """
+        When a new MDS map is received, use it to eliminate any MDS
+        ServiceState records that no longer exist in the real world.
+
+        :param fsid: Pass in fsid string because mds map doesn't include it
+        :param mds_map: The MDS map sync object
+        """
+        seen_mds = set([ServiceId(
+            fsid, 'mds', i['name']
+        ) for i in mds_map['info'].values()])
+        known_mds = set([s.id for s in self.fsid_services[fsid] if s.service_type == 'mds'])
+        for stale_mds_id in seen_mds ^ known_mds:
+            self.forget_service(self.services[stale_mds_id])
+
+    @nosleep
+    def on_mon_map(self, mon_map):
+        """
+        When a new mon map is received, use it to eliminate any mon
+        ServiceState records that no longer exist in the real world.
+        """
+        seen_mons = set([ServiceId(mon_map['fsid'], 'mon', m['name']) for m in mon_map['mons']])
+        known_mons = set([
+            s.id
+            for s in self.fsid_services[mon_map['fsid']] if s.service_type == 'mon'
+        ])
+        for stale_mon_id in seen_mons ^ known_mons:
+            self.forget_service(self.services[stale_mon_id])
+
     def _get_grains(self, fqdn):
         pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
                                                          use_cached_grains=True,
@@ -316,10 +345,6 @@ class ServerMonitor(greenlet.Greenlet):
             if service_state.running:
                 log.info("Service %s stopped on server %s" % (service_state, server_state))
                 service_state.running = False
-
-        # TODO: use cluster maps to delete service states when they are
-        # no longer visible in maps (distinguish between service not running
-        # and service doesn't exist any more)...
 
     def _register_service(self, server_state, service_id, running):
         try:

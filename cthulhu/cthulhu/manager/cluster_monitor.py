@@ -18,7 +18,7 @@ from cthulhu.manager import derived
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap
+from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager.user_request import RequestCollection
 
 from cthulhu.manager import config, salt_config
@@ -279,11 +279,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 'data': data['data']
             })
 
-            # The ServerMonitor is interested in the OSD map, do this prior
+            # The ServerMonitor is interested in cluster maps, do this prior
             # to updating any derived objects so that derived generators have
             # access to latest view of server state
             if sync_type == OsdMap:
                 self._servers.on_osd_map(data['data'])
+            elif sync_type == MonMap:
+                self._servers.on_mon_map(data['data'])
+            elif sync_type == MdsMap:
+                self._servers.on_mds_map(fsid, data['data'])
 
             self.inject_sync_object(data['type'], data['version'], data['data'])
 

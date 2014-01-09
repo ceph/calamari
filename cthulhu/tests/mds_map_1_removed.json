@@ -1,0 +1,54 @@
+{
+
+    "max_file_size": 1099511627776,
+    "compat": {
+        "compat": {},
+        "ro_compat": {},
+        "incompat": {
+            "feature_2": "client writeable ranges",
+            "feature_3": "default file layouts on dirs",
+            "feature_1": "base v0.20",
+            "feature_4": "dir inode in separate object",
+            "feature_5": "mds uses versioned encoding"
+        }
+    },
+    "stopped": [
+
+    ],
+    "info": {
+        "gid_93312": {
+            "standby_for_rank": -1,
+            "export_targets": [],
+            "name": "gravel1",
+            "incarnation": 9,
+            "state_seq": 13,
+            "state": "up:active",
+            "gid": 93312,
+            "rank": 1,
+            "standby_for_name": "",
+            "addr": "192.168.18.1:6800/1525"
+        }
+    },
+    "tableserver": 0,
+    "created": "2014-01-04 00:59:16.523084",
+    "data_pools": [
+        0
+    ],
+    "session_autoclose": 300,
+    "modified": "2014-01-09 13:46:00.660143",
+    "up": {
+        "mds_0": 93309
+    },
+    "failed": [],
+    "epoch": 198,
+    "session_timeout": 60,
+    "flags": 0,
+    "in": [
+        0
+    ],
+    "last_failure_osd_epoch": 146,
+    "metadata_pool": 1,
+    "root": 0,
+    "max_mds": 1,
+    "last_failure": 151
+}

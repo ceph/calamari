@@ -1,0 +1,8 @@
+{
+  "ceph-mds.gravel2": {
+    "cluster": "ceph",
+    "type": "mds",
+    "id": "gravel2",
+    "fsid": "d530413f-9030-4daa-aba5-dfe3b6c4bb25"
+  }
+}
