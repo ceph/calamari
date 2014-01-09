@@ -125,8 +125,34 @@ class Manager(object):
         session.commit()
 
     def _recover(self):
-        # I want the most recent version of every sync_object
         session = Session()
+        for server in session.query(Server).all():
+            log.debug("Recovered server %s" % server.fqdn)
+            # postgres stores dates in UTC, just set the timezone to tzutc() to get
+            # a valid tz aware datetime out.
+            last_contact = server.last_contact.replace(tzinfo=tzutc()) if server.last_contact else None
+            self.servers.inject_server(ServerState(
+                fqdn=server.fqdn,
+                hostname=server.hostname,
+                managed=server.managed,
+                last_contact=last_contact
+            ))
+
+        for service in session.query(Service).all():
+            if service.server:
+                server = session.query(Server).get(service.server)
+            else:
+                server = None
+            log.debug("Recovered service %s/%s/%s on %s" % (
+                service.fsid, service.service_type, service.service_id, server.fqdn if server else None
+            ))
+            self.servers.inject_service(ServiceState(
+                fsid=service.fsid,
+                service_type=service.service_type,
+                service_id=service.service_id
+            ), server.fqdn if server else None)
+
+        # I want the most recent version of every sync_object
         fsids = [row[0] for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
         for fsid in fsids:
             cluster_monitor = ClusterMonitor(fsid, 'ceph', self._notifier, self._persister, self.servers)
@@ -161,32 +187,6 @@ class Manager(object):
         for monitor in self.clusters.values():
             log.info("Recovery: Cluster %s with update time %s" % (monitor.fsid, monitor.update_time))
             monitor.start()
-
-        for server in session.query(Server).all():
-            log.debug("Recovered server %s" % server.fqdn)
-            # postgres stores dates in UTC, just set the timezone to tzutc() to get
-            # a valid tz aware datetime out.
-            last_contact = server.last_contact.replace(tzinfo=tzutc()) if server.last_contact else None
-            self.servers.inject_server(ServerState(
-                fqdn=server.fqdn,
-                hostname=server.hostname,
-                managed=server.managed,
-                last_contact=last_contact
-            ))
-
-        for service in session.query(Service).all():
-            if service.server:
-                server = session.query(Server).get(service.server)
-            else:
-                server = None
-            log.debug("Recovered service %s/%s/%s on %s" % (
-                service.fsid, service.service_type, service.service_id, server.fqdn if server else None
-            ))
-            self.servers.inject_service(ServiceState(
-                fsid=service.fsid,
-                service_type=service.service_type,
-                service_id=service.service_id
-            ), server.fqdn if server else None)
 
     def start(self):
         log.info("%s starting" % self.__class__.__name__)

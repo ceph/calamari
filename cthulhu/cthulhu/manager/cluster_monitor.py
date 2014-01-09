@@ -259,7 +259,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
                 if None not in dependency_data.values():
                     log.debug("Updating %s" % generator.__name__)
-                    derived_objects = generator.generate(dependency_data)
+                    derived_objects = generator.generate(self, self._servers, dependency_data)
                     self._derived_objects.update(derived_objects)
 
     @nosleep

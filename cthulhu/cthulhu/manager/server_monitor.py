@@ -370,6 +370,16 @@ class ServerMonitor(greenlet.Greenlet):
         """
         return self.servers[fqdn]
 
+    def get_by_service(self, service_id):
+        """
+        Return the FQDN of the server associated with this service, or
+
+        """
+        try:
+            return self.services[service_id].server_state
+        except KeyError:
+            return None
+
     def remove(self, fqdn):
         """
         Forget about this server.  Does not prevent it popping back into

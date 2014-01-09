@@ -1,4 +1,5 @@
 from collections import defaultdict
+from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -16,7 +17,7 @@ OKAY_STATES = set(['active', 'clean'])
 class DerivedObjects(dict):
     """
     Store for items which we generate as a function of sync objects, decorated
-    versions etc.  Basically just a dict with locking.
+    versions etc.
     """
 
     def __init__(self):
@@ -33,9 +34,8 @@ class OsdPgDetail(object):
     depends = [OsdMap, PgBrief]
 
     @classmethod
-    def generate(cls, data):
+    def generate(cls, cluster_monitor, server_monitor, data):
         osd_map = data[OsdMap]
-        osd_tree = osd_map['tree']
         pgs_brief = data[PgBrief]
         # map osd id to pg states
         pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
@@ -72,28 +72,6 @@ class OsdPgDetail(object):
                                 osds_by_pg_state.iteritems())
         osds_by_pg_state = osds_by_pg_state
 
-        # get the osd tree. we'll use it to get hostnames
-        nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
-
-        # TODO: call out to manager.servers here instead of recalculating
-        # the CRUSH view of the world.
-
-        # FIXME: this assumes that an osd node is a direct descendent of a
-        #
-        # host. It also assumes that these node types are called 'osd', and
-        # 'host' respectively. This is probably not as general as we would like
-        # it. Some clusters might have weird crush maps. This also assumes that
-        # the host name in the crush map is the same host name reported by
-        # Diamond. It is fragile.
-        host_by_osd_name = defaultdict(lambda: None)
-        for node in osd_tree["nodes"]:
-            if node["type"] == "host":
-                host = node["name"]
-                for id in node["children"]:
-                    child = nodes_by_id[id]
-                    if child["type"] == "osd":
-                        host_by_osd_name[child["name"]] = host
-
         # helper to modify each osd object
         def fixup_osd(osd):
             osd_id = osd['osd']
@@ -102,7 +80,13 @@ class OsdPgDetail(object):
             data.update({'osd': osd_id})
             data.update({'pg_states': dict(pg_states_by_osd[osd_id])})
             data.update({'pools': list(pools_by_osd[osd_id])})
-            data.update({'host': host_by_osd_name["osd.%d" % (osd_id,)]})
+
+            server = server_monitor.get_by_service(ServiceId(
+                osd_map['fsid'], 'osd', str(osd_id)
+            ))
+
+            data.update({'host': server.hostname if server else None})
+            data.update({'fqdn': server.fqdn if server else None})
             return data
 
         # add the pg states to each osd
@@ -119,7 +103,7 @@ class HealthCounters(object):
     depends = [OsdMap, MdsMap, MonStatus, PgBrief]
 
     @classmethod
-    def generate(cls, data):
+    def generate(cls, cluster_monitor, server_monitor, data):
         return {'counters': {
             'osd': cls._calculate_osd_counters(data[OsdMap]),
             'mds': cls._calculate_mds_counters(data[MdsMap]),
@@ -257,9 +241,9 @@ class HealthCounters(object):
 
     @classmethod
     def _calculate_mds_counters(cls, mds_map):
-        total = mds_map['max_mds']
         up = len(mds_map['up'])
         inn = len(mds_map['in'])
+        total = len(mds_map['info'])
         return {
             'total': total,
             'up_in': inn,
