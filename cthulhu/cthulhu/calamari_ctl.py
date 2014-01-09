@@ -9,7 +9,7 @@ import subprocess
 from django.core.management import execute_from_command_line
 import pwd
 from django.utils.crypto import get_random_string
-from cthulhu.persistence import sync_objects
+from cthulhu.persistence import persister
 from django.contrib.auth import get_user_model
 from cthulhu.config import CalamariConfig
 
@@ -57,7 +57,7 @@ def initialize(args):
 
     # Cthulhu's database
     log.info("Initializing database...")
-    sync_objects.initialize(config.get('cthulhu', 'db_path'))
+    persister.initialize(config.get('cthulhu', 'db_path'))
 
     # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")

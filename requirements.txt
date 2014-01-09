@@ -37,7 +37,6 @@ pytz
 salt
 pyzmq
 python-dateutil
-threading2
 zerorpc
 
 # For minion-sim

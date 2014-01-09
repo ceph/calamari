@@ -20,7 +20,9 @@ from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager import config, salt_config
 from cthulhu.manager.server_monitor import ServerMonitor
-from cthulhu.persistence.sync_objects import Persister, Session, SyncObject
+
+from cthulhu.persistence.sync_objects import SyncObject
+from cthulhu.persistence.persister import Persister, Session
 
 
 import zmq.green

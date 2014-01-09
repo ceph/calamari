@@ -4,10 +4,11 @@ import uuid
 from dateutil.tz import tzlocal
 import salt
 import salt.client
-import threading2
 from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, PgBrief
+
+from gevent.lock import RLock
 
 
 class PublishError(Exception):
@@ -226,38 +227,33 @@ class RequestCollection(object):
     """
     Manage a collection of UserRequests, indexed by
     salt JID and request ID.
+
+    Unlike most of cthulhu, this class contains a lock, which
+    is used in all entry points which may sleep (anything which
+    progresses a UserRequest might involve I/O to create jobs
+    in the salt master), so that they don't go to sleep and
+    wake up in a different world.
     """
 
     def __init__(self):
         super(RequestCollection, self).__init__()
-        self._shlock = threading2.SHLock()
 
         self._by_request_id = {}
         self._by_jid = {}
 
+        self._lock = RLock()
+
     def get_by_id(self, request_id):
-        self._shlock.acquire(shared=True)
-        try:
-            return self._by_request_id[request_id]
-        finally:
-            self._shlock.release()
+        return self._by_request_id[request_id]
 
     def get_by_jid(self, jid):
-        self._shlock.acquire(shared=True)
-        try:
-            return self._by_jid[jid]
-        finally:
-            self._shlock.release()
+        return self._by_jid[jid]
 
     def get_all(self, state=None):
-        self._shlock.acquire(shared=True)
-        try:
-            if not state:
-                return self._by_request_id.values()
-            else:
-                return [r for r in self._by_request_id.values() if r.state == state]
-        finally:
-            self._shlock.release()
+        if not state:
+            return self._by_request_id.values()
+        else:
+            return [r for r in self._by_request_id.values() if r.state == state]
 
     def submit(self, request, minion):
         """
@@ -265,25 +261,64 @@ class RequestCollection(object):
         to hold the lock over both operations, otherwise a response
         to a job could arrive before the request was filed here.
         """
-        self._shlock.acquire(shared=False)
-        request.submit(minion)
-        try:
+        with self._lock:
+            request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request
-        finally:
-            self._shlock.release()
 
     def on_map(self, sync_type, sync_objects):
-        requests = self.get_all(state=UserRequest.SUBMITTED)
-        for request in requests:
-            try:
-                with self.update_index(request):
-                    request.on_map(sync_type, sync_objects)
-            except:
-                log.exception("Request %s threw exception in on_map", request.id)
-                request.complete(error=True)
+        """
+        Callback for when a new cluster map is available, in which
+        we notify any interested ongoing UserRequests of the new map
+        so that they can progress if they were waiting for it.
+        """
+        with self._lock:
+            requests = self.get_all(state=UserRequest.SUBMITTED)
+            for request in requests:
+                try:
+                    with self._update_index(request):
+                        request.on_map(sync_type, sync_objects)
+                except:
+                    log.exception("Request %s threw exception in on_map", request.id)
+                    request.complete(error=True)
 
-    def update_index(self, request):
+    def on_completion(self, data):
+        """
+        Callback for when a salt/job/<jid>/ret event is received, in which
+        we find the UserRequest that created the job, and inform it of
+        completion so that it can progress.
+        """
+        with self._lock:
+            jid = data['jid']
+            result = data['return']
+            log.debug("on_completion: jid=%s data=%s" % (jid, data))
+
+            request = self.get_by_jid(jid)
+            log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
+
+            # TODO: tag some detail onto the UserRequest object
+            # when a failure occurs
+            if not data['success']:
+                log.error("Remote execution failed for request %s: %s" % (request.id, result))
+                request.complete(error=True)
+            else:
+                if request.state != UserRequest.SUBMITTED:
+                    # Unexpected, ignore.
+                    log.error("Received completion for request %s/%s in state %s" % (
+                        request.id, request.jid, request.state
+                    ))
+                    return
+
+                try:
+                    with self._update_index(request):
+                        request.complete_jid(result)
+                except Exception:
+                    # Ensure that a misbehaving piece of code in a UserRequest subclass
+                    # results in a terminated job, not a zombie job
+                    log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                    request.complete(error=True)
+
+    def _update_index(self, request):
         """
         Context manager to acquire across request-modifying operations
         to ensure lookups like by_jid are up to date if requests
@@ -295,47 +330,13 @@ class RequestCollection(object):
             # Take write lock across on_map + subsequent by_jid update,
             # in order to ensure by_jid is up to date before any response
             # to new jids can arrive.
-            self._shlock.acquire(shared=False)
-            try:
-                old_jid = request.jid
-                yield
-                # Update by_jid in case this triggered a new job
-                if request.jid != old_jid:
-                    if old_jid:
-                        del self._by_jid[old_jid]
-                    if request.jid:
-                        self._by_jid[request.jid] = request
-            finally:
-                self._shlock.release()
+            old_jid = request.jid
+            yield
+            # Update by_jid in case this triggered a new job
+            if request.jid != old_jid:
+                if old_jid:
+                    del self._by_jid[old_jid]
+                if request.jid:
+                    self._by_jid[request.jid] = request
 
         return update()
-
-    def on_completion(self, data):
-        jid = data['jid']
-        result = data['return']
-        log.debug("on_completion: jid=%s data=%s" % (jid, data))
-
-        request = self.get_by_jid(jid)
-        log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
-
-        # TODO: tag some detail onto the UserRequest object
-        # when a failure occurs
-        if not data['success']:
-            log.error("Remote execution failed for request %s: %s" % (request.id, result))
-            request.complete(error=True)
-        else:
-            if request.state != UserRequest.SUBMITTED:
-                # Unexpected, ignore.
-                log.error("Received completion for request %s/%s in state %s" % (
-                    request.id, request.jid, request.state
-                ))
-                return
-
-            try:
-                with self.update_index(request):
-                    request.complete_jid(result)
-            except Exception:
-                # Ensure that a misbehaving piece of code in a UserRequest subclass
-                # results in a terminated job, not a zombie job
-                log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
-                request.complete(error=True)

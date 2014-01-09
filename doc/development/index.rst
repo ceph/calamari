@@ -24,6 +24,8 @@ Contents
    requests
    OSX
    building_packages
+   cthulhu_locking
+   persistence
 
 Indices and tables
 ==================

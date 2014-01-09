@@ -1,6 +1,4 @@
 from collections import defaultdict
-import gevent.greenlet
-import gevent.lock
 from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -23,15 +21,12 @@ class DerivedObjects(dict):
 
     def __init__(self):
         super(DerivedObjects, self).__init__()
-        self._lock = gevent.lock.RLock()
 
     def get(self, key, default=None):
-        with self._lock:
-            return super(DerivedObjects, self).get(key, default)
+        return super(DerivedObjects, self).get(key, default)
 
     def set(self, key, value):
-        with self._lock:
-            self[key] = value
+        self[key] = value
 
 
 class OsdPgDetail(object):

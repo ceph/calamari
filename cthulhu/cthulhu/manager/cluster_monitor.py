@@ -4,7 +4,6 @@ from dateutil.tz import tzutc
 
 from pytz import utc
 import dateutil
-import gevent.lock
 import gevent
 
 import salt
@@ -12,6 +11,7 @@ import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
 import zmq
+from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 
 from cthulhu.manager import derived
@@ -41,19 +41,15 @@ class SyncObjects(object):
 
     def __init__(self):
         self._objects = dict([(t, None) for t in SYNC_OBJECT_TYPES])
-        self._lock = gevent.lock.RLock()
 
     def set_map(self, typ, version, map_data):
-        with self._lock:
-            self._objects[typ] = typ(version, map_data)
+        self._objects[typ] = typ(version, map_data)
 
     def get_version(self, typ):
-        with self._lock:
-            return self._objects[typ].version if self._objects[typ] else None
+        return self._objects[typ].version if self._objects[typ] else None
 
     def get(self, typ):
-        with self._lock:
-            return self._objects[typ]
+        return self._objects[typ]
 
 
 class ClusterMonitor(gevent.greenlet.Greenlet):
@@ -108,15 +104,19 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         log.info("%s stopping" % self.__class__.__name__)
         self._complete.set()
 
+    @nosleep
     def list_requests(self):
         return self._requests.get_all()
 
+    @nosleep
     def get_request(self, request_id):
         return self._requests.get_by_id(request_id)
 
+    @nosleep
     def get_sync_object(self, object_type):
         return self._sync_objects.get(object_type).data
 
+    @nosleep
     def get_derived_object(self, object_type):
         return self._derived_objects.get(object_type)
 
@@ -178,7 +178,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         log.info("%s complete" % self.__class__.__name__)
         self.done.set()
 
-    def is_favorite(self, minion_id):
+    def _is_favorite(self, minion_id):
         """
         Check if this minion is the one which we are currently treating
         as the primary source of updates, and promote it to be the
@@ -193,7 +193,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         if self._favorite_mon is None:
             log.debug("%s is my new favourite" % minion_id)
-            self.set_favorite(minion_id)
+            self._set_favorite(minion_id)
             return True
         elif minion_id != self._favorite_mon:
             # Consider whether this minion should become my new favourite: has it been
@@ -203,10 +203,11 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 log.debug("My old favourite, %s, has not sent a heartbeat for %s: %s is my new favourite" % (
                     self._favorite_mon, time_since, minion_id
                 ))
-                self.set_favorite(minion_id)
+                self._set_favorite(minion_id)
 
         return minion_id == self._favorite_mon
 
+    @nosleep
     def on_heartbeat(self, minion_id, cluster_data):
         """
         Handle a ceph.heartbeat from a minion.
@@ -217,7 +218,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         for us to fetch.
         """
 
-        if not self.is_favorite(minion_id):
+        if not self._is_favorite(minion_id):
             log.debug('Ignoring cluster data from %s, it is not my favourite (%s)' % (minion_id, self._favorite_mon))
             return
 
@@ -261,6 +262,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     derived_objects = generator.generate(dependency_data)
                     self._derived_objects.update(derived_objects)
 
+    @nosleep
     def on_sync_object(self, minion_id, data):
         if minion_id != self._favorite_mon:
             log.debug("Ignoring map from %s, it is not my favourite (%s)" % (minion_id, self._favorite_mon))
@@ -295,8 +297,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 version = data['version']
             else:
                 version = None
-            self._persister.update(self.fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
 
+            self._persister.update_sync_object(self.fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
+
+    @nosleep
     def on_completion(self, data):
         self._requests.on_completion(data)
         # FIXME: to protect against an on_sync_object resulting from a job
@@ -306,36 +310,42 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         # just pass all the maps into the job completion callback so that
         # it can explicitly do a there 'n' then check.
 
-    def set_favorite(self, minion_id):
+    def _set_favorite(self, minion_id):
         self._favorite_mon = minion_id
         # TODO: for use when we have lost contact
         # with the existing favorite: if we had any
         # outstanding jobs which were using it, then
         # synthesize failures for them.
 
-    def request(self, method, obj_type, *args, **kwargs):
+    def _request(self, method, obj_type, *args, **kwargs):
         """
         Create and submit UserRequest for a create, update or delete.
         """
-        try:
-            request_factory = self._request_factories[obj_type](self)
-        except KeyError:
-            raise ValueError("{0} is not one of {1}".format(obj_type, self._request_factories.keys()))
 
-        if self._favorite_mon is None:
-            raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
+        # nosleep during preparation phase (may touch ClusterMonitor/ServerMonitor state)
+        with nosleep_mgr():
+            try:
+                request_factory = self._request_factories[obj_type](self)
+            except KeyError:
+                raise ValueError("{0} is not one of {1}".format(obj_type, self._request_factories.keys()))
 
-        request = getattr(request_factory, method)(*args, **kwargs)
+            if self._favorite_mon is None:
+                raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
+
+            request = getattr(request_factory, method)(*args, **kwargs)
+
+        # sleeps permitted during terminal phase of submitting, because we're
+        # doing I/O to the salt master to kick off
         self._requests.submit(request, self._favorite_mon)
         return {
             'request_id': request.id
         }
 
     def request_delete(self, obj_type, obj_id):
-        return self.request('delete', obj_type, obj_id)
+        return self._request('delete', obj_type, obj_id)
 
     def request_create(self, obj_type, attributes):
-        return self.request('create', obj_type, attributes)
+        return self._request('create', obj_type, attributes)
 
     def request_update(self, obj_type, obj_id, attributes):
-        return self.request('update', obj_type, obj_id, attributes)
+        return self._request('update', obj_type, obj_id, attributes)
