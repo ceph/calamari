@@ -27,7 +27,6 @@ CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
 # Stuff still to do:
-# - recovery
 # - get server names from here in derived.py instead of doing its own crush-munging
 # - any remaining TODO
 # - (maybe) report ceph version in ceph.services
@@ -35,6 +34,13 @@ CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 #   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
 #   server in ServerMonitor.  Could just be to log to begin with, later hook into event
 #   generation.
+
+
+def now():
+    """
+    A tz-aware now
+    """
+    return datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
 
 
 class GrainsNotFound(Exception):
@@ -46,7 +52,7 @@ class ServerState(object):
     A Ceph server, may be something we have had a heartbeat from or
     may be something we learned about from Ceph.
     """
-    def __init__(self, fqdn, hostname, managed):
+    def __init__(self, fqdn, hostname, managed, last_contact):
         # Note that FQDN is fudged when we learn about a server via
         # the CRUSH map (i.e. when we're talking to mons but not OSDs)
         # to contain the hostname instead.  The implied assumption
@@ -60,6 +66,8 @@ class ServerState(object):
 
         # Dict of ID tuple to ServiceState
         self.services = {}
+
+        self.last_contact = last_contact
 
     def __repr__(self):
         return "<ServerState '%s'>" % self.fqdn
@@ -122,9 +130,6 @@ class ServerMonitor(greenlet.Greenlet):
         self.services = {}
 
         self._complete = event.Event()
-
-    def recover(self):
-        pass
 
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
@@ -192,6 +197,17 @@ class ServerMonitor(greenlet.Greenlet):
 
         return host_to_osd
 
+    def inject_server(self, server_state):
+        self.hostname_to_server[server_state.hostname] = server_state
+        self.servers[server_state.fqdn] = server_state
+
+    def inject_service(self, service_state, server_fqdn):
+        server_state = self.servers[server_fqdn]
+        self.services[service_state.id] = service_state
+        service_state.set_server(server_state)
+        server_state.services[service_state.id] = service_state
+        self.fsid_services[service_state.fsid].append(service_state)
+
     @nosleep
     def on_osd_map(self, osd_map):
         """
@@ -210,9 +226,8 @@ class ServerMonitor(greenlet.Greenlet):
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
-                server_state = ServerState(hostname, hostname, managed=False)
-                self.hostname_to_server[hostname] = server_state
-                self.servers[server_state.fqdn] = server_state
+                server_state = ServerState(hostname, hostname, managed=False, last_contact=None)
+                self.inject_server(server_state)
                 self._persister.create_server(Server(
                     fqdn=server_state.fqdn,
                     hostname=server_state.hostname,
@@ -267,16 +282,19 @@ class ServerMonitor(greenlet.Greenlet):
                 self.servers[server_state.fqdn] = server_state
                 self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
             else:
-                server_state = self.servers[fqdn] = ServerState(fqdn, hostname, managed=True)
-                self.hostname_to_server[hostname] = server_state
+                server_state = ServerState(fqdn, hostname, managed=True,
+                                           last_contact=now())
+                self.inject_server(server_state)
                 self._persister.create_server(Server(
                     fqdn=server_state.fqdn,
                     hostname=server_state.hostname,
-                    managed=server_state.managed
+                    managed=server_state.managed,
+                    last_contact=server_state.last_contact
                 ))
             log.info("Saw server %s for the first time" % server_state)
 
-        server_state.last_contact = datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
+        server_state.last_contact = now()
+        self._persister.update_server(server_state.fqdn, last_contact=server_state.last_contact)
 
         seen_id_tuples = set()
         for service_name, service in services_data.items():
@@ -299,10 +317,8 @@ class ServerMonitor(greenlet.Greenlet):
             service_state = self.services[service_id]
         except KeyError:
             log.info("Saw service %s for the first time" % (service_id,))
-            service_state = self.services[service_id] = ServiceState(*service_id)
-            service_state.set_server(server_state)
-            server_state.services[service_id] = service_state
-            self.fsid_services[service_id.fsid].append(service_state)
+            service_state = ServiceState(*service_id)
+            self.inject_service(service_state, server_state.fqdn)
 
             self._persister.create_service(Service(
                 fsid=service_state.fsid,
@@ -444,5 +460,5 @@ class ServerMonitor(greenlet.Greenlet):
             'frontend_iface': frontend_iface,
             'backend_iface': backend_iface,
             'managed': server_state.managed,
-            'last_contact': server_state.last_contact.isoformat()
+            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None
         }

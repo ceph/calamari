@@ -34,8 +34,12 @@ class RpcInterface(object):
             if callable(attr):
                 def wrap(*args, **kwargs):
                     log.debug("RpcInterface >> %s(%s, %s)" % (item, args, kwargs))
-                    rc = attr(*args, **kwargs)
-                    log.debug("RpcInterface << %s" % item)
+                    try:
+                        rc = attr(*args, **kwargs)
+                        log.debug("RpcInterface << %s" % item)
+                    except:
+                        log.exception("RpcInterface !! %s" % item)
+                        raise
                     return rc
                 return wrap
             else:

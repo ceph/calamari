@@ -1,6 +1,6 @@
 
 
-from sqlalchemy import Column, Text, Integer, ForeignKey, Boolean
+from sqlalchemy import Column, Text, Integer, ForeignKey, Boolean, DateTime
 from cthulhu.persistence import Base
 
 
@@ -18,6 +18,7 @@ class Server(Base):
     fqdn = Column(Text, primary_key=False)
     hostname = Column(Text)
     managed = Column(Boolean)
+    last_contact = Column(DateTime(timezone=True))
 
     def __repr__(self):
         return "<Server %s>" % self.fqdn

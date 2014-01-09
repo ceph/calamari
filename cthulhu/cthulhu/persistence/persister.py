@@ -69,13 +69,14 @@ class Persister(gevent.greenlet.Greenlet):
                     return object.__getattribute__(self, item)
 
     def _update_sync_object(self, fsid, sync_type, version, when, data):
+        # TODO: FIFO logic with count limit
         self._session.add(SyncObject(fsid=fsid, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
 
     def _create_server(self, server):
         self._session.add(server)
 
     def _update_server(self, update_fqdn, **attrs):
-        self._session.query(Server).filter_by(fqdn=update_fqdn).update(**attrs)
+        self._session.query(Server).filter_by(fqdn=update_fqdn).update(attrs)
 
     def _create_service(self, service, associate_fqdn=None):
         self._session.add(service)
