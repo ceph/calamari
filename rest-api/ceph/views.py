@@ -15,7 +15,7 @@ from django.contrib.auth.models import User
 
 from ceph.serializers import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
-    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer, ServerSerializer, SyncObjectSerializer
+    PoolSerializer, RequestSerializer, CrushRuleSerializer, CrushRuleSetSerializer, SaltKeySerializer, ServerSerializer, SyncObjectSerializer, SimpleServerSerializer
 
 import zerorpc
 from zerorpc.exceptions import LostRemote
@@ -116,11 +116,12 @@ class Space(RPCView):
             else:
                 return None
 
-        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
+        #df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
+        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(self.client.get_cluster(fsid)['name'], stat_name)
         space = {
             'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
             'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
-            'free_bytes': to_bytes(get_latest_graphite(df_path('totaL_avail')))
+            'free_bytes': to_bytes(get_latest_graphite(df_path('total_avail')))
         }
 
         return Response(ClusterSpaceSerializer(DataObject({
@@ -135,7 +136,8 @@ class Health(RPCView):
         health = self.client.get_sync_object(fsid, 'health')
         return Response(ClusterHealthSerializer(DataObject({
             'report': health,
-            'cluster_update_time': self.client.get_cluster(fsid)['update_time']
+            'cluster_update_time': self.client.get_cluster(fsid)['update_time'],
+            'cluster_update_time_unix': self.client.get_cluster(fsid)['update_time'],
         })).data)
 
 
@@ -208,6 +210,16 @@ class SyncObject(RPCView):
 
     def get(self, request, fsid, sync_type):
         obj = DataObject({'data': self.client.get_sync_object(fsid, sync_type)})
+        return Response(SyncObjectSerializer(obj).data)
+
+
+class DerivedObject(RPCView):
+    # FIXME: just using SyncObjectSerializer because it's a 'data' wrapper,
+    # should really avoid a Serializer at all and just return the data
+    serializer = SyncObjectSerializer
+
+    def get(self, request, fsid, derived_type):
+        obj = DataObject({'data': self.client.get_derived_object(fsid, derived_type)})
         return Response(SyncObjectSerializer(obj).data)
 
 
@@ -386,6 +398,8 @@ class ServerClusterViewSet(RPCViewSet):
 
 
 class ServerViewSet(RPCViewSet):
+    serializer = SimpleServerSerializer
+
     def retrieve_grains(self, request, fqdn):
         import salt.config
         import salt.utils.master
@@ -399,8 +413,13 @@ class ServerViewSet(RPCViewSet):
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def retreive(self, request, fqdn):
-        self.client.server_get(fqdn)
+    def retrieve(self, request, fqdn):
+        return Response(
+            self.serializer(DataObject(self.client.server_get(fqdn))).data
+        )
+
+    def list(self, request):
+        return Response(self.serializer([DataObject(s) for s in self.client.server_list()], many=True).data)
 
 
 @api_view(['GET'])

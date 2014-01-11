@@ -14,15 +14,18 @@ def to_unix(t):
 
 class ClusterSerializer(serializers.Serializer):
     class Meta:
-        fields = ('update_time', 'update_time_unix', 'id', 'name')
+        fields = ('cluster_update_time', 'cluster_update_time_unix', 'id', 'name')
 
-    update_time = serializers.Field()
+    cluster_update_time = serializers.SerializerMethodField('get_update_time')
     name = serializers.Field()
     id = serializers.Field()
 
     # FIXME: we should not be sending out time in two formats: if API consumers want
     # unix timestamps they can do the conversion themselves.
-    update_time_unix = serializers.SerializerMethodField('get_update_time_unix')
+    cluster_update_time_unix = serializers.SerializerMethodField('get_update_time_unix')
+
+    def get_update_time(self, obj):
+        return obj.update_time
 
     def get_update_time_unix(self, obj):
         update_time = dateutil.parser.parse(obj.update_time)
@@ -228,10 +231,9 @@ class ServiceSerializer(serializers.Serializer):
         return obj['id'][2]
 
 
-class ServerSerializer(serializers.Serializer):
+class SimpleServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
-                  'frontend_iface', 'backend_iface', 'managed', 'last_contact')
+        fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'services')
 
     # Identifying information
     fqdn = serializers.CharField()
@@ -243,6 +245,23 @@ class ServerSerializer(serializers.Serializer):
 
     # Ceph usage
     services = ServiceSerializer(many=True)
+
+
+class ServerSerializer(SimpleServerSerializer):
+    class Meta:
+        fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
+                  'frontend_iface', 'backend_iface', 'managed', 'last_contact')
+    #
+    ## Identifying information
+    #fqdn = serializers.CharField()
+    #hostname = serializers.CharField()
+    #
+    ## Calamari monitoring status
+    #managed = serializers.BooleanField()
+    #last_contact = serializers.DateTimeField()
+    #
+    ## Ceph usage
+    #services = ServiceSerializer(many=True)
 
     # Ceph network configuration
     frontend_addr = serializers.CharField()  # may be null if no OSDs or mons on server

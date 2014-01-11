@@ -10,12 +10,28 @@ urlpatterns = patterns(
     '',
     url(r'^$', 'calamari_web.views.home'),
 
-    url(r'^api/v1/', include('ceph.urls')),
+
+    url(r'^api/v1/', include('ceph.urls.v1')),
+
+    # In v1 this required a POST but also allowed GET for some reason
+    # In v2 it's post only
     url(r'^api/v1/auth/login', 'calamari_web.views.login'),
+    # In v1 this could be operated with a GET or a POST
+    # In v2 it's POST only
     url(r'^api/v1/auth/logout', 'calamari_web.views.logout'),
+
+    # In v1 this existed but was not used by the clients
+    # In v2 it is removed.
     url(r'^api/v1/auth2/', include('rest_framework.urls', namespace='rest_framework')),
+
+    # In v1 this contained junk data with fields 'version', 'license', 'registered', 'hostname' and 'ipaddr'
+    # In v2 'license' and 'registered' are removed, and 'fqdn' is added, the rest are populated with real data
     url(r'^api/v1/info', 'calamari_web.views.info'),
+
+    # New in v2.
     url(r'^api/v1/grains', 'calamari_web.views.grains'),
+
+    url(r'^api/v2/', include('ceph.urls.v2')),
 
     url(r'^admin/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_ROOT}),
@@ -35,6 +51,10 @@ urlpatterns = patterns(
     url(r'^render/?', include('graphite.render.urls')),
     url(r'^metrics/?', include('graphite.metrics.urls')),
     url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
+
+    # XXX this is a hack to make graphite visible where the 1.x GUI expects it,
+    url(r'^graphite/render/?', include('graphite.render.urls')),
+    url(r'^graphite/metrics/?', include('graphite.metrics.urls')),
 
     # XXX this is a hack to make graphite dashboard work in dev mode (full installation
     # serves this part with apache)
