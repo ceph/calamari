@@ -174,12 +174,15 @@ class RpcInterface(object):
         """
 
         cluster = self._fs_resolve(fs_id)
+        osd_map = cluster.get_sync_object(OsdMap)
+        if osd_map is None:
+            return []
         if object_type == OSD:
-            return cluster.get_sync_object(OsdMap)['osds']
+            return osd_map['osds']
         elif object_type == POOL:
-            return cluster.get_sync_object(OsdMap)['pools']
+            return osd_map['pools']
         elif object_type == CRUSH_RULE:
-            return cluster.get_sync_object(OsdMap)['crush']['rules']
+            return osd_map['crush']['rules']
         else:
             raise NotImplementedError(object_type)
 

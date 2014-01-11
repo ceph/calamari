@@ -114,7 +114,11 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     @nosleep
     def get_sync_object(self, object_type):
-        return self._sync_objects.get(object_type).data
+        so = self._sync_objects.get(object_type)
+        if so:
+            return so.data
+        else:
+            return None
 
     @nosleep
     def get_derived_object(self, object_type):
