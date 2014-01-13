@@ -435,7 +435,10 @@ class ServerMonitor(greenlet.Greenlet):
             self.fsid_services[service.id.fsid].remove(service)
             self._persister.delete_service(service.id)
 
-        del self.hostname_to_server[server_state.hostname]
+        if server_state.hostname in self.hostname_to_server:
+            # This isn't always the case, because if two server had the same hostname
+            # and one was deleted, the second one is not present in hostname_to_server any more
+            del self.hostname_to_server[server_state.hostname]
         del self.servers[fqdn]
         self._persister.delete_server(fqdn)
 
