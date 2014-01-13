@@ -23,6 +23,7 @@ Contents
    coverage
    requests
    OSX
+   building_packages
 
 Indices and tables
 ==================
