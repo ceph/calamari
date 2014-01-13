@@ -5,11 +5,11 @@ from rest_framework import serializers
 
 class ClusterSerializer(serializers.Serializer):
     class Meta:
-        fields = ('update_time', 'fsid', 'name')
+        fields = ('update_time', 'id', 'name')
 
     update_time = serializers.DateTimeField()
     name = serializers.Field()
-    fsid = serializers.Field(source='id')
+    id = serializers.Field()
 
 
 class SyncObjectSerializer(serializers.Serializer):

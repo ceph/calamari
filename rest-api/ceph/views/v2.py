@@ -200,7 +200,11 @@ class DerivedObject(RPCView):
 
 class ServerClusterViewSet(RPCViewSet):
     """
-    View of servers within a particular cluster
+    View of servers within a particular cluster.
+
+    Use the global server view for DELETE operations (there is no
+    concept of deleting a server from a cluster, only deleting
+    all record of it from any/all clusters).
     """
     serializer = ServerSerializer
 
@@ -210,8 +214,6 @@ class ServerClusterViewSet(RPCViewSet):
 
     def retrieve(self, request, fsid, fqdn):
         return Response(self.serializer(DataObject(self.client.server_get_cluster(fqdn, fsid))).data)
-
-        # TODO DELETE
 
 
 class ServerViewSet(RPCViewSet):
@@ -239,4 +241,6 @@ class ServerViewSet(RPCViewSet):
     def list(self, request):
         return Response(self.serializer([DataObject(s) for s in self.client.server_list()], many=True).data)
 
-        # TODO DELETE
+    def delete(self, request, pk):
+        self.client.server_delete(pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
