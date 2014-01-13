@@ -2,6 +2,7 @@
 
 import json
 import os
+import mock
 
 os.environ['CALAMARI_CONFIG'] = os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf")
 
@@ -53,6 +54,23 @@ class TestServiceDetection(TestCase):
     Exercise ServerMonitor with mock data for a two-server cluster with
     one mon and two OSDs.
     """
+    def setUp(self):
+        super(TestServiceDetection, self).setUp()
+        grains = {
+            MON_FQDN: {
+                'fqdn': MON_FQDN,
+                'host': MON_HOSTNAME
+            },
+            OSD_FQDN: {
+                'fqdn': OSD_FQDN,
+                'host': OSD_HOSTNAME
+            }
+        }
+        ServerMonitor._get_grains = mock.Mock(side_effect=lambda fqdn: grains[fqdn])
+
+    def tearDown(self):
+        super(TestServiceDetection, self).tearDown()
+
     def test_managed_servers(self):
         """
         That managed servers (those sending salt messages) generate
@@ -162,7 +180,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
-    def test_remove_managed(self):
+    def test_delete_managed(self):
         """
         That when a managed server is removed, it no longer appears
         in the server/service data.
@@ -172,7 +190,7 @@ class TestServiceDetection(TestCase):
         sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
-        sm.remove(OSD_FQDN)
+        sm.delete(OSD_FQDN)
 
         # The two OSD services, and the 'osd' server should be gone
         self.assertEqual(len(sm.servers), 1)
