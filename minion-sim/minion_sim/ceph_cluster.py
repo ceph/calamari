@@ -3,6 +3,7 @@ import hashlib
 import json
 import uuid
 import random
+import datetime
 from minion_sim.log import log
 
 KB = 1024
@@ -232,6 +233,10 @@ class CephCluster(object):
         # Mon status
         # ==========
         objects['mon_map'] = {
+            'epoch': 0,
+            'fsid': fsid,
+            'modified': datetime.datetime.now().isoformat(),
+            'created': datetime.datetime.now().isoformat(),
             'mons': [
 
             ],
@@ -487,6 +492,7 @@ class CephCluster(object):
 
         if changes:
             self._objects['pg_map']['version'] += 1
+            self._update_health()
 
     def advance(self, t):
         RECOVERIES_PER_SECOND = 1
@@ -499,10 +505,15 @@ class CephCluster(object):
         Update the 'health' object based on the cluster maps
         """
 
+        old_health = self._objects['health']['overall_status']
         if any([pg['state'] != 'active+clean' for pg in self._objects['pg_brief']]):
-            self._objects['health']['overall_status'] = "HEALTH_WARN"
+            health = self._objects['health']['overall_status'] = "HEALTH_WARN"
         else:
-            self._objects['health']['overall_status'] = "HEALTH_OK"
+            health = "HEALTH_OK"
+
+        if old_health != health:
+            self._objects['health']['overall_status'] = health
+            log.debug("update_health: %s->%s" % (old_health, health))
 
     def update_rates(self):
         pass
@@ -612,6 +623,9 @@ class CephCluster(object):
     @property
     def fsid(self):
         return self._fsid
+
+    def get_name(self):
+        return self._name
 
     def __init__(self, filename):
         self._filename = filename

@@ -60,6 +60,12 @@ class CephControl(object):
         """
         pass
 
+    def get_fqdns(self, fsid):
+        """
+        Return all the FQDNs of machines with salt minion
+        """
+        raise NotImplementedError()
+
 
 class EmbeddedCephControl(CephControl):
     """
@@ -106,6 +112,9 @@ class EmbeddedCephControl(CephControl):
                 self._sims[fsid].halt_minions()
             else:
                 self._sims[fsid].start_minions()
+
+    def get_fqdns(self, fsid):
+        return self._sims[fsid].get_minion_fqdns()
 
     def get_service_fqdns(self, fsid, service_type):
         return self._sims[fsid].cluster.get_service_fqdns(service_type)

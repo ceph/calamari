@@ -51,8 +51,8 @@ class TestMonitoring(ServerTestCase):
         # NB this is actually a bit racy, because we assume the PGs remain degraded long enough
         # to affect the health state: in theory they could all get remapped instantaneously, in
         # which case the cluster would never appear unhealthy and this would be an invalid check.
-        health_url = "cluster/{0}/health".format(cluster_id)
-        wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_WARN",
+        health_url = "cluster/{0}/sync_object/health".format(cluster_id)
+        wait_until_true(lambda: self.api.get(health_url).status_code == 200 and self.api.get(health_url).json()['data']['overall_status'] == "HEALTH_WARN",
                         timeout=HEARTBEAT_INTERVAL)
 
         # Bring the OSD back into the cluster
@@ -63,7 +63,7 @@ class TestMonitoring(ServerTestCase):
 
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover
-        wait_until_true(lambda: self.api.get(health_url).json()['report']['overall_status'] == "HEALTH_OK",
+        wait_until_true(lambda: self.api.get(health_url).json()['data']['overall_status'] == "HEALTH_OK",
                         timeout=OSD_RECOVERY_PERIOD * 2)
 
     def test_cluster_down(self):
@@ -169,7 +169,7 @@ class TestMonitoring(ServerTestCase):
         assertGone(cluster_id)
 
         # Test that once it's gone, if we restart cthulhu
-        # it's still not visible (checking its not erroneously
+        # it's still not visible (checking it's not erroneously
         # recovered from DB state)
 
         self.calamari_ctl.restart()
@@ -190,11 +190,14 @@ class TestMultiCluster(ServerTestCase):
 
         cluster_a, cluster_b = self._wait_for_cluster(2)
 
-        osd_map_a = self.api.get("cluster/%s/osd_map" % cluster_a).json()
-        osd_map_b = self.api.get("cluster/%s/osd_map" % cluster_b).json()
-
-        print osd_map_a
-        print osd_map_b
+        osd_map_a = self.api.get("cluster/%s/sync_object/osd_map" % cluster_a).json()
+        osd_map_b = self.api.get("cluster/%s/sync_object/osd_map" % cluster_b).json()
 
         self.assertEqual(osd_map_a['data']['fsid'], cluster_a)
         self.assertEqual(osd_map_b['data']['fsid'], cluster_b)
+
+        cluster_a_fqdns = set(self.ceph_ctl.get_fqdns(cluster_a))
+        cluster_b_fqdns = set(self.ceph_ctl.get_fqdns(cluster_b))
+        self.assertSetEqual(set([s['fqdn'] for s in self.api.get("server").json()]), cluster_a_fqdns | cluster_b_fqdns)
+        self.assertSetEqual(set([s['fqdn'] for s in self.api.get("cluster/%s/server" % cluster_a).json()]), cluster_a_fqdns)
+        self.assertSetEqual(set([s['fqdn'] for s in self.api.get("cluster/%s/server" % cluster_b).json()]), cluster_b_fqdns)

@@ -7,6 +7,6 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log.addHandler(handler)
 
-handler = logging.FileHandler("{0}.log".format(__name__))
+handler = logging.FileHandler("minion_sim.log")
 handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log.addHandler(handler)

@@ -102,6 +102,12 @@ Create the cthulhu service's database:
     CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize
 
 
+Aside: the ``CALAMARI_CONFIG`` environment variable causes all the calamari services to
+read their configuration from an alternative location.  In a package-installed system
+the config is loaded from /etc/calamari/calamari.conf.  We use an overridden config file
+in development instead of having any "if DEBUG" flags anywhere in the code.
+
+
 Running the server
 ------------------
 

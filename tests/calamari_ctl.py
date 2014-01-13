@@ -21,7 +21,7 @@ API_PASSWORD = 'admin'
 
 
 # We scale this linearly with the number of fqdns expected
-KEY_WAIT_PERIOD = 3
+KEY_WAIT_PERIOD = 5
 
 
 class CalamariControl(object):
@@ -118,6 +118,11 @@ class CalamariControl(object):
             response.raise_for_status()
             for cluster in response.json():
                 response = self.api.delete("cluster/%s" % cluster['id'])
+                response.raise_for_status()
+
+            # By extension, no servers
+            for server in self.api.get("server").json():
+                response = self.api.delete("server/%s" % server['fqdn'])
                 response.raise_for_status()
 
 

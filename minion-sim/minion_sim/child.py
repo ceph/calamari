@@ -38,13 +38,23 @@ def main():
         global __salt__
         report_clusters = {}
 
-        services = cluster.get_services(fqdn)
-        for service in services:
+        services = {}
+        cluster_name = cluster.get_name()
+
+        for service in cluster.get_services(fqdn):
+            service_name = "%s-%s.%s" % (cluster_name, service['type'], service['id'])
+            services[service_name] = {
+                'id': str(service['id']),
+                'type': service['type'],
+                'cluster': cluster_name,
+                'fsid': service['fsid']
+            }
             if service['type'] == 'mon':
                 fsid = service['fsid']
 
                 report_clusters[fsid] = cluster.get_heartbeat(fsid)
 
+        __salt__['event.fire_master'](services, "ceph/services")
         for fsid, cluster_data in report_clusters.items():
             __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
 

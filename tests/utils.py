@@ -1,4 +1,5 @@
 import time
+import datetime
 
 
 class WaitTimeout(Exception):
@@ -10,7 +11,7 @@ def wait_until_true(condition, timeout=10):
     period = 1
     while not condition():
         if elapsed >= timeout:
-            raise WaitTimeout("After %s seconds" % elapsed)
+            raise WaitTimeout("After %s seconds (at %s)" % (elapsed, datetime.datetime.utcnow().isoformat()))
         elapsed += period
         time.sleep(period)
     return elapsed
