@@ -148,15 +148,25 @@ class TestMonitoring(ServerTestCase):
         Check that if a cluster stops communicating with calamari server,
         and we request for the cluster to be removed, it goes away.
         """
+        def assertGone(fsid):
+            r = self.api.get("cluster/%s" % fsid)
+            self.assertEqual(r.status_code, 404)
+
+            # The services should be gone from the server list too
+            for server in self.api.get("server").json():
+                for service in server['services']:
+                    self.assertNotEqual(service['fsid'], fsid)
+
         cluster_id = self._wait_for_cluster()
         self.ceph_ctl.go_dark(cluster_id)
 
         r = self.api.get("cluster/%s" % cluster_id)
         self.assertEqual(r.status_code, 200)
+
         r = self.api.delete("cluster/%s" % cluster_id)
         self.assertEqual(r.status_code, 204)
-        r = self.api.get("cluster/%s" % cluster_id)
-        self.assertEqual(r.status_code, 404)
+
+        assertGone(cluster_id)
 
         # Test that once it's gone, if we restart cthulhu
         # it's still not visible (checking its not erroneously
@@ -164,8 +174,7 @@ class TestMonitoring(ServerTestCase):
 
         self.calamari_ctl.restart()
 
-        r = self.api.get("cluster/%s" % cluster_id)
-        self.assertEqual(r.status_code, 404)
+        assertGone(cluster_id)
 
 
 class TestMultiCluster(ServerTestCase):

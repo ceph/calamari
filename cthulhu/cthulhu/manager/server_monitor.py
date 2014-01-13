@@ -430,6 +430,25 @@ class ServerMonitor(greenlet.Greenlet):
         del self.servers[fqdn]
         self._persister.delete_server(fqdn)
 
+    def delete_cluster(self, fsid):
+        if not fsid in self.fsid_services:
+            log.info("delete_cluster: No services for FSID %s" % fsid)
+            return
+
+        for service in self.fsid_services[fsid]:
+            del self.services[service.id]
+            if service.server_state:
+                del service.server_state.services[service.id]
+            self._persister.delete_service(service.id)
+
+            # If we inferred a host from the OSD map for this cluster
+            # then when the last service is gone the server should
+            # go away too
+            if service.server_state and (not service.server_state.managed) and (not service.server_state.services):
+                self.remove(service.server_state.fqdn)
+
+        del self.fsid_services[fsid]
+
     def dump(self, server_state):
         """
         Convert a ServerState into a serializable format

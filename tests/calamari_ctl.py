@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 # Assumes running nosetests from root of git repo
 TREE_ROOT = os.path.abspath("./")
 
-API_URL = "http://localhost:8000/api/v1/"
+API_URL = "http://localhost:8000/api/v2/"
 API_USERNAME = 'admin'
 API_PASSWORD = 'admin'
 
@@ -69,15 +69,15 @@ class CalamariControl(object):
         return self._api
 
     def clear_keys(self):
-        r_keys = self.api.get("salt_key")
+        r_keys = self.api.get("key")
         r_keys.raise_for_status()
         for key in r_keys.json():
-            r = self.api.delete("salt_key/%s" % key['id'])
+            r = self.api.delete("key/%s" % key['id'])
             r.raise_for_status()
 
     def authorize_keys(self, minion_ids):
         def _fqdns_present():
-            found_ids = [m['id'] for m in self.api.get("salt_key").json()]
+            found_ids = [m['id'] for m in self.api.get("key").json()]
             all_present = len(set(minion_ids) & set(found_ids)) == len(minion_ids)
 
             log.debug("checking keys, looking for %s found %s (%s)" % (minion_ids, found_ids, all_present))
@@ -88,7 +88,7 @@ class CalamariControl(object):
 
         for minion_id in minion_ids:
             log.debug("Authorising key for %s" % minion_id)
-            r = self.api.patch("salt_key/%s" % minion_id, {'status': 'accepted'})
+            r = self.api.patch("key/%s" % minion_id, {'status': 'accepted'})
             r.raise_for_status()
 
     def configure(self, no_clusters=True):

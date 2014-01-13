@@ -93,6 +93,9 @@ class RpcInterface(object):
         return result
 
     def delete_cluster(self, fs_id):
+        # Clear out records of services belonging to the cluster
+        self._manager.servers.delete_cluster(fs_id)
+        # Clear out records of the cluster itself
         self._manager.delete_cluster(fs_id)
 
     def get_sync_object(self, fs_id, object_type):
