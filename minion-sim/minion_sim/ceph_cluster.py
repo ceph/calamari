@@ -258,7 +258,8 @@ class CephCluster(object):
         objects['mds_map'] = {
             "max_mds": 1,
             "in": [],
-            "up": {}
+            "up": {},
+            "info": {}
         }
 
         # PG map

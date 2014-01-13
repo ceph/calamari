@@ -1,6 +1,7 @@
 import logging
 import shutil
 import tempfile
+import time
 from minion_sim.sim import MinionSim
 from itertools import chain
 
@@ -112,6 +113,12 @@ class EmbeddedCephControl(CephControl):
                 self._sims[fsid].halt_minions()
             else:
                 self._sims[fsid].start_minions()
+
+        # Sleeps in tests suck... this one is here because the salt minion doesn't give us a nice way
+        # to ensure that when we shut it down, subprocesses are complete before it returns, and even
+        # so we can't be sure that messages from a dead minion aren't still winding their way
+        # to cthulhu after this point.  So we fudge it.
+        time.sleep(5)
 
     def get_fqdns(self, fsid):
         return self._sims[fsid].get_minion_fqdns()

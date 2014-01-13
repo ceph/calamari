@@ -19,10 +19,6 @@ class PoolRequestFactory(RequestFactory):
         commands = []
         for var in POOL_PROPERTIES:
             if var in attributes:
-                # TODO: when setting pg_num also set pgp_num, although ceph annoyingly
-                # doesn't let us do this until all the PGs are created, unless there
-                # is some hidden way to set it at the same time as pg_Num?
-
                 val = attributes[var]
                 if isinstance(val, bool):
                     val = "true" if val else "false"
