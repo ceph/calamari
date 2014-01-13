@@ -135,136 +135,50 @@ class OSDListSerializer(serializers.Serializer):
         fields = ('osds', 'pg_state_counts')
 
 
-class SyncObjectSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('data',)
-
-    data = serializers.Field()
-
-
 class PoolSerializer(serializers.Serializer):
     class Meta:
-        fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
-
-    # Required in creation
-    name = serializers.CharField(source='pool_name')
-    pg_num = serializers.IntegerField()
-
-    # Not required in creation, immutable
-    id = serializers.CharField(source='pool', required=False)
-
-    # May be set in creation or updates
-    size = serializers.IntegerField(required=False)
-    min_size = serializers.IntegerField(required=False)
-    crash_replay_interval = serializers.IntegerField(required=False)
-    crush_ruleset = serializers.IntegerField(required=False)
-    # In 'ceph osd pool set' it's called pgp_num, but in 'ceph osd dump' it's called
-    # pg_placement_num :-/
-    pgp_num = serializers.IntegerField(source='pg_placement_num', required=False)
-
-    # This is settable by 'ceph osd pool set' but in 'ceph osd dump' it only appears
-    # within the 'flags' integer.  We synthesize a boolean from the flags.
-    hashpspool = serializers.BooleanField(required=False)
-
-    # This is synthesized from ceph's 'flags' attribute, read only.
-    full = serializers.BooleanField(required=False)
-
-    quota_max_objects = serializers.IntegerField(required=False)
-    quota_max_bytes = serializers.IntegerField(required=False)
-
-
-class CrushRuleSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
-
-    id = serializers.IntegerField(source='rule_id')
-    name = serializers.CharField(source='rule_name')
-    ruleset = serializers.IntegerField()
-    type = serializers.IntegerField()
-    min_size = serializers.IntegerField()
-    max_size = serializers.IntegerField()
-    steps = serializers.Field()
-
-
-class CrushRuleSetSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('id', 'rules',)
+        fields = ('pool_id', 'name', 'quota_max_bytes', 'quota_max_objects', 'used_objects', 'used_bytes', 'id', 'cluster')
 
     id = serializers.IntegerField()
-    rules = CrushRuleSerializer(many=True)
+    cluster = serializers.CharField()
+    pool_id = serializers.IntegerField()
+    name = serializers.CharField()
+    quota_max_bytes = serializers.IntegerField()
+    quota_max_objects = serializers.IntegerField()
+    used_objects = serializers.IntegerField()
+    used_bytes = serializers.IntegerField()
 
 
-class RequestSerializer(serializers.Serializer):
+class ServiceStatusSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'state', 'error')
+        fields = ('type', 'service_id', 'name')
 
-    id = serializers.CharField()
-    state = serializers.CharField()
-    error = serializers.BooleanField()
-
-
-class SaltKeySerializer(serializers.Serializer):
-    class Meta:
-        fields = ('id', 'status')
-
-    id = serializers.CharField()
-    status = serializers.CharField()
-
-
-class ServiceSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('fsid', 'type', 'id', 'running')
-
-    fsid = serializers.SerializerMethodField("get_fsid")
-    type = serializers.SerializerMethodField("get_type")
-    id = serializers.SerializerMethodField("get_id")
-    running = serializers.BooleanField()
-
-    def get_fsid(self, obj):
-        return obj['id'][0]
+    type = serializers.SerializerMethodField('get_type')
+    service_id = serializers.SerializerMethodField('get_service_id')
+    name = serializers.SerializerMethodField('get_name')
 
     def get_type(self, obj):
         return obj['id'][1]
 
-    def get_id(self, obj):
+    def get_service_id(self, obj):
         return obj['id'][2]
 
+    def get_name(self, obj):
+        return "%s.%s" % (self.get_type(obj), self.get_service_id(obj))
 
-class SimpleServerSerializer(serializers.Serializer):
+
+class ServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'services')
+        fields = ('addr', 'hostname', 'name', 'services')
 
-    # Identifying information
-    fqdn = serializers.CharField()
+    services = ServiceStatusSerializer(source='services', many=True)
+
+    addr = serializers.SerializerMethodField('get_addr')
     hostname = serializers.CharField()
+    name = serializers.SerializerMethodField('get_name')
 
-    # Calamari monitoring status
-    managed = serializers.BooleanField()
-    last_contact = serializers.DateTimeField()
+    def get_name(self, obj):
+        return obj.hostname
 
-    # Ceph usage
-    services = ServiceSerializer(many=True)
-
-
-class ServerSerializer(SimpleServerSerializer):
-    class Meta:
-        fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
-                  'frontend_iface', 'backend_iface', 'managed', 'last_contact')
-    #
-    ## Identifying information
-    #fqdn = serializers.CharField()
-    #hostname = serializers.CharField()
-    #
-    ## Calamari monitoring status
-    #managed = serializers.BooleanField()
-    #last_contact = serializers.DateTimeField()
-    #
-    ## Ceph usage
-    #services = ServiceSerializer(many=True)
-
-    # Ceph network configuration
-    frontend_addr = serializers.CharField()  # may be null if no OSDs or mons on server
-    backend_addr = serializers.CharField()  # may be null if no OSDs on server
-    frontend_iface = serializers.CharField()  # may be null if interface for frontend addr not up
-    backend_iface = serializers.CharField()  # may be null if interface for backend addr not up
+    def get_addr(self, obj):
+        return obj.fqdn

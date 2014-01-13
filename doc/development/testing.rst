@@ -29,4 +29,13 @@ incur walltime waits to exercise certain paths.
 Unit tests
 ----------
 
-On a module by module basis, in tests/ within a module.
+On a module by module basis, in tests/ within a module.  For example, in ``cthulhu``:
+
+.. code-block:: bash
+
+    calamari $  nosetests cthulhu/tests
+    ........
+    ----------------------------------------------------------------------
+    Ran 8 tests in 0.288s
+
+    OK
