@@ -308,18 +308,27 @@ class ServerMonitor(greenlet.Greenlet):
             # to resolve this vs. the OSD map.
             hostname = self._get_grains(fqdn)['host']
 
+            new_server = True
             if hostname in self.hostname_to_server:
-                # Take over a ServerState that was created from OSD map
                 server_state = self.hostname_to_server[hostname]
-                assert not server_state.managed
-                server_state.managed = True
-                old_fqdn = server_state.fqdn
-                # OSD map servers would have faked up FQDN as hostname, so clear that out
-                del self.servers[old_fqdn]
-                server_state.fqdn = fqdn
-                self.servers[server_state.fqdn] = server_state
-                self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
-            else:
+                if not server_state.managed:
+                    # Take over a ServerState that was created from OSD map
+                    server_state.managed = True
+                    old_fqdn = server_state.fqdn
+                    # OSD map servers would have faked up FQDN as hostname, so clear that out
+                    del self.servers[old_fqdn]
+                    server_state.fqdn = fqdn
+                    self.servers[server_state.fqdn] = server_state
+                    self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
+                    new_server = False
+                else:
+                    # We will go on to treat these as distinct servers even though
+                    # they have the same hostname
+                    log.warn("Hostname clash: FQDNs '%s' and '%s' both have hostname %s" % (
+                        fqdn, server_state.fqdn, hostname
+                    ))
+
+            if new_server:
                 server_state = ServerState(fqdn, hostname, managed=True,
                                            last_contact=now())
                 self.inject_server(server_state)
@@ -414,7 +423,7 @@ class ServerMonitor(greenlet.Greenlet):
         except KeyError:
             return None
 
-    def remove(self, fqdn):
+    def delete(self, fqdn):
         """
         Forget about this server.  Does not prevent it popping back into
         existence if we see reference to it in an incoming event.

@@ -292,6 +292,9 @@ class RpcInterface(object):
             for s in self._manager.servers.get_all_cluster(fsid)
         ]
 
+    def server_delete(self, fqdn):
+        return self._manager.servers.delete(fqdn)
+
 
 class RpcThread(gevent.greenlet.Greenlet):
     """

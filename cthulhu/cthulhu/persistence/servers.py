@@ -34,5 +34,6 @@ class Service(Base):
     fsid = Column(Text, primary_key=True)
     service_type = Column(Text, primary_key=True)
     service_id = Column(Text, primary_key=True)
+    running = Column(Boolean)
 
     server = Column(Integer, ForeignKey("cthulhu_server.id"), nullable=True)
