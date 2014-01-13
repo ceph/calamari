@@ -413,9 +413,9 @@ class ServerViewSet(RPCViewSet):
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def retrieve(self, request, fqdn):
+    def retrieve(self, request, pk):
         return Response(
-            self.serializer(DataObject(self.client.server_get(fqdn))).data
+            self.serializer(DataObject(self.client.server_get(pk))).data
         )
 
     def list(self, request):
