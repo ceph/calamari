@@ -8,6 +8,7 @@ from minion_sim.log import log
 
 KB = 1024
 GIGS = 1024 * 1024 * 1024
+TERABYTES = GIGS * 1024
 
 
 def md5(raw):
@@ -92,7 +93,7 @@ class CephCluster(object):
     """
 
     @staticmethod
-    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2 * GIGS):
+    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2 * TERABYTES):
         """
         Generate initial state for a cluster
         """
@@ -139,7 +140,7 @@ class CephCluster(object):
                 'health_services': [],
             },
             'overall_status': "HEALTH_OK",
-            'summary': None,
+            'summary': [],
             'timechecks': {}
         }
 
@@ -508,7 +509,11 @@ class CephCluster(object):
 
         old_health = self._objects['health']['overall_status']
         if any([pg['state'] != 'active+clean' for pg in self._objects['pg_brief']]):
-            health = self._objects['health']['overall_status'] = "HEALTH_WARN"
+            health = "HEALTH_WARN"
+            self._objects['health']['summary'] = [{
+                'severity': "HEALTH_WARN",
+                'summary': "Unclean PGs"
+            }]
         else:
             health = "HEALTH_OK"
 
@@ -588,7 +593,7 @@ class CephCluster(object):
             for pool_id, pstats in pool_stats.items():
                 total_used += pstats['bytes_used']
                 for k, v in pstats.items():
-                    stats["ceph.{0}.pool.{1}.{2}".format(self._name, pool_id, k)] = v
+                    stats["ceph.cluster.{0}.pool.{1}.{2}".format(self._name, pool_id, k)] = v
 
             total_space = sum([o['total_bytes'] for o in self._osd_stats.values()])
 
@@ -598,7 +603,7 @@ class CephCluster(object):
                 'total_avail': total_space - total_used
             }
             for k, v in df_stats.items():
-                stats["ceph.{0}.df.{1}".format(self._name, k)] = v
+                stats["ceph.cluster.{0}.df.{1}".format(self._name, k)] = v
 
         return stats.items()
 
