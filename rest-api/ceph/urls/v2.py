@@ -56,7 +56,8 @@ urlpatterns = patterns(
         name='cluster-pool-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/(?P<pool_id>\d+)$', ceph.views.v2.PoolViewSet.as_view({
         'get': 'retrieve',
-        'patch': 'update'}),
+        'patch': 'update',
+        'delete': 'destroy'}),
         name='cluster-pool-detail'),
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
