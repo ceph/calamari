@@ -70,3 +70,17 @@ class Command(NoArgsCommand):
                 print """- {methods} {pattern}
 """.format(methods=methods, pattern=url_pattern.regex.pattern),
             print "\n",
+
+            print """Fields
+------
+
+"""
+            if hasattr(view, 'serializer'):
+                fields = view.serializer().get_fields()
+                for field_name, field in fields.items():
+                    print """{field_name}
+  {field_desc}
+
+""".format(field_name=field_name, field_desc=field.type_label),
+            else:
+                print "No field metadata available"
