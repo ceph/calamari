@@ -137,20 +137,20 @@ exit 0
 service nginx restart
 exit 0
 
-%package -n calamari-webapp
+%package -n calamari-server
 Summary:        Inktank package containing the Calamari management webapp
 Group:   	System/Filesystems
 Requires:       httpd
 Requires:	mod_wsgi
 Requires:       cairo
 Requires:       redhat-lsb-core
-%description -n calamari-webapp
+%description -n calamari-server
 Inktank package containing the Calamari management webapp
 Calamari is a webapp to monitor and control a Ceph cluster via a web
 browser.  It depends on having calamari-agent and calamari-restapi deployed
 on the cluster.
 
-%files -n calamari-webapp
+%files -n calamari-server
 /opt/calamari
 /opt/graphite
 %{_sysconfdir}/httpd/conf.d/calamari.conf
@@ -163,7 +163,7 @@ on the cluster.
 %attr (755, apache, apache) /var/log/calamari
 %attr (755, apache, apache) /var/log/graphite
 
-%post -n calamari-webapp
+%post -n calamari-server
 calamari()
 {
 	d=$(pwd)
@@ -262,12 +262,12 @@ chkconfig httpd on
 service httpd restart
 exit 0
 
-%preun -n calamari-webapp
+%preun -n calamari-server
 service kraken stop
 service carbon-cache stop
 exit 0
 
-%postun -n calamari-webapp
+%postun -n calamari-server
 # Remove anything left behind in the calamari and graphite
 # virtual environment  directories, if this is a "last-instance" call
 if [ $1 == 0 ] ; then
