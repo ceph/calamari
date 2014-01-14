@@ -97,7 +97,7 @@ class SaltKeyViewSet(RPCViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def delete(self, request, pk):
+    def destroy(self, request, pk):
         # TODO handle 404
         self.client.minion_delete(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -122,7 +122,7 @@ class ClusterViewSet(RPCViewSet):
             cluster = DataObject(cluster_data)
             return Response(ClusterSerializer(cluster).data)
 
-    def delete(self, request, pk):
+    def destroy(self, request, pk):
         self.client.delete_cluster(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -168,7 +168,7 @@ class PoolViewSet(RPCViewSet):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, fsid, pool_id):
+    def destroy(self, request, fsid, pool_id):
         delete_response = self.client.delete(fsid, POOL, int(pool_id))
         return Response(delete_response)
 
@@ -217,6 +217,10 @@ class ServerClusterViewSet(RPCViewSet):
 
 
 class ServerViewSet(RPCViewSet):
+    """
+Servers which are in communication with Calamari server, or which
+have been inferred from the OSD map.
+    """
     serializer = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
@@ -241,6 +245,6 @@ class ServerViewSet(RPCViewSet):
     def list(self, request):
         return Response(self.serializer([DataObject(s) for s in self.client.server_list()], many=True).data)
 
-    def delete(self, request, pk):
+    def destroy(self, request, pk):
         self.client.server_delete(pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
