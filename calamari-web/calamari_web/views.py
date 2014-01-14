@@ -32,6 +32,10 @@ def dashboard(request, path, document_root):
         return redirect("/admin/#cluster")
     return serve_dir_or_index(request, path, document_root)
 
+def plugins(request, path, document_root):
+    client = zerorpc.Client()
+    client.connect(config.get('cthulhu', 'rpc_url'))
+    client.plugin_get()
 
 BOOTSTRAP_TEMPLATE = """
 # Calamari minion bootstrap script.

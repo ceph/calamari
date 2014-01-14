@@ -87,7 +87,7 @@ class RpcInterface(object):
             }
 
     def plugin_get(self, plugin_name, named_object):
-        return {'name': 'acmeplugin'}
+        return {'name': 'acmeplugin', named_object: 12345}
 
     def list_clusters(self):
         result = []
