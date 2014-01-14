@@ -338,7 +338,7 @@ class ServerMonitor(greenlet.Greenlet):
                     managed=server_state.managed,
                     last_contact=server_state.last_contact
                 ))
-            log.info("Saw server %s for the first time" % server_state)
+                log.info("Saw server %s for the first time" % server_state)
 
         server_state.last_contact = now()
         self._persister.update_server(server_state.fqdn, last_contact=server_state.last_contact)
@@ -398,11 +398,6 @@ class ServerMonitor(greenlet.Greenlet):
         """
         return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
 
-    def get_one_cluster(self, fsid, fqdn):
-        """Give me all the ServerStates which are referred to by
-        a service with this FSID"""
-        return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
-
     def get_all(self):
         """Give me all the ServerStates"""
         return self.servers.values()
@@ -457,7 +452,7 @@ class ServerMonitor(greenlet.Greenlet):
             # then when the last service is gone the server should
             # go away too
             if service.server_state and (not service.server_state.managed) and (not service.server_state.services):
-                self.remove(service.server_state.fqdn)
+                self.delete(service.server_state.fqdn)
 
         del self.fsid_services[fsid]
 
