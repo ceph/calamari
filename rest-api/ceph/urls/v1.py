@@ -21,7 +21,7 @@ urlpatterns = patterns(
     # you your current username.
     # In v2, the view gets filled out to return the displayname and email address to, and support
     # PUT/PATCH operations for users to change their passwords (TODO #7097)
-    url(r'^user/me$', ceph.views.v1.user_me),
+    url(r'^user/me$', ceph.views.v1.UserMe.as_view()),
     # In v1 this required a POST but also allowed GET for some reason
     # In v2 it's post only
     url(r'^auth/login', ceph.views.v1.login),
@@ -34,7 +34,7 @@ urlpatterns = patterns(
 
     # In v1 this contained junk data with fields 'version', 'license', 'registered', 'hostname' and 'ipaddr'
     # In v2 'license' and 'registered' are removed, and 'fqdn' is added, the rest are populated with real data
-    url(r'^info', ceph.views.v1.info),
+    url(r'^info', ceph.views.v1.Info.as_view()),
 
 
     # In v1, the Health view gave you the 'health' sync_object and the cluster update time

@@ -26,12 +26,20 @@ class DataObject(object):
 
 
 class RPCView(APIView):
-    serializer = None
+    serializer_class = None
 
     def __init__(self, *args, **kwargs):
         super(RPCView, self).__init__(*args, **kwargs)
         self.client = zerorpc.Client()
         self.client.connect(config.get('cthulhu', 'rpc_url'))
+
+    @property
+    def help(self):
+        return self.__doc__
+
+    @property
+    def help_summary(self):
+        return ""
 
     def handle_exception(self, exc):
         try:
@@ -52,9 +60,10 @@ class RPCView(APIView):
         # pgp_num is optional during create or update
         # nothing is required during update
         if hasattr(self, 'update'):
-            actions['PATCH'] = self.serializer().metadata()
+            print self.__class__
+            actions['PATCH'] = self.serializer_class().metadata()
         if hasattr(self, 'create'):
-            actions['POST'] = self.serializer().metadata()
+            actions['POST'] = self.serializer_class().metadata()
         ret['actions'] = actions
 
         return ret

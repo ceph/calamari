@@ -14,10 +14,11 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
+from rest_framework.views import APIView
 
 from ceph.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
-    PoolSerializer, ServerSerializer
+    PoolSerializer, ServerSerializer, InfoSerializer
 
 from salt.config import master_config
 from salt.loader import _create_loader
@@ -67,7 +68,7 @@ def get_latest_graphite(metric):
 
 
 class Space(RPCView):
-    serializer = ClusterSpaceSerializer
+    serializer_class = ClusterSpaceSerializer
 
     def get(self, request, fsid):
         def to_bytes(kb):
@@ -91,7 +92,7 @@ class Space(RPCView):
 
 
 class Health(RPCView):
-    serializer = ClusterHealthSerializer
+    serializer_class = ClusterHealthSerializer
 
     def get(self, request, fsid):
         health = self.client.get_sync_object(fsid, 'health')
@@ -103,7 +104,7 @@ class Health(RPCView):
 
 
 class HealthCounters(RPCView):
-    serializer = ClusterHealthCountersSerializer
+    serializer_class = ClusterHealthCountersSerializer
 
     def get(self, request, fsid):
         counters = self.client.get_derived_object(fsid, 'counters')
@@ -117,7 +118,11 @@ class HealthCounters(RPCView):
 
 
 class OSDList(RPCView):
-    serializer = OSDListSerializer
+    """
+    Provides an object which includes a list of all OSDs, and
+    some summary counters (pg_state_counts)
+    """
+    serializer_class = OSDListSerializer
 
     def _filter_by_pg_state(self, osds, pg_states, osds_by_pg_state):
         """Filter the cluster OSDs by PG states.
@@ -158,7 +163,11 @@ class OSDList(RPCView):
 
 
 class OSDDetail(RPCView):
-    serializer = OSDDetailSerializer
+    """
+    This is the same data that is provided in the OSD list, but for
+    a single OSD, and not including the pg_state_counts.
+    """
+    serializer_class = OSDDetailSerializer
 
     def get(self, request, fsid, osd_id):
         data = self.client.get(fsid, 'osd', int(osd_id))
@@ -167,25 +176,28 @@ class OSDDetail(RPCView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    The Calamari UI/API user account information
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
-@api_view(['GET'])
-@permission_classes((AllowAny,))
-@never_cache
-def user_me(request):
+class UserMe(APIView):
     """
-    Return information about the current user. If the user is not authenticated
-    (i.e. an anonymous user), then 401 is returned with an error message.
+Return information about the current user. If the user is not authenticated
+(i.e. an anonymous user), then 401 is returned with an error message.
     """
-    if request.method != 'GET':
-        return
-    if request.user.is_authenticated():
-        return Response(UserSerializer(request.user).data)
-    return Response({
-        'message': 'Session expired or invalid',
-    }, status.HTTP_401_UNAUTHORIZED)
+    permission_classes = (AllowAny,)
+    serializer_class = UserSerializer
+
+    @never_cache
+    def get(self, request):
+        if request.user.is_authenticated():
+            return Response(self.serializer_class(request.user).data)
+        return Response({
+            'message': 'Session expired or invalid',
+        }, status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(['GET', 'POST'])
@@ -193,6 +205,20 @@ def user_me(request):
 @ensure_csrf_cookie
 @never_cache
 def login(request):
+    """
+This resource is used to authenticate with the REST API by POSTing a message
+as follows:
+
+::
+
+    {
+        "username": "<username>",
+        "password": "<password>"
+    }
+
+If authentication is successful, 200 is returned, if it is unsuccessful
+then 401 is returend.
+    """
     if request.method == 'POST':
         username = request.DATA.get('username', None)
         password = request.DATA.get('password', None)
@@ -221,6 +247,10 @@ def login(request):
 @api_view(['GET', 'POST'])
 @permission_classes((AllowAny,))
 def logout(request):
+    """
+The resource is used to terminate an authenticated session by POSTing an
+empty request.
+    """
     auth_logout(request)
     return Response({'message': 'Logged out'})
 
@@ -251,34 +281,39 @@ def _get_local_grains():
     return grains
 
 
-@api_view(['GET'])
-@permission_classes((AllowAny,))
-def info(request):
-    grains = _get_local_grains()
+class Info(APIView):
+    """
+Provides metadata about the installation of Calamari server in use
+    """
+    permission_classes = (AllowAny,)
+    serializer_class = InfoSerializer
 
-    try:
-        ipaddr = socket.gethostbyname(grains['fqdn'])
-    except socket.gaierror:
-        # It is annoying, but not rare, to have a host
-        # that cannot resolve its own name.
-        # From a dict of interface name to list of addresses,
-        # we pick the first address from the first interface
-        # which has some addresses and isn't a loopback.
-        ipaddr = [addrs for name, addrs in grains['ip_interfaces'].items() if
-                  name not in ['lo', 'lo0'] and addrs][0][0]
+    def get(self, request):
+        grains = _get_local_grains()
 
-    return Response({
-        "version": "2.0",  # TODO: populate from build version (ticket #7082)
-        "license": "N/A",
-        "registered": "N/A",
-        "hostname": grains['host'],
-        "fqdn": grains['fqdn'],
-        "ipaddr": ipaddr
-    })
+        try:
+            ipaddr = socket.gethostbyname(grains['fqdn'])
+        except socket.gaierror:
+            # It is annoying, but not rare, to have a host
+            # that cannot resolve its own name.
+            # From a dict of interface name to list of addresses,
+            # we pick the first address from the first interface
+            # which has some addresses and isn't a loopback.
+            ipaddr = [addrs for name, addrs in grains['ip_interfaces'].items() if
+                      name not in ['lo', 'lo0'] and addrs][0][0]
+
+        return Response(self.serializer_class(DataObject({
+            "version": "2.0",  # TODO: populate from build version (ticket #7082)
+            "license": "N/A",
+            "registered": "N/A",
+            "hostname": grains['host'],
+            "fqdn": grains['fqdn'],
+            "ipaddr": ipaddr
+        }).data))
 
 
 class ClusterViewSet(RPCViewSet):
-    serializer = ClusterSerializer
+    serializer_class = ClusterSerializer
 
     def list(self, request):
         clusters = [DataObject(c) for c in self.client.list_clusters()]
@@ -295,19 +330,19 @@ class ClusterViewSet(RPCViewSet):
 
 
 class ServerViewSet(RPCViewSet):
-    serializer = ServerSerializer
+    serializer_class = ServerSerializer
 
     def retrieve(self, request, pk):
         return Response(
-            self.serializer(DataObject(self.client.server_get(pk))).data
+            self.serializer_class(DataObject(self.client.server_get(pk))).data
         )
 
     def list(self, request, fsid):
-        return Response(self.serializer([DataObject(s) for s in self.client.server_list()], many=True).data)
+        return Response(self.serializer_class([DataObject(s) for s in self.client.server_list()], many=True).data)
 
 
 class PoolViewSet(RPCViewSet):
-    serializer = PoolSerializer
+    serializer_class = PoolSerializer
 
     def pool_object(self, pool_data, cluster):
         return DataObject({

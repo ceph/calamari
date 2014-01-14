@@ -24,10 +24,10 @@ urlpatterns = patterns(
 
     # About the host calamari server is running on
     url(r'^grains', ceph.views.v2.grains),
-    url(r'^info', ceph.views.v1.info),
+    url(r'^info', ceph.views.v1.Info.as_view()),
 
     # Wrapping django auth
-    url(r'^user/me', ceph.views.v1.user_me),
+    url(r'^user/me', ceph.views.v1.UserMe.as_view()),
     url(r'^auth/login', ceph.views.v1.login),
     url(r'^auth/logout', ceph.views.v1.logout),
 
