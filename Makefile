@@ -28,9 +28,6 @@ SRC := $(shell pwd)
 INSTALL=/usr/bin/install
 
 UI_BASEDIR = $(DESTDIR)/opt/calamari/webapp/content
-UI_SUBDIRS = ui/admin ui/login clients/dashboard
-
-CONFIG_JSON = clients/dashboard/dist/scripts/config.json
 
 CONFFILES = \
 	conf/diamond/CephCollector.conf \
@@ -61,20 +58,9 @@ set_deb_version:
 		--newversion $(VERSION)-$(REVISION)$(BPTAG) \
 		-D $(DIST) --force-bad-version --force-distribution "$(DATESTR)"
 
-build: build-ui build-venvs $(CONFIG_JSON) $(CONFFILES)
+build: build-venvs $(CONFFILES)
 
 build-venvs: build-graphite-venv build-calamari-venv
-
-build-ui:
-	@echo "building ui subdirs"
-	for d in $(UI_SUBDIRS); do \
-		echo $$d; \
-		(cd $$d; \
-		npm install --silent; \
-		bower --allow-root install; \
-		grunt --no-color saveRevision; \
-		grunt --no-color build; ) \
-	done
 
 # graphite-web's requirements are obtained from a static copy of its
 # requirements.txt from github, because obviously expressing those in setup.py
@@ -152,14 +138,6 @@ build-calamari-venv:
 		done; \
 	fi)
 
-# for right now, this contains two useful things that should be set
-# when running against a live cluster.  We could preinstall it in the
-# package or do it in a postinstall; it has more visibility here
-
-$(CONFIG_JSON):
-	echo '{ "offline": false, "graphite-host": "/graphite" }' \
-		> $(CONFIG_JSON)
-
 
 # this source is just not very amenable to building source packages.
 # the Javascript directories don't really go back to "clean"; it might
@@ -167,7 +145,7 @@ $(CONFIG_JSON):
 dpkg:
 	dpkg-buildpackage -b -us -uc
 
-install-common: build install-conf install-init.d install-ui install-graphite-venv install-calamari-venv
+install-common: build install-conf install-init.d install-graphite-venv install-calamari-venv
 	@echo "install-common"
 
 install-rpm: install-common install-rh-conf
@@ -235,14 +213,6 @@ install-init.d:
 	@$(INSTALL) -D $(ROOTOG) conf/restapi/init.d/cephrestapi \
 		$(DESTDIR)/etc/init.d/cephrestapi
 
-install-ui:
-	@echo "install-ui"
-	for d in $(UI_SUBDIRS); do \
-		instdir=$$(basename $$d); \
-		$(INSTALL) -d $(UI_BASEDIR)/$$instdir; \
-		cp -rp $$d/dist/* $(UI_BASEDIR)/$$instdir; \
-	done
-
 install-graphite-venv: build-graphite-venv
 	@echo "install-graphite-venv"
 	$(INSTALL) -d $(DESTDIR)/opt
@@ -259,28 +229,16 @@ install-calamari-venv: build-calamari-venv
 	cp -rp calamari/* $(DESTDIR)/opt/calamari
 
 clean:
-	for d in $(UI_SUBDIRS); do \
-		echo $$d; \
-		(cd $$d; \
-		if [ -d node_modules ] ; then grunt --no-color clean; fi) \
-	done
-	@rm -f $(CONFIG_JSON)
 	rm -rf graphite
 	rm -rf calamari
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
-	@for d in $(UI_SUBDIRS); do \
-		echo $$d; \
-		(cd $$d;  \
-		npm install --silent; \
-		grunt --no-color saveRevision) \
-	done
 	@rm -rf $(PKGDIR)
 	@$(FINDCMD) | cpio --null -p -d $(PKGDIR)
 	@tar -zcf $(TARNAME) $(PKGDIR)
 	@rm -rf $(PKGDIR)
 	@echo "tar file made in $(TARNAME)"
 
-.PHONY: dist clean build build-venvs build-ui dpkg install install-conf 
-.PHONY: install-init install-ui install-graphite-venv install-calamari-venv
+.PHONY: dist clean build build-venvs dpkg install install-conf 
+.PHONY: install-init install-graphite-venv install-calamari-venv

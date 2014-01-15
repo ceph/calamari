@@ -2,7 +2,7 @@
 #
 # smoketest <distro>
 # use teuthology to set up a one-machine cluster on <distro>,
-# install -agent, -restapi, and -webapp on it, and validate
+# install -agent, -restapi, -client, and -server on it, and validate
 # basic functionality
 #
 
@@ -23,6 +23,8 @@ tasks:
    branch: dumpling
 - ceph:
 - interactive:
+downburst:
+- additional-disks: 0
 '''
 
 yamlshort = '''roles:
@@ -291,7 +293,8 @@ def main():
            not install_package('calamari-agent', host, flavor) or \
            not edit_diamond_config(host) or \
            not install_package('calamari-restapi', host, flavor) or \
-           not install_package('calamari-webapp', host, flavor) or \
+           not install_package('calamari-server', host, flavor) or \
+           not install_package('calamari-clients', host, flavor) or \
            not disable_default_nginx(host, flavor):
             return 1
 
