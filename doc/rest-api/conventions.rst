@@ -5,7 +5,7 @@ Conventions
 Asynchronous operations
 -----------------------
 
-When an operation may take some time, a ``204 ACCEPTED`` status is returned with a body containing
+When an operation may take some time, a ``202 ACCEPTED`` status is returned with a body containing
 the request ID like this:
 
 .. code-block:: json

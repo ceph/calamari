@@ -126,7 +126,7 @@ class OSDList(RPCView):
 
     def _filter_by_pg_state(self, osds, pg_states, osds_by_pg_state):
         """Filter the cluster OSDs by PG states.
-
+`
         Note that we can't do any nice DB querying here because we aren't
         normalizing out our data to fit the relational model. Thus, this is a
         bit hacky.
@@ -309,7 +309,7 @@ Provides metadata about the installation of Calamari server in use
             "hostname": grains['host'],
             "fqdn": grains['fqdn'],
             "ipaddr": ipaddr
-        }).data))
+        })).data)
 
 
 class ClusterViewSet(RPCViewSet):

@@ -32,6 +32,7 @@ class DerivedObjects(dict):
 
 class OsdPgDetail(object):
     depends = [OsdMap, PgBrief]
+    provides = ['osds', 'pgs', 'osds_by_pg_state']
 
     @classmethod
     def generate(cls, cluster_monitor, server_monitor, data):
@@ -101,6 +102,7 @@ class OsdPgDetail(object):
 
 class HealthCounters(object):
     depends = [OsdMap, MdsMap, MonStatus, PgBrief]
+    provides = ['counters']
 
     @classmethod
     def generate(cls, cluster_monitor, server_monitor, data):

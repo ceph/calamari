@@ -35,7 +35,7 @@ from Saltstack that tell us useful properties of the host.
 class RequestViewSet(RPCViewSet):
     """
 Calamari server requests, tracking long-running operations on the Calamari server.  Some
-API resources return a ``204 ACCEPTED`` response with a request ID, which you can use with
+API resources return a ``202 ACCEPTED`` response with a request ID, which you can use with
 this resource to learn about progress and completion of an operation.
     """
     serializer_class = RequestSerializer
@@ -178,12 +178,12 @@ Manage Ceph storage pools.
             # be passed an errors dict for a clean failure, or a zerorpc exception
             # for a dirty failure)
             assert 'request_id' in create_response
-            return Response(create_response)
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, fsid, pool_id):
-        delete_response = self.client.delete(fsid, POOL, int(pool_id))
+        delete_response = self.client.delete(fsid, POOL, int(pool_id), status=status.HTTP_202_ACCEPTED)
         return Response(delete_response)
 
     def update(self, request, fsid, pool_id):
@@ -191,7 +191,7 @@ Manage Ceph storage pools.
         # TODO: validation, but we don't want to check all fields are present (because
         # this is a PATCH), just that those present are valid.  rest_framework serializer
         # may or may not be able to do that out the box.
-        return Response(self.client.update(fsid, POOL, int(pool_id), updates))
+        return Response(self.client.update(fsid, POOL, int(pool_id), updates), status=status.HTTP_202_ACCEPTED)
 
 
 class SyncObject(RPCView):

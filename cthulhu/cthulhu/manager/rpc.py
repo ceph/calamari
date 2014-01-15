@@ -189,22 +189,26 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
-    def get_request(self, fs_id, request_id):
-        """
-        Get a JSON representation of a UserRequest
-        """
-        cluster = self._fs_resolve(fs_id)
-        request = cluster.get_request(request_id)
+    def _dump_request(self, request):
+        """UserRequest to JSON-serializable form"""
         return {
             'id': request.id,
             'state': request.state,
             'error': request.error
         }
 
+    def get_request(self, fs_id, request_id):
+        """
+        Get a JSON representation of a UserRequest
+        """
+        cluster = self._fs_resolve(fs_id)
+        request = cluster.get_request(request_id)
+        return self._dump_request(request)
+
     def list_requests(self, fs_id):
         cluster = self._fs_resolve(fs_id)
         requests = cluster.list_requests()
-        return [{'id': r.id, 'state': r.state} for r in requests]
+        return [self._dump_request(r) for r in requests]
 
     @property
     def salt_key(self):

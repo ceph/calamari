@@ -149,6 +149,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # the tag, if salt would only let us add custom tags to our jobs.
                         # Instead we enforce a convention that all calamari jobs must include
                         # fsid in their return value.
+                        if (not isinstance(data, dict)) or not isinstance(data['return'], dict):
+                            log.warning("Bad job return: %s" % data)
+                            continue
+
                         if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
                             log.debug("Ignoring job return, not for my FSID")
                             continue

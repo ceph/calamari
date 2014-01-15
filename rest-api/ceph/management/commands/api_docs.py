@@ -1,4 +1,6 @@
 from collections import defaultdict
+import json
+from optparse import make_option
 from django.core.management.base import NoArgsCommand
 import importlib
 from jinja2 import Environment
@@ -7,6 +9,11 @@ import rest_framework.viewsets
 import traceback
 from django.core.urlresolvers import RegexURLPattern, RegexURLResolver
 import sys
+
+
+EXAMPLES_FILE = "api_examples.json"
+RESOURCES_FILE = "resources.rst"
+EXAMPLES_PREFIX = "api_example_"
 
 
 class DocviewSetMixin(rest_framework.viewsets.ViewSetMixin):
@@ -72,6 +79,17 @@ API reference
 
 {{resources_rst}}
 
+Examples
+--------
+
+.. toctree::
+   :maxdepth: 1
+
+{% for example_doc in example_docs %}
+   {{example_doc}}
+{% endfor %}
+
+
 """
 
 
@@ -113,15 +131,19 @@ def _url_pattern_methods(url_pattern):
     return methods
 
 
-def _pretty_url(prefix, url_regex):
+def _stripped_url(prefix, url_pattern):
     """
-    Convert a URL regex into something prettier
+    Convert a URL regex into something for human eyes
 
     ^server/(?P<pk>[^/]+)$ becomes server/<pk>
     """
-    url = prefix + url_regex.strip("^$")
+    url = prefix + url_pattern.regex.pattern.strip("^$")
     url = re.sub("\(.+?<(.+?)>.+?\)", "<\\1>", url)
-    return "``%s``" % url
+    return url
+
+
+def _pretty_url(prefix, url_pattern):
+    return "%s" % _stripped_url(prefix, url_pattern).replace("<", "\\<").replace(">", "\\>")
 
 
 def _find_prefix(toplevel_mod, sub_mod):
@@ -137,17 +159,8 @@ def _find_prefix(toplevel_mod, sub_mod):
     raise RuntimeError("'%s' not included in '%s', cannot find prefix" % (sub_mod, toplevel_mod))
 
 
-class Command(NoArgsCommand):
-    def handle_noargs(self, **options):
-        try:
-            self.gen_docs()
-        except:
-            print >>sys.stderr, traceback.format_exc()
-            raise
-
-    def gen_docs(self):
-        url_module = 'ceph.urls.v2'
-
+class ApiIntrospector(object):
+    def __init__(self, url_module):
         view_to_url_patterns = defaultdict(list)
 
         def parse_urls(urls):
@@ -162,73 +175,150 @@ class Command(NoArgsCommand):
                     if hasattr(url_pattern.callback, 'cls'):
                         # This is a rest_framework as_view wrapper
                         view_cls = url_pattern.callback.cls
+                        if view_cls.__name__.endswith("APIRoot"):
+                            continue
                         view_to_url_patterns[view_cls].append(url_pattern)
 
-        prefix = _find_prefix("calamari_web.urls", url_module)
+        self.prefix = _find_prefix("calamari_web.urls", url_module)
         parse_urls(importlib.import_module(url_module).urlpatterns)
 
-        view_to_url_patterns = sorted(view_to_url_patterns.items(), cmp=lambda x, y: cmp(x[0].__name__, y[0].__name__))
+        self.view_to_url_patterns = sorted(view_to_url_patterns.items(), cmp=lambda x, y: cmp(x[0].__name__, y[0].__name__))
 
-        resources_rst = ""
-        for view, url_patterns in view_to_url_patterns:
-            class_name = view.__name__.split(".")[-1]
-            name = view().metadata(None)['name']
-            if class_name == "APIRoot":
-                continue
+        self.all_url_patterns = []
+        for view, url_patterns in self.view_to_url_patterns:
+            self.all_url_patterns.extend(url_patterns)
+        self.all_url_patterns = sorted(self.all_url_patterns,
+                                       lambda a, b: cmp(_pretty_url(self.prefix, a), _pretty_url(self.prefix, b)))
 
-            if view.__doc__:
-                view_help_text = view.__doc__
-            else:
-                view_help_text = "*No description available*"
+    def _view_rst(self, view, url_patterns):
+        """
+        Output RsT for one API view
+        """
+        name = view().metadata(None)['name']
 
-            url_table = [["URL"] + VERBS]
-            for url_pattern in url_patterns:
-                methods = _url_pattern_methods(url_pattern)
-
-                row = [_pretty_url(prefix, url_pattern.regex.pattern)]
-                for v in VERBS:
-                    if v in methods:
-                        row.append("Yes")
-                    else:
-                        row.append("")
-                url_table.append(row)
-
-            url_table_rst = make_table(url_table)
-
-            if hasattr(view, 'serializer_class') and view.serializer_class:
-                field_table = [["Name", "Type", "Readonly", "Description"]]
-                fields = view.serializer_class().get_fields()
-                for field_name, field in fields.items():
-                    if hasattr(field, 'help_text'):
-                        field_help_text = field.help_text
-                    else:
-                        field_help_text = ""
-                    field_table.append([field_name, field.type_label, str(field.read_only), field_help_text])
-                field_table_rst = make_table(field_table)
-            else:
-                field_table_rst = "*No field data available*"
-
-            resource_rst = Environment().from_string(RESOURCE_TEMPLATE).render(
-                name=name,
-                help_text=view_help_text,
-                field_table=field_table_rst,
-                url_table=url_table_rst
-            )
-
-            resources_rst += resource_rst
+        if view.__doc__:
+            view_help_text = view.__doc__
+        else:
+            view_help_text = "*No description available*"
 
         url_table = [["URL"] + VERBS]
-        for view, url_patterns in view_to_url_patterns:
-            for url_pattern in url_patterns:
-                methods = _url_pattern_methods(url_pattern)
-                row = [_pretty_url(prefix, url_pattern.regex.pattern)]
-                for v in VERBS:
-                    if v in methods:
-                        row.append("Yes")
-                    else:
-                        row.append("")
-                url_table.append(row)
+        for url_pattern in url_patterns:
+            methods = _url_pattern_methods(url_pattern)
 
-        urls_table_rst = make_table(url_table)
+            row = ["%s" % _pretty_url(self.prefix, url_pattern)]
+            for v in VERBS:
+                if v in methods:
+                    row.append("Yes")
+                else:
+                    row.append("")
+            url_table.append(row)
 
-        print Environment().from_string(PAGE_TEMPLATE).render(resources_rst=resources_rst, url_summary_rst=urls_table_rst)
+        url_table_rst = make_table(url_table)
+
+        if hasattr(view, 'serializer_class') and view.serializer_class:
+            field_table = [["Name", "Type", "Readonly", "Description"]]
+            fields = view.serializer_class().get_fields()
+            for field_name, field in fields.items():
+                if hasattr(field, 'help_text'):
+                    field_help_text = field.help_text
+                else:
+                    field_help_text = ""
+                field_table.append([field_name, field.type_label, str(field.read_only), field_help_text])
+            field_table_rst = make_table(field_table)
+        else:
+            field_table_rst = "*No field data available*"
+
+        return Environment().from_string(RESOURCE_TEMPLATE).render(
+            name=name,
+            help_text=view_help_text,
+            field_table=field_table_rst,
+            url_table=url_table_rst
+        )
+
+    def _url_table(self, url_patterns):
+        url_table = [["URL"] + VERBS]
+        for url_pattern in url_patterns:
+            methods = _url_pattern_methods(url_pattern)
+            row = [":doc:`%s <%s>`" % (_pretty_url(self.prefix, url_pattern),
+                                       self._example_document_name(_stripped_url(self.prefix, url_pattern)))]
+            for v in VERBS:
+                if v in methods:
+                    row.append("Yes")
+                else:
+                    row.append("")
+            url_table.append(row)
+
+        return make_table(url_table)
+
+    def _flatten_path(self, path):
+        """
+        Escape a URL pattern to something suitable for use as a filename
+        """
+        return path.replace("/", "_").replace("<", "_").replace(">", "_")
+
+    def _example_document_name(self, pattern):
+        return EXAMPLES_PREFIX + self._flatten_path(pattern)
+
+    def _write_example(self, example_pattern, example_results):
+        """
+        Write RsT file with API examples for a particular pattern
+        """
+        rst = ""
+        title = "Examples for %s" % example_pattern
+        rst += "%s\n%s\n\n" % (title, "=" * len(title))
+        for url, content in example_results.items():
+            rst += "%s\n" % url
+            rst += "-" * len(url)
+            rst += "\n\n.. code-block:: json\n\n"
+            data_dump = json.dumps(json.loads(content), indent=2)
+            data_dump = "\n".join(["   %s" % l for l in data_dump.split("\n")])
+            rst += data_dump
+            rst += "\n\n"
+        open(self._example_document_name(example_pattern) + ".rst", 'w').write(rst)
+
+    def write_docs(self, examples):
+        resources_rst = ""
+        for view, url_patterns in self.view_to_url_patterns:
+            resources_rst += self._view_rst(view, url_patterns)
+
+        url_table_rst = self._url_table(self.all_url_patterns)
+
+        example_docs = [self._example_document_name(p) for p in examples.keys()]
+
+        resources_rst = Environment().from_string(PAGE_TEMPLATE).render(
+            resources_rst=resources_rst, url_summary_rst=url_table_rst, example_docs=example_docs)
+        open(RESOURCES_FILE, 'w').write(resources_rst)
+
+        for example_pattern, example_results in examples.items():
+            self._write_example(example_pattern, example_results)
+
+    def get_url_list(self):
+        return [_stripped_url(self.prefix, u) for u in self.all_url_patterns]
+
+
+class Command(NoArgsCommand):
+    help = "Print introspected REST API documentation"
+    option_list = NoArgsCommand.option_list + (
+        make_option('--list-urls',
+                    action='store_true',
+                    dest='list_urls',
+                    default=False,
+                    help='Print a list of URL patterns instead of RsT documentation'),
+    )
+
+    def handle_noargs(self, list_urls, **options):
+        introspector = ApiIntrospector("ceph.urls.v2")
+        if list_urls:
+            print json.dumps(introspector.get_url_list())
+        else:
+            try:
+                try:
+                    examples = json.load(open(EXAMPLES_FILE, 'r'))
+                except IOError:
+                    print >>sys.stderr, "Examples data '%s' not found, have you run test_rest_api?" % EXAMPLES_FILE
+                    return
+
+                introspector.write_docs(examples)
+            except:
+                print >>sys.stderr, traceback.format_exc()
+                raise
