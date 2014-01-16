@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+from rest_framework.exceptions import ParseError
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -17,7 +18,7 @@ from ceph.views.v1 import _get_local_grains
 from cthulhu.manager.types import CRUSH_RULE, POOL
 
 from cthulhu.config import CalamariConfig
-from cthulhu.persistence.event import Event
+from cthulhu.persistence.event import Event, severity_from_str, SEVERITIES
 
 config = CalamariConfig()
 
@@ -300,6 +301,17 @@ all other API resources.  For example, you might read the OSD
 map, see an OSD is down, then quickly read the events and find
 that the event about the OSD going down is not visible yet (though
 it would appear very soon after).
+
+The ``severity`` attribute mainly follows a typical INFO, WARN, ERROR
+hierarchy.  However, we have an additional level between INFO and WARN
+called RECOVERY.  Where something going bad in the system is usually
+a WARN message, the opposite state transition is usually a RECOVERY
+message.
+
+This resource supports "more severe than" filtering on the severity
+attribute.  Pass the desired severity threshold as a URL parameter
+in a GET, such as ``?severity=RECOVERY`` to show everything but INFO.
+
     """
     serializer_class = EventSerializer
 
@@ -307,9 +319,23 @@ it would appear very soon after).
     def queryset(self):
         return self.session.query(Event).order_by(Event.when.desc())
 
+    def _filter_by_severity(self, request, queryset=None):
+        if queryset is None:
+            queryset = self.queryset
+        severity_str = request.GET.get("severity", "INFO")
+        try:
+            severity = severity_from_str(severity_str)
+        except KeyError:
+            raise ParseError("Invalid severity '%s', must be on of %s" % (severity_str,
+                                                                          ",".join(SEVERITIES.values())))
+
+        return queryset.filter(Event.severity <= severity)
+
     def list(self, request):
-        return Response(self._paginate(request, self.queryset))
+        return Response(self._paginate(request, self._filter_by_severity(request)))
 
     def list_cluster(self, request, fsid):
-        objects = self.queryset.filter_by(fsid=fsid)
-        return Response(self._paginate(request, objects))
+        return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fsid=fsid))))
+
+    def list_server(self, request, fqdn):
+        return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fqdn=fqdn))))
