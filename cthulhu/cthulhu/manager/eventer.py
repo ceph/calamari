@@ -3,7 +3,7 @@ from dateutil import tz
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
 from cthulhu.manager.server_monitor import ServiceId
-from cthulhu.manager.types import OsdMap, Health
+from cthulhu.manager.types import OsdMap, Health, MonStatus
 from cthulhu.manager import config
 from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 
@@ -64,19 +64,21 @@ class Eventer(gevent.greenlet.Greenlet):
             self._complete.wait(TICK_SECONDS)
         log.debug("Eventer complete")
 
-    def _emit(self, severity, message, data):
+    def _emit(self, severity, message, **associations):
         """
         :param severity: One of the defined serverity values
         :param message: One line human readable string
-        :param data: JSON-serializable data to help non-human consumers
-                     make sense of the event
+        :param associations: Optional extra attributes to associate
+                             the event with a particular cluster/server/service
         """
         now = now_utc()
         log.info("Eventer._emit: %s/%s/%s" % (now, severity_str(severity), message))
+
         self._events.append(Event(
             when=now,
             message=message,
-            severity=severity
+            severity=severity,
+            **associations
         ))
 
     def _flush(self):
@@ -104,11 +106,11 @@ class Eventer(gevent.greenlet.Greenlet):
                 if fqdn not in self._servers_complained:
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
-                    ), {'fqdn': fqdn})
+                    ), fqdn=fqdn)
             else:
                 if fqdn in self._servers_complained:
                     self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
-                               {'fqdn': fqdn})
+                               fqdn=fqdn)
                     self._servers_complained.discard(fqdn)
 
         for fsid, cluster_monitor in self._clusters.items():
@@ -116,11 +118,11 @@ class Eventer(gevent.greenlet.Greenlet):
                     seconds=CLUSTER_CONTACT_THRESHOLD):
                 if fsid not in self._clusters_complained:
                     self._emit(WARNING, "Cluster '{name}' is late reporting in".format(name=cluster_monitor.name),
-                               {'fsid': fsid})
+                               fsid=fsid)
             else:
                 if fsid in self._clusters_complained:
                     self._emit(RECOVERY, "Cluster '{name}' regained contact".format(name=cluster_monitor.name),
-                               {'fsid': fsid})
+                               fsid=fsid)
                     self._clusters_complained.discard(fsid)
 
         self._flush()
@@ -142,33 +144,45 @@ class Eventer(gevent.greenlet.Greenlet):
         if old.data is None:
             return
 
+        def get_fqdn(service_type, service_id):
+            server = self._server_monitor.get_by_service(ServiceId(fsid, service_type, str(service_id)))
+            if server is None:
+                log.warn("No server found for service %s %s" % (service_type, service_id))
+            return server.fqdn if server else None
+
+        def get_on_server(service_type, service_id):
+            fqdn = get_fqdn(service_type, service_id)
+            if fqdn:
+                return " (on %s)" % fqdn
+            else:
+                return ""
+
         if sync_type == OsdMap:
             old_osd_ids = set([o['osd'] for o in old.data['osds']])
             new_osd_ids = set([o['osd'] for o in old.data['osds']])
             deleted_osds = old_osd_ids - new_osd_ids
             created_osds = new_osd_ids - old_osd_ids
 
-            def get_fqdn(osd_id):
-                return self._server_monitor.get_by_service(ServiceId(fsid, "osd", str(osd_id))).fqdn
-
-            def get_server(osd_id):
-                fqdn = get_fqdn(osd_id)
-                if fqdn:
-                    return " (on %s)" % fqdn
-                else:
-                    return ""
+            def osd_event(severity, msg, osd_id):
+                self._emit(
+                    severity,
+                    msg.format(
+                        name=self._clusters[fsid].name,
+                        id=osd_id,
+                        on_server=get_on_server('osd', osd_id)
+                    ),
+                    fsid=fsid,
+                    fqdn=get_fqdn('osd', osd_id),
+                    service_type='osd',
+                    service_id=str(osd_id))
 
             # Generate events for removed OSDs
             for osd_id in deleted_osds:
-                self._emit(INFO, "OSD {name}.{id}{server} removed from the cluster map".format(
-                    name=self._clusters[fsid].name, id=osd_id, server=get_server(osd_id)
-                ), {'fsid': fsid, 'id': osd_id, 'fqdn': get_fqdn(osd_id)})
+                osd_event(INFO, "OSD {name}.{id}{on_server} removed from the cluster map", osd_id)
 
             # Generate events for added OSDs
             for osd_id in created_osds:
-                self._emit(INFO, "OSD {name}.{id}{server} added to the cluster map".format(
-                    name=self._clusters[fsid].name, id=osd_id, server=get_server(osd_id)
-                ), {'fsid': fsid, 'id': osd_id, 'fqdn': get_fqdn(osd_id)})
+                osd_event(INFO, "OSD {name}.{id}{on_server} added to the cluster map", osd_id)
 
             # Generate events for changed OSDs
             for osd_id in old_osd_ids & new_osd_ids:
@@ -176,13 +190,9 @@ class Eventer(gevent.greenlet.Greenlet):
                 new_osd = new.osds_by_id[osd_id]
                 if old_osd['up'] != new_osd['up']:
                     if bool(new_osd['up']):
-                        self._emit(RECOVERY, "OSD {name}.{id} came up{server}".format(
-                            name=self._clusters[fsid].name, id=osd_id, server=get_server(osd_id)
-                        ), {'fsid': fsid, 'id': osd_id, 'fqdn': get_fqdn(osd_id)})
+                        osd_event(RECOVERY, "OSD {name}.{id} came up{on_server}", osd_id)
                     else:
-                        self._emit(WARNING, "OSD {name}.{id} went down{server}".format(
-                            name=self._clusters[fsid].name, id=osd_id, server=get_server(osd_id)
-                        ), {'fsid': fsid, 'id': osd_id, 'fqdn': get_fqdn(osd_id)})
+                        osd_event(WARNING, "OSD {name}.{id} went down{on_server}", osd_id)
 
                         # TODO: aggregate OSD notifications by server so that we can say things
                         # like "all the OSDs on server X went down" or "2/3 OSDs on server X went down"
@@ -221,12 +231,29 @@ class Eventer(gevent.greenlet.Greenlet):
                     # which will soon be stale
                     pass
                     # msg += " (%s)" % (new.data['summary'][0]['summary'])
-                self._emit(event_sev, msg, {'fsid': fsid})
+                self._emit(event_sev, msg, fsid=fsid)
+
+        if sync_type == MonStatus:
+            old_quorum = set(old.data['quorum'])
+            new_quorum = set(new.data['quorum'])
+
+            def _mon_event(severity, msg, rank):
+                name = new.mons_by_rank[rank]['name']
+                self._emit(severity,
+                           msg.format(
+                               cluster_name=self._clusters[fsid].name,
+                               mon_name=name,
+                               on_server=get_on_server('mon', name)),
+                           fsid=fsid,
+                           fqdn=get_fqdn('mon', name))
+
+            for rank in new_quorum - old_quorum:
+                _mon_event(RECOVERY, "Mon '{cluster_name}.{mon_name}' joined quorum{on_server}", rank)
+
+            for rank in old_quorum - new_quorum:
+                _mon_event(WARNING, "Mon '{cluster_name}.{mon_name}' left quorum{on_server}", rank)
 
         self._flush()
-
-        ## TODO generate events from monmap
-        #if sync_type == MonMap # monstatus?
 
         # TODO: generate notifications on PG map to indicate anything particularly
         # interesting like things which are in a bad state and won't be recovering

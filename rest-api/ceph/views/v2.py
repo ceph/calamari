@@ -300,11 +300,11 @@ it would appear very soon after).
     def list(self, request):
         # TODO pagination
         N = 100
-
         events = self.session.query(Event).order_by(Event.when.desc())[:N]
 
         return Response(EventSerializer(events, many=True).data)
 
     def list_cluster(self, request, fsid):
-        # TODO filter by fsid
-        return Response(EventSerializer([], many=True).data)
+        N = 100
+        events = self.session.query(Event).filter_by(fsid=fsid).order_by(Event.when.desc())[:N]
+        return Response(EventSerializer(events, many=True).data)

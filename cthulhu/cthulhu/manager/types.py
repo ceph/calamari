@@ -39,6 +39,13 @@ class MonMap(SyncObject):
 class MonStatus(SyncObject):
     str = 'mon_status'
 
+    def __init__(self, version, data):
+        super(MonStatus, self).__init__(version, data)
+        if data is not None:
+            self.mons_by_rank = dict([(m['rank'], m) for m in data['monmap']['mons']])
+        else:
+            self.mons_by_rank = {}
+
 
 class PgBrief(SyncObject):
     str = 'pg_brief'
