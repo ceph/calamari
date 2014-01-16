@@ -1,6 +1,7 @@
 
 
 from rest_framework import serializers
+from cthulhu.manager.eventer import severity_str
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -150,3 +151,17 @@ class ServerSerializer(SimpleServerSerializer):
     backend_addr = serializers.CharField()  # may be null if no OSDs on server
     frontend_iface = serializers.CharField()  # may be null if interface for frontend addr not up
     backend_iface = serializers.CharField()  # may be null if interface for backend addr not up
+
+
+class EventSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('when', 'severity', 'message')
+
+    when = serializers.DateTimeField(help_text="Time at which event was generated")
+    severity = serializers.SerializerMethodField('get_severity')
+    # FIXME: django_rest_framework doesn't let me put help_text on a methodfield
+    # help_text="Severity, one of %s" % ",".join(SEVERITIES.keys()))
+    message = serializers.CharField(help_text="One line human readable description")
+
+    def get_severity(self, obj):
+        return severity_str(obj.severity)

@@ -40,6 +40,11 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v1.OSDList.as_view(), name='cluster-osd-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v1.OSDDetail.as_view(),
         name='cluster-osd-detail'),
+    # TODO a sanitized OSD serializer similar to what we do for pools
+    # TODO implement PATCH to /osd/<id> for attribute changes
+    # TODO implement POST to /osd/<id>/commands/<command> for operations
+    # that don't directly change an attribute, e.g. initiating scrub, repair
+    # TODO expose weight information OSDs along with ability to reweight
 
     # About ongoing operations in cthulhu
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
@@ -61,6 +66,8 @@ urlpatterns = patterns(
         name='cluster-pool-detail'),
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
+    # TODO implement list views for sync_object and derived_object that tell
+    # you what's available, and ensure those lists are exposed in API docs too
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
         ceph.views.v2.SyncObject.as_view(), name='cluster-sync-object'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object/(?P<derived_type>[a-zA-Z0-9-_]+)$',
@@ -72,4 +79,8 @@ urlpatterns = patterns(
         name='cluster-server-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',
         ceph.views.v2.ServerClusterViewSet.as_view({'get': 'retrieve'}), name='cluster-server-detail'),
+
+    # Events
+    url(r'^event$', ceph.views.v2.EventViewSet.as_view({'get': 'list'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/event', ceph.views.v2.EventViewSet.as_view({'get': 'list_cluster'}))
 )

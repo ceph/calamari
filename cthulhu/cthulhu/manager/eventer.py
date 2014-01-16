@@ -5,6 +5,7 @@ from cthulhu.log import log
 from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import OsdMap, Health
 from cthulhu.manager import config
+from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 
 import gevent.event
 import gevent.greenlet
@@ -23,20 +24,6 @@ GRACE_PERIOD = 30
 # we generate an event?
 CONTACT_THRESHOLD = int(config.get('cthulhu', 'server_contact_threshold'))
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))
-
-CRITICAL = 1
-ERROR = 2
-WARNING = 3
-INFO = 4
-
-
-def severity_str(severity):
-    return {
-        CRITICAL: "CRITICAL",
-        ERROR: "ERROR",
-        WARNING: "WARNING",
-        INFO: "INFO"
-    }[severity]
 
 
 def now_utc():
@@ -64,6 +51,8 @@ class Eventer(gevent.greenlet.Greenlet):
         self._servers_complained = set()
         self._clusters_complained = set()
 
+        self._events = []
+
     def stop(self):
         log.debug("Eventer stopping")
         self._complete.set()
@@ -84,7 +73,20 @@ class Eventer(gevent.greenlet.Greenlet):
         """
         now = now_utc()
         log.info("Eventer._emit: %s/%s/%s" % (now, severity_str(severity), message))
-        # TODO Persist
+        self._events.append(Event(
+            when=now,
+            message=message,
+            severity=severity
+        ))
+
+    def _flush(self):
+        if self._events:
+            self._persister.save_events(self._events)
+            self._events = []
+
+    # TODO consume messages about ServiceState from ServerMonitor, so that
+    # we can tell people about their services in the absence of up to date
+    # cluster map information.
 
     @nosleep
     def on_tick(self):
@@ -105,7 +107,7 @@ class Eventer(gevent.greenlet.Greenlet):
                     ), {'fqdn': fqdn})
             else:
                 if fqdn in self._servers_complained:
-                    self._emit(INFO, "Server {fqdn} regained contact".format(fqdn=fqdn),
+                    self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
                                {'fqdn': fqdn})
                     self._servers_complained.discard(fqdn)
 
@@ -117,9 +119,11 @@ class Eventer(gevent.greenlet.Greenlet):
                                {'fsid': fsid})
             else:
                 if fsid in self._clusters_complained:
-                    self._emit(INFO, "Cluster '{name}' regained contact".format(name=cluster_monitor.name),
+                    self._emit(RECOVERY, "Cluster '{name}' regained contact".format(name=cluster_monitor.name),
                                {'fsid': fsid})
                     self._clusters_complained.discard(fsid)
+
+        self._flush()
 
     @nosleep
     def on_sync_object(self, fsid, sync_type, new, old):
@@ -172,7 +176,7 @@ class Eventer(gevent.greenlet.Greenlet):
                 new_osd = new.osds_by_id[osd_id]
                 if old_osd['up'] != new_osd['up']:
                     if bool(new_osd['up']):
-                        self._emit(INFO, "OSD {name}.{id} came up{server}".format(
+                        self._emit(RECOVERY, "OSD {name}.{id} came up{server}".format(
                             name=self._clusters[fsid].name, id=osd_id, server=get_server(osd_id)
                         ), {'fsid': fsid, 'id': osd_id, 'fqdn': get_fqdn(osd_id)})
                     else:
@@ -208,7 +212,7 @@ class Eventer(gevent.greenlet.Greenlet):
                         old=old_status, new=new_status, name=self._clusters[fsid].name)
                 else:
                     # An improvement in health
-                    event_sev = INFO
+                    event_sev = RECOVERY
                     msg = "Health of cluster '{name}' recovered from {old} to {new}".format(
                         old=old_status, new=new_status, name=self._clusters[fsid].name)
 
@@ -219,6 +223,11 @@ class Eventer(gevent.greenlet.Greenlet):
                     # msg += " (%s)" % (new.data['summary'][0]['summary'])
                 self._emit(event_sev, msg, {'fsid': fsid})
 
-                # TODO: generate notifications on PG map to indicate anything particularly
-                # interesting like things which are in a bad state and won't be recovering
-                # TODO: generate events from MDS map
+        self._flush()
+
+        ## TODO generate events from monmap
+        #if sync_type == MonMap # monstatus?
+
+        # TODO: generate notifications on PG map to indicate anything particularly
+        # interesting like things which are in a bad state and won't be recovering
+        # TODO: generate events from MDS map

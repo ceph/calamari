@@ -13,6 +13,9 @@ from sqlalchemy.orm import sessionmaker
 
 from cthulhu.persistence import Base
 from cthulhu.persistence.servers import Server, Service
+# I have to import this to get create_all to see it :-/
+from cthulhu.persistence.event import Event
+Event.foo = ""  # STFU pyflakes
 from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.log import log
 
@@ -106,6 +109,10 @@ class Persister(gevent.greenlet.Greenlet):
 
     def _delete_server(self, fqdn):
         self._session.query(Server).filter_by(fqdn=fqdn).delete()
+
+    def _save_events(self, events):
+        for event in events:
+            self._session.add(event)
 
     def _run(self):
         log.info("Persister listening")
