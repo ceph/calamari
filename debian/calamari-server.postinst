@@ -11,7 +11,7 @@ calamari()
 	../../venv/bin/python addadmin.py
 
 	# allow apache access to all
-	chown -R www-data.www-data .
+	chown -R www-data.www-data /opt/calamari/webapp/calamari
 	a2dissite 000-default
 	a2ensite calamari.conf
 	a2ensite graphite.conf

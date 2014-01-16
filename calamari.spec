@@ -175,7 +175,7 @@ calamari()
 	../../venv/bin/python addadmin.py
 
 	# allow apache access to all
-	chown -R apache.apache .
+	chown -R apache.apache /opt/calamari/webapp/calamari
 	chown -R apache.apache /var/log/calamari
 	cd $d
 }
