@@ -498,14 +498,14 @@ class ServerMonitor(greenlet.Greenlet):
         for service in services:
             if frontend_addr is None and service.service_type == 'mon':
                 # Go find the mon in the monmap and tell me its addr
-                mon_map = cluster.get_sync_object(MonMap)
+                mon_map = cluster.get_sync_object_data(MonMap)
                 if mon_map is not None:
                     mon = [mon for mon in mon_map['mons'] if mon['name'] == service.service_id][0]
                     frontend_addr = mon['addr'].split(":")[0]
 
             if (frontend_addr is None or backend_addr is None) and service.service_type == 'osd':
                 # Go find the OSD in the OSD map and tell me its frontend and backend addrs
-                osd_map = cluster.get_sync_object(OsdMap)
+                osd_map = cluster.get_sync_object_data(OsdMap)
                 if osd_map is not None:
                     osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id][0]
                     frontend_addr = osd['public_addr'].split(":")[0]

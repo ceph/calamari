@@ -53,23 +53,19 @@ class RpcInterface(object):
 
     def _osd_resolve(self, cluster, osd_id):
         osdmap = cluster.get_sync_object(OsdMap)
-        if osdmap is None:
-            raise NotFound(OSD, osd_id)
 
-        for osd in osdmap['osds']:
-            if osd['osd'] == osd_id:
-                return osd
-        raise NotFound(OSD, osd_id)
+        try:
+            return osdmap.osds_by_id[osd_id]
+        except KeyError:
+            raise NotFound(OSD, osd_id)
 
     def _pool_resolve(self, cluster, pool_id):
         osdmap = cluster.get_sync_object(OsdMap)
-        if osdmap is None:
-            raise NotFound(POOL, pool_id)
 
-        for pool in osdmap['pools']:
-            if pool['pool'] == pool_id:
-                return pool
-        raise NotFound(POOL, pool_id)
+        try:
+            return osdmap.pools_by_id[pool_id]
+        except KeyError:
+            raise NotFound(POOL, pool_id)
 
     def get_cluster(self, fs_id):
         """
@@ -106,7 +102,7 @@ class RpcInterface(object):
         :param fs_id: The fsid of a cluster
         :param object_type: String, one of SYNC_OBJECT_TYPES
         """
-        return self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
+        return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
 
     def get_derived_object(self, fs_id, object_type):
         """
@@ -177,7 +173,7 @@ class RpcInterface(object):
         """
 
         cluster = self._fs_resolve(fs_id)
-        osd_map = cluster.get_sync_object(OsdMap)
+        osd_map = cluster.get_sync_object_data(OsdMap)
         if osd_map is None:
             return []
         if object_type == OSD:

@@ -2,10 +2,11 @@
 
 import json
 from collections import namedtuple
-import logging
+#import logging
 
 import gevent.greenlet
 import gevent.queue
+import gevent.event
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -40,10 +41,10 @@ class Persister(gevent.greenlet.Greenlet):
 
         self._session = Session()
 
-        if log.level <= logging.DEBUG:
-            logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-            for handler in log.handlers:
-                logging.getLogger('sqlalchemy.engine').addHandler(handler)
+        #if log.level <= logging.DEBUG:
+        #    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        #    for handler in log.handlers:
+        #        logging.getLogger('sqlalchemy.engine').addHandler(handler)
 
     def __getattribute__(self, item):
         """
@@ -60,7 +61,7 @@ class Persister(gevent.greenlet.Greenlet):
                     if callable(attr):
                         def defer(*args, **kwargs):
                             dc = DeferredCall(attr, args, kwargs)
-                            log.debug("Persister deferring >> %s(%s, %s)" % (item, args, kwargs))
+                            #log.debug("Persister deferring >> %s(%s, %s)" % (item, args, kwargs))
                             self._queue.put(dc)
                         return defer
                     else:
@@ -116,8 +117,8 @@ class Persister(gevent.greenlet.Greenlet):
                 continue
             else:
                 try:
-                    log.debug("Persister executing >> %s(%s, %s)" % (
-                        data.fn.__name__, data.args, data.kwargs))
+                    #log.debug("Persister executing >> %s(%s, %s)" % (
+                    #    data.fn.__name__, data.args, data.kwargs))
                     data.fn(*data.args, **data.kwargs)
                     self._session.commit()
                 except Exception:

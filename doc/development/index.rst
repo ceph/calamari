@@ -24,6 +24,7 @@ Contents
    requests
    OSX
    building_packages
+   cthulhu_components
    cthulhu_locking
    persistence
 

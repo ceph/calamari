@@ -95,7 +95,7 @@ class Health(RPCView):
     serializer_class = ClusterHealthSerializer
 
     def get(self, request, fsid):
-        health = self.client.get_sync_object(fsid, 'health')
+        health = self.client.get_sync_object_data(fsid, 'health')
         return Response(ClusterHealthSerializer(DataObject({
             'report': health,
             'cluster_update_time': self.client.get_cluster(fsid)['update_time'],
