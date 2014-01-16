@@ -33,6 +33,9 @@ def main():
 
     cluster = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
 
+    def status_check():
+        return {"SMART Health Status": "OK"}
+
     # Monkey-patch in a mock version of the ceph module
     def heartbeat():
         global __salt__
@@ -132,6 +135,7 @@ def main():
         global __salt__
         data = old_minion_mods(opts)
         data['ceph.heartbeat'] = heartbeat
+        data['wilyplugin.status_check'] = status_check
         data['ceph.get_cluster_object'] = get_cluster_object
         data['ceph.rados_commands'] = rados_commands
         data['log_tail.list_logs'] = list_logs
