@@ -35,7 +35,7 @@ def dashboard(request, path, document_root):
 def plugins(request, path, document_root):
     client = zerorpc.Client()
     client.connect(config.get('cthulhu', 'rpc_url'))
-    client.plugin_get()
+    return client.plugin_get('acmeplugin', 'some_object')
 
 BOOTSTRAP_TEMPLATE = """
 # Calamari minion bootstrap script.

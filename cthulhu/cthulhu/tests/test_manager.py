@@ -52,7 +52,7 @@ class TestSyncObjects(object):
 
 class TestClusterMonitor(object):
     def setUp(self):
-        self.cluster_monitor = cluster_monitor.ClusterMonitor(1, "None", None, None)
+        self.cluster_monitor = cluster_monitor.ClusterMonitor(1, "None", None, None, [])
 
     def tearDown(self):
         pass
