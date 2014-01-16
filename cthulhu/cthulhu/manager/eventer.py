@@ -58,6 +58,9 @@ class Eventer(gevent.greenlet.Greenlet):
         self._complete.set()
 
     def _run(self):
+        self._emit(INFO, "Calamari server started")
+        self._flush()
+
         self._complete.wait(GRACE_PERIOD)
         while not self._complete.is_set():
             self.on_tick()

@@ -24,6 +24,12 @@ config = CalamariConfig()
 log = logging.getLogger('django.request')
 
 
+if log.level <= logging.DEBUG:
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    for handler in log.handlers:
+        logging.getLogger('sqlalchemy.engine').addHandler(handler)
+
+
 @api_view(['GET'])
 @login_required
 def grains(request):
@@ -297,14 +303,13 @@ it would appear very soon after).
     """
     serializer_class = EventSerializer
 
-    def list(self, request):
-        # TODO pagination
-        N = 100
-        events = self.session.query(Event).order_by(Event.when.desc())[:N]
+    @property
+    def queryset(self):
+        return self.session.query(Event).order_by(Event.when.desc())
 
-        return Response(EventSerializer(events, many=True).data)
+    def list(self, request):
+        return Response(self._paginate(request, self.queryset))
 
     def list_cluster(self, request, fsid):
-        N = 100
-        events = self.session.query(Event).filter_by(fsid=fsid).order_by(Event.when.desc())[:N]
-        return Response(EventSerializer(events, many=True).data)
+        objects = self.queryset.filter_by(fsid=fsid)
+        return Response(self._paginate(request, objects))

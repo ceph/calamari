@@ -17,6 +17,7 @@ cluster_contact_threshold = 60
 [calamari_web]
 
 log_path = {{calamari_root}}/dev/calamari.log
+log_level = WARN
 db_engine = django.db.backends.sqlite3
 db_name = {{calamari_root}}/dev/frontend.db
 db_user = ""
