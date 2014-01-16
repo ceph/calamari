@@ -254,7 +254,8 @@ def main():
         sys.stdout.write('Hit <return> to tear down\n')
         _ = sys.stdin.readline()
 
-        phyz_host_table = {'precise': 'mira013', 'centos64': 'mira017'}
+        phyz_host_table = {'precise': 'mira014', 'centos64': 'mira017',
+                           'wheezy': 'mira007',}
         physhost = phyz_host_table[hrelease] 
         phost = "{physhost}.front.sepia.ceph.com".format(physhost=physhost)
         run_cmd('ssh ubuntu@{phys_host} "sudo virsh suspend {shost}"'.format(shost=shost, phys_host=phost))
