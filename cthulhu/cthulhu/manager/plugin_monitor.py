@@ -1,8 +1,10 @@
 import gevent
-import os
+from gevent import Timeout
 import importlib
-import sys
+import os
 import salt.client
+import sys
+from cthulhu.log import log
 
 class PluginMonitor(gevent.greenlet.Greenlet):
     """
@@ -22,28 +24,27 @@ class PluginMonitor(gevent.greenlet.Greenlet):
     def get_data(self, plugin_name):
         return self.plugin_data.get(plugin_name)
 
-    def load_status_check(self):
-        self.load_module('status_check', self.status_checks)
-       
-    def load_status_processors(self):
-        self.load_module('status_processor', self.status_processors)
-
-    def load_module(self, class_name, index):
+    def load_plugins(self):
         """
-        Try to load class_name from self.plugin_path, store in index keyed by module_name
+        Try to load a status_check and status_processor from each module in self.plugin_path, store keyed by module_name
         """
         for plugin in os.listdir(self.plugin_path):
             plugin = plugin.split('.')[0]
             if plugin in ('__init__', 'README'):
                 continue
             # sys.stderr.write(plugin)
+            status_processor = None
+            status_check = None
             try:
                 # TODO it should be an error loading the plugin if either module fails to load
-                index[plugin] = importlib.import_module('.'.join((plugin, class_name)))
-                # sys.stderr.write(str(dir(index[plugin])))
+                status_check = importlib.import_module('.'.join((plugin, 'status_check')))
+                status_processor = importlib.import_module('.'.join((plugin, 'status_processor')))
+                # TODO make an instance of each
             except ImportError:
-                # TODO log failure here
-                pass
+                log.exception("Error importing plugin %s" % plugin)
+
+            self.status_processors[plugin] = status_processor
+            self.status_checks[plugin] = status_check
                
     # We run this once we've gotten all the checks of a generation
     # TODO rename to run_status_processors and fix it to operate on a different data struct
@@ -53,19 +54,29 @@ class PluginMonitor(gevent.greenlet.Greenlet):
             # TODO what about failure
             self.plugin_data[name] = x.run()
 
-    # TODO set timeout based on the plugin we are running, parameterize this function
-    def run_status_checks(self):
-        from gevent import Timeout
-        timeout = Timeout(2)
-        # TODO this isn't just as simple as run them every so often
+    def run_status_checks(self, plugin_name='acmeplugin'):
         # we need to register them once we parse them
-        # also don't bomb if we can't load a processor for these checks ?
-        ret = self.salt_client.cmd_iter_no_block('*', 'acmeplugin.status_check')
+        plugin = self.status_checks.get(plugin_name)
+        timeout = Timeout(plugin.frequency)
+        self.plugin_data[plugin_name] = {}
+
+        ret = self.salt_client.cmd_iter_no_block('*', '.'.join((plugin_name,plugin.__name__)))
+
         timeout.start()
+        finished = False
         try:
             for value in ret:
-                print value
+                # TODO handle the case where salt is telling up that the plugin is not available
+                self.plugin_data[plugin_name].update(value)
                 gevent.sleep(0)
-            # self.salt_client.cmd('cephmon', 'status-check.foo')
-        except Timeout:
-            print 'finished early'
+
+            finished = True
+            gevent.sleep(plugin.frequency)
+        except Timeout, t:
+            if t is not timeout:
+                raise # someone else getting timed out
+
+            if not finished:
+                log.exception("Did not finish %s" % plugin)
+
+        # TODO run the status processor
