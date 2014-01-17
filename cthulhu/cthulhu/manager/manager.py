@@ -40,13 +40,13 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
         event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        event.subscribe("ceph/heartbeat/")
+        event.subscribe("ceph/cluster/")
 
         while not self._complete.is_set():
-            data = event.get_event(tag="ceph/heartbeat/")
+            data = event.get_event(tag="ceph/cluster/")
             if data is not None:
                 try:
-                    if 'tag' in data and data['tag'].startswith("ceph/heartbeat/"):
+                    if 'tag' in data and data['tag'].startswith("ceph/cluster/"):
                         cluster_data = data['data']
                         if not cluster_data['fsid'] in self._manager.clusters:
                             self._manager.on_discovery(data['id'], cluster_data)
@@ -68,7 +68,7 @@ class Manager(object):
     """
     Manage a collection of ClusterMonitors.
 
-    Subscribe to ceph/heartbeat events, and create a ClusterMonitor
+    Subscribe to ceph/cluster events, and create a ClusterMonitor
     for any FSID we haven't seen before.
     """
 
@@ -92,7 +92,7 @@ class Manager(object):
         # FSID to ClusterMonitor
         self.clusters = {}
 
-        # Handle all ceph/services messages
+        # Handle all ceph/server messages
         self.servers = ServerMonitor(self.persister)
 
         # Generate events on state changes

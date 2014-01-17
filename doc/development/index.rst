@@ -21,12 +21,14 @@ Contents
    testing
    coding_style
    coverage
-   requests
    OSX
    building_packages
    cthulhu_components
+   communications
    cthulhu_locking
    persistence
+   requests
+
 
 Indices and tables
 ==================

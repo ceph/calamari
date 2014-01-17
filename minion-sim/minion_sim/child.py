@@ -54,9 +54,9 @@ def main():
 
                 report_clusters[fsid] = cluster.get_heartbeat(fsid)
 
-        __salt__['event.fire_master'](services, "ceph/services")
+        __salt__['event.fire_master'](services, "ceph/server")
         for fsid, cluster_data in report_clusters.items():
-            __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
+            __salt__['event.fire_master'](cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     def get_cluster_object(cluster_name, sync_type, since):
         return cluster.get_cluster_object(cluster_name, sync_type, since)

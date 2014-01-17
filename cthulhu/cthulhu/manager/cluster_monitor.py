@@ -139,15 +139,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             if ev is not None:
                 data = ev['data']
                 tag = ev['tag']
-                log.debug("Event tag=%s" % tag)
+                log.debug("Event %s/tag=%s" % (data['id'] if 'id' in data else None, tag))
 
                 # I am interested in the following tags:
                 # - salt/job/<jid>/ret/<minion id> where jid is one that I started
                 #   (this includes ceph.rados_command and ceph.get_cluster_object)
-                # - ceph/heartbeat/<fsid> where fsid is my fsid
+                # - ceph/cluster/<fsid> where fsid is my fsid
 
                 try:
-                    if tag.startswith("ceph/heartbeat/{0}".format(self.fsid)):
+                    if tag.startswith("ceph/cluster/{0}".format(self.fsid)):
                         # A ceph.heartbeat beacon
                         self.on_heartbeat(data['id'], data['data'])
                     elif re.match("^salt/job/\d+/ret/[^/]+$", tag):

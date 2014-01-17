@@ -132,20 +132,20 @@ class ServerMonitor(greenlet.Greenlet):
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
         subscription = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        subscription.subscribe("ceph/services")
+        subscription.subscribe("ceph/server")
 
         while not self._complete.is_set():
-            ev = subscription.get_event(tag="ceph/services")
+            ev = subscription.get_event(tag="ceph/server")
 
             if ev is not None:
-                log.info("ServerMonitor got ceph/services message from %s" % ev['id'])
+                log.info("ServerMonitor got ceph/server message from %s" % ev['id'])
                 try:
                     # NB assumption that FQDN==minion_id is true unless
                     # someone has modded their salt minion config.
                     self.on_service_heartbeat(ev['id'], ev['data'])
                 except:
                     log.debug("Message detail: %s" % json.dumps(ev))
-                    log.exception("Error handling ceph/services message from %s" % ev['id'])
+                    log.exception("Error handling ceph/server message from %s" % ev['id'])
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -244,7 +244,7 @@ class ServerMonitor(greenlet.Greenlet):
                 osds_in_map.add(service_id)
                 if not server_state.managed:
                     # Only pay attention to these services for unmanaged servers,
-                    # for managed servers rely on ceph/services salt messages
+                    # for managed servers rely on ceph/server salt messages
                     self._register_service(server_state, service_id, running=bool(osd['up']))
 
         # Remove ServiceState for any OSDs for this FSID which are not
