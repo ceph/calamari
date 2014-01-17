@@ -13,6 +13,7 @@ import select
 from subprocess import Popen, PIPE, check_output, CalledProcessError
 import tempfile
 import textwrap
+import time
 import webbrowser
 
 OWNER='calamari-autotest@odds'
@@ -215,55 +216,78 @@ def setup_localhost_cluster(host, flavor):
     cmd = 'ssh ubuntu@{host} "cat /tmp/create.cluster.sql | sudo sqlite3 /opt/calamari/webapp/calamari/db.sqlite3"'.format(host=host)
     return run_cmd(cmd)
 
+def wait_for_state(vmname, physhost, state):
+    wr_red('Waiting for {vmname} to be in state {state}\n'.format(
+        vmname=vmname, state=state))
+    cmd = 'virsh -c {physhost} domstate {vmname}'.format(
+        physhost=physhost,
+        vmname=vmname
+    )
+    while True:
+        proc = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+        o, e = proc.communicate()
+        if proc.returncode:
+            wr_red(e)
+            return False
+        if state in o:
+            return True
+        else:
+            wr_red('Waiting for {vmname} to be in state {state}\n'.format(
+                vmname=vmname, state=state))
+            time.sleep(5)
+
+RELEASE_MAP = {
+    'precise': dict(flavor='deb', vmname='calamari-precise', phost='mira014'),
+    'wheezy': dict(flavor='deb', vmname='calamari-wheezy', phost='mira007'),
+    'centos': dict(flavor='rpm', vmname='calamari-centos64', phost='mira017'),
+    'rhel': dict(flavor='rpm', vmname='calamari-rhel64', phost='mira020'),
+}
+
 def main():
     release=sys.argv[1] if len(sys.argv) >= 2 else 'precise'
-    if release in ['precise', 'wheezy']:
-        flavor = 'deb'
-    elif release in ['rhel', 'centos']:
-        flavor = 'rpm'
-    else:
+    try:
+        flavor = RELEASE_MAP[release]['flavor']
+    except KeyError:
         wr_red('Unsupported release ' + release)
         return 1
 
     branch = sys.argv[2] if len(sys.argv) >= 3 else 'master'
 
-    retcode = 0
-    # use hostname from release
-    calamari_xnames = {'centos': 'centos64'}
-    if release in calamari_xnames:
-        hrelease = calamari_xnames[release]
-    else:
-        hrelease = release
-    host =  'calamari-{hst}.front.sepia.ceph.com'.format(hst=hrelease)
-    shost =  'calamari-{hst}'.format(hst=hrelease)
-    try:
-        #setup_realname_crushmap(host.split('.')[0])
-        setup_realname_crushmap(host)
-        if not install_repokey(host, flavor) or \
-           not install_repo(host, release, flavor, branch) or \
-           not install_package('calamari-agent', host, flavor) or \
-           not edit_diamond_config(host) or \
-           not install_package('calamari-restapi', host, flavor) or \
-           not install_package('calamari-server', host, flavor) or \
-           not install_package('calamari-clients', host, flavor) or \
-           not disable_default_nginx(host, flavor):
-            return 1
+    vmname = RELEASE_MAP[release]['vmname']
+    host = vmname + '.front.sepia.ceph.com'
 
-        setup_localhost_cluster(host, flavor)
-        webbrowser.open('http://{host}/'.format(host=host))
-        sys.stdout.write('Hit <return> to tear down\n')
-        _ = sys.stdin.readline()
+    physhost = RELEASE_MAP[release]['phost']
 
-        phyz_host_table = {'precise': 'mira014', 'centos64': 'mira017',
-                           'wheezy': 'mira007',}
-        physhost = phyz_host_table[hrelease] 
-        phost = "{physhost}.front.sepia.ceph.com".format(physhost=physhost)
-        run_cmd('ssh ubuntu@{phys_host} "sudo virsh suspend {shost}"'.format(shost=shost, phys_host=phost))
-        rev_cmd = 'ssh ubuntu@{phys_host} "sudo virsh snapshot-revert {shost} gold"'.format(host=host, phys_host=phost, shost=shost)
-        run_cmd(rev_cmd)
-        run_cmd('ssh ubuntu@{phys_host} "sudo virsh resume {shost}"'.format(shost=shost, phys_host=phost))
-    finally:
-        pass
+    wait_for_state(vmname, physhost, 'shut off')
+    # start up vm at its gold-snapshot state
+    run_cmd('virsh -c {physhost} snapshot-revert {vmname} gold'.format(
+        physhost=physhost, vmname=vmname))
+    wait_for_state(vmname, physhost, 'running')
+
+    setup_realname_crushmap(host)
+    if not install_repokey(host, flavor) or \
+       not install_repo(host, release, flavor, branch) or \
+       not install_package('calamari-agent', host, flavor) or \
+       not edit_diamond_config(host) or \
+       not install_package('calamari-restapi', host, flavor) or \
+       not install_package('calamari-server', host, flavor) or \
+       not install_package('calamari-clients', host, flavor) or \
+       not disable_default_nginx(host, flavor):
+        return 1
+
+    setup_localhost_cluster(host, flavor)
+    webbrowser.open('http://{host}/'.format(host=host))
+    sys.stdout.write('Hit <return> to tear down\n')
+    _ = sys.stdin.readline()
+
+    # shut it down, revert to gold (which restarts), shut it down again
+    run_cmd('virsh -c {physhost} destroy {vmname}'.format(
+        physhost=physhost, vmname=vmname))
+    run_cmd('virsh -c {physhost} snapshot-revert {vmname} gold'.format(
+        physhost=physhost, vmname=vmname))
+    run_cmd('virsh -c {physhost} destroy {vmname}'.format(
+        physhost=physhost, vmname=vmname))
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main())
