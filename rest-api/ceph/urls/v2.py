@@ -66,12 +66,14 @@ urlpatterns = patterns(
         name='cluster-pool-detail'),
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
-    # TODO implement list views for sync_object and derived_object that tell
-    # you what's available, and ensure those lists are exposed in API docs too
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',
+        ceph.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
-        ceph.views.v2.SyncObject.as_view(), name='cluster-sync-object'),
+        ceph.views.v2.SyncObject.as_view({'get': 'retrieve'}), name='cluster-sync-object'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object/(?P<derived_type>[a-zA-Z0-9-_]+)$',
-        ceph.views.v2.DerivedObject.as_view(), name='cluster-derived-object'),
+        ceph.views.v2.DerivedObject.as_view({'get': 'retrieve'}), name='cluster-derived-object'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object$',
+        ceph.views.v2.DerivedObject.as_view({'get': 'describe'}), name='cluster-derived-object-describe'),
 
     # All about servers
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$', ceph.views.v2.ServerViewSet.as_view({'get': 'retrieve_grains'})),
