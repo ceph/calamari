@@ -2,25 +2,27 @@ from cthulhu.manager import plugin_monitor
 from nose.tools import with_setup
 import sys
 import types
+from unittest import TestCase
 
-class status_check(object):
+
+class status_check(TestCase):
 
     frequency = .75
     @staticmethod
     def run():
         pass
 
-class status_processor_fail(object):
+class status_processor_fail(TestCase):
     def __init__(self):
         raise ImportError
 
-class fakeProcessor(object):
+class fakeProcessor(TestCase):
 
     @staticmethod
     def run():
         return {'name': 'acmeplugin', 'values': 12345}
 
-class TestPluginMonitor(object):
+class TestPluginMonitor(TestCase):
     def setUp(self):
         self.plugin_monitor = plugin_monitor.PluginMonitor(plugin_path='cthulhu/cthulhu/tests/plugins')
 
@@ -39,7 +41,7 @@ class TestPluginMonitor(object):
         assert(isinstance(plugins[0][0], types.ModuleType))
 
 
-class TestStatusChecksIntegration(object):
+class TestStatusChecksIntegration(TestCase):
 
     def setUp(self):
         self.plugin_monitor = plugin_monitor.PluginMonitor(plugin_path='cthulhu/cthulhu/tests/plugins')
@@ -62,7 +64,7 @@ class TestStatusChecksIntegration(object):
     def testThatFakeAndFileEquate(self):
         pass
 
-class TestModules(object):
+class TestModules(TestCase):
     def setUp(self):
         self.plugin_monitor = plugin_monitor.PluginMonitor(plugin_path='cthulhu/cthulhu/tests/plugins')
 
