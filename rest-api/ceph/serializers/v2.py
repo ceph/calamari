@@ -8,9 +8,15 @@ class ClusterSerializer(serializers.Serializer):
     class Meta:
         fields = ('update_time', 'id', 'name')
 
-    update_time = serializers.DateTimeField()
-    name = serializers.Field()
-    id = serializers.Field()
+    update_time = serializers.DateTimeField(
+        help_text="The time at which the last status update from this cluster was received"
+    )
+    name = serializers.Field(
+        help_text="Human readable cluster name, not a unique identifier"
+    )
+    id = serializers.Field(
+        help_text="The FSID of the cluster, universally unique"
+    )
 
 
 class SyncObjectSerializer(serializers.Serializer):

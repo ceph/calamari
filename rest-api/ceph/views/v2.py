@@ -37,6 +37,9 @@ def grains(request):
     """
 The salt grains for the host running Calamari server.  These are variables
 from Saltstack that tell us useful properties of the host.
+
+The fields in this resource are passed through verbatim from SaltStack, see
+the examples for which fields are available.
     """
     return Response(_get_local_grains())
 
@@ -127,6 +130,19 @@ Calamari accepts messages from a server, the server's key must be accepted.
 
 
 class ClusterViewSet(RPCViewSet):
+    """
+A Ceph cluster, uniquely identified by its FSID.  All Ceph services such
+as OSDs and mons are namespaced within a cluster.  Servers may host services
+for more than one cluster, although usually they only hold one.
+
+Note that the ``name`` attribute of a Ceph cluster has no uniqueness,
+code consuming this API should always use the FSID to identify clusters.
+
+Using the DELETE verb on a Ceph cluster will cause the Calamari server
+to drop its records of the cluster and services within the cluster.  However,
+if the cluster still exists on servers managed by Calamari, it will be immediately
+redetected: only use DELETE on clusters which really no longer exist.
+    """
     serializer_class = ClusterSerializer
 
     def list(self, request):

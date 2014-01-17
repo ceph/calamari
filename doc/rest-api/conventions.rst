@@ -12,6 +12,16 @@ the request ID like this:
 
     {'request_id': 'xxx'}
 
+
+Dates and times
+---------------
+
+Date/time fields in the API are always sent as timezone-aware ISO-8601 time strings
+like ``2014-01-17T12:19:26.317355+00:00``.  Data structures passed through verbatim
+from the Ceph cluster may leave off the timezone qualifier, and should be interpreted
+as UTC.
+
+
 Use of HTTP verbs
 -----------------
 

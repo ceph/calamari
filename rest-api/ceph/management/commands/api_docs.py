@@ -203,7 +203,8 @@ class ApiIntrospector(object):
         for url_pattern in url_patterns:
             methods = _url_pattern_methods(url_pattern)
 
-            row = ["%s" % _pretty_url(self.prefix, url_pattern)]
+            row = [":doc:`%s <%s>`" % (_pretty_url(self.prefix, url_pattern),
+                                       self._example_document_name(_stripped_url(self.prefix, url_pattern)))]
             for v in VERBS:
                 if v in methods:
                     row.append("Yes")
