@@ -15,16 +15,14 @@ EXAMPLES_FILE = "api_examples.json"
 RESOURCES_FILE = "resources.rst"
 EXAMPLES_PREFIX = "api_example_"
 
+old_as_view = rest_framework.viewsets.ViewSetMixin.as_view
+@classmethod
+def as_view(cls, actions=None, **initkwargs):
+    view = old_as_view.__func__(cls)
+    view._actions = actions
+    return view
 
-class DocviewSetMixin(rest_framework.viewsets.ViewSetMixin):
-    @classmethod
-    def as_view(cls, actions=None, **initkwargs):
-        view = super(DocviewSetMixin, cls).as_view(actions, **initkwargs)
-        view._actions = actions
-        return view
-
-
-rest_framework.viewsets.ViewSetMixin = DocviewSetMixin
+rest_framework.viewsets.ViewSetMixin.as_view = as_view
 
 # >>> RsT table code borrowed from http://stackoverflow.com/a/17203834/99876
 
