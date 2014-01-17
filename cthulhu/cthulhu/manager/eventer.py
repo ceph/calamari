@@ -1,12 +1,12 @@
 from collections import defaultdict
 import datetime
-from dateutil import tz
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
 from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import OsdMap, Health, MonStatus
 from cthulhu.manager import config
 from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
+from cthulhu.util import now
 
 import gevent.event
 import gevent.greenlet
@@ -25,10 +25,6 @@ GRACE_PERIOD = 30
 # we generate an event?
 CONTACT_THRESHOLD = int(config.get('cthulhu', 'server_contact_threshold'))
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))
-
-
-def now_utc():
-    return datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
 
 
 class Eventer(gevent.greenlet.Greenlet):
@@ -72,11 +68,11 @@ class Eventer(gevent.greenlet.Greenlet):
         :param associations: Optional extra attributes to associate
                              the event with a particular cluster/server/service
         """
-        now = now_utc()
-        log.info("Eventer._emit: %s/%s/%s" % (now, severity_str(severity), message))
+        now_utc = now()
+        log.info("Eventer._emit: %s/%s/%s" % (now_utc, severity_str(severity), message))
 
         self._events.append(Event(
-            when=now,
+            when=now_utc,
             message=message,
             severity=severity,
             **associations
@@ -125,7 +121,7 @@ class Eventer(gevent.greenlet.Greenlet):
         """
         log.debug("Eventer.on_tick")
 
-        now = now_utc()
+        now_utc = now()
 
         for fqdn, server_state in self._manager.servers.servers.items():
             if not server_state.managed:
@@ -133,7 +129,7 @@ class Eventer(gevent.greenlet.Greenlet):
                 # worry about whether they sent us one recently.
                 continue
 
-            if now - server_state.last_contact > datetime.timedelta(seconds=CONTACT_THRESHOLD):
+            if now_utc - server_state.last_contact > datetime.timedelta(seconds=CONTACT_THRESHOLD):
                 if fqdn not in self._servers_complained:
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
@@ -145,7 +141,7 @@ class Eventer(gevent.greenlet.Greenlet):
                     self._servers_complained.discard(fqdn)
 
         for fsid, cluster_monitor in self._manager.clusters.items():
-            if cluster_monitor.update_time is None or now - cluster_monitor.update_time > datetime.timedelta(
+            if cluster_monitor.update_time is None or now_utc - cluster_monitor.update_time > datetime.timedelta(
                     seconds=CLUSTER_CONTACT_THRESHOLD):
                 if fsid not in self._clusters_complained:
                     self._emit(WARNING, "Cluster '{name}' is late reporting in".format(name=cluster_monitor.name),

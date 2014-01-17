@@ -15,7 +15,7 @@ class SyncObject(Base):
     fsid = Column(Text, primary_key=True)
     sync_type = Column(String, primary_key=True)
     version = Column(Integer, nullable=True, primary_key=True)
-    when = Column(DateTime)
+    when = Column(DateTime, index=True)
     data = Column(Text)
 
     def __repr__(self):

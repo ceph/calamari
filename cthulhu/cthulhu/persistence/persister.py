@@ -2,7 +2,8 @@
 
 import json
 from collections import namedtuple
-#import logging
+import logging
+import datetime
 
 import gevent.greenlet
 import gevent.queue
@@ -10,13 +11,16 @@ import gevent.event
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from cthulhu.manager import config
 
 from cthulhu.persistence import Base
+from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.servers import Server, Service
-# I have to import this to get create_all to see it :-/
+# FIXME I have to import this to get create_all to see it :-/
 from cthulhu.persistence.event import Event
 Event.foo = ""  # STFU pyflakes
-from cthulhu.persistence.sync_objects import SyncObject
+
+from cthulhu.util import now
 from cthulhu.log import log
 
 Session = sessionmaker()
@@ -28,6 +32,9 @@ def initialize(db_path):
 
 
 DeferredCall = namedtuple('DeferredCall', ['fn', 'args', 'kwargs'])
+
+
+CLUSTER_MAP_RETENTION = datetime.timedelta(seconds=int(config.get('cthulhu', 'cluster_map_retention')))
 
 
 class Persister(gevent.greenlet.Greenlet):
@@ -44,10 +51,10 @@ class Persister(gevent.greenlet.Greenlet):
 
         self._session = Session()
 
-        #if log.level <= logging.DEBUG:
-        #    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-        #    for handler in log.handlers:
-        #        logging.getLogger('sqlalchemy.engine').addHandler(handler)
+        if log.level <= logging.DEBUG:
+            logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+            for handler in log.handlers:
+                logging.getLogger('sqlalchemy.engine').addHandler(handler)
 
     def __getattribute__(self, item):
         """
@@ -73,8 +80,14 @@ class Persister(gevent.greenlet.Greenlet):
                     return object.__getattribute__(self, item)
 
     def _update_sync_object(self, fsid, sync_type, version, when, data):
-        # TODO: FIFO logic with count limit
         self._session.add(SyncObject(fsid=fsid, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
+
+        # Time-limited FIFO
+        threshold = now() - CLUSTER_MAP_RETENTION
+        self._session.query(SyncObject).filter(
+            SyncObject.when < threshold,
+            SyncObject.fsid == fsid,
+            SyncObject.sync_type == sync_type).delete()
 
     def _create_server(self, server):
         self._session.add(server)

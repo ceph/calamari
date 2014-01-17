@@ -6,8 +6,6 @@ individual hosts with no regard to the relations between them.
 """
 from collections import defaultdict, namedtuple
 import json
-import datetime
-from dateutil import tz
 
 from gevent import greenlet
 from gevent import event
@@ -22,6 +20,7 @@ from cthulhu.manager import salt_config, config
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from cthulhu.manager.types import OsdMap, MonMap
 from cthulhu.persistence.servers import Server, Service
+from cthulhu.util import now
 
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
@@ -32,13 +31,6 @@ CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 #   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
 #   server in ServerMonitor.  Could just be to log to begin with, later hook into event
 #   generation.
-
-
-def now():
-    """
-    A tz-aware now
-    """
-    return datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
 
 
 class GrainsNotFound(Exception):
