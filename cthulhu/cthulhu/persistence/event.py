@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, DateTime
+from sqlalchemy import Column, Integer, Text, DateTime, Index
 from cthulhu.persistence import Base
 
 
@@ -38,7 +38,7 @@ class Event(Base):
     # Time at which event was synthesized by Eventer
     when = Column(DateTime(timezone=True))
 
-    severity = Column(Integer)
+    severity = Column(Integer, index=True)
 
     # Human readable message
     message = Column(Text)
@@ -51,6 +51,17 @@ class Event(Base):
     service_type = Column(Text, nullable=True)
     # Optionally associate with a particular service (service_type must be set)
     service_id = Column(Text, nullable=True)
+
+    __table_args__ = (
+        # For looking up by specific service
+        Index('ix_cthulhu_event_fsid_type_id', "fsid", "service_type", "service_id"),
+        # For looking up events for one cluster
+        Index('ix_cthulhu_event_fsid', "fsid"),
+        # For looking up events for one server
+        Index('ix_cthulhu_event_fqdn', "fqdn"),
+        # For looking up events less than a certain severity
+        Index('ix_cthulhu_event_severity', "severity")
+    )
 
     def __repr__(self):
         return "<Event %s @ %s>" % (self.id, self.when)
