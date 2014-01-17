@@ -1,10 +1,7 @@
 from cthulhu.manager import manager, rpc, derived, cluster_monitor
+from unittest import TestCase
 
-
-from nose.tools import with_setup
-
-
-class TestManager(object):
+class TestManager(TestCase):
     def setUp(self):
         self.manager = manager.Manager()
     
@@ -15,7 +12,7 @@ class TestManager(object):
     def testCreateManager(self):
         assert self.manager != None
 
-class TestRpcThread(object):
+class TestRpcThread(TestCase):
     def setUp(self):
         self.rpc_thread = rpc.RpcThread(manager.Manager())
 
@@ -26,10 +23,10 @@ class TestRpcThread(object):
         assert self.rpc_thread != None
 
 
-class TestDerivedObjects(object):
+class TestDerivedObjects(TestCase):
 
     def setUp(self):
-        self.derived_object = derived.DerivedObjects()
+        self.derived_TestCase = derived.DerivedObjects()
 
     def tearDown(self):
         pass
@@ -38,10 +35,10 @@ class TestDerivedObjects(object):
         pass
 
 
-class TestSyncObjects(object):
+class TestSyncObjects(TestCase):
 
     def setUp(self):
-        self.sync_objects = cluster_monitor.SyncObjects()
+        self.sync_TestCases = cluster_monitor.SyncObjects()
 
     def tearDown(self):
         pass
@@ -50,7 +47,7 @@ class TestSyncObjects(object):
         pass
 
 
-class TestClusterMonitor(object):
+class TestClusterMonitor(TestCase):
     def setUp(self):
         self.cluster_monitor = cluster_monitor.ClusterMonitor(1, "None", None, None, [])
 
