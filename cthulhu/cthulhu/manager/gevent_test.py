@@ -10,12 +10,13 @@ def run_check(name, delay):
   except Timeout, e:
     if e is not t:
       raise
-  print name
+  return name
 
 def watcher(check, name, delay):
   while(1):
     run = gevent.spawn(check, name, delay)
     run.join()
+    print run.value + 'has rejoined us'
     print 'processing ' + name
 
 def launch():
