@@ -110,7 +110,7 @@ class ServerMonitor(greenlet.Greenlet):
     - The ceph.services salt message from managed servers
     - Updates to the OSD map which may tell us about unmanaged servers
     """
-    def __init__(self, persister):
+    def __init__(self, persister, eventer):
         super(ServerMonitor, self).__init__()
 
         self._persister = persister
@@ -129,6 +129,8 @@ class ServerMonitor(greenlet.Greenlet):
 
         self._complete = event.Event()
 
+        self._eventer = eventer
+
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
         subscription = salt.utils.event.MasterEvent(salt_config['sock_dir'])
@@ -142,7 +144,7 @@ class ServerMonitor(greenlet.Greenlet):
                 try:
                     # NB assumption that FQDN==minion_id is true unless
                     # someone has modded their salt minion config.
-                    self.on_service_heartbeat(ev['id'], ev['data'])
+                    self.on_server_heartbeat(ev['id'], ev['data'])
                 except:
                     log.debug("Message detail: %s" % json.dumps(ev))
                     log.exception("Error handling ceph/server message from %s" % ev['id'])
@@ -294,21 +296,22 @@ class ServerMonitor(greenlet.Greenlet):
             raise GrainsNotFound(fqdn)
 
     @nosleep
-    def on_service_heartbeat(self, fqdn, services_data):
+    def on_server_heartbeat(self, fqdn, services_data):
         """
         Call back for when a ceph.service message is received from a salt minion
         """
         log.debug("ServerMonitor.on_service_heartbeat: %s" % fqdn)
         # For any service which was last reported on this server but
         # is now gone, mark it as not running
+        new_server = True
         try:
             server_state = self.servers[fqdn]
+            new_server = False
         except KeyError:
             # Look up the grains for this server, we need to know its hostname in order
             # to resolve this vs. the OSD map.
             hostname = self._get_grains(fqdn)['host']
 
-            new_server = True
             if hostname in self.hostname_to_server:
                 server_state = self.hostname_to_server[hostname]
                 if not server_state.managed:
@@ -321,6 +324,8 @@ class ServerMonitor(greenlet.Greenlet):
                     self.servers[server_state.fqdn] = server_state
                     self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
                     new_server = False
+                    log.info("Server %s went from unmanaged to managed" % fqdn)
+                    self._eventer.on_server(server_state)
                 else:
                     # We will go on to treat these as distinct servers even though
                     # they have the same hostname
@@ -328,17 +333,18 @@ class ServerMonitor(greenlet.Greenlet):
                         fqdn, server_state.fqdn, hostname
                     ))
 
-            if new_server:
-                server_state = ServerState(fqdn, hostname, managed=True,
-                                           last_contact=now())
-                self.inject_server(server_state)
-                self._persister.create_server(Server(
-                    fqdn=server_state.fqdn,
-                    hostname=server_state.hostname,
-                    managed=server_state.managed,
-                    last_contact=server_state.last_contact
-                ))
-                log.info("Saw server %s for the first time" % server_state)
+        if new_server:
+            hostname = self._get_grains(fqdn)['host']
+            server_state = ServerState(fqdn, hostname, managed=True,
+                                       last_contact=now())
+            self.inject_server(server_state)
+            self._persister.create_server(Server(
+                fqdn=server_state.fqdn,
+                hostname=server_state.hostname,
+                managed=server_state.managed,
+                last_contact=server_state.last_contact
+            ))
+            log.info("Saw server %s for the first time" % server_state)
 
         server_state.last_contact = now()
         self._persister.update_server(server_state.fqdn, last_contact=server_state.last_contact)
@@ -354,6 +360,11 @@ class ServerMonitor(greenlet.Greenlet):
             if service_state.running:
                 log.info("Service %s stopped on server %s" % (service_state, server_state))
                 service_state.running = False
+
+        if new_server:
+            # We do this at the end so that by the time we emit the event
+            # the ServiceState objects have been created
+            self._eventer.on_server(server_state)
 
     def _register_service(self, server_state, service_id, running):
         try:

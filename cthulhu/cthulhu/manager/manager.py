@@ -92,11 +92,11 @@ class Manager(object):
         # FSID to ClusterMonitor
         self.clusters = {}
 
-        # Handle all ceph/server messages
-        self.servers = ServerMonitor(self.persister)
-
         # Generate events on state changes
-        self.eventer = Eventer(self.persister, self.notifier, self.servers, self.clusters)
+        self.eventer = Eventer(self)
+
+        # Handle all ceph/server messages
+        self.servers = ServerMonitor(self.persister, self.eventer)
 
     def delete_cluster(self, fs_id):
         """
