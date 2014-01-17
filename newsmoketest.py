@@ -6,12 +6,9 @@
 # basic functionality
 #
 
-import datetime
-import os
 import sys
 import select
-from subprocess import Popen, PIPE, check_output, CalledProcessError
-import tempfile
+from subprocess import Popen, PIPE, check_output
 import textwrap
 import time
 import webbrowser
