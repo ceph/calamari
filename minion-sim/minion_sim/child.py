@@ -2,6 +2,8 @@ import os
 import sys
 import xmlrpclib
 import yaml
+import random
+import gevent
 from minion_sim.log import log
 
 # Because salt minion will be calling functions
@@ -34,14 +36,12 @@ def main():
     cluster = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
 
     def status_check():
-        import random
-        import gevent
-        gevent.sleep(random.random() * 3)
-        global __salt__
-        ret_val = ({'stuff':'goo'}, 'something/else')
-        # __salt__['event.fire_master'](*ret_val)
-
+        gevent.sleep(random.random())
+        ret_val = '{"SMART Health Status": "OK"}'
         return ret_val
+
+    def status_check_wily():
+        return '{"SMART Health Status": "OK"}'
 
     # Monkey-patch in a mock version of the ceph module
     def heartbeat():
@@ -129,6 +129,7 @@ def main():
         data = old_minion_mods(opts)
         data['ceph.heartbeat'] = heartbeat
         data['acmeplugin.status_check'] = status_check
+        data['wilyplugin.status_check'] = status_check_wily
         data['ceph.get_cluster_object'] = get_cluster_object
         data['ceph.rados_commands'] = rados_commands
         __salt__ = data
