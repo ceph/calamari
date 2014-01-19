@@ -171,3 +171,13 @@ class EventSerializer(serializers.Serializer):
 
     def get_severity(self, obj):
         return severity_str(obj.severity)
+
+
+class LogTailSerializer(serializers.Serializer):
+    """
+    Trivial serializer to wrap a string blob of log output
+    """
+    class Meta:
+        fields = ('lines',)
+
+    lines = serializers.CharField("Retrieved log data as a newline-separated string")

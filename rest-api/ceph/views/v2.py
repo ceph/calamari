@@ -10,10 +10,10 @@ from django.contrib.auth.decorators import login_required
 
 from ceph.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    SyncObjectSerializer, ClusterSerializer, EventSerializer
+    SyncObjectSerializer, ClusterSerializer, EventSerializer, LogTailSerializer
 from ceph.views.database_view_set import DatabaseViewSet
 
-from ceph.views.rpc_view import RPCViewSet, DataObject, RPCView
+from ceph.views.rpc_view import RPCViewSet, DataObject
 from ceph.views.v1 import _get_local_grains
 from cthulhu.manager.types import CRUSH_RULE, POOL
 
@@ -22,6 +22,7 @@ from cthulhu.config import CalamariConfig
 from cthulhu.manager.types import SYNC_OBJECT_TYPES
 from cthulhu.manager import derived
 from cthulhu.persistence.event import Event, severity_from_str, SEVERITIES
+import salt.client
 
 config = CalamariConfig()
 
@@ -364,3 +365,47 @@ in a GET, such as ``?severity=RECOVERY`` to show everything but INFO.
 
     def list_server(self, request, fqdn):
         return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fqdn=fqdn))))
+
+
+class LogTailViewSet(RPCViewSet):
+    """
+A primitive remote log viewer.
+
+Logs are retrieved on demand from the Ceph servers, so this resource will return a 503 error if no suitable
+server is available to get the logs.
+
+GETs take an optional ``lines`` parameter for the number of lines to retrieve.
+    """
+    serializer_class = LogTailSerializer
+
+    def get_cluster_log(self, request, fsid):
+        """
+        Retrieve the cluster log from one of a cluster's mons (expect it to be in /var/log/ceph/ceph.log)
+        """
+
+        lines = request.GET.get('lines', 40)
+
+        # Resolve FSID to name
+        name = self.client.get_cluster(fsid)['name']
+
+        # Resolve FSID to list of mon FQDNs
+        servers = self.client.server_list_cluster(fsid)
+        mon_fqdns = set()
+        for server in servers:
+            for service in server['services']:
+                if service['running'] and service['id'][1] == 'mon':
+                    mon_fqdns.add(server['fqdn'])
+
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
+        # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
+        # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
+        for mon_fqdn in mon_fqdns:
+            results = client.cmd(mon_fqdn, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
+            if results:
+                return Response({'lines': results[mon_fqdn]})
+            else:
+                log.info("Failed to get log from %s" % mon_fqdn)
+
+        # If none of the mons gave us what we wanted, return a 503 service unavailable
+        return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
