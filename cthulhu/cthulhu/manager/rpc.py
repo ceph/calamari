@@ -295,6 +295,14 @@ class RpcInterface(object):
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)
 
+    def pg_query(self, fsid, pgid):
+        """
+        Synchronously retrieve the "ceph pg <pgid> query" output for
+        the rare cases when a client needs this level of detail beyond
+        that which we keep in PgBrief.
+        """
+        return self._manager.clusters[fsid].pg_query(pgid)
+
 
 class RpcThread(gevent.greenlet.Greenlet):
     """

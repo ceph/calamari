@@ -88,5 +88,10 @@ urlpatterns = patterns(
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/event$', ceph.views.v2.EventViewSet.as_view({'get': 'list_server'})),
 
     # Log tail
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/log', ceph.views.v2.LogTailViewSet.as_view({'get': 'get_cluster_log'}))
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/log', ceph.views.v2.LogTailViewSet.as_view({'get': 'get_cluster_log'})),
+
+    # Placement groups
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pg/(?P<pgid>\d+\.[0-9a-z]+)/query',
+        ceph.views.v2.PlacementGroupViewSet.as_view({'get': 'get_query'}))
+
 )

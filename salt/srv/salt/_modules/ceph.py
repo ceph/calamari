@@ -125,10 +125,12 @@ def rados_commands(fsid, cluster_name, commands):
     # TODO: clarify what err_outbuf and err_outs really are, maybe give them
     # more obvious names.
 
-    # Each command is a 2-tuple of a prefix followed by an argument dictionary
-    for i, (prefix, argdict) in enumerate(commands):
-        argdict['format'] = 'json'
-        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict)
+    # Each command is a dict of 'prefix' string, 'args' dict, 'target' 2-tuple
+    for i, cmd in enumerate(commands):
+        prefix, args, target = cmd['prefix'], cmd['args'], cmd['target']
+        args['format'] = 'json'
+
+        ret, outbuf, outs = json_command(cluster_handle, target=target, prefix=prefix, argdict=args)
         if ret != 0:
             return {
                 'error': True,

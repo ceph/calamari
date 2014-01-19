@@ -409,3 +409,13 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
 
         # If none of the mons gave us what we wanted, return a 503 service unavailable
         return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class PlacementGroupViewSet(RPCViewSet):
+    """
+    Note that 'query' GETs on a PG are fulfilled by contacting the Ceph cluster
+    synchronously, so if the cluster is unavailable a 503 status code will
+    be returned.
+    """
+    def get_query(self, request, fsid, pgid):
+        return Response(self.client.pg_query(fsid, pgid))
