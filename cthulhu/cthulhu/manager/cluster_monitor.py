@@ -437,3 +437,36 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             return self._request_factories[object_type](self)
         except KeyError:
             raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
+
+    def pg_query(self, pgid):
+        if not self._favorite_mon:
+            raise RuntimeError("Unable to execute RADOS operations at this time")
+
+        # This is like doing a "ceph tell <pgid> query".
+        # 'tell' functionality is exposed in a nasty way.  MonCommands.h advertises a
+        # command called 'tell', but it doesn't really exist.  The client code (either
+        # the Ceph CLI or REST API) is responsible for noticing 'tell' invokations
+        # and rewriting them to be sent to pg_command or osd_command.  So the syntax
+        # of the tell operation, although advertised in the command signatures, is
+        # really a convention handled by client code.  We can invent whatever
+        # convention we want here.
+
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(self._favorite_mon, "ceph.rados_commands", [
+            self.fsid,
+            self.name,
+            [
+                {
+                    "prefix": "query",
+                    "args": {
+                        'pgid': pgid
+                    },
+                    "target": ("pg", pgid)
+                }
+            ]
+        ])
+        output = results[self._favorite_mon]
+        if output['error']:
+            raise RuntimeError(output['err_outs'])
+        else:
+            return output['results'][0]
