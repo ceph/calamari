@@ -1,11 +1,10 @@
 
-import glob
+import re
 import os
 import subprocess
 
 
 BASE = "/var/log"
-LOG_GLOB = "*.log"
 
 
 def _resolve(base, subpath):
@@ -16,18 +15,47 @@ def _resolve(base, subpath):
         return path
 
 
+def _is_log_file(path):
+    """
+    Checks for indications this isn't a log file of interest,
+    such as not being a normal file, ending in a number, ending in .gz
+    """
+    if not os.path.isfile(path):
+        return False
+
+    if path.endswith(".gz") or path.endswith(".bz2") or path.endswith(".zip"):
+        return False
+
+    if re.match(".+\d+$", path):
+        return False
+
+    return True
+
+
 def list_logs(subpath):
     """
-    List files ending .log within /var/log
+    Recursively list log files within /var/log, or
+    a subpath therein if subpath is not '.'
 
-    :return a list of strings
+    :return a list of strings which are paths relative to /var/log
     """
+
     path = _resolve(BASE, subpath)
     if not os.path.isdir(path):
         raise IOError("'%s' not found or not a directory" % subpath)
 
-    result = glob.glob(os.path.join(path, LOG_GLOB))
-    return [r[len(path) + 1:] for r in result]
+    files = os.listdir(path)
+    files = [os.path.join(path, f) for f in files]
+
+    log_files = [f for f in files if _is_log_file(f)]
+    log_files = [r[len(BASE) + 1:] for r in log_files]
+
+    sub_dirs = [f for f in files if os.path.isdir(f)]
+    sub_dirs = [f[len(BASE) + 1:] for f in sub_dirs]
+    for subdir in sub_dirs:
+        log_files.extend(list_logs(subdir))
+
+    return log_files
 
 
 def tail(subpath, n_lines):

@@ -409,3 +409,20 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
 
         # If none of the mons gave us what we wanted, return a 503 service unavailable
         return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def list_server_logs(self, request, fqdn):
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
+        if not results:
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(sorted(results[fqdn]))
+
+    def get_server_log(self, request, fqdn, log_path):
+        lines = request.GET.get('lines', 40)
+
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
+        if not results:
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        else:
+            return Response({'lines': results[fqdn]})
