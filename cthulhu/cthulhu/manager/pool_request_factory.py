@@ -60,7 +60,8 @@ class PoolRequestFactory(RequestFactory):
         # that they can use to associate the complaint with the 'name' field.
         commands = [
             ('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
-        return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+        return OsdMapModifyingRequest("Deleting pool '{name}'".format(name=pool_name),
+                                      self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def update(self, pool_id, attributes):
         # TODO: this is a primitive form of adding PGs, not yet sufficient for
@@ -75,22 +76,24 @@ class PoolRequestFactory(RequestFactory):
             pre_create_commands = self._pool_attribute_commands(pool_name, attributes)
             post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
             expected_pgs = attributes['pg_num']
-            return PgCreatingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name,
-                                     pre_create_commands, post_create_commands, pool_id, expected_pgs)
+            return PgCreatingRequest(
+                "Growing pool '{name}' to {size} PGs".format(name=pool_name, size=expected_pgs),
+                self._cluster_monitor.fsid, self._cluster_monitor.name,
+                pre_create_commands, post_create_commands, pool_id, expected_pgs)
         else:
             commands = self._pool_attribute_commands(pool_name, attributes)
             if not commands:
                 raise NotImplementedError(attributes)
-
-            # TODO: provide some per-object-type ability to emit human readable descriptions
-            # of what we are doing.
 
             # TOOD: provide some machine-readable indication of which objects are affected
             # by a particular request.
             # Perhaps subclass Request for each type of object, and have that subclass provide
             # both the patches->commands mapping and the human readable and machine readable
             # descriptions of it?
-            return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+            return OsdMapModifyingRequest(
+                "Modifying pool '{name}' ({attrs})".format(
+                    name=pool_name, attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
+                ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def create(self, attributes):
         # TODO: handle errors in a way that caller can show to a user, e.g.
@@ -113,4 +116,6 @@ class PoolRequestFactory(RequestFactory):
         log.debug("Post-create attributes: %s" % post_create_attrs)
         log.debug("Commands: %s" % post_create_attrs)
 
-        return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+        return OsdMapModifyingRequest(
+            "Creating pool '{name}'".format(name=attributes['name']),
+            self._cluster_monitor.fsid, self._cluster_monitor.name, commands)

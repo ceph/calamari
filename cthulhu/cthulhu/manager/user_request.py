@@ -72,10 +72,44 @@ class UserRequest(object):
         self.state = self.NEW
         self.result = None
         self.error = False
+        self.error_message = ""
+
+    def set_error(self, message):
+        self.error = True
+        self.error_message = message
 
     @property
     def jid(self):
         return self._jid
+
+    @property
+    def associations(self):
+        """
+        A dictionary of Event-compatible assocations for this request, indicating
+        which cluster/server/services we are affecting.
+        """
+        return {}
+
+    @property
+    def headline(self):
+        """
+        Single line describing what the request is trying to accomplish.
+        """
+        raise NotImplementedError()
+
+    @property
+    def status(self):
+        """
+        Single line describing which phase of the request is currently happening, useful
+        to distinguish what's going on for long running operations.  For simple quick
+        operations no need to return anything here as the headline tells all.
+        """
+        if self.state != self.COMPLETE:
+            return "Running"
+        elif self.error:
+            return "Failed (%s)" % self.error_message
+        else:
+            return "Completed successfully"
 
     def submit(self, minion_id):
         """
@@ -115,13 +149,12 @@ class UserRequest(object):
         # assume completion of a JID means the job is now done.
         self.complete()
 
-    def complete(self, error=False):
+    def complete(self):
         """
         Call this when you're all done
         """
-        self.log.info("Request %s completed with error=%s" % (self.id, error))
+        self.log.info("Request %s completed with error=%s (%s)" % (self.id, self.error, self.error_message))
         self.state = self.COMPLETE
-        self.error = error
 
     def on_map(self, sync_type, sync_objects):
         pass
@@ -133,9 +166,29 @@ class OsdMapModifyingRequest(UserRequest):
     the OsdMap sync object to catch up after execution of RADOS commands.
     """
 
-    def __init__(self, fsid, cluster_name, commands):
+    def __init__(self, headline, fsid, cluster_name, commands):
         super(OsdMapModifyingRequest, self).__init__(fsid, cluster_name, commands)
         self._await_version = None
+        self._headline = headline
+
+    @property
+    def headline(self):
+        return self._headline
+
+    @property
+    def status(self):
+        if self._await_version:
+            return "Waiting for OSD map epoch %s" % self._await_version
+        elif not self.state != self.COMPLETE:
+            return "Running remote commands"
+        else:
+            return super(OsdMapModifyingRequest, self).status
+
+    @property
+    def associations(self):
+        return {
+            'fsid': self._fsid
+        }
 
     def complete_jid(self, result):
         # My remote work is done, record the version of the map that I will wait for
@@ -171,7 +224,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     CREATING = 'creating'
     POST_CREATE = 'post_create'
 
-    def __init__(self, fsid, cluster_name, commands, post_create_commands, pool_id, pg_count):
+    def __init__(self, headline, fsid, cluster_name, commands, post_create_commands, pool_id, pg_count):
         super(PgCreatingRequest, self).__init__(fsid, cluster_name, commands)
         self._post_create_commands = post_create_commands
 
@@ -180,6 +233,15 @@ class PgCreatingRequest(OsdMapModifyingRequest):
 
         self._pool_id = pool_id
         self._pg_count = pg_count
+
+        self._headline = headline
+
+    @property
+    def status(self):
+        if self._phase == self.CREATING:
+            return "Waiting for PGs to be created"
+        else:
+            return super(PgCreatingRequest, self).status
 
     def complete_jid(self, result):
         if self._phase == self.PRE_CREATE:
@@ -235,7 +297,7 @@ class RequestCollection(object):
     wake up in a different world.
     """
 
-    def __init__(self):
+    def __init__(self, eventer):
         super(RequestCollection, self).__init__()
 
         self._by_request_id = {}
@@ -265,6 +327,7 @@ class RequestCollection(object):
             request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request
+        self._eventer.
 
     def on_map(self, sync_type, sync_objects):
         """
@@ -278,9 +341,10 @@ class RequestCollection(object):
                 try:
                     with self._update_index(request):
                         request.on_map(sync_type, sync_objects)
-                except:
+                except Exception as e:
                     log.exception("Request %s threw exception in on_map", request.id)
-                    request.complete(error=True)
+                    request.set_error("Internal error %s" % e)
+                    request.complete()
 
     def on_completion(self, data):
         """
@@ -300,7 +364,13 @@ class RequestCollection(object):
             # when a failure occurs
             if not data['success']:
                 log.error("Remote execution failed for request %s: %s" % (request.id, result))
-                request.complete(error=True)
+                if isinstance(result, dict):
+                    # Handler ran and recorded an error for us
+                    request.set_error(result['err_outs'])
+                else:
+                    # An exception, probably, stringized by salt for us
+                    request.set_error(result)
+                request.complete()
             else:
                 if request.state != UserRequest.SUBMITTED:
                     # Unexpected, ignore.
@@ -312,11 +382,12 @@ class RequestCollection(object):
                 try:
                     with self._update_index(request):
                         request.complete_jid(result)
-                except Exception:
+                except Exception as e:
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
                     # results in a terminated job, not a zombie job
                     log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
-                    request.complete(error=True)
+                    request.set_error("Internal error: %s" % e)
+                    request.complete()
 
     def _update_index(self, request):
         """

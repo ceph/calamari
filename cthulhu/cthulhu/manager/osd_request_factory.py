@@ -10,12 +10,16 @@ class OsdRequestFactory(RequestFactory):
         else:
             commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
 
-        # TODO: provide some per-object-type ability to emit human readable descriptions
-        # of what we are doing.
-
         # TOOD: provide some machine-readable indication of which objects are affected
         # by a particular request.
         # Perhaps subclass Request for each type of object, and have that subclass provide
         # both the patches->commands mapping and the human readable and machine readable
         # descriptions of it?
-        return OsdMapModifyingRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+        print_attrs = attributes.copy()
+        del print_attrs['id']
+
+        return OsdMapModifyingRequest(
+            "Modifying {cluster_name}-osd.{id} ({attrs})".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
+            ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
