@@ -37,11 +37,11 @@ def main():
 
     def status_check():
         gevent.sleep(random.random())
-        ret_val = '{"SMART Health Status": "OK"}'
+        ret_val = {"SMART Health Status": "OK"}
         return ret_val
 
     def status_check_wily():
-        return '{"SMART Health Status": "OK"}'
+        return {"SMART Health Status": "OK"}
 
     # Monkey-patch in a mock version of the ceph module
     def heartbeat():
