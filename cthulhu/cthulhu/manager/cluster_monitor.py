@@ -4,13 +4,13 @@ from dateutil.tz import tzutc
 
 from pytz import utc
 import dateutil
-import gevent
+import gevent.greenlet
+import gevent.event
 
 import salt
 import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
-import zmq
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 
@@ -40,13 +40,17 @@ class SyncObjects(object):
     """
 
     def __init__(self):
-        self._objects = dict([(t, None) for t in SYNC_OBJECT_TYPES])
+        self._objects = dict([(t, t(None, None)) for t in SYNC_OBJECT_TYPES])
 
     def set_map(self, typ, version, map_data):
-        self._objects[typ] = typ(version, map_data)
+        so = self._objects[typ] = typ(version, map_data)
+        return so
 
     def get_version(self, typ):
         return self._objects[typ].version if self._objects[typ] else None
+
+    def get_data(self, typ):
+        return self._objects[typ].data if self._objects[typ] else None
 
     def get(self, typ):
         return self._objects[typ]
@@ -65,12 +69,17 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     another to listen to user requests.
     """
 
-    def __init__(self, fsid, cluster_name, notifier, persister, servers):
+    def __init__(self, fsid, cluster_name, notifier, persister, servers, eventer):
         super(ClusterMonitor, self).__init__()
 
         self.fsid = fsid
         self.name = cluster_name
         self.update_time = None
+
+        self._notifier = notifier
+        self._persister = persister
+        self._servers = servers
+        self._eventer = eventer
 
         # Which mon we are currently using for running requests,
         # identified by minion ID
@@ -84,21 +93,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._requests = RequestCollection()
         self._derived_objects = DerivedObjects()
 
-        ctx = zmq.Context(1)
-        pub = ctx.socket(zmq.PUB)
-        pub.connect('tcp://127.0.0.1:7003')
-        self._notification_socket = pub
-
-        self._notifier = notifier
-
         self._request_factories = {
             OSD: OsdRequestFactory,
             POOL: PoolRequestFactory
         }
-
-        self._persister = persister
-
-        self._servers = servers
 
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
@@ -113,12 +111,20 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         return self._requests.get_by_id(request_id)
 
     @nosleep
+    def get_sync_object_data(self, object_type):
+        """
+        :param object_type: A SyncObject subclass
+        :return a json-serializable object
+        """
+        return self._sync_objects.get_data(object_type)
+
+    @nosleep
     def get_sync_object(self, object_type):
-        so = self._sync_objects.get(object_type)
-        if so:
-            return so.data
-        else:
-            return None
+        """
+        :param object_type: A SyncObject subclass
+        :return a SyncObject instance
+        """
+        return self._sync_objects.get(object_type)
 
     @nosleep
     def get_derived_object(self, object_type):
@@ -133,15 +139,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             if ev is not None:
                 data = ev['data']
                 tag = ev['tag']
-                log.debug("Event tag=%s" % tag)
+                log.debug("Event %s/tag=%s" % (data['id'] if 'id' in data else None, tag))
 
                 # I am interested in the following tags:
                 # - salt/job/<jid>/ret/<minion id> where jid is one that I started
                 #   (this includes ceph.rados_command and ceph.get_cluster_object)
-                # - ceph/heartbeat/<fsid> where fsid is my fsid
+                # - ceph/cluster/<fsid> where fsid is my fsid
 
                 try:
-                    if tag.startswith("ceph/heartbeat/{0}".format(self.fsid)):
+                    if tag.startswith("ceph/cluster/{0}".format(self.fsid)):
                         # A ceph.heartbeat beacon
                         self.on_heartbeat(data['id'], data['data'])
                     elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
@@ -149,6 +155,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # the tag, if salt would only let us add custom tags to our jobs.
                         # Instead we enforce a convention that all calamari jobs must include
                         # fsid in their return value.
+                        if (not isinstance(data, dict)) or not isinstance(data['return'], dict):
+                            log.warning("Bad job return: %s" % data)
+                            continue
+
                         if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
                             log.debug("Ignoring job return, not for my FSID")
                             continue
@@ -247,7 +257,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     def inject_sync_object(self, sync_type, version, data):
         sync_type = SYNC_OBJECT_STR_TYPE[sync_type]
-        self._sync_objects.set_map(sync_type, version, data)
+        old_object = self._sync_objects.get(sync_type)
+        new_object = self._sync_objects.set_map(sync_type, version, data)
 
         # The frontend would like us to maintain some derived objects that
         # munge together the PG and OSD maps into an easier-to-consume form.
@@ -266,12 +277,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     derived_objects = generator.generate(self, self._servers, dependency_data)
                     self._derived_objects.update(derived_objects)
 
+        self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
+
     @nosleep
     def on_sync_object(self, minion_id, data):
         if minion_id != self._favorite_mon:
             log.debug("Ignoring map from %s, it is not my favourite (%s)" % (minion_id, self._favorite_mon))
 
         fsid = data['fsid']
+        assert fsid == self.fsid
 
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
 
@@ -306,7 +320,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             else:
                 version = None
 
-            self._persister.update_sync_object(self.fsid, sync_type.str, version, datetime.datetime.now(tzutc()), data['data'])
+            self._persister.update_sync_object(self.fsid, sync_type.str, version,
+                                               datetime.datetime.now(tzutc()), data['data'])
 
     @nosleep
     def on_completion(self, data):

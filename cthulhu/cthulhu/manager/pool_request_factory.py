@@ -9,7 +9,7 @@ POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval", "pg_num", "pgp_n
 
 class PoolRequestFactory(RequestFactory):
     def _resolve_pool(self, pool_id):
-        for pool in self._cluster_monitor.get_sync_object(OsdMap)['pools']:
+        for pool in self._cluster_monitor.get_sync_object_data(OsdMap)['pools']:
             if pool['pool'] == pool_id:
                 return pool
         else:

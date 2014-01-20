@@ -3,6 +3,12 @@ class SyncObject(object):
     """
     An object from a Ceph cluster that we are maintaining
     a copy of on the Calamari server.
+
+    We wrap these JSON-serializable objects in a python object to:
+
+    - Decorate them with things like id-to-entry dicts
+    - Have a generic way of seeing the version of an object
+
     """
     def __init__(self, version, data):
         self.version = version
@@ -11,6 +17,15 @@ class SyncObject(object):
 
 class OsdMap(SyncObject):
     str = 'osd_map'
+
+    def __init__(self, version, data):
+        super(OsdMap, self).__init__(version, data)
+        if data is not None:
+            self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
+            self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
+        else:
+            self.osds_by_id = {}
+            self.pools_by_id = {}
 
 
 class MdsMap(SyncObject):
@@ -24,6 +39,13 @@ class MonMap(SyncObject):
 class MonStatus(SyncObject):
     str = 'mon_status'
 
+    def __init__(self, version, data):
+        super(MonStatus, self).__init__(version, data)
+        if data is not None:
+            self.mons_by_rank = dict([(m['rank'], m) for m in data['monmap']['mons']])
+        else:
+            self.mons_by_rank = {}
+
 
 class PgBrief(SyncObject):
     str = 'pg_brief'
@@ -31,6 +53,7 @@ class PgBrief(SyncObject):
 
 class Health(SyncObject):
     str = 'health'
+
 
 OSD = 'osd'
 POOL = 'pool'

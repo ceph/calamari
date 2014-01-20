@@ -54,9 +54,9 @@ def main():
 
                 report_clusters[fsid] = cluster.get_heartbeat(fsid)
 
-        __salt__['event.fire_master'](services, "ceph/services")
+        __salt__['event.fire_master'](services, "ceph/server")
         for fsid, cluster_data in report_clusters.items():
-            __salt__['event.fire_master'](cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
+            __salt__['event.fire_master'](cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     def get_cluster_object(cluster_name, sync_type, since):
         return cluster.get_cluster_object(cluster_name, sync_type, since)
@@ -110,8 +110,22 @@ def main():
             'versions': status['versions']
         }
 
-    import salt.loader
+    def list_logs(subpath):
+        return ["ceph/ceph.log"]
 
+    def tail(subpath, n_lines):
+        return """2014-01-19 18:30:29.176592 mon.0 192.168.18.1:6789/0 463 : [INF] pgmap v163848: 1644 pgs: 1644 active+clean; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:30:34.581473 osd.2 192.168.18.3:6801/8734 192 : [INF] 1.fb scrub ok
+2014-01-19 18:30:39.184182 mon.0 192.168.18.1:6789/0 464 : [INF] pgmap v163849: 1644 pgs: 1644 active+clean; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:30:59.357278 mon.0 192.168.18.1:6789/0 465 : [INF] pgmap v163850: 1644 pgs: 1643 active+clean, 1 active+clean+scrubbing+deep; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:31:01.897580 mon.0 192.168.18.1:6789/0 466 : [INF] pgmap v163851: 1644 pgs: 1643 active+clean, 1 active+clean+scrubbing+deep; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:31:11.663174 mon.0 192.168.18.1:6789/0 467 : [INF] pgmap v163852: 1644 pgs: 1643 active+clean, 1 active+clean+scrubbing+deep; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:31:32.179999 osd.1 192.168.18.2:6801/6964 1929 : [INF] 0.64 deep-scrub ok
+2014-01-19 18:31:34.917031 mon.0 192.168.18.1:6789/0 468 : [INF] pgmap v163853: 1644 pgs: 1644 active+clean; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail
+2014-01-19 18:32:01.002447 osd.1 192.168.18.2:6801/6964 1930 : [INF] 1.1ef deep-scrub ok
+2014-01-19 18:32:05.062757 mon.0 192.168.18.1:6789/0 469 : [INF] pgmap v163854: 1644 pgs: 1643 active+clean, 1 active+clean+scrubbing+deep; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail"""
+
+    import salt.loader
     old_minion_mods = salt.loader.minion_mods
 
     def my_minion_mods(opts):
@@ -120,6 +134,8 @@ def main():
         data['ceph.heartbeat'] = heartbeat
         data['ceph.get_cluster_object'] = get_cluster_object
         data['ceph.rados_commands'] = rados_commands
+        data['log_tail.list_logs'] = list_logs
+        data['log_tail.tail'] = tail
         __salt__ = data
         return data
 

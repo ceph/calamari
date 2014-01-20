@@ -154,7 +154,7 @@ LOGGING = {
     'loggers': {
         'django.request': {
             'handlers': ['log_file'],
-            'level': 'WARNING',
+            'level': config.get('calamari_web', 'log_level'),
             'propagate': True,
         },
     }

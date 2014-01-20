@@ -6,8 +6,6 @@ individual hosts with no regard to the relations between them.
 """
 from collections import defaultdict, namedtuple
 import json
-import datetime
-from dateutil import tz
 
 from gevent import greenlet
 from gevent import event
@@ -22,6 +20,7 @@ from cthulhu.manager import salt_config, config
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from cthulhu.manager.types import OsdMap, MonMap
 from cthulhu.persistence.servers import Server, Service
+from cthulhu.util import now
 
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
@@ -32,13 +31,6 @@ CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 #   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
 #   server in ServerMonitor.  Could just be to log to begin with, later hook into event
 #   generation.
-
-
-def now():
-    """
-    A tz-aware now
-    """
-    return datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
 
 
 class GrainsNotFound(Exception):
@@ -110,7 +102,7 @@ class ServerMonitor(greenlet.Greenlet):
     - The ceph.services salt message from managed servers
     - Updates to the OSD map which may tell us about unmanaged servers
     """
-    def __init__(self, persister):
+    def __init__(self, persister, eventer):
         super(ServerMonitor, self).__init__()
 
         self._persister = persister
@@ -129,23 +121,25 @@ class ServerMonitor(greenlet.Greenlet):
 
         self._complete = event.Event()
 
+        self._eventer = eventer
+
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
         subscription = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        subscription.subscribe("ceph/services")
+        subscription.subscribe("ceph/server")
 
         while not self._complete.is_set():
-            ev = subscription.get_event(tag="ceph/services")
+            ev = subscription.get_event(tag="ceph/server")
 
             if ev is not None:
-                log.info("ServerMonitor got ceph/services message from %s" % ev['id'])
+                log.info("ServerMonitor got ceph/server message from %s" % ev['id'])
                 try:
                     # NB assumption that FQDN==minion_id is true unless
                     # someone has modded their salt minion config.
-                    self.on_service_heartbeat(ev['id'], ev['data'])
+                    self.on_server_heartbeat(ev['id'], ev['data'])
                 except:
                     log.debug("Message detail: %s" % json.dumps(ev))
-                    log.exception("Error handling ceph/services message from %s" % ev['id'])
+                    log.exception("Error handling ceph/server message from %s" % ev['id'])
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -244,7 +238,7 @@ class ServerMonitor(greenlet.Greenlet):
                 osds_in_map.add(service_id)
                 if not server_state.managed:
                     # Only pay attention to these services for unmanaged servers,
-                    # for managed servers rely on ceph/services salt messages
+                    # for managed servers rely on ceph/server salt messages
                     self._register_service(server_state, service_id, running=bool(osd['up']))
 
         # Remove ServiceState for any OSDs for this FSID which are not
@@ -294,21 +288,22 @@ class ServerMonitor(greenlet.Greenlet):
             raise GrainsNotFound(fqdn)
 
     @nosleep
-    def on_service_heartbeat(self, fqdn, services_data):
+    def on_server_heartbeat(self, fqdn, services_data):
         """
         Call back for when a ceph.service message is received from a salt minion
         """
         log.debug("ServerMonitor.on_service_heartbeat: %s" % fqdn)
         # For any service which was last reported on this server but
         # is now gone, mark it as not running
+        new_server = True
         try:
             server_state = self.servers[fqdn]
+            new_server = False
         except KeyError:
             # Look up the grains for this server, we need to know its hostname in order
             # to resolve this vs. the OSD map.
             hostname = self._get_grains(fqdn)['host']
 
-            new_server = True
             if hostname in self.hostname_to_server:
                 server_state = self.hostname_to_server[hostname]
                 if not server_state.managed:
@@ -321,6 +316,8 @@ class ServerMonitor(greenlet.Greenlet):
                     self.servers[server_state.fqdn] = server_state
                     self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
                     new_server = False
+                    log.info("Server %s went from unmanaged to managed" % fqdn)
+                    self._eventer.on_server(server_state)
                 else:
                     # We will go on to treat these as distinct servers even though
                     # they have the same hostname
@@ -328,16 +325,17 @@ class ServerMonitor(greenlet.Greenlet):
                         fqdn, server_state.fqdn, hostname
                     ))
 
-            if new_server:
-                server_state = ServerState(fqdn, hostname, managed=True,
-                                           last_contact=now())
-                self.inject_server(server_state)
-                self._persister.create_server(Server(
-                    fqdn=server_state.fqdn,
-                    hostname=server_state.hostname,
-                    managed=server_state.managed,
-                    last_contact=server_state.last_contact
-                ))
+        if new_server:
+            hostname = self._get_grains(fqdn)['host']
+            server_state = ServerState(fqdn, hostname, managed=True,
+                                       last_contact=now())
+            self.inject_server(server_state)
+            self._persister.create_server(Server(
+                fqdn=server_state.fqdn,
+                hostname=server_state.hostname,
+                managed=server_state.managed,
+                last_contact=server_state.last_contact
+            ))
             log.info("Saw server %s for the first time" % server_state)
 
         server_state.last_contact = now()
@@ -354,6 +352,11 @@ class ServerMonitor(greenlet.Greenlet):
             if service_state.running:
                 log.info("Service %s stopped on server %s" % (service_state, server_state))
                 service_state.running = False
+
+        if new_server:
+            # We do this at the end so that by the time we emit the event
+            # the ServiceState objects have been created
+            self._eventer.on_server(server_state)
 
     def _register_service(self, server_state, service_id, running):
         try:
@@ -396,11 +399,6 @@ class ServerMonitor(greenlet.Greenlet):
         All the ServerStates which are involved in
         this cluster (i.e. hosting a service with this FSID)
         """
-        return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
-
-    def get_one_cluster(self, fsid, fqdn):
-        """Give me all the ServerStates which are referred to by
-        a service with this FSID"""
         return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
 
     def get_all(self):
@@ -457,7 +455,7 @@ class ServerMonitor(greenlet.Greenlet):
             # then when the last service is gone the server should
             # go away too
             if service.server_state and (not service.server_state.managed) and (not service.server_state.services):
-                self.remove(service.server_state.fqdn)
+                self.delete(service.server_state.fqdn)
 
         del self.fsid_services[fsid]
 
@@ -503,14 +501,14 @@ class ServerMonitor(greenlet.Greenlet):
         for service in services:
             if frontend_addr is None and service.service_type == 'mon':
                 # Go find the mon in the monmap and tell me its addr
-                mon_map = cluster.get_sync_object(MonMap)
+                mon_map = cluster.get_sync_object_data(MonMap)
                 if mon_map is not None:
                     mon = [mon for mon in mon_map['mons'] if mon['name'] == service.service_id][0]
                     frontend_addr = mon['addr'].split(":")[0]
 
             if (frontend_addr is None or backend_addr is None) and service.service_type == 'osd':
                 # Go find the OSD in the OSD map and tell me its frontend and backend addrs
-                osd_map = cluster.get_sync_object(OsdMap)
+                osd_map = cluster.get_sync_object_data(OsdMap)
                 if osd_map is not None:
                     osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id][0]
                     frontend_addr = osd['public_addr'].split(":")[0]

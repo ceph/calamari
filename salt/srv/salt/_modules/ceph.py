@@ -3,7 +3,6 @@ import hashlib
 import os
 import re
 import socket
-import requests
 
 # Default timeout for communicating with the Ceph REST API.
 import struct
@@ -375,9 +374,9 @@ def heartbeat():
     """
     services, clusters = terse_status()
 
-    fire_event(services, 'ceph/services')
+    fire_event(services, 'ceph/server')
     for fsid, cluster_data in clusters.items():
-        fire_event(cluster_data, 'ceph/heartbeat/{0}'.format(fsid))
+        fire_event(cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     # Return the emitted data because it's useful if debugging with salt-call
     return services, clusters

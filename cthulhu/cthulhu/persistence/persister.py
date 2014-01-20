@@ -3,16 +3,24 @@
 import json
 from collections import namedtuple
 import logging
+import datetime
 
 import gevent.greenlet
 import gevent.queue
+import gevent.event
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from cthulhu.manager import config
 
 from cthulhu.persistence import Base
-from cthulhu.persistence.servers import Server, Service
 from cthulhu.persistence.sync_objects import SyncObject
+from cthulhu.persistence.servers import Server, Service
+# FIXME I have to import this to get create_all to see it :-/
+from cthulhu.persistence.event import Event
+Event.foo = ""  # STFU pyflakes
+
+from cthulhu.util import now
 from cthulhu.log import log
 
 Session = sessionmaker()
@@ -24,6 +32,9 @@ def initialize(db_path):
 
 
 DeferredCall = namedtuple('DeferredCall', ['fn', 'args', 'kwargs'])
+
+
+CLUSTER_MAP_RETENTION = datetime.timedelta(seconds=int(config.get('cthulhu', 'cluster_map_retention')))
 
 
 class Persister(gevent.greenlet.Greenlet):
@@ -60,7 +71,7 @@ class Persister(gevent.greenlet.Greenlet):
                     if callable(attr):
                         def defer(*args, **kwargs):
                             dc = DeferredCall(attr, args, kwargs)
-                            log.debug("Persister deferring >> %s(%s, %s)" % (item, args, kwargs))
+                            #log.debug("Persister deferring >> %s(%s, %s)" % (item, args, kwargs))
                             self._queue.put(dc)
                         return defer
                     else:
@@ -69,8 +80,14 @@ class Persister(gevent.greenlet.Greenlet):
                     return object.__getattribute__(self, item)
 
     def _update_sync_object(self, fsid, sync_type, version, when, data):
-        # TODO: FIFO logic with count limit
         self._session.add(SyncObject(fsid=fsid, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
+
+        # Time-limited FIFO
+        threshold = now() - CLUSTER_MAP_RETENTION
+        self._session.query(SyncObject).filter(
+            SyncObject.when < threshold,
+            SyncObject.fsid == fsid,
+            SyncObject.sync_type == sync_type).delete()
 
     def _create_server(self, server):
         self._session.add(server)
@@ -106,6 +123,10 @@ class Persister(gevent.greenlet.Greenlet):
     def _delete_server(self, fqdn):
         self._session.query(Server).filter_by(fqdn=fqdn).delete()
 
+    def _save_events(self, events):
+        for event in events:
+            self._session.add(event)
+
     def _run(self):
         log.info("Persister listening")
 
@@ -116,8 +137,8 @@ class Persister(gevent.greenlet.Greenlet):
                 continue
             else:
                 try:
-                    log.debug("Persister executing >> %s(%s, %s)" % (
-                        data.fn.__name__, data.args, data.kwargs))
+                    #log.debug("Persister executing >> %s(%s, %s)" % (
+                    #    data.fn.__name__, data.args, data.kwargs))
                     data.fn(*data.args, **data.kwargs)
                     self._session.commit()
                 except Exception:

@@ -24,10 +24,10 @@ urlpatterns = patterns(
 
     # About the host calamari server is running on
     url(r'^grains', ceph.views.v2.grains),
-    url(r'^info', ceph.views.v1.info),
+    url(r'^info', ceph.views.v1.Info.as_view()),
 
     # Wrapping django auth
-    url(r'^user/me', ceph.views.v1.user_me),
+    url(r'^user/me', ceph.views.v1.UserMe.as_view()),
     url(r'^auth/login', ceph.views.v1.login),
     url(r'^auth/logout', ceph.views.v1.logout),
 
@@ -40,6 +40,11 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v1.OSDList.as_view(), name='cluster-osd-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v1.OSDDetail.as_view(),
         name='cluster-osd-detail'),
+    # TODO a sanitized OSD serializer similar to what we do for pools
+    # TODO implement PATCH to /osd/<id> for attribute changes
+    # TODO implement POST to /osd/<id>/commands/<command> for operations
+    # that don't directly change an attribute, e.g. initiating scrub, repair
+    # TODO expose weight information OSDs along with ability to reweight
 
     # About ongoing operations in cthulhu
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
@@ -61,10 +66,14 @@ urlpatterns = patterns(
         name='cluster-pool-detail'),
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',
+        ceph.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
-        ceph.views.v2.SyncObject.as_view(), name='cluster-sync-object'),
+        ceph.views.v2.SyncObject.as_view({'get': 'retrieve'}), name='cluster-sync-object'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object/(?P<derived_type>[a-zA-Z0-9-_]+)$',
-        ceph.views.v2.DerivedObject.as_view(), name='cluster-derived-object'),
+        ceph.views.v2.DerivedObject.as_view({'get': 'retrieve'}), name='cluster-derived-object'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object$',
+        ceph.views.v2.DerivedObject.as_view({'get': 'describe'}), name='cluster-derived-object-describe'),
 
     # All about servers
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$', ceph.views.v2.ServerViewSet.as_view({'get': 'retrieve_grains'})),
@@ -72,4 +81,17 @@ urlpatterns = patterns(
         name='cluster-server-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',
         ceph.views.v2.ServerClusterViewSet.as_view({'get': 'retrieve'}), name='cluster-server-detail'),
+
+    # Events
+    url(r'^event$', ceph.views.v2.EventViewSet.as_view({'get': 'list'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/event$', ceph.views.v2.EventViewSet.as_view({'get': 'list_cluster'})),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/event$', ceph.views.v2.EventViewSet.as_view({'get': 'list_server'})),
+
+    # Log tail
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/log$',
+        ceph.views.v2.LogTailViewSet.as_view({'get': 'get_cluster_log'})),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log$',
+        ceph.views.v2.LogTailViewSet.as_view({'get': 'list_server_logs'})),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log/(?P<log_path>.+)$',
+        ceph.views.v2.LogTailViewSet.as_view({'get': 'get_server_log'}))
 )

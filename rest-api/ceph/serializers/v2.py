@@ -1,15 +1,22 @@
 
 
 from rest_framework import serializers
+from cthulhu.manager.eventer import severity_str
 
 
 class ClusterSerializer(serializers.Serializer):
     class Meta:
         fields = ('update_time', 'id', 'name')
 
-    update_time = serializers.DateTimeField()
-    name = serializers.Field()
-    id = serializers.Field()
+    update_time = serializers.DateTimeField(
+        help_text="The time at which the last status update from this cluster was received"
+    )
+    name = serializers.Field(
+        help_text="Human readable cluster name, not a unique identifier"
+    )
+    id = serializers.Field(
+        help_text="The FSID of the cluster, universally unique"
+    )
 
 
 class SyncObjectSerializer(serializers.Serializer):
@@ -25,30 +32,41 @@ class PoolSerializer(serializers.Serializer):
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
 
     # Required in creation
-    name = serializers.CharField(source='pool_name')
-    pg_num = serializers.IntegerField()
+    name = serializers.CharField(source='pool_name',
+                                 help_text="Human readable name of the pool, may"
+                                 "change over the pools lifetime at user request.")
+    pg_num = serializers.IntegerField(
+        help_text="Number of placement groups in this pool")
 
     # Not required in creation, immutable
-    id = serializers.CharField(source='pool', required=False)
+    id = serializers.CharField(source='pool', required=False, help_text="Unique numeric ID")
 
     # May be set in creation or updates
-    size = serializers.IntegerField(required=False)
-    min_size = serializers.IntegerField(required=False)
-    crash_replay_interval = serializers.IntegerField(required=False)
-    crush_ruleset = serializers.IntegerField(required=False)
+    size = serializers.IntegerField(required=False,
+                                    help_text="Replication factor")
+    min_size = serializers.IntegerField(required=False,
+                                        help_text="Minimum number of replicas required for I/O")
+    crash_replay_interval = serializers.IntegerField(required=False,
+                                                     help_text="Number of seconds to allow clients to "
+                                                               "replay acknowledged, but uncommitted requests")
+    crush_ruleset = serializers.IntegerField(required=False, help_text="CRUSH ruleset in use")
     # In 'ceph osd pool set' it's called pgp_num, but in 'ceph osd dump' it's called
     # pg_placement_num :-/
-    pgp_num = serializers.IntegerField(source='pg_placement_num', required=False)
+    pgp_num = serializers.IntegerField(source='pg_placement_num', required=False,
+                                       help_text="Effective number of placement groups to use when calculating "
+                                                 "data placement")
 
     # This is settable by 'ceph osd pool set' but in 'ceph osd dump' it only appears
     # within the 'flags' integer.  We synthesize a boolean from the flags.
-    hashpspool = serializers.BooleanField(required=False)
+    hashpspool = serializers.BooleanField(required=False, help_text="Enable HASHPSPOOL flag")
 
     # This is synthesized from ceph's 'flags' attribute, read only.
-    full = serializers.BooleanField(required=False)
+    full = serializers.BooleanField(required=False, help_text="True if the pool is full")
 
-    quota_max_objects = serializers.IntegerField(required=False)
-    quota_max_bytes = serializers.IntegerField(required=False)
+    quota_max_objects = serializers.IntegerField(required=False,
+                                                 help_text="Quota limit on object count (0 is unlimited)")
+    quota_max_bytes = serializers.IntegerField(required=False,
+                                               help_text="Quota limit on usage in bytes (0 is unlimited)")
 
 
 class CrushRuleSerializer(serializers.Serializer):
@@ -113,15 +131,20 @@ class SimpleServerSerializer(serializers.Serializer):
         fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'services')
 
     # Identifying information
-    fqdn = serializers.CharField()
-    hostname = serializers.CharField()
+    fqdn = serializers.CharField(help_text="Fully qualified domain name")
+    hostname = serializers.CharField(help_text="Unqualified hostname")
 
     # Calamari monitoring status
-    managed = serializers.BooleanField()
-    last_contact = serializers.DateTimeField()
+    managed = serializers.BooleanField(
+        help_text="True if this server is under Calamari server's control, false"
+                  "if the server's existence was inferred via Ceph cluster maps.")
+    last_contact = serializers.DateTimeField(
+        help_text="The time at which this server last communicated with the Calamari"
+                  "server.  This is always null for unmanaged servers")
 
     # Ceph usage
-    services = ServiceSerializer(many=True)
+    services = ServiceSerializer(many=True, help_text="List of Ceph services seen"
+                                 "on this server")
 
 
 class ServerSerializer(SimpleServerSerializer):
@@ -134,3 +157,27 @@ class ServerSerializer(SimpleServerSerializer):
     backend_addr = serializers.CharField()  # may be null if no OSDs on server
     frontend_iface = serializers.CharField()  # may be null if interface for frontend addr not up
     backend_iface = serializers.CharField()  # may be null if interface for backend addr not up
+
+
+class EventSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('when', 'severity', 'message')
+
+    when = serializers.DateTimeField(help_text="Time at which event was generated")
+    severity = serializers.SerializerMethodField('get_severity')
+    # FIXME: django_rest_framework doesn't let me put help_text on a methodfield
+    # help_text="Severity, one of %s" % ",".join(SEVERITIES.keys()))
+    message = serializers.CharField(help_text="One line human readable description")
+
+    def get_severity(self, obj):
+        return severity_str(obj.severity)
+
+
+class LogTailSerializer(serializers.Serializer):
+    """
+    Trivial serializer to wrap a string blob of log output
+    """
+    class Meta:
+        fields = ('lines',)
+
+    lines = serializers.CharField("Retrieved log data as a newline-separated string")

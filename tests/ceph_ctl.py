@@ -75,15 +75,16 @@ class EmbeddedCephControl(CephControl):
     def __init__(self):
         self._config_dirs = {}
         self._sims = {}
+        self.fsid = None
 
     def configure(self, server_count, cluster_count=1):
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
             sim = MinionSim(config_dir, server_count, port=8761 + i, domain=domain)
-            fsid = sim.cluster.fsid
-            self._config_dirs[fsid] = config_dir
-            self._sims[fsid] = sim
+            self.fsid = sim.cluster.fsid
+            self._config_dirs[self.fsid] = config_dir
+            self._sims[self.fsid] = sim
             sim.start()
 
     def shutdown(self):
@@ -95,6 +96,9 @@ class EmbeddedCephControl(CephControl):
 
         for config_dir in self._config_dirs.values():
             shutil.rmtree(config_dir)
+
+    def get_fsid(self):
+        return self.fsid
 
     def get_server_fqdns(self):
         return list(chain(*[s.get_minion_fqdns() for s in self._sims.values()]))

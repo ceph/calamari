@@ -21,6 +21,10 @@ class AuthenticatedHttpClient(requests.Session):
             'Content-type': "application/json; charset=UTF-8"
         }
 
+    @property
+    def prefix(self):
+        return self._api_url
+
     def request(self, method, url, **kwargs):
         url = self._api_url + url
         response = super(AuthenticatedHttpClient, self).request(method, url, **kwargs)

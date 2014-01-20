@@ -182,3 +182,15 @@ class ServerSerializer(serializers.Serializer):
 
     def get_addr(self, obj):
         return obj.fqdn
+
+
+class InfoSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('version', 'license', 'registered', 'hostname', 'fqdn', 'ipaddr')
+
+    version = serializers.CharField(help_text="Calamari server version")
+    license = serializers.CharField(help_text="Calamari license metadata")
+    registered = serializers.CharField(help_text="Calamari registration metadata")
+    hostname = serializers.CharField(help_text="Hostname of Calamari server")
+    fqdn = serializers.CharField(help_text="Fully qualified domain name of Calamari server")
+    ipaddr = serializers.CharField(help_text="IP address of Calamari server")

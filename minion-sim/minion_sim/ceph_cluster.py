@@ -17,6 +17,137 @@ def md5(raw):
     return hasher.hexdigest()
 
 
+DEFAULT_CRUSH = json.loads("""
+{ "devices": [
+        { "id": 0,
+          "name": "osd.0"},
+        { "id": 1,
+          "name": "osd.1"},
+        { "id": 2,
+          "name": "osd.2"},
+        { "id": 3,
+          "name": "osd.3"},
+        { "id": 4,
+          "name": "osd.4"}],
+  "types": [
+        { "type_id": 0,
+          "name": "osd"},
+        { "type_id": 1,
+          "name": "host"},
+        { "type_id": 2,
+          "name": "rack"},
+        { "type_id": 3,
+          "name": "row"},
+        { "type_id": 4,
+          "name": "room"},
+        { "type_id": 5,
+          "name": "datacenter"},
+        { "type_id": 6,
+          "name": "root"}],
+  "buckets": [
+        { "id": -1,
+          "name": "default",
+          "type_id": 6,
+          "type_name": "root",
+          "weight": 317191,
+          "alg": "straw",
+          "hash": "rjenkins1",
+          "items": [
+                { "id": -2,
+                  "weight": 197917,
+                  "pos": 0},
+                { "id": -3,
+                  "weight": 59637,
+                  "pos": 1},
+                { "id": -4,
+                  "weight": 59637,
+                  "pos": 2}]},
+        { "id": -2,
+          "name": "gravel1",
+          "type_id": 1,
+          "type_name": "host",
+          "weight": 197917,
+          "alg": "straw",
+          "hash": "rjenkins1",
+          "items": [
+                { "id": 0,
+                  "weight": 59637,
+                  "pos": 0},
+                { "id": 3,
+                  "weight": 119275,
+                  "pos": 1},
+                { "id": 4,
+                  "weight": 19005,
+                  "pos": 2}]},
+        { "id": -3,
+          "name": "gravel2",
+          "type_id": 1,
+          "type_name": "host",
+          "weight": 59637,
+          "alg": "straw",
+          "hash": "rjenkins1",
+          "items": [
+                { "id": 1,
+                  "weight": 59637,
+                  "pos": 0}]},
+        { "id": -4,
+          "name": "gravel3",
+          "type_id": 1,
+          "type_name": "host",
+          "weight": 59637,
+          "alg": "straw",
+          "hash": "rjenkins1",
+          "items": [
+                { "id": 2,
+                  "weight": 59637,
+                  "pos": 0}]}],
+  "rules": [
+        { "rule_id": 0,
+          "rule_name": "data",
+          "ruleset": 0,
+          "type": 1,
+          "min_size": 1,
+          "max_size": 10,
+          "steps": [
+                { "op": "take",
+                  "item": -1},
+                { "op": "chooseleaf_firstn",
+                  "num": 0,
+                  "type": "host"},
+                { "op": "emit"}]},
+        { "rule_id": 1,
+          "rule_name": "metadata",
+          "ruleset": 1,
+          "type": 1,
+          "min_size": 1,
+          "max_size": 10,
+          "steps": [
+                { "op": "take",
+                  "item": -1},
+                { "op": "chooseleaf_firstn",
+                  "num": 0,
+                  "type": "host"},
+                { "op": "emit"}]},
+        { "rule_id": 2,
+          "rule_name": "rbd",
+          "ruleset": 2,
+          "type": 1,
+          "min_size": 1,
+          "max_size": 10,
+          "steps": [
+                { "op": "take",
+                  "item": -1},
+                { "op": "chooseleaf_firstn",
+                  "num": 0,
+                  "type": "host"},
+                { "op": "emit"}]}],
+  "tunables": { "choose_local_tries": 2,
+      "choose_local_fallback_tries": 5,
+      "choose_total_tries": 19,
+      "chooseleaf_descend_once": 0}}
+""")
+
+
 def flatten_dictionary(data, sep='.', prefix=None):
     """Produces iterator of pairs where the first value is
     the joined key names and the second value is the value
@@ -154,7 +285,8 @@ class CephCluster(object):
             'max_osd': osd_count,
             'epoch': 1,
             'osds': [],
-            'pools': []
+            'pools': [],
+            'crush': DEFAULT_CRUSH
         }
 
         for i in range(0, osd_count):

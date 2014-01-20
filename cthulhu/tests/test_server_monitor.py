@@ -76,9 +76,9 @@ class TestServiceDetection(TestCase):
         That managed servers (those sending salt messages) generate
         a correct view of service locations
         """
-        sm = ServerMonitor(Mock())
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
-        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm = ServerMonitor(Mock(), Mock())
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
         self.assertEqual(len(sm.servers), 2)
         self.assertEqual(len(sm.services), 3)
@@ -100,9 +100,9 @@ class TestServiceDetection(TestCase):
         That when only the mons are sending salt messages, we generate
         a correct view of service locations including OSDs.
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_osd_map(OSD_MAP)
 
         self.assertEqual(len(sm.servers), 2)
@@ -125,9 +125,9 @@ class TestServiceDetection(TestCase):
         to the CRUSH config to paying attention to the salt data, and
         fill in the correct FQDNs.
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_osd_map(OSD_MAP)
 
         self.assertListEqual(sm.servers.keys(), [MON_FQDN, OSD_HOSTNAME])
@@ -139,7 +139,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
-        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
         self.assertListEqual(sm.servers.keys(), [MON_FQDN, OSD_FQDN])
         self.assertEqual(sm.servers[OSD_FQDN].fqdn, OSD_FQDN)
@@ -156,15 +156,15 @@ class TestServiceDetection(TestCase):
         That when an OSD disappears from one server's salt.services output
         and reappears on another server, this is reflected in the state.
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_osd_map(OSD_MAP)
 
         # osd.1 initially on unmanaged server OSD
         self.assertEqual(sm.services[ServiceId(FSID, 'osd', "1")].server_state.fqdn, OSD_HOSTNAME)
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES_MIGRATED)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES_MIGRATED)
         sm.on_osd_map(OSD_MAP_MIGRATED)
 
         # osd.1 now on managed server MON
@@ -185,10 +185,10 @@ class TestServiceDetection(TestCase):
         That when a managed server is removed, it no longer appears
         in the server/service data.
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
-        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
         sm.delete(OSD_FQDN)
 
@@ -208,10 +208,10 @@ class TestServiceDetection(TestCase):
         That when an OSD is disappears from the OSD map, it is also removed
         from ServerMonitor's worldview
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
-        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
 
         self.assertListEqual(sm.services.keys(), [
             ServiceId(FSID, 'osd', '0'),
@@ -230,10 +230,10 @@ class TestServiceDetection(TestCase):
         """
         That when a mon disappears from the mon map, ServerMonitor notices
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
-        sm.on_service_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
+        sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
+        sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
         sm.on_mon_map(MON_MAP)
 
         self.assertListEqual(sm.services.keys(), [
@@ -252,10 +252,10 @@ class TestServiceDetection(TestCase):
         """
         That when an mds disappears from the mds map, ServerMonitor notices
         """
-        sm = ServerMonitor(Mock())
+        sm = ServerMonitor(Mock(), Mock())
 
-        sm.on_service_heartbeat(MDS1_FQDN, MDS1_SERVICES)
-        sm.on_service_heartbeat(MDS2_FQDN, MDS2_SERVICES)
+        sm.on_server_heartbeat(MDS1_FQDN, MDS1_SERVICES)
+        sm.on_server_heartbeat(MDS2_FQDN, MDS2_SERVICES)
         sm.on_mds_map(FSID, MDS_MAP)
 
         self.assertListEqual(sm.services.keys(), [
