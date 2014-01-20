@@ -1,6 +1,7 @@
 from cthulhu.manager import plugin_monitor
 from unittest import TestCase
 
+
 class TestPluginMonitor(TestCase):
     def setUp(self):
         self.plugin_monitor = plugin_monitor.PluginMonitor()
@@ -9,14 +10,4 @@ class TestPluginMonitor(TestCase):
         pass
 
     def testCreatePluginMonitor(self):
-        pass
-
-    def testThatFakeAndFileEquate(self):
-        pass
-
-class TestModules(TestCase):
-    def setUp(self):
-        self.plugin_monitor = plugin_monitor.PluginMonitor()
-
-    def tearDown(self):
         pass
