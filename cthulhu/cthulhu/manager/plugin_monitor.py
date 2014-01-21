@@ -1,4 +1,5 @@
 import gevent
+from gevent import event
 from gevent import Timeout
 import importlib
 import os
@@ -16,6 +17,8 @@ class PluginMonitor(gevent.greenlet.Greenlet):
     def __init__(self):
         super(PluginMonitor, self).__init__()
         self.salt_client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        self.plugin_results = {}
+        self._complete = event.Event()
 
     def load_plugins(self):
         ret_val = []
@@ -40,10 +43,17 @@ class PluginMonitor(gevent.greenlet.Greenlet):
             return ret_val
 
     def run_plugin(self, plugin_name, status_processor, period):
-        while(1):
+        while not self._complete.is_set():
             check_data = self.run_check(plugin_name, period)
             log.debug("processed " + str(plugin_name) + str(check_data))
-            return status_processor(check_data)
+            self.plugin_results[plugin_name] = status_processor(check_data)
+
+    def _run(self):
+        log.info("Starting %s" % self.__class__.__name__)
+        self.spawn_plugins(self.load_plugins(), run_plugin)
+
+    def stop(self):
+        self._complete.set()
 
     def spawn_plugins(self, plugins, watcher):
         threads = [gevent.spawn(watcher,
@@ -72,6 +82,8 @@ class PluginMonitor(gevent.greenlet.Greenlet):
                 ret_val.update(value)
 
             finished = True
+            # This sleep is still subject to the timeout. 
+            # It is here to ensure that we take at least as long as period specifies
             gevent.sleep(period)
         except Timeout, t:
             if t is not timeout:
