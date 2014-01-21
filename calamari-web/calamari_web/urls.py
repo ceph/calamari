@@ -47,7 +47,7 @@ urlpatterns = patterns(
     url('^content/(?P<path>.*)$', 'django.views.static.serve', {'document_root': CONTENT_DIR}),
 
     # XXX this is a hack to serve apt repo in dev mode (Full installation serves this with apache)
-    url(r'^ubuntu/(?P<path>.*)$', 'django.views.static.serve',
+    url(r'^static/ubuntu/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/ubuntu/' % STATIC_ROOT}),
 )
 
