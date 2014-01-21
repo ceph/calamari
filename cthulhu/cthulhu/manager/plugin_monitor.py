@@ -1,95 +1,86 @@
 import gevent
 from gevent import event
-from gevent import Timeout
 import importlib
 import os
 import salt.client
-import sys
+import time
 from cthulhu.manager import config
 from cthulhu.log import log
 
 
 class PluginMonitor(gevent.greenlet.Greenlet):
     """
-    Consumes output from plugins
+    Consumes output from plugins for a specific cluster
     """
 
     def __init__(self):
         super(PluginMonitor, self).__init__()
         self.salt_client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        # plugin_name to status processor output
         self.plugin_results = {}
         self._complete = event.Event()
 
     def load_plugins(self):
-        ret_val = []
+
         """
         Try to load a status_processor from each module in plugin_path, store keyed by module_name
         """
-        for plugin in os.listdir(config.get('cthulhu', 'plugin_path')):
-            plugin = plugin.split('.')[0]
-            if plugin in ('__init__', 'README'):
-                continue
+        loaded_plugins = []
+        plugin_path = config.get('cthulhu', 'plugin_path')
+        module = os.path.basename(plugin_path)
+        if os.path.exists(plugin_path):
+            for plugin in os.listdir(plugin_path):
+                plugin = plugin.split('.')[0]
+                if plugin in ('__init__', 'README'):
+                    continue
 
-            status_processor = None
-            try:
-                plugin_module = importlib.import_module('.'.join((plugin, 'status_processor')))
-                status_processor = plugin_module.StatusProcessor()
-            except ImportError:
-                log.exception("Error importing plugin %s" % plugin)
+                status_processor = None
+                try:
+                    plugin_module = importlib.import_module('.'.join((module, plugin, 'status_processor')))
+                    status_processor = plugin_module.StatusProcessor()
+                except ImportError, e:
+                    log.info("Error importing plugin %s %s" % (plugin,str(e)))
 
-            if status_processor is not None:
-                ret_val.append((plugin, status_processor))
+                if status_processor is not None:
+                    loaded_plugins.append((plugin, status_processor))
 
-            return ret_val
+        return loaded_plugins
+
+    def filter_errors(self, check_data, salt_name):
+        filtered_output = {}
+        for node, results in check_data.iteritems():
+            if results == '"%s" is not available.' % salt_name:
+                log.info(node + results)
+            else:
+                filtered_output[node] = results
+
+        return filtered_output
 
     def run_plugin(self, plugin_name, status_processor, period):
+        # slice of some time for the checks, leaving some for the status_processor
+        check_timeout = int(period * .75)
+        salt_name = '.'.join((plugin_name, 'status_check'))
+
         while not self._complete.is_set():
-            check_data = self.run_check(plugin_name, period)
-            log.debug("processed " + str(plugin_name) + str(check_data))
+            start = int(time.time())
+            timeout_at = start + period
+            # TODO get list of servers from server_monitor
+            check_data = self.filter_errors(self.salt_client.cmd('*', salt_name, timeout=check_timeout), salt_name)
+
             self.plugin_results[plugin_name] = status_processor(check_data)
+            log.debug("processed " + str(plugin_name) + str(check_data))
+
+            time_left = timeout_at - int(time.time())
+            gevent.sleep(max(0, time_left))
 
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
-        self.spawn_plugins(self.load_plugins(), run_plugin)
-
-    def stop(self):
-        self._complete.set()
-
-    def spawn_plugins(self, plugins, watcher):
-        threads = [gevent.spawn(watcher,
+        threads = [gevent.spawn(self.run_plugin,
                                 name,
                                 status_processor.run,
-                                status_processor.period) for name, status_processor in plugins]
+                                status_processor.period) for name, status_processor in self.load_plugins()]
 
         gevent.joinall(threads)
 
-    def run_check(self, plugin_name, period):
-        ret_val = {}
-        timeout = Timeout(period)
-
-        salt_name = '.'.join((plugin_name, 'status_check'))
-        ret = self.salt_client.cmd_iter_no_block('*', salt_name)
-
-        timeout.start()
-        finished = False
-        try:
-            for value in ret:
-                # TODO there must be a better way to know if Salt doesn't have a status_check
-                if value.values()[0] == {'ret': '"%s" is not available.' % salt_name}:
-                    log.error("Plugin %s is not available on %s" % (salt_name, value.keys()[0]))
-                    continue
-
-                ret_val.update(value)
-
-            finished = True
-            # This sleep is still subject to the timeout. 
-            # It is here to ensure that we take at least as long as period specifies
-            gevent.sleep(period)
-        except Timeout, t:
-            if t is not timeout:
-                raise  # someone else getting timed out
-
-            if not finished:
-                log.exception("Did not finish %s" % salt_name)
-
-        return ret_val
+    def stop(self):
+        self._complete.set()
