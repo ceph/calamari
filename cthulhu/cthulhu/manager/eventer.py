@@ -134,6 +134,7 @@ class Eventer(gevent.greenlet.Greenlet):
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
                     ), fqdn=fqdn)
+                    self._servers_complained.add(fqdn)
             else:
                 if fqdn in self._servers_complained:
                     self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
@@ -144,6 +145,7 @@ class Eventer(gevent.greenlet.Greenlet):
             if cluster_monitor.update_time is None or now_utc - cluster_monitor.update_time > datetime.timedelta(
                     seconds=CLUSTER_CONTACT_THRESHOLD):
                 if fsid not in self._clusters_complained:
+                    self._clusters_complained.add(fsid)
                     self._emit(WARNING, "Cluster '{name}' is late reporting in".format(name=cluster_monitor.name),
                                fsid=fsid)
             else:
