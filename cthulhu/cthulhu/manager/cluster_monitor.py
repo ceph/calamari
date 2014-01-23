@@ -99,7 +99,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             POOL: PoolRequestFactory
         }
 
-        self._plugin_monitor = PluginMonitor()
+        self._plugin_monitor = PluginMonitor(servers)
 
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
