@@ -189,6 +189,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         }
 
         self._plugin_monitor = PluginMonitor(servers)
+        self._ready = gevent.event.Event()
+
+    def ready(self):
+        """
+        Block until the ClusterMonitor is ready to receive salt events
+        """
+        self._ready.wait()
 
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
@@ -225,6 +232,9 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def _run(self):
         self._plugin_monitor.start()
         event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
+        event.subscribe('')
+        self._ready.set()
+        log.debug("ClusterMonitor._run: ready")
 
         while not self._complete.is_set():
             ev = event.get_event(full=True)

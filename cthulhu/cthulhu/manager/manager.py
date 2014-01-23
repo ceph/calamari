@@ -225,6 +225,9 @@ class Manager(object):
         # syncs resulting from the heartbeat might not be received
         # by the monitor.
         cluster_monitor.start()
+        # Wait for ClusterMonitor to start accepting events before asking it
+        # to do anything
+        cluster_monitor.ready()
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
 
 
