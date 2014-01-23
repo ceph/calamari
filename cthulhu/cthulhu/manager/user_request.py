@@ -4,6 +4,7 @@ import uuid
 from dateutil.tz import tzlocal
 import salt
 import salt.client
+from cthulhu.gevent_util import nosleep
 from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, PgBrief
@@ -111,6 +112,16 @@ class UserRequest(object):
         else:
             return "Completed successfully"
 
+    @property
+    def awaiting_versions(self):
+        """
+        Jobs may advertise that they are waiting for particular versions,
+        so that ClusterMonitor can be encouraged to fetch those
+
+        :return dict of SyncObject subclass to version
+        """
+        return {}
+
     def submit(self, minion_id):
         """
         Start remote execution phase by publishing a job to salt.
@@ -190,16 +201,20 @@ class OsdMapModifyingRequest(UserRequest):
             'fsid': self._fsid
         }
 
+    @property
+    def awaiting_versions(self):
+        if self._await_version and self.state != self.COMPLETE:
+            return {
+                OsdMap: self._await_version
+            }
+        else:
+            return None
+
     def complete_jid(self, result):
         # My remote work is done, record the version of the map that I will wait for
         # and start waiting for it.
         self.result = result
         self._await_version = result['versions']['osd_map']
-
-        # TODO: to be snappier, instead of waiting for the OSD map to just show up,
-        # send out a request for it here.  To avoid redundant/overlapping requests
-        # will probaly want to have SyncObjects track which objects we're waiting
-        # for and ignore requests to get objects which we're already getting.
 
     def on_map(self, sync_type, sync_objects):
         if sync_type != OsdMap:
@@ -225,7 +240,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     POST_CREATE = 'post_create'
 
     def __init__(self, headline, fsid, cluster_name, commands, post_create_commands, pool_id, pg_count):
-        super(PgCreatingRequest, self).__init__(fsid, cluster_name, commands)
+        super(PgCreatingRequest, self).__init__(headline, fsid, cluster_name, commands)
         self._post_create_commands = post_create_commands
 
         self._phase = self.PRE_CREATE
@@ -297,12 +312,14 @@ class RequestCollection(object):
     wake up in a different world.
     """
 
-    def __init__(self, eventer):
+    def __init__(self, sync_objects, eventer):
         super(RequestCollection, self).__init__()
+
+        self._sync_objects = sync_objects
+        self._eventer = eventer
 
         self._by_request_id = {}
         self._by_jid = {}
-
         self._lock = RLock()
 
     def get_by_id(self, request_id):
@@ -317,6 +334,27 @@ class RequestCollection(object):
         else:
             return [r for r in self._by_request_id.values() if r.state == state]
 
+    def tick(self):
+        """
+        For walltime-based monitoring of running requests.  Long-running requests
+        get a periodic call to saltutil.running to verify that things really
+        are still happening, with a 3-strikes policy for declaring failure on
+        jobs running on minions that don't even respond to saltutil.running.
+        """
+        pass
+        #TODO
+
+    @nosleep
+    def fail_all(self, failed_minion):
+        """
+        For use when we lose contact with the minion that was in use for running
+        requests: assume all these requests are never going to return now.
+        """
+        for request in self.get_all(UserRequest.SUBMITTED):
+            with self._update_index(request):
+                request.set_error("Lost contact with server %s" % failed_minion)
+                request.complete()
+
     def submit(self, request, minion):
         """
         Submit a request and store it.  Do this in one operation
@@ -327,7 +365,7 @@ class RequestCollection(object):
             request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request
-        self._eventer.
+        self._eventer.on_user_request_begin(request)
 
     def on_map(self, sync_type, sync_objects):
         """
@@ -360,8 +398,6 @@ class RequestCollection(object):
             request = self.get_by_jid(jid)
             log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
 
-            # TODO: tag some detail onto the UserRequest object
-            # when a failure occurs
             if not data['success']:
                 log.error("Remote execution failed for request %s: %s" % (request.id, result))
                 if isinstance(result, dict):
@@ -382,12 +418,24 @@ class RequestCollection(object):
                 try:
                     with self._update_index(request):
                         request.complete_jid(result)
+
+                        # After a jid completes, requests may start waiting for cluster
+                        # map updates, we ask ClusterMonitor to hurry up and get them on
+                        # behalf of the request.
+                        if request.awaiting_versions:
+                            for sync_type, version in request.awaiting_versions.items():
+                                log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
+                                self._sync_objects.on_version(data['id'], sync_type, version)
+
                 except Exception as e:
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
                     # results in a terminated job, not a zombie job
                     log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
                     request.set_error("Internal error: %s" % e)
                     request.complete()
+
+        if request.complete:
+            self._eventer.on_user_request_complete(request)
 
     def _update_index(self, request):
         """

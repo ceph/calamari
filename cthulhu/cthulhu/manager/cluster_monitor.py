@@ -1,6 +1,5 @@
 import re
 import datetime
-from dateutil.tz import tzutc
 
 from pytz import utc
 import dateutil
@@ -23,6 +22,7 @@ from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, 
 from cthulhu.manager.user_request import RequestCollection
 
 from cthulhu.manager import config, salt_config
+from cthulhu.util import now
 
 FAVORITE_TIMEOUT_S = int(config.get('cthulhu', 'favorite_timeout_s'))
 
@@ -40,8 +40,21 @@ class SyncObjects(object):
     versions are new objects.
     """
 
-    def __init__(self):
+    # Note that this *isn't* an enforced timeout on fetches, rather it is
+    # the time after which we will start re-requesting maps on the assumption
+    # that a previous fetch is MIA.
+    FETCH_TIMEOUT = datetime.timedelta(seconds=10)
+
+    def __init__(self, cluster_name):
         self._objects = dict([(t, t(None, None)) for t in SYNC_OBJECT_TYPES])
+        self._cluster_name = cluster_name
+
+        # When we issued a fetch() for this type, or None if no fetch
+        # is underway
+        self._fetching_at = dict([(t, None) for t in SYNC_OBJECT_TYPES])
+        # The latest version we have heard about (not the latest we have
+        # in our map)
+        self._known_versions = dict([(t, None) for t in SYNC_OBJECT_TYPES])
 
     def set_map(self, typ, version, map_data):
         so = self._objects[typ] = typ(version, map_data)
@@ -55,6 +68,82 @@ class SyncObjects(object):
 
     def get(self, typ):
         return self._objects[typ]
+
+    def on_version(self, reported_by, sync_type, new_version):
+        """
+        Notify me that a particular version of a particular map exists.
+
+        I may choose to initiate RPC to retrieve the map
+        """
+        log.debug("SyncObjects.on_version %s/%s/%s" % (reported_by, sync_type.str, new_version))
+        old_version = self.get_version(sync_type)
+        if sync_type.cmp(new_version, old_version) > 0:
+            known_version = self._known_versions[sync_type]
+            if sync_type.cmp(new_version, known_version) > 0:
+                # We are out of date: request an up to date copy
+                log.info("Advanced known version %s/%s %s->%s" % (
+                    self._cluster_name, sync_type.str, known_version, new_version))
+                self._known_versions[sync_type] = new_version
+            else:
+                log.info("on_version: %s is newer than %s" % (new_version, old_version))
+
+            # If we already have a request out for this type of map, then consider
+            # cancelling it if we've already waited for a while.
+            if self._fetching_at[sync_type] is not None:
+                if now() - self._fetching_at[sync_type] < self.FETCH_TIMEOUT:
+                    log.info("Fetch already underway for %s" % sync_type.str)
+                    return
+                else:
+                    log.warn("Abandoning fetch for %s started at %s" % (
+                        sync_type.str, self._fetching_at[sync_type]))
+
+            self.fetch(reported_by, sync_type)
+
+    def fetch(self, minion_id, sync_type):
+        log.debug("SyncObjects.fetch: %s/%s" % (minion_id, sync_type))
+        if minion_id is None:
+            # We're probably being replayed to from the database
+            log.warn("SyncObjects.fetch called with minion_id=None")
+            return
+
+        self._fetching_at[sync_type] = now()
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        # TODO clean up unused 'since' argument
+        pub_data = client.run_job(minion_id, 'ceph.get_cluster_object',
+                                  condition_kwarg([], {'cluster_name': self._cluster_name,
+                                                       'sync_type': sync_type.str,
+                                                       'since': None}))
+        if not pub_data:
+            log.error("Failed to start fetch job %s/%s" % (minion_id, sync_type))
+            # Don't throw an exception because if a fetch fails we should always
+        else:
+            log.debug("SyncObjects.fetch: jid=%s minions=%s" % (pub_data['jid'], pub_data['minions']))
+
+    def on_fetch_complete(self, minion_id, sync_type, version, data):
+        """
+        :return A SyncObject if this version was new to us, else None
+        """
+        log.debug("SyncObjects.on_fetch_complete %s/%s/%s" % (minion_id, sync_type.str, version))
+        self._fetching_at[sync_type] = None
+
+        # A fetch might give us a newer version than we knew we had asked for
+        if sync_type.cmp(version, self._known_versions[sync_type]) > 0:
+            self._known_versions[sync_type] = version
+
+        # Don't store this if we already got something newer
+        if sync_type.cmp(version, self.get_version(sync_type)) <= 0:
+            log.warn("Ignoring outdated update %s/%s" % sync_type.str, version)
+            new_object = None
+        else:
+            log.info("Got new version %s/%s" % (sync_type.str, version))
+            new_object = self.set_map(sync_type, version, data)
+
+        # This might not be the latest: if it's not, send out another fetch
+        # right away
+        if sync_type.cmp(self._known_versions[sync_type], version) > 0:
+            self.fetch(minion_id, sync_type)
+
+        return new_object
 
 
 class ClusterMonitor(gevent.greenlet.Greenlet):
@@ -90,8 +179,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._complete = gevent.event.Event()
         self.done = gevent.event.Event()
 
-        self._sync_objects = SyncObjects()
-        self._requests = RequestCollection()
+        self._sync_objects = SyncObjects(self.name)
+        self._requests = RequestCollection(self._sync_objects, eventer)
         self._derived_objects = DerivedObjects()
 
         self._request_factories = {
@@ -143,7 +232,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             if ev is not None:
                 data = ev['data']
                 tag = ev['tag']
-                log.debug("Event %s/tag=%s" % (data['id'] if 'id' in data else None, tag))
+                log.debug("_run.ev: %s/tag=%s" % (data['id'] if 'id' in data else None, tag))
 
                 # I am interested in the following tags:
                 # - salt/job/<jid>/ret/<minion id> where jid is one that I started
@@ -169,20 +258,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
                         if data['fun'] == 'ceph.get_cluster_object':
                             # A ceph.get_cluster_object response
-                            # FIXME: ordering: should be tracking ongoing jids for each type of object
-                            # we might have a sync out for, and
-                            # FIXME: filtering: chop these down to only the jobs for this cluster, ideally
-                            # I would like to prefix my cluster ID to JIDs
                             if not data['success']:
                                 log.error("on_sync_object: failure from %s: %s" % (data['id'], data['return']))
                                 continue
+
                             self.on_sync_object(data['id'], data['return'])
                         elif 'ceph.rados_commands':
                             # A ceph.rados_commands response
-                            # FIXME: we'll get KeyErrors here if it's a JID from another ClusterMonitor,
-                            # which is handled but generates nasty backtraces in the logs.  We should
-                            # be explicitly checking that this command belongs to use (I *really* wish
-                            # I could explicitly add to the tags of salt jobs to prefix with FSID).
                             self.on_completion(data)
                     else:
                         # This does not concern us, ignore it
@@ -242,109 +324,80 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             log.debug('Ignoring cluster data from %s, it is not my favourite (%s)' % (minion_id, self._favorite_mon))
             return
 
-        log.debug('Checking for version increments in heartbeat from %s' % minion_id)
-
-        for sync_type in SYNC_OBJECT_TYPES:
-            old_version = self._sync_objects.get_version(sync_type)
-            new_version = cluster_data['versions'][sync_type.str]
-            # FIXME: for versions (not hashes) check for greater than, not just inequality
-            if new_version != old_version:
-                log.info("Advanced version %s/%s %s->%s" % (self.fsid, sync_type.str, old_version, new_version))
-
-                # We are out of date: request an up to date copy
-                client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-                client.run_job(minion_id, 'ceph.get_cluster_object',
-                               condition_kwarg([], {'cluster_name': cluster_data['name'],
-                                                    'sync_type': sync_type.str,
-                                                    'since': old_version}))
-
-        # persistence.heartbeat()
         self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
-    def inject_sync_object(self, sync_type, version, data):
+        log.debug('Checking for version increments in heartbeat from %s' % minion_id)
+        for sync_type in SYNC_OBJECT_TYPES:
+            self._sync_objects.on_version(
+                minion_id,
+                sync_type,
+                cluster_data['versions'][sync_type.str])
+
+    def inject_sync_object(self, minion_id, sync_type, version, data):
         sync_type = SYNC_OBJECT_STR_TYPE[sync_type]
         old_object = self._sync_objects.get(sync_type)
-        new_object = self._sync_objects.set_map(sync_type, version, data)
+        new_object = self._sync_objects.on_fetch_complete(minion_id, sync_type, version, data)
 
-        # The frontend would like us to maintain some derived objects that
-        # munge together the PG and OSD maps into an easier-to-consume form.
-        for generator in derived.generators:
-            if sync_type in generator.depends:
-                dependency_data = {}
-                for t in generator.depends:
-                    obj = self._sync_objects.get(t)
-                    if obj is not None:
-                        dependency_data[t] = obj.data
-                    else:
-                        dependency_data[t] = None
+        if new_object:
+            # The ServerMonitor is interested in cluster maps, do this prior
+            # to updating any derived objects so that derived generators have
+            # access to latest view of server state
+            if sync_type == OsdMap:
+                self._servers.on_osd_map(data)
+            elif sync_type == MonMap:
+                self._servers.on_mon_map(data)
+            elif sync_type == MdsMap:
+                self._servers.on_mds_map(self.fsid, data)
 
-                if None not in dependency_data.values():
-                    log.debug("Updating %s" % generator.__name__)
-                    derived_objects = generator.generate(self, self._servers, dependency_data)
-                    self._derived_objects.update(derived_objects)
+            # The frontend would like us to maintain some derived objects that
+            # munge together the PG and OSD maps into an easier-to-consume form.
+            for generator in derived.generators:
+                if sync_type in generator.depends:
+                    dependency_data = {}
+                    for t in generator.depends:
+                        obj = self._sync_objects.get(t)
+                        if obj is not None:
+                            dependency_data[t] = obj.data
+                        else:
+                            dependency_data[t] = None
 
-        self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
+                    if None not in dependency_data.values():
+                        log.debug("Updating %s" % generator.__name__)
+                        derived_objects = generator.generate(self, self._servers, dependency_data)
+                        self._derived_objects.update(derived_objects)
+
+            self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
+
+        return new_object
 
     @nosleep
     def on_sync_object(self, minion_id, data):
         if minion_id != self._favorite_mon:
             log.debug("Ignoring map from %s, it is not my favourite (%s)" % (minion_id, self._favorite_mon))
 
-        fsid = data['fsid']
-        assert fsid == self.fsid
+        assert data['fsid'] == self.fsid
 
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
-
-        if data['version'] != self._sync_objects.get_version(sync_type):
-            log.info("Received new copy of %s/%s: %s" % (fsid, sync_type.str, data['version']))
-            self._notifier.publish('ceph:sync', {
-                'type': data['type'],
-                'version': data['version'],
-                'data': data['data']
-            })
-
-            # The ServerMonitor is interested in cluster maps, do this prior
-            # to updating any derived objects so that derived generators have
-            # access to latest view of server state
-            if sync_type == OsdMap:
-                self._servers.on_osd_map(data['data'])
-            elif sync_type == MonMap:
-                self._servers.on_mon_map(data['data'])
-            elif sync_type == MdsMap:
-                self._servers.on_mds_map(fsid, data['data'])
-
-            self.inject_sync_object(data['type'], data['version'], data['data'])
-
-            # While UserRequests are running, they need to be kept informed of new
-            # map versions, since some requests don't complete until they've seen
-            # a certain version of a map.
+        new_object = self.inject_sync_object(minion_id, data['type'], data['version'], data['data'])
+        if new_object:
             self._requests.on_map(sync_type, self._sync_objects)
-
-            # TODO: get datetime out of map instead of setting it to now
-            if isinstance(data['version'], int):
-                version = data['version']
-            else:
-                version = None
-
-            self._persister.update_sync_object(self.fsid, sync_type.str, version,
-                                               datetime.datetime.now(tzutc()), data['data'])
+            self._persister.update_sync_object(
+                self.fsid,
+                sync_type.str,
+                new_object.version if isinstance(new_object.version, int) else None,
+                now(), data['data'])
+        else:
+            log.warn("ClusterMonitor.on_sync_object: stale object received")
 
     @nosleep
     def on_completion(self, data):
         self._requests.on_completion(data)
-        # FIXME: to protect against an on_sync_object resulting from a job
-        # completion happening just before we process the job completion,
-        # we should send a request on_map callbacks for all the maps it
-        # may be interested in right after a job completion.  Or, we could
-        # just pass all the maps into the job completion callback so that
-        # it can explicitly do a there 'n' then check.
 
     def _set_favorite(self, minion_id):
+        assert minion_id != self._favorite_mon
+        self._requests.fail_all(minion_id)
+
         self._favorite_mon = minion_id
-        # TODO: for use when we have lost contact
-        # with the existing favorite: if we had any
-        # outstanding jobs which were using it, then
-        # synthesize failures for them.
 
     def _request(self, method, obj_type, *args, **kwargs):
         """

@@ -119,11 +119,13 @@ class CalamariControl(object):
             for cluster in response.json():
                 response = self.api.delete("cluster/%s" % cluster['id'])
                 response.raise_for_status()
+                log.debug("Deleted cluster %s" % cluster['id'])
 
             # By extension, no servers
             for server in self.api.get("server").json():
                 response = self.api.delete("server/%s" % server['fqdn'])
                 response.raise_for_status()
+                log.debug("Deleted server %s" % server['fqdn'])
 
 
 class EmbeddedCalamariControl(CalamariControl):

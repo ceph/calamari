@@ -182,7 +182,7 @@ class Manager(object):
                 if cluster_monitor.update_time is None or when > cluster_monitor.update_time:
                     cluster_monitor.update_time = when
 
-                cluster_monitor.inject_sync_object(sync_type, version, json.loads(latest_record.data))
+                cluster_monitor.inject_sync_object(None, sync_type, version, json.loads(latest_record.data))
 
         for monitor in self.clusters.values():
             log.info("Recovery: Cluster %s with update time %s" % (monitor.fsid, monitor.update_time))

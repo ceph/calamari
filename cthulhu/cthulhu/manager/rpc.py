@@ -190,7 +190,9 @@ class RpcInterface(object):
         return {
             'id': request.id,
             'state': request.state,
-            'error': request.error
+            'error': request.error,
+            'status': request.status,
+            'headline': request.headline
         }
 
     def get_request(self, fs_id, request_id):

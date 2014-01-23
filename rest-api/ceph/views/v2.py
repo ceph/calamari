@@ -213,7 +213,7 @@ Manage Ceph storage pools.
 
     def destroy(self, request, fsid, pool_id):
         delete_response = self.client.delete(fsid, POOL, int(pool_id), status=status.HTTP_202_ACCEPTED)
-        return Response(delete_response)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
 
     def update(self, request, fsid, pool_id):
         updates = request.DATA

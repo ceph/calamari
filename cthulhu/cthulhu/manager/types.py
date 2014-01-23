@@ -14,8 +14,25 @@ class SyncObject(object):
         self.version = version
         self.data = data
 
+    @classmethod
+    def cmp(cls, a, b):
+        """
+        Slight bastardization of cmp.  Takes two versions,
+        and returns a cmp-like value, except that if versions
+        are not sortable we only return 0 or 1.
+        """
+        # Version is something unique per version (like a hash)
+        return 1 if a != b else 0
 
-class OsdMap(SyncObject):
+
+class VersionedSyncObject(SyncObject):
+    @classmethod
+    def cmp(cls, a, b):
+        # Version is something numeric like an epoch
+        return cmp(a, b)
+
+
+class OsdMap(VersionedSyncObject):
     str = 'osd_map'
 
     def __init__(self, version, data):
@@ -28,15 +45,15 @@ class OsdMap(SyncObject):
             self.pools_by_id = {}
 
 
-class MdsMap(SyncObject):
+class MdsMap(VersionedSyncObject):
     str = 'mds_map'
 
 
-class MonMap(SyncObject):
+class MonMap(VersionedSyncObject):
     str = 'mon_map'
 
 
-class MonStatus(SyncObject):
+class MonStatus(VersionedSyncObject):
     str = 'mon_status'
 
     def __init__(self, version, data):
