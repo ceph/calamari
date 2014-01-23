@@ -38,7 +38,7 @@ class Event(Base):
     # Time at which event was synthesized by Eventer
     when = Column(DateTime(timezone=True))
 
-    severity = Column(Integer, index=True)
+    severity = Column(Integer)
 
     # Human readable message
     message = Column(Text)
