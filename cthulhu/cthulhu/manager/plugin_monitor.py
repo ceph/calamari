@@ -13,12 +13,13 @@ class PluginMonitor(gevent.greenlet.Greenlet):
     Consumes output from plugins for a specific cluster
     """
 
-    def __init__(self):
+    def __init__(self, servers):
         super(PluginMonitor, self).__init__()
         self.salt_client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         # plugin_name to status processor output
         self.plugin_results = {}
         self._complete = event.Event()
+        self._servers = servers
 
     def load_plugins(self):
 
@@ -26,6 +27,7 @@ class PluginMonitor(gevent.greenlet.Greenlet):
         Try to load a status_processor from each module in plugin_path, store keyed by module_name
         """
         loaded_plugins = []
+        # FIXME this assumes that plugin_path has been added to PYTHONPATH and/or is in site-packages
         plugin_path = config.get('cthulhu', 'plugin_path')
         module = os.path.basename(plugin_path)
         if os.path.exists(plugin_path):
@@ -65,7 +67,12 @@ class PluginMonitor(gevent.greenlet.Greenlet):
             start = int(time.time())
             timeout_at = start + period
             # TODO get list of servers from server_monitor
-            check_data = self.filter_errors(self.salt_client.cmd('*', salt_name, timeout=check_timeout), salt_name)
+            servers = [s.fqdn for s in self._servers.get_all()]
+            check_data = self.filter_errors(self.salt_client.cmd(servers,
+                                                                 salt_name,
+                                                                 timeout=check_timeout,
+                                                                 expr_form='list'),
+                                            salt_name)
 
             self.plugin_results[plugin_name] = status_processor(check_data)
             log.debug("processed " + str(plugin_name) + str(check_data))

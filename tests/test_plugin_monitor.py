@@ -1,8 +1,7 @@
-from unittest import TestCase
+from django.utils.unittest import TestCase
 from django.utils.unittest.case import skipIf
-import mock
-import gevent
 import os
+from mock import Mock
 
 if os.environ.get('CALAMARI_CONFIG'):
    from cthulhu.manager import plugin_monitor
@@ -17,6 +16,8 @@ class StatusProcessor(object):
     def run(self, check_data):
 
         state = "OK"
+        if not check_data:
+            state = "FAIL"
         for node, data in check_data.iteritems():
             for key, value in data.iteritems():
                 if key == 'SMART Health Status' and value != "OK":
@@ -25,28 +26,15 @@ class StatusProcessor(object):
         return {'SMART Health Status': state}
 
 
-class TestPluginLoading(TestCase):
-
-    def setUp(self):
-        self.plugin_monitor = plugin_monitor.PluginMonitor()
-
-    @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
-    def testImportStatusProcessor(self):
-        plugins = self.plugin_monitor.load_plugins()[0]
-        assert(plugins[0] == 'acmeplugin')
-        assert(plugins[1].period == 1)
-
-    @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
-    def testImportError(self):
-        # TODO this is a little cryptic since I don't feel like patching the config object right now
-        plugins = self.plugin_monitor.load_plugins()
-        assert(len(plugins) == 1)  # wilyplugin should bomb
-
 
 class TestStatusChecksIntegration(TestCase):
 
     def setUp(self):
-        self.plugin_monitor = plugin_monitor.PluginMonitor()
+        # FIXME depends on magic defined in minion-sim
+        fqdn_mocks = [Mock(fqdn='figment00%s.imagination.com' %str(x)) for x in range(3)]
+        servers_mock = Mock(get_all=Mock())
+        servers_mock.get_all.return_value = fqdn_mocks
+        self.plugin_monitor = plugin_monitor.PluginMonitor(servers_mock)
 
     def kill_plugin(self, check_data):
         self.plugin_monitor.stop()
