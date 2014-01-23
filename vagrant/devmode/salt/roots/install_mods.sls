@@ -30,3 +30,11 @@ calamari_web_mod:
     - cwd: /home/vagrant/calamari/calamari-web
     - require:
       - sls: virtualenv
+
+calamari_plugins:
+  cmd.run:
+    - user: vagrant
+    - name: "source ../env/bin/activate && python setup.py develop"
+    - cwd: /home/vagrant/calamari/plugins
+    - require:
+      - sls: virtualenv
