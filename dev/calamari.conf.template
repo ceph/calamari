@@ -1,7 +1,7 @@
 
 [cthulhu]
 
-plugin_path = {{calamari_root}}/plugins/calamari_plugins
+plugin_path = {{calamari_root}}/cthulhu/tests/plugins
 salt_config_path = {{calamari_root}}/dev/etc/salt/master
 # FIXME: this should be a function of the ceph.heartbeat schedule period which
 # we should query from the salt pillar
