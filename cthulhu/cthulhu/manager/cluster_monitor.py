@@ -18,6 +18,7 @@ from cthulhu.manager import derived
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
+from cthulhu.manager.plugin_monitor import PluginMonitor
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager.user_request import RequestCollection
 
@@ -98,6 +99,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             POOL: PoolRequestFactory
         }
 
+        self._plugin_monitor = PluginMonitor()
+
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
         self._complete.set()
@@ -131,6 +134,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         return self._derived_objects.get(object_type)
 
     def _run(self):
+        self._plugin_monitor.start()
         event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
 
         while not self._complete.is_set():
@@ -190,6 +194,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     log.debug("Message content: %s" % data)
 
         log.info("%s complete" % self.__class__.__name__)
+        self._plugin_monitor.stop()
+        self._plugin_monitor.join()
         self.done.set()
 
     def _is_favorite(self, minion_id):

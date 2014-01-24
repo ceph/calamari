@@ -14,12 +14,3 @@ class TestPluginMonitor(TestCase):
     def testCreatePluginMonitor(self):
         pass
 
-    def testRunCheckTakesCorrectTime(self):
-        period = 5
-        # self.plugin_monitor.salt_client = MagicMock()
-        now = datetime.now()
-        self.plugin_monitor.run_check('foo', period)
-        later = datetime.now()
-        assert(timedelta(seconds=period + 1) > later - now > timedelta(seconds=period))
-
-        
