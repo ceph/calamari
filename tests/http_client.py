@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import json
 import logging
 import requests
@@ -68,3 +70,18 @@ class AuthenticatedHttpClient(requests.Session):
         # Check we're allowed in now.
         response = self.get("cluster")
         response.raise_for_status()
+
+if __name__ == "__main__":
+
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument('-u', '--uri', default='http://mira035/api/v1/')
+    p.add_argument('--user', default='admin')
+    p.add_argument('--pass', dest='password', default='admin')
+    args, remainder = p.parse_known_args()
+
+    c = AuthenticatedHttpClient(args.uri, args.user, args.password)
+    c.login()
+    response = c.request('GET', ''.join(remainder)).json()
+    print json.dumps(response, indent=2)
