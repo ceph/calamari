@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import socket
+import time
 
 # Default timeout for communicating with the Ceph REST API.
 import struct
@@ -366,6 +367,28 @@ def cluster_status(cluster_handle, cluster_name):
             'health': health_digest
         }
     }
+
+
+def selftest_wait(period):
+    """
+    For self-test only.  Wait for the specified period and then return None.
+    """
+    time.sleep(period)
+
+
+def selftest_block():
+    """
+    For self-test only.  Run forever
+    """
+    while(True):
+        time.sleep(1)
+
+
+def selftest_exception():
+    """
+    For self-test only.  Throw an exception
+    """
+    raise RuntimeError("This is a self-test exception")
 
 
 def heartbeat():

@@ -3,6 +3,7 @@ import sys
 import xmlrpclib
 import yaml
 from minion_sim.log import log
+import time
 
 # Because salt minion will be calling functions
 # defined in this module
@@ -128,6 +129,25 @@ def main():
 2014-01-19 18:32:01.002447 osd.1 192.168.18.2:6801/6964 1930 : [INF] 1.1ef deep-scrub ok
 2014-01-19 18:32:05.062757 mon.0 192.168.18.1:6789/0 469 : [INF] pgmap v163854: 1644 pgs: 1643 active+clean, 1 active+clean+scrubbing+deep; 1040 GB data, 1993 GB used, 2954 GB / 4948 GB avail"""
 
+    def selftest_wait(period):
+        """
+        For self-test only.  Wait for the specified period and then return None.
+        """
+        time.sleep(period)
+
+    def selftest_block():
+        """
+        For self-test only.  Run forever
+        """
+        while(True):
+            time.sleep(1)
+
+    def selftest_exception():
+        """
+        For self-test only.  Throw an exception
+        """
+        raise RuntimeError("This is a self-test exception")
+
     import salt.loader
     old_minion_mods = salt.loader.minion_mods
 
@@ -140,6 +160,9 @@ def main():
         data['ceph.rados_commands'] = rados_commands
         data['log_tail.list_logs'] = list_logs
         data['log_tail.tail'] = tail
+        data['ceph.selftest_wait'] = selftest_wait
+        data['ceph.selftest_block'] = selftest_block
+        data['ceph.selftest_exception'] = selftest_exception
         __salt__ = data
         return data
 

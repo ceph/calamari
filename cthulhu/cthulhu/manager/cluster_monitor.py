@@ -13,16 +13,16 @@ from salt.client import condition_kwarg
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 
-from cthulhu.manager import derived
+from cthulhu.manager import derived, request_collection
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
-from cthulhu.manager.user_request import RequestCollection
+from cthulhu.manager.request_collection import RequestCollection
 
 from cthulhu.manager import config, salt_config
-from cthulhu.util import now
+from cthulhu.util import now, Ticker
 
 FAVORITE_TIMEOUT_S = int(config.get('cthulhu', 'favorite_timeout_s'))
 
@@ -191,6 +191,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._plugin_monitor = PluginMonitor(servers)
         self._ready = gevent.event.Event()
 
+        self._request_ticker = Ticker(request_collection.TICK_PERIOD, lambda: self._requests.tick())
+
     def ready(self):
         """
         Block until the ClusterMonitor is ready to receive salt events
@@ -236,6 +238,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
 
+        self._request_ticker.start()
+
         while not self._complete.is_set():
             ev = event.get_event(full=True)
 
@@ -273,9 +277,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                                 continue
 
                             self.on_sync_object(data['id'], data['return'])
-                        elif 'ceph.rados_commands':
+                        elif data['fun'] == 'ceph.rados_commands':
                             # A ceph.rados_commands response
                             self.on_completion(data)
+                        elif data['fun'] == "saltutil.running":
+                            # Update on what jobs are running
+                            # It would be nice to filter these down to those which really are for
+                            # this cluster, but as long as N_clusters and N_jobs are reasonably small
+                            # it's not an efficiency problem.
+                            self._requests.on_tick_response(data['id'], data['return'])
                     else:
                         # This does not concern us, ignore it
                         pass
@@ -285,6 +295,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     log.exception("Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
 
+        self._request_ticker.stop()
+        self._request_ticker.join()
         log.info("%s complete" % self.__class__.__name__)
         self._plugin_monitor.stop()
         self._plugin_monitor.join()
