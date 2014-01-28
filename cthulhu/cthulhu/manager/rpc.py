@@ -226,7 +226,7 @@ class RpcInterface(object):
         return [self._dump_request(r) for r in requests]
 
     @property
-    def salt_key(self):
+    def _salt_key(self):
         return Key(salt.config.master_config(config.get('cthulhu', 'salt_config_path')))
 
     def minion_status(self, status_filter):
@@ -240,7 +240,7 @@ class RpcInterface(object):
         # for this stuff to call out to the master instead of touching
         # the files directly (need to set up some auth to do that though)
 
-        keys = self.salt_key.list_keys()
+        keys = self._salt_key.list_keys()
         result = []
 
         key_to_status = {
@@ -263,22 +263,22 @@ class RpcInterface(object):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.accept(minion_id)
+        return self._salt_key.accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.reject(minion_id)
+        return self._salt_key.reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.delete_key(minion_id)
+        return self._salt_key.delete_key(minion_id)
 
     def minion_get(self, minion_id):
-        result = self.salt_key.name_match(minion_id, full=True)
+        result = self._salt_key.name_match(minion_id, full=True)
         if not result:
             return None
 
