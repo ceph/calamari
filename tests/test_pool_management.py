@@ -1,14 +1,13 @@
 
 import logging
-from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL
+from tests.server_testcase import ServerTestCase
 from tests.utils import wait_until_true
 
 log = logging.getLogger(__name__)
 
-# TODO: This would be lower/more aggressive if we didn't have to wait
-# for a full upgrade cycle for OSD maps to update (should be updating
-# them more aggressively as part of the UserRequest)
-operation_timeout = HEARTBEAT_INTERVAL
+# This is the latency for a command to run and then for the
+# resulting OSD map to get synced up to the calamari server
+operation_timeout = 20
 
 
 class TestPoolManagement(ServerTestCase):
