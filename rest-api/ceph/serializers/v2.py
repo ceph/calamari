@@ -20,13 +20,6 @@ class ClusterSerializer(serializers.Serializer):
     )
 
 
-class SyncObjectSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('data',)
-
-    data = serializers.Field()
-
-
 class PoolSerializer(serializers.Serializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
