@@ -9,6 +9,8 @@ class OsdRequestFactory(RequestFactory):
 
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
 
+        # in/out/down take a vector of strings called 'ids', while 'reweight' takes a single integer
+
         if 'in' in attributes and bool(attributes['in']) != bool(osd_map.osds_by_id[osd_id]['in']):
             if attributes['in']:
                 commands.append(('osd in', {'ids': [attributes['id'].__str__()]}))
@@ -17,7 +19,7 @@ class OsdRequestFactory(RequestFactory):
 
         if 'up' in attributes and bool(attributes['up']) != bool(osd_map.osds_by_id[osd_id]['up']):
             if not attributes['up']:
-                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
+                commands.append(('osd down', {'ids': [attributes['id'].__str__()]}))
             else:
                 raise RuntimeError("It is not valid to set a down OSD to be up")
 
@@ -26,8 +28,8 @@ class OsdRequestFactory(RequestFactory):
                 commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
 
         if not commands:
-            #
-            return
+            # Returning None indicates no-op
+            return None
 
         print_attrs = attributes.copy()
         del print_attrs['id']

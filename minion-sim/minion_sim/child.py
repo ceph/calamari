@@ -91,9 +91,21 @@ def main():
                     cluster.pool_update(args['srcpool'], 'pool_name', args['destpool'])
                 elif prefix == "osd pool delete":
                     cluster.pool_delete(args['pool'])
+                elif prefix == "osd in":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), None, 1)
+                elif prefix == "osd out":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), None, 0)
+                elif prefix == "osd down":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), 0, None)
+                elif prefix == "osd reweight":
+                    cluster.set_osd_weight(args['id'], args['weight'])
                 else:
                     raise NotImplementedError()
             except Exception as e:
+                log.exception("Exception running %s" % command)
                 status = cluster.get_heartbeat(fsid)
                 return {
                     'error': True,

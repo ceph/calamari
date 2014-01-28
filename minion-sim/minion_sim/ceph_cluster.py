@@ -497,6 +497,7 @@ class CephCluster(object):
             # PG stats
 
     def set_osd_state(self, osd_id, up=None, osd_in=None):
+        log.debug("set_osd_state: '%s' %s %s %s" % (osd_id, osd_id.__class__, up, osd_in))
         # Update OSD map
         dirty = False
         osd = [o for o in self._objects['osd_map']['osds'] if o['osd'] == osd_id][0]
@@ -513,6 +514,14 @@ class CephCluster(object):
             return
 
         log.debug("Advancing OSD map")
+        self._objects['osd_map']['epoch'] += 1
+
+        self._pg_monitor()
+        self._update_health()
+
+    def set_osd_weight(self, osd_id, weight):
+        node = [n for n in self._objects['osd_map']['tree']['nodes'] if n['id'] == osd_id][0]
+        node['reweight'] = weight
         self._objects['osd_map']['epoch'] += 1
 
         self._pg_monitor()

@@ -208,6 +208,7 @@ class RpcInterface(object):
             'id': request.id,
             'state': request.state,
             'error': request.error,
+            'error_message': request.error_message,
             'status': request.status,
             'headline': request.headline
         }

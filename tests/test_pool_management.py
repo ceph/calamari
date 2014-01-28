@@ -1,29 +1,11 @@
 
 import logging
-from tests.server_testcase import ServerTestCase
-from tests.utils import wait_until_true
+from tests.server_testcase import RequestTestCase
 
 log = logging.getLogger(__name__)
 
-# This is the latency for a command to run and then for the
-# resulting OSD map to get synced up to the calamari server
-operation_timeout = 20
 
-
-class TestPoolManagement(ServerTestCase):
-    def _request_complete(self, cluster_id, request_id):
-        """
-        Return whether a request has completed successfully.
-        If the request has failed, raise an exception.
-        """
-        r = self.api.get("cluster/%s/request/%s" % (cluster_id, request_id))
-        r.raise_for_status()
-
-        if r.json()['error']:
-            raise self.failureException("Request %s failed" % request_id)
-
-        return r.json()['state'] == 'complete'
-
+class TestPoolManagement(RequestTestCase):
     def setUp(self):
         super(TestPoolManagement, self).setUp()
         self.ceph_ctl.configure(3)
@@ -46,9 +28,7 @@ class TestPoolManagement(ServerTestCase):
         }
         args.update(optionals)
         r = self.api.post("cluster/%s/pool" % cluster_id, args)
-        r.raise_for_status()
-        request_id = r.json()['request_id']
-        wait_until_true(lambda: self._request_complete(cluster_id, request_id), timeout=operation_timeout)
+        self._wait_for_completion(cluster_id, r)
 
     def _assert_visible(self, cluster_id, pool_name, visible=True):
         # Check the pool is now visible
@@ -68,17 +48,12 @@ class TestPoolManagement(ServerTestCase):
 
     def _update(self, cluster_id, pool_id, attrs):
         r = self.api.patch("cluster/%s/pool/%s" % (cluster_id, pool_id), attrs)
-        r.raise_for_status()
-        request_id = r.json()['request_id']
-        wait_until_true(lambda: self._request_complete(cluster_id, request_id), timeout=operation_timeout)
-        return self.api.get("cluster/%s/request/%s" % (cluster_id, request_id)).json()
+        self._wait_for_completion(cluster_id, r)
 
     def _delete(self, cluster_id, pool_id):
         # Delete the pool
         r = self.api.delete("cluster/%s/pool/%s" % (cluster_id, pool_id))
-        r.raise_for_status()
-        request_id = r.json()['request_id']
-        wait_until_true(lambda: self._request_complete(cluster_id, request_id), timeout=operation_timeout)
+        self._wait_for_completion(cluster_id, r)
 
     def test_lifecycle(self):
         """

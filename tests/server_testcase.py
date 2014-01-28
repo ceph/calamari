@@ -33,6 +33,11 @@ CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 OSD_RECOVERY_PERIOD = 600
 
 
+# This is the latency for a command to run and then for the
+# resulting OSD map to get synced up to the calamari server
+REQUEST_TIMEOUT = 20
+
+
 if True:
     CALAMARI_CTL = EmbeddedCalamariControl
     CEPH_CTL = EmbeddedCephControl
@@ -106,3 +111,29 @@ class ServerTestCase(TestCase):
         response.raise_for_status()
         osds = response.json()
         return bool(len(osds))
+
+
+class RequestTestCase(ServerTestCase):
+    """
+    For test cases that need to deal with running requests
+    """
+    def _request_complete(self, cluster_id, request_id):
+        """
+        Return whether a request has completed successfully.
+        If the request has failed, raise an exception.
+        """
+        r = self.api.get("cluster/%s/request/%s" % (cluster_id, request_id))
+        r.raise_for_status()
+
+        if r.json()['error']:
+            raise self.failureException("Request %s failed: %s" % (request_id, r.json()['error_message']))
+
+        return r.json()['state'] == 'complete'
+
+    def _wait_for_completion(self, fsid, response):
+        """
+        Wait for a user request to complete successfully, given the response from a PATCH/POST/DELETE
+        """
+        self.assertEqual(response.status_code, 202)
+        request_id = response.json()['request_id']
+        wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=REQUEST_TIMEOUT)

@@ -203,7 +203,6 @@ Manage Ceph storage pools.
 
     def list(self, request, fsid):
         pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL)]
-
         return Response(PoolSerializer(pools, many=True).data)
 
     def retrieve(self, request, fsid, pool_id):
@@ -256,7 +255,7 @@ Manage Ceph OSDs.
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):
-        return self._return_request(self.client.update(fsid, OSD, int(osd_id), request.DATA))
+        return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
 
 class SyncObject(RPCViewSet):

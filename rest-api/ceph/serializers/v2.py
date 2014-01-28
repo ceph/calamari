@@ -93,6 +93,9 @@ class PoolSerializer(serializers.Serializer):
 #}
 
 
+# TODO slide some extra stuff into here from ServerMonitor, like the
+# location where it's running (c.f. 'host' in /v1/)
+
 class OsdSerializer(serializers.Serializer):
     class Meta:
         fields = ('uuid', 'up', 'in', 'id', 'reweight')
@@ -131,11 +134,12 @@ class CrushRuleSetSerializer(serializers.Serializer):
 
 class RequestSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'state', 'error', 'headline', 'status')
+        fields = ('id', 'state', 'error', 'error_message', 'headline', 'status')
 
     id = serializers.CharField()
     state = serializers.CharField()
     error = serializers.BooleanField()
+    error_message = serializers.CharField()
     headline = serializers.CharField()
     status = serializers.CharField()
 
