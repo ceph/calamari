@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 # This is how long you should wait if you're waiting
 # for something to happen roughly 'on the next heartbeat'.
-HEARTBEAT_INTERVAL = 120
+HEARTBEAT_INTERVAL = 360
 
 # How long should calamari take to re-establish
 # sync after a mon goes down?
