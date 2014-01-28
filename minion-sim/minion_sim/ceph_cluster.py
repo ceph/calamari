@@ -266,7 +266,7 @@ class CephCluster(object):
 
         objects = dict()
         objects['health'] = {
-            'detail': None,
+            'detail': [],
             'health': {
                 'health_services': [],
             },
