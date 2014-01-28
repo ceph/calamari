@@ -49,6 +49,8 @@ the examples for which fields are available.
     return Response(_get_local_grains())
 
 
+# TODO: ensure we are sorting by time of request creation
+# TODO: allow filtering by status (especially filtering to only show incomplete)
 class RequestViewSet(RPCViewSet):
     """
 Calamari server requests, tracking long-running operations on the Calamari server.  Some

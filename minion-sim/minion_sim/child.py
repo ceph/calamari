@@ -1,7 +1,9 @@
 import os
 import sys
 import xmlrpclib
+import json
 import yaml
+import zlib
 from minion_sim.log import log
 import time
 
@@ -63,7 +65,12 @@ def main():
             __salt__['event.fire_master'](cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     def get_cluster_object(cluster_name, sync_type, since):
-        return cluster.get_cluster_object(cluster_name, sync_type, since)
+        result = cluster.get_cluster_object(cluster_name, sync_type, since)
+
+        if sync_type == 'pg_brief':
+            result['data'] = zlib.compress(json.dumps(result['data']))
+
+        return result
 
     def rados_commands(fsid, cluster_name, commands):
         services = cluster.get_services(fqdn)
@@ -151,7 +158,7 @@ def main():
         """
         For self-test only.  Run forever
         """
-        while(True):
+        while True:
             time.sleep(1)
 
     def selftest_exception():
