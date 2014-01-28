@@ -1,3 +1,4 @@
+import json
 import re
 import datetime
 
@@ -10,6 +11,7 @@ import salt
 import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
+import zlib
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 
@@ -18,7 +20,7 @@ from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
+from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, PgBrief
 from cthulhu.manager.request_collection import RequestCollection
 
 from cthulhu.manager import config, salt_config
@@ -399,15 +401,20 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         assert data['fsid'] == self.fsid
 
+        if data['type'] == PgBrief.str:
+            sync_object = json.loads(zlib.decompress(data['data']))
+        else:
+            sync_object = data['data']
+
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
-        new_object = self.inject_sync_object(minion_id, data['type'], data['version'], data['data'])
+        new_object = self.inject_sync_object(minion_id, data['type'], data['version'], sync_object)
         if new_object:
             self._requests.on_map(sync_type, self._sync_objects)
             self._persister.update_sync_object(
                 self.fsid,
                 sync_type.str,
                 new_object.version if isinstance(new_object.version, int) else None,
-                now(), data['data'])
+                now(), sync_object)
         else:
             log.warn("ClusterMonitor.on_sync_object: stale object received")
 
