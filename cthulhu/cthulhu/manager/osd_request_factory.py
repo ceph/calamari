@@ -1,20 +1,33 @@
 from cthulhu.manager.request_factory import RequestFactory
+from cthulhu.manager.types import OsdMap
 from cthulhu.manager.user_request import OsdMapModifyingRequest
 
 
 class OsdRequestFactory(RequestFactory):
     def update(self, osd_id, attributes):
         commands = []
-        if attributes['in'] == 0:
-            commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
-        else:
-            commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
 
-        # TOOD: provide some machine-readable indication of which objects are affected
-        # by a particular request.
-        # Perhaps subclass Request for each type of object, and have that subclass provide
-        # both the patches->commands mapping and the human readable and machine readable
-        # descriptions of it?
+        osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+
+        if 'in' in attributes and bool(attributes['in']) != bool(osd_map.osds_by_id[osd_id]['in']):
+            if attributes['in']:
+                commands.append(('osd in', {'ids': [attributes['id'].__str__()]}))
+            else:
+                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
+
+        if 'up' in attributes and bool(attributes['up']) != bool(osd_map.osds_by_id[osd_id]['up']):
+            if not attributes['up']:
+                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
+            else:
+                raise RuntimeError("It is not valid to set a down OSD to be up")
+
+        if 'reweight' in attributes:
+            if attributes['reweight'] != osd_map.osd_tree_node_by_id[osd_id]['reweight']:
+                commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
+
+        if not commands:
+            #
+            return
 
         print_attrs = attributes.copy()
         del print_attrs['id']

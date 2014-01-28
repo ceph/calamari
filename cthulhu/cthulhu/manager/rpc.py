@@ -94,15 +94,32 @@ class RpcInterface(object):
         # Clear out records of the cluster itself
         self._manager.delete_cluster(fs_id)
 
-    def get_sync_object(self, fs_id, object_type):
+    def get_sync_object(self, fs_id, object_type, path=None):
         """
         Get one of the objects that ClusterMonitor keeps a copy of from the mon, such
         as the cluster maps.
 
         :param fs_id: The fsid of a cluster
         :param object_type: String, one of SYNC_OBJECT_TYPES
+        :param path: List, optional, a path within the object to return instead of the whole thing
+
+        :return: the requested data, or None if it was not found (including if any element of ``path``
+                 was not found)
         """
-        return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
+
+        if path:
+            obj = self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
+            try:
+                for part in path:
+                    if isinstance(obj, dict):
+                        obj = obj[part]
+                    else:
+                        obj = getattr(obj, part)
+            except (AttributeError, KeyError):
+                return None
+            return obj
+        else:
+            return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
 
     def get_derived_object(self, fs_id, object_type):
         """

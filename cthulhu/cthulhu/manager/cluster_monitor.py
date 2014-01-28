@@ -438,12 +438,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
             request = getattr(request_factory, method)(*args, **kwargs)
 
-        # sleeps permitted during terminal phase of submitting, because we're
-        # doing I/O to the salt master to kick off
-        self._requests.submit(request, self._favorite_mon)
-        return {
-            'request_id': request.id
-        }
+        if request:
+            # sleeps permitted during terminal phase of submitting, because we're
+            # doing I/O to the salt master to kick off
+            self._requests.submit(request, self._favorite_mon)
+            return {
+                'request_id': request.id
+            }
+        else:
+            return None
 
     def request_delete(self, obj_type, obj_id):
         return self._request('delete', obj_type, obj_id)
