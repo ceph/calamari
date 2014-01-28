@@ -531,7 +531,7 @@ class CephCluster(object):
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool'] == pool_id][0]
         for i in new_ids:
             pg_id = "%s.%s" % (pool['pool'], i)
-            log.debug("Pool_update created pg %s" % pg_id)
+            log.debug("_create_pgs created pg %s" % pg_id)
             osds = pseudorandom_subset(range(0, len(self._objects['osd_map']['osds'])),
                                        pool['size'], pg_id)
             self._objects['pg_brief'].append({
@@ -543,10 +543,13 @@ class CephCluster(object):
         self._objects['pg_map']['version'] += 1
 
     def pool_create(self, pool_name, pg_num):
+        log.info("pool_create: %s/%s" % (pool_name, pg_num))
         if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
+            log.error("Pool %s already exists" % pool_name)
             return
 
         new_id = max([p['pool'] for p in self._objects['osd_map']['pools']]) + 1
+        log.info("pool_create assigned %s=%s" % (pool_name, new_id))
 
         self._objects['osd_map']['pools'].append(
             _pool_template(pool_name, new_id, pg_num)
