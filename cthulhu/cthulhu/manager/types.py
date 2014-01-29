@@ -40,9 +40,11 @@ class OsdMap(VersionedSyncObject):
         if data is not None:
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
+            self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
         else:
             self.osds_by_id = {}
             self.pools_by_id = {}
+            self.osd_tree_node_by_id = {}
 
 
 class MdsMap(VersionedSyncObject):

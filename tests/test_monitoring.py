@@ -52,7 +52,7 @@ class TestMonitoring(ServerTestCase):
         # to affect the health state: in theory they could all get remapped instantaneously, in
         # which case the cluster would never appear unhealthy and this would be an invalid check.
         health_url = "cluster/{0}/sync_object/health".format(cluster_id)
-        wait_until_true(lambda: self.api.get(health_url).status_code == 200 and self.api.get(health_url).json()['data']['overall_status'] == "HEALTH_WARN",
+        wait_until_true(lambda: self.api.get(health_url).status_code == 200 and self.api.get(health_url).json()['overall_status'] == "HEALTH_WARN",
                         timeout=HEARTBEAT_INTERVAL)
 
         # Bring the OSD back into the cluster
@@ -63,7 +63,7 @@ class TestMonitoring(ServerTestCase):
 
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover
-        wait_until_true(lambda: self.api.get(health_url).json()['data']['overall_status'] == "HEALTH_OK",
+        wait_until_true(lambda: self.api.get(health_url).json()['overall_status'] == "HEALTH_OK",
                         timeout=OSD_RECOVERY_PERIOD * 2)
 
     def test_cluster_down(self):
@@ -193,8 +193,8 @@ class TestMultiCluster(ServerTestCase):
         osd_map_a = self.api.get("cluster/%s/sync_object/osd_map" % cluster_a).json()
         osd_map_b = self.api.get("cluster/%s/sync_object/osd_map" % cluster_b).json()
 
-        self.assertEqual(osd_map_a['data']['fsid'], cluster_a)
-        self.assertEqual(osd_map_b['data']['fsid'], cluster_b)
+        self.assertEqual(osd_map_a['fsid'], cluster_a)
+        self.assertEqual(osd_map_b['fsid'], cluster_b)
 
         cluster_a_fqdns = set(self.ceph_ctl.get_fqdns(cluster_a))
         cluster_b_fqdns = set(self.ceph_ctl.get_fqdns(cluster_b))

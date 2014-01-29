@@ -78,10 +78,12 @@ class EmbeddedCephControl(CephControl):
         self.fsid = None
 
     def configure(self, server_count, cluster_count=1):
+        osds_per_host = 4
+
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
-            sim = MinionSim(config_dir, server_count, port=8761 + i, domain=domain)
+            sim = MinionSim(config_dir, server_count, osds_per_host, port=8761 + i, domain=domain)
             self.fsid = sim.cluster.fsid
             self._config_dirs[self.fsid] = config_dir
             self._sims[self.fsid] = sim

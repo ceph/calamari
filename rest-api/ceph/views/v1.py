@@ -338,7 +338,8 @@ class ServerViewSet(RPCViewSet):
         )
 
     def list(self, request, fsid):
-        return Response(self.serializer_class([DataObject(s) for s in self.client.server_list()], many=True).data)
+        return Response(
+            self.serializer_class([DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
 
 
 class PoolViewSet(RPCViewSet):

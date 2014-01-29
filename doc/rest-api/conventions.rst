@@ -12,6 +12,8 @@ the request ID like this:
 
     {'request_id': 'xxx'}
 
+Usually ``PATCH`` operations will return this, although if the requested change is a no-op then
+they may return ``304 NOT MODIFIED``.
 
 Dates and times
 ---------------

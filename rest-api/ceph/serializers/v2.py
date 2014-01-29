@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 from cthulhu.manager.eventer import severity_str
+import ceph.serializers.fields as fields
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -17,13 +18,6 @@ class ClusterSerializer(serializers.Serializer):
     id = serializers.Field(
         help_text="The FSID of the cluster, universally unique"
     )
-
-
-class SyncObjectSerializer(serializers.Serializer):
-    class Meta:
-        fields = ('data',)
-
-    data = serializers.Field()
 
 
 class PoolSerializer(serializers.Serializer):
@@ -69,6 +63,47 @@ class PoolSerializer(serializers.Serializer):
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
 
+# OSD entry on the OSDmap looks like this:
+#{
+#    "down_at": 75,
+#    "uuid": "831d1af8-c4a6-4a8d-9227-db89b2ae7f06",
+#    "heartbeat_front_addr": "192.168.18.1:6802/14253",
+#    "heartbeat_back_addr": "192.168.19.1:6801/14253",
+#    "lost_at": 0,
+#    "up": 1,
+#    "up_from": 77,
+#    "state": [
+#        "exists",
+#        "up"
+#    ],
+#    "last_clean_begin": 73,
+#    "last_clean_end": 74,
+#    "in": 1,
+#    "public_addr": "192.168.18.1:6801/14253",
+#    "up_thru": 77,
+#    "cluster_addr": "192.168.19.1:6800/14253",
+#    "osd": 0
+#}
+
+
+# TODO slide some extra stuff into here from ServerMonitor, like the
+# location where it's running (c.f. 'host' in /v1/)
+
+class OsdSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('uuid', 'up', 'in', 'id', 'reweight')
+
+    id = serializers.IntegerField(source='osd')
+    uuid = fields.UuidField()
+    up = fields.BooleanField()
+    _in = fields.BooleanField()
+    reweight = serializers.FloatField()
+
+# Declarative metaclass definitions are great until you want
+# to use a reserved word
+OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
+
+
 class CrushRuleSerializer(serializers.Serializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
@@ -92,11 +127,12 @@ class CrushRuleSetSerializer(serializers.Serializer):
 
 class RequestSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'state', 'error', 'headline', 'status')
+        fields = ('id', 'state', 'error', 'error_message', 'headline', 'status')
 
     id = serializers.CharField()
     state = serializers.CharField()
     error = serializers.BooleanField()
+    error_message = serializers.CharField()
     headline = serializers.CharField()
     status = serializers.CharField()
 

@@ -34,14 +34,10 @@ urlpatterns = patterns(
     # This has to come after /user/me to make sure that special case is handled
     url(r'^', include(router.urls)),
 
-    # FIXME: the OSD stuff based on derived objects is a bit shonky, we are
-    # currently just exposing the /v1/ style.  Needs TLC to come up with
-    # nice generalised filtering for OSDs and PGs.
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v1.OSDList.as_view(), name='cluster-osd-list'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v1.OSDDetail.as_view(),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v2.OsdViewSet.as_view({'get': 'list'}), name='cluster-osd-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v2.OsdViewSet.as_view(
+        {'get': 'retrieve', 'patch': 'update'}),
         name='cluster-osd-detail'),
-    # TODO a sanitized OSD serializer similar to what we do for pools
-    # TODO implement PATCH to /osd/<id> for attribute changes
     # TODO implement POST to /osd/<id>/commands/<command> for operations
     # that don't directly change an attribute, e.g. initiating scrub, repair
     # TODO expose weight information OSDs along with ability to reweight

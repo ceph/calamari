@@ -266,7 +266,7 @@ class CephCluster(object):
 
         objects = dict()
         objects['health'] = {
-            'detail': None,
+            'detail': [],
             'health': {
                 'health_services': [],
             },
@@ -497,6 +497,7 @@ class CephCluster(object):
             # PG stats
 
     def set_osd_state(self, osd_id, up=None, osd_in=None):
+        log.debug("set_osd_state: '%s' %s %s %s" % (osd_id, osd_id.__class__, up, osd_in))
         # Update OSD map
         dirty = False
         osd = [o for o in self._objects['osd_map']['osds'] if o['osd'] == osd_id][0]
@@ -518,11 +519,19 @@ class CephCluster(object):
         self._pg_monitor()
         self._update_health()
 
+    def set_osd_weight(self, osd_id, weight):
+        node = [n for n in self._objects['osd_map']['tree']['nodes'] if n['id'] == osd_id][0]
+        node['reweight'] = weight
+        self._objects['osd_map']['epoch'] += 1
+
+        self._pg_monitor()
+        self._update_health()
+
     def _create_pgs(self, pool_id, new_ids):
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool'] == pool_id][0]
         for i in new_ids:
             pg_id = "%s.%s" % (pool['pool'], i)
-            log.debug("Pool_update created pg %s" % pg_id)
+            log.debug("_create_pgs created pg %s" % pg_id)
             osds = pseudorandom_subset(range(0, len(self._objects['osd_map']['osds'])),
                                        pool['size'], pg_id)
             self._objects['pg_brief'].append({
@@ -534,10 +543,13 @@ class CephCluster(object):
         self._objects['pg_map']['version'] += 1
 
     def pool_create(self, pool_name, pg_num):
+        log.info("pool_create: %s/%s" % (pool_name, pg_num))
         if pool_name in [p['pool_name'] for p in self._objects['osd_map']['pools']]:
+            log.error("Pool %s already exists" % pool_name)
             return
 
         new_id = max([p['pool'] for p in self._objects['osd_map']['pools']]) + 1
+        log.info("pool_create assigned %s=%s" % (pool_name, new_id))
 
         self._objects['osd_map']['pools'].append(
             _pool_template(pool_name, new_id, pg_num)
@@ -729,10 +741,11 @@ class CephCluster(object):
 
             total_space = sum([o['total_bytes'] for o in self._osd_stats.values()])
 
+            # These stats are given in kB
             df_stats = {
-                'total_space': total_space,
-                'total_used': total_used,
-                'total_avail': total_space - total_used
+                'total_space': total_space / 1024,
+                'total_used': total_used / 1024,
+                'total_avail': (total_space - total_used) / 1024
             }
             for k, v in df_stats.items():
                 stats["ceph.cluster.{0}.df.{1}".format(self._name, k)] = v
