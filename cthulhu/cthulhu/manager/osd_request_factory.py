@@ -1,6 +1,6 @@
 from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.types import OsdMap
-from cthulhu.manager.user_request import OsdMapModifyingRequest
+from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
 class OsdRequestFactory(RequestFactory):
@@ -38,3 +38,10 @@ class OsdRequestFactory(RequestFactory):
             "Modifying {cluster_name}-osd.{id} ({attrs})".format(
                 cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
             ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+    def scrub(self, osd_id, deep_scrub=False):
+        commands = []
+        return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+    def deep_scrub(self, osd_id):
+        return self.scrub(osd_id, True)

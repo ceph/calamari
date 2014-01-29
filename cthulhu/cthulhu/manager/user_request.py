@@ -1,6 +1,7 @@
 import uuid
 import salt
 import salt.client
+from salt.client import LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
@@ -135,7 +136,7 @@ class UserRequest(object):
     def _submit(self, commands):
         self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
         pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
                                   [self._fsid, self._cluster_name, commands])
         if not pub_data:
