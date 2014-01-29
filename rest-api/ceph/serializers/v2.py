@@ -88,7 +88,7 @@ class PoolSerializer(serializers.Serializer):
 
 class OsdSerializer(serializers.Serializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools')
 
     id = serializers.IntegerField(source='osd')
     uuid = fields.UuidField()
@@ -96,6 +96,7 @@ class OsdSerializer(serializers.Serializer):
     _in = fields.BooleanField()
     reweight = serializers.FloatField()
     server = serializers.CharField()
+    pools = serializers.Field()
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word

@@ -210,8 +210,9 @@ class ServerMonitor(greenlet.Greenlet):
     @nosleep
     def on_osd_map(self, osd_map):
         """
-        For when a new OSD map is received: caller is responsible
-        for processing the CRUSH map into a map of hostnames to OSD ids.
+        For when a new OSD map is received: we may infer the existence of
+        hosts from the CRUSH map if the hosts are not all sending
+        us data with salt.
 
         :param osd_map: The data from an OsdMap sync object
         """

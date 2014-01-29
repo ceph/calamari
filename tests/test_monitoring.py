@@ -35,16 +35,16 @@ class TestMonitoring(ServerTestCase):
         osd_url = "cluster/{0}/osd/{1}".format(cluster_id, osd_id)
 
         # Check it's initially up and in
-        initial_osd_status = self.api.get(osd_url).json()['osd']
-        self.assertEqual(initial_osd_status['up'], 1)
-        self.assertEqual(initial_osd_status['in'], 1)
+        initial_osd_status = self.api.get(osd_url).json()
+        self.assertEqual(initial_osd_status['up'], True)
+        self.assertEqual(initial_osd_status['in'], True)
 
         # Cause it to 'spontaneously' (as far as calamari is concerned)
         # be marked out
         self.ceph_ctl.mark_osd_in(cluster_id, osd_id, False)
 
         # Wait for the status to filter up to the REST API
-        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 0,
+        wait_until_true(lambda: self.api.get(osd_url).json()['in'] is True,
                         timeout=HEARTBEAT_INTERVAL)
 
         # Wait for the health status to reflect the degradation
@@ -59,7 +59,7 @@ class TestMonitoring(ServerTestCase):
         self.ceph_ctl.mark_osd_in(cluster_id, osd_id, True)
 
         # Wait for the status
-        wait_until_true(lambda: self.api.get(osd_url).json()['osd']['in'] == 1, timeout=HEARTBEAT_INTERVAL)
+        wait_until_true(lambda: self.api.get(osd_url).json()['in'] is True, timeout=HEARTBEAT_INTERVAL)
 
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover

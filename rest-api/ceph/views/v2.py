@@ -233,19 +233,31 @@ Manage Ceph storage pools.
         # TODO: validation, but we don't want to check all fields are present (because
         # this is a PATCH), just that those present are valid.  rest_framework serializer
         # may or may not be able to do that out the box.
-        self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
+        return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
 
-
-# TODO: inform which pools
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph OSDs.
+
+Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
+
     """
     serializer_class = OsdSerializer
 
     def list(self, request, fsid):
         osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+
+        if 'pool' in request.GET:
+            try:
+                pool_id = int(request.GET['pool'])
+            except ValueError:
+                return Response("Pool ID must be an integer", status=status.HTTP_400_BAD_REQUEST)
+            osds_in_pool = self.client.get_sync_object(fsid, 'osd_map', ['pool_osds', pool_id])
+            if osds_in_pool is None:
+                return Response("Unknown pool ID", status=status.HTTP_400_BAD_REQUEST)
+
+            osds = [o for o in osds if o['osd'] in osds_in_pool]
 
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
         for o in osds:
@@ -255,6 +267,10 @@ Manage Ceph OSDs.
         for o, (service_id, fqdn) in zip(osds, server_info):
             o['server'] = fqdn
 
+        osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'])
+        for o in osds:
+            o['pools'] = osd_to_pools[o['osd']]
+
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
@@ -262,6 +278,10 @@ Manage Ceph OSDs.
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
         osd['reweight'] = crush_node['reweight']
         osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]
+
+        pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
+        osd['pools'] = pools
+
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):
