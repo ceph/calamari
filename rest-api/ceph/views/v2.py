@@ -235,9 +235,7 @@ Manage Ceph storage pools.
 
 
 # TODO: inform which pools
-# TODO: hook in ServerMonitor to annotate with hostname
-# TODO: filtering on PG state
-# TOOD: filtering on up, in
+
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph OSDs.
@@ -246,6 +244,7 @@ Manage Ceph OSDs.
 
     def list(self, request, fsid):
         osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
         for o in osds:
             o.update({'reweight': crush_nodes[o['osd']]['reweight']})
