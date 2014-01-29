@@ -86,18 +86,16 @@ class PoolSerializer(serializers.Serializer):
 #}
 
 
-# TODO slide some extra stuff into here from ServerMonitor, like the
-# location where it's running (c.f. 'host' in /v1/)
-
 class OsdSerializer(serializers.Serializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server')
 
     id = serializers.IntegerField(source='osd')
     uuid = fields.UuidField()
     up = fields.BooleanField()
     _in = fields.BooleanField()
     reweight = serializers.FloatField()
+    server = serializers.CharField()
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word

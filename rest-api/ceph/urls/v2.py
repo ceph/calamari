@@ -34,14 +34,6 @@ urlpatterns = patterns(
     # This has to come after /user/me to make sure that special case is handled
     url(r'^', include(router.urls)),
 
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v2.OsdViewSet.as_view({'get': 'list'}), name='cluster-osd-list'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v2.OsdViewSet.as_view(
-        {'get': 'retrieve', 'patch': 'update'}),
-        name='cluster-osd-detail'),
-    # TODO implement POST to /osd/<id>/commands/<command> for operations
-    # that don't directly change an attribute, e.g. initiating scrub, repair
-    # TODO expose weight information OSDs along with ability to reweight
-
     # About ongoing operations in cthulhu
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
         ceph.views.v2.RequestViewSet.as_view({'get': 'retrieve'}), name='cluster-request-detail'),
@@ -60,6 +52,12 @@ urlpatterns = patterns(
         'patch': 'update',
         'delete': 'destroy'}),
         name='cluster-pool-detail'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v2.OsdViewSet.as_view({'get': 'list'}), name='cluster-osd-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v2.OsdViewSet.as_view(
+        {'get': 'retrieve', 'patch': 'update'}),
+        name='cluster-osd-detail'),
+    # TODO implement POST to /osd/<id>/commands/<command> for operations
+    # that don't directly change an attribute, e.g. initiating scrub, repair
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',

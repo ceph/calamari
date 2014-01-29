@@ -15,6 +15,7 @@ from ceph.views.database_view_set import DatabaseViewSet
 
 from ceph.views.rpc_view import RPCViewSet, DataObject
 from ceph.views.v1 import _get_local_grains
+from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import CRUSH_RULE, POOL, OSD
 
 from cthulhu.config import CalamariConfig
@@ -233,6 +234,8 @@ Manage Ceph storage pools.
         self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
 
 
+# TODO: inform which pools
+# TODO: hook in ServerMonitor to annotate with hostname
 # TODO: filtering on PG state
 # TOOD: filtering on up, in
 class OsdViewSet(RPCViewSet, RequestReturner):
@@ -246,12 +249,18 @@ Manage Ceph OSDs.
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
         for o in osds:
             o.update({'reweight': crush_nodes[o['osd']]['reweight']})
+
+        server_info = self.client.server_by_service([ServiceId(fsid, OSD, str(osd['osd'])) for osd in osds])
+        for o, (service_id, fqdn) in zip(osds, server_info):
+            o['server'] = fqdn
+
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
         osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
         osd['reweight'] = crush_node['reweight']
+        osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):

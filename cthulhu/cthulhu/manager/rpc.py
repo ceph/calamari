@@ -7,6 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
+from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
 
@@ -311,6 +312,15 @@ class RpcInterface(object):
             self._manager.servers.dump_cluster(s, self._manager.clusters[fsid])
             for s in self._manager.servers.get_all_cluster(fsid)
         ]
+
+    def server_by_service(self, services):
+        """
+        Return a list of 2-tuples mapping of service ID to server FQDN
+
+        Note that we would rather return a dict but tuple dict keys are awkward to serialize
+        """
+        result = self._manager.servers.list_by_service([ServiceId(*s) for s in services])
+        return result
 
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)

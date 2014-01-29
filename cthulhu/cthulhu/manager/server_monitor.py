@@ -414,12 +414,24 @@ class ServerMonitor(greenlet.Greenlet):
     def get_by_service(self, service_id):
         """
         Return the FQDN of the server associated with this service, or
-
+        None if the service isn't found or isn't associated with a server.
         """
         try:
             return self.services[service_id].server_state
         except KeyError:
+            log.warn("No server found for service %s" % (service_id,))
             return None
+
+    def list_by_service(self, service_ids):
+        """
+        Return a list of 2-tuples mapping service ID to FQDN for the specified services,
+        where the FQDN is None if service not found.
+        """
+        result = []
+        for service_id in service_ids:
+            server = self.get_by_service(service_id)
+            result.append((service_id, server.fqdn if server else None))
+        return result
 
     def delete(self, fqdn):
         """
