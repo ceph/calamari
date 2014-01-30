@@ -1,7 +1,9 @@
-
+import logging
 import time
 from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL, OSD_RECOVERY_PERIOD, CALAMARI_RESYNC_PERIOD
 from tests.utils import wait_until_true, WaitTimeout
+
+log = logging.getLogger(__name__)
 
 
 class TestMonitoring(ServerTestCase):
@@ -52,7 +54,13 @@ class TestMonitoring(ServerTestCase):
         # to affect the health state: in theory they could all get remapped instantaneously, in
         # which case the cluster would never appear unhealthy and this would be an invalid check.
         health_url = "cluster/{0}/sync_object/health".format(cluster_id)
-        wait_until_true(lambda: self.api.get(health_url).status_code == 200 and self.api.get(health_url).json()['overall_status'] == "HEALTH_WARN",
+
+        def check():
+            status = self.api.get(health_url).json()['overall_status']
+            log.debug("health status: %s" % status)
+            return self.api.get(health_url).status_code == 200 and status == "HEALTH_WARN"
+
+        wait_until_true(lambda: check,
                         timeout=HEARTBEAT_INTERVAL)
 
         # Bring the OSD back into the cluster
