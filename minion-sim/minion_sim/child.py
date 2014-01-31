@@ -170,7 +170,7 @@ def main():
     import salt.loader
     old_minion_mods = salt.loader.minion_mods
 
-    def my_minion_mods(opts):
+    def my_minion_mods(opts, context=None, whilelist=None):
         global __salt__
         data = old_minion_mods(opts)
         data['ceph.heartbeat'] = heartbeat
