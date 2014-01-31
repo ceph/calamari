@@ -84,6 +84,13 @@ class ServerTestCase(TestCase):
                 result.append(cluster['id'])
             return result
 
+    def _wait_for_servers(self):
+        """
+        Wait for all the expected servers to appear in the REST API
+        """
+        expected_servers = self.ceph_ctl.get_server_fqdns()
+        wait_until_true(lambda: set([s['fqdn'] for s in self.api.get("server").json()]) == set(expected_servers))
+
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")
         response.raise_for_status()

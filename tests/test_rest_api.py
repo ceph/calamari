@@ -45,6 +45,9 @@ class TestApi(ServerTestCase):
         self.ceph_ctl.configure(3)
         self.calamari_ctl.configure()
         fsid = self._wait_for_cluster()
+        # Unlike most tests we really do need all the servers to be there in case
+        # the one we're checking for isn't.
+        self._wait_for_servers()
 
         # Make sure there is at least one request
         response = self.api.patch("cluster/%s/pool/0" % fsid, {'name': 'newname'})
@@ -64,7 +67,9 @@ class TestApi(ServerTestCase):
             "key/<pk>": ["key/%s" % self.ceph_ctl.get_server_fqdns()[0]],
             "cluster/<pk>": ["cluster/%s" % fsid],
             "<request_id>": [request_id],
-            "user/<pk>": ["user/1"]
+            "user/<pk>": ["user/1"],
+            "<log_path>": "ceph/ceph.log",
+
         }
 
         concrete_urls = {}
