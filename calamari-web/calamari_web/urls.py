@@ -28,7 +28,7 @@ urlpatterns = patterns(
     url(r'^login/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/login/' % STATIC_ROOT}),
 
-    url(r'^bootstrap$', 'calamari_web.views.bootstrap'),
+    url(r'^bootstrap$', 'calamari_web.views.bootstrap', name='bootstrap'),
 
     url(r'^dashboard/(?P<path>.*)$', 'calamari_web.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_ROOT},

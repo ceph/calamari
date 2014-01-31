@@ -1,5 +1,6 @@
 
 import logging
+from django.core.urlresolvers import reverse
 import pytz
 import socket
 
@@ -302,13 +303,21 @@ Provides metadata about the installation of Calamari server in use
             ipaddr = [addrs for name, addrs in grains['ip_interfaces'].items() if
                       name not in ['lo', 'lo0'] and addrs][0][0]
 
+        proto = "https" if request.is_secure() else "http"
+        bootstrap_url = "{0}://{1}{2}".format(proto, request.META['HTTP_HOST'], reverse('bootstrap'))
+        BOOTSTRAP_UBUNTU = "wget -O - {url} | sudo python"
+        BOOTSTRAP_RHEL = "curl {url} | python"
+
         return Response(self.serializer_class(DataObject({
             "version": "2.0",  # TODO: populate from build version (ticket #7082)
             "license": "N/A",
             "registered": "N/A",
             "hostname": grains['host'],
             "fqdn": grains['fqdn'],
-            "ipaddr": ipaddr
+            "ipaddr": ipaddr,
+            "bootstrap_url": bootstrap_url,
+            "bootstrap_ubuntu": BOOTSTRAP_UBUNTU.format(url=bootstrap_url),
+            "bootstrap_rhel": BOOTSTRAP_RHEL.format(url=bootstrap_url),
         })).data)
 
 

@@ -186,7 +186,8 @@ class ServerSerializer(serializers.Serializer):
 
 class InfoSerializer(serializers.Serializer):
     class Meta:
-        fields = ('version', 'license', 'registered', 'hostname', 'fqdn', 'ipaddr')
+        fields = ('version', 'license', 'registered', 'hostname', 'fqdn', 'ipaddr', 'bootstrap_url', 'bootstrap_rhel',
+                  'bootstrap_ubuntu')
 
     version = serializers.CharField(help_text="Calamari server version")
     license = serializers.CharField(help_text="Calamari license metadata")
@@ -194,3 +195,6 @@ class InfoSerializer(serializers.Serializer):
     hostname = serializers.CharField(help_text="Hostname of Calamari server")
     fqdn = serializers.CharField(help_text="Fully qualified domain name of Calamari server")
     ipaddr = serializers.CharField(help_text="IP address of Calamari server")
+    bootstrap_url = serializers.CharField(help_text="URL to minion bootstrap script")
+    bootstrap_rhel = serializers.CharField(help_text="Minion bootstrap command line for Red Hat systems")
+    bootstrap_ubuntu = serializers.CharField(help_text="Minion bootstrap command line for Ubuntu systems")
