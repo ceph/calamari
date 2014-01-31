@@ -357,13 +357,15 @@ class ModelAdapter(object):
                     # First time we've seen this OSD on this host, perhaps we can help
                     # the server out by learning its hostname from CRUSH
                     server.hostname = self.crush_osd_hostnames[name]
-                    if server.hostname is None:
+                    if server.hostname is None or \
+                       server.hostname == 'localhost':
                         # Can't get hostname from CRUSH, fall back to reverse DNS
                         hostname = self._reverse_dns(service_addr)
-                        if hostname is not None:
-                            server.hostname = hostname
-                            server.name = server.hostname
-                            server.save()
+                        if hostname is None:
+                            hostname = 'localhost'
+                        server.hostname = hostname
+                        server.name = server.hostname
+                        server.save()
                     else:
                         server.name = server.hostname
                         server.save()
