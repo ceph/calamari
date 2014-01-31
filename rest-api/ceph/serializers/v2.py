@@ -63,40 +63,20 @@ class PoolSerializer(serializers.Serializer):
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
 
-# OSD entry on the OSDmap looks like this:
-#{
-#    "down_at": 75,
-#    "uuid": "831d1af8-c4a6-4a8d-9227-db89b2ae7f06",
-#    "heartbeat_front_addr": "192.168.18.1:6802/14253",
-#    "heartbeat_back_addr": "192.168.19.1:6801/14253",
-#    "lost_at": 0,
-#    "up": 1,
-#    "up_from": 77,
-#    "state": [
-#        "exists",
-#        "up"
-#    ],
-#    "last_clean_begin": 73,
-#    "last_clean_end": 74,
-#    "in": 1,
-#    "public_addr": "192.168.18.1:6801/14253",
-#    "up_thru": 77,
-#    "cluster_addr": "192.168.19.1:6800/14253",
-#    "osd": 0
-#}
-
-
 class OsdSerializer(serializers.Serializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'public_addr', 'cluster_addr')
 
-    id = serializers.IntegerField(source='osd')
-    uuid = fields.UuidField()
-    up = fields.BooleanField()
-    _in = fields.BooleanField()
+    id = serializers.IntegerField(source='osd', help_text="ID of this OSD within this cluster")
+    uuid = fields.UuidField(help_text="Globally unique ID for this OSD")
+    up = fields.BooleanField(help_text="Whether the OSD is running from the point of view of the rest of the cluster")
+    _in = fields.BooleanField(help_text="Whether the OSD is currently 'in' ")
     reweight = serializers.FloatField()
     server = serializers.CharField()
     pools = serializers.Field()
+
+    public_addr = serializers.CharField()
+    cluster_addr = serializers.CharField()
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
