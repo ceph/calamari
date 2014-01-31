@@ -1,6 +1,8 @@
 from ConfigParser import ConfigParser
+import glob
 import logging
 import os
+import shutil
 import socket
 import subprocess
 import xmlrpclib
@@ -136,6 +138,7 @@ class EmbeddedCalamariControl(CalamariControl):
         super(EmbeddedCalamariControl, self).__init__()
         self._ps = None
         self._rpc = None
+        self._first = True
 
     def _available(self):
         try:
@@ -183,6 +186,18 @@ class EmbeddedCalamariControl(CalamariControl):
         wait_until_true(self._services_up)
 
     def start(self):
+        if self._first:
+            self._first = False
+            # Clean out the salt master's caches to mitigate any confusion from continually removing
+            # and adding servers with the same FQDNs.
+            erase_paths = ["dev/var/cache/salt/master/*", "dev/var/run/salt/master/*", "dev/etc/salt/pki/*"]
+            for path in erase_paths:
+                for f in glob.glob(os.path.join(TREE_ROOT, path)):
+                    if os.path.isdir(f):
+                        shutil.rmtree(f)
+                    else:
+                        os.unlink(f)
+
         config_path = os.path.join(TREE_ROOT, "dev/supervisord.conf")
         assert os.path.exists(config_path)
         self._ps = subprocess.Popen(

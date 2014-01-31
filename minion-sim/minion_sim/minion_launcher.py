@@ -160,3 +160,4 @@ class MinionLauncher(object):
         self.ps.communicate()
         log.info("Process %s completed" % self.ps.pid)
         self._stats_sender.join()
+        log.info("Stats sender[%s] complete" % self.fqdn)
