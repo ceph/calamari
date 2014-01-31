@@ -281,6 +281,8 @@ class ModelAdapter(object):
             for node in osd_tree["nodes"]:
                 if node["type"] == CRUSH_HOST_TYPE:
                     host = node["name"]
+                    if host == 'localhost':
+                        continue
                     for osd in find_descendants(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
                         self._crush_osd_hostnames[osd["name"]] = host
 
