@@ -5,6 +5,11 @@ from tests.server_testcase import RequestTestCase
 log = logging.getLogger(__name__)
 
 
+# Long enough for PGs to be created AND for a cluster heartbeat to happen to complete the request
+# PG creation is highly cluster dependent, this is a "finger in the air"
+PG_REQUEST_PERIOD = 600
+
+
 class TestPoolManagement(RequestTestCase):
     def setUp(self):
         super(TestPoolManagement, self).setUp()
@@ -47,8 +52,12 @@ class TestPoolManagement(RequestTestCase):
             self.assertEqual(pool[k], v)
 
     def _update(self, cluster_id, pool_id, attrs):
+        if 'pg_num' in attrs:
+            timeout = PG_REQUEST_PERIOD
+        else:
+            timeout = None
         r = self.api.patch("cluster/%s/pool/%s" % (cluster_id, pool_id), attrs)
-        self._wait_for_completion(cluster_id, r)
+        self._wait_for_completion(cluster_id, r, timeout=timeout)
 
     def _delete(self, cluster_id, pool_id):
         # Delete the pool

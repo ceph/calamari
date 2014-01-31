@@ -23,7 +23,7 @@ API_PASSWORD = 'admin'
 
 
 # We scale this linearly with the number of fqdns expected
-KEY_WAIT_PERIOD = 5
+KEY_WAIT_PERIOD = 10
 
 
 class CalamariControl(object):

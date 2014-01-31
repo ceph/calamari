@@ -4,26 +4,11 @@ from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 
-# TODO: make these configurable or perhaps query them
-# from CalamariControl (it should know all about
-# the calamari server)
 from tests.utils import wait_until_true
 
 
 log = logging.getLogger(__name__)
 
-
-# The tests need to have a rough idea of how often
-# calamari checks things, so that they can set
-# sane upper bounds on wait.
-
-# This is how long you should wait if you're waiting
-# for something to happen roughly 'on the next heartbeat'.
-HEARTBEAT_INTERVAL = 360
-
-# How long should calamari take to re-establish
-# sync after a mon goes down?
-CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 
 # Roughly how long should it take for one OSD to
 # recover its PGs after an outage?  This is a 'finger in the air'
@@ -81,7 +66,11 @@ class ServerTestCase(TestCase):
         self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
         log.debug("Authorized keys")
 
-        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL * 3)
+        # Once I've authorized the keys, the first mon to retry its salt authentication
+        # will cause the cluster to get noticed.
+        salt_auth_retry_interval = 10
+
+        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=salt_auth_retry_interval * 2)
         log.debug("Detected cluster")
 
         if cluster_count == 1:
@@ -130,10 +119,12 @@ class RequestTestCase(ServerTestCase):
 
         return r.json()['state'] == 'complete'
 
-    def _wait_for_completion(self, fsid, response):
+    def _wait_for_completion(self, fsid, response, timeout=None):
         """
         Wait for a user request to complete successfully, given the response from a PATCH/POST/DELETE
         """
+        if timeout is None:
+            timeout = REQUEST_TIMEOUT
         self.assertEqual(response.status_code, 202)
         request_id = response.json()['request_id']
-        wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=REQUEST_TIMEOUT)
+        wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=timeout)

@@ -1,9 +1,41 @@
 import logging
 import time
-from tests.server_testcase import ServerTestCase, HEARTBEAT_INTERVAL, OSD_RECOVERY_PERIOD, CALAMARI_RESYNC_PERIOD
+from tests.server_testcase import ServerTestCase, OSD_RECOVERY_PERIOD
 from tests.utils import wait_until_true, WaitTimeout
 
 log = logging.getLogger(__name__)
+
+
+# TODO: make these time periods configurable or perhaps query them
+# from CalamariControl (it should know all about
+# the calamari server)
+
+
+# This equals the period in schedules.sls
+HEARTBEAT_PERIOD = 30
+
+
+# This is how long after mon going dark the cluster monitor
+# becomes amenable to accepting a new favorite.  Add the heartbeat
+# period and you have the max time allowed for a new favorite to
+# take over after mon going dark.  Corresponds to cthulhu.favorite_timeout_s
+FAVORITE_TIMEOUT_S = 60
+
+EVENTER_PERIOD = 10
+
+# This is how long after cluster going dark the eventer should
+# fire an event to indicate that contact has been lost with the cluster,
+# corresponds to cthulhu.cluster_contact_threshold.  Add the eventer's
+# check period (eventer.TICK_SECONDS) to get the max time allowed for
+# an event to be emitted after cluster goes dark.
+CLUSTER_CONTACT_THRESHOLD = 60
+
+
+# Max time allowed for something "on the next heartbeat" to happen
+NEXT_HEARTBEAT_TIMEOUT = HEARTBEAT_PERIOD * 2
+
+LOSE_CONTACT_TIMEOUT = CLUSTER_CONTACT_THRESHOLD + EVENTER_PERIOD
+NEW_FAVORITE_TIMEOUT = FAVORITE_TIMEOUT_S + NEXT_HEARTBEAT_TIMEOUT
 
 
 class TestMonitoring(ServerTestCase):
@@ -47,7 +79,7 @@ class TestMonitoring(ServerTestCase):
 
         # Wait for the status to filter up to the REST API
         wait_until_true(lambda: self.api.get(osd_url).json()['in'] is True,
-                        timeout=HEARTBEAT_INTERVAL)
+                        timeout=NEXT_HEARTBEAT_TIMEOUT)
 
         # Wait for the health status to reflect the degradation
         # NB this is actually a bit racy, because we assume the PGs remain degraded long enough
@@ -61,13 +93,13 @@ class TestMonitoring(ServerTestCase):
             return self.api.get(health_url).status_code == 200 and status == "HEALTH_WARN"
 
         wait_until_true(lambda: check,
-                        timeout=HEARTBEAT_INTERVAL)
+                        timeout=NEXT_HEARTBEAT_TIMEOUT)
 
         # Bring the OSD back into the cluster
         self.ceph_ctl.mark_osd_in(cluster_id, osd_id, True)
 
         # Wait for the status
-        wait_until_true(lambda: self.api.get(osd_url).json()['in'] is True, timeout=HEARTBEAT_INTERVAL)
+        wait_until_true(lambda: self.api.get(osd_url).json()['in'] is True, timeout=NEXT_HEARTBEAT_TIMEOUT)
 
         # Wait for the health
         # This can take a long time, because it has to wait for PGs to fully recover
@@ -91,14 +123,15 @@ class TestMonitoring(ServerTestCase):
         # Lose contact with the cluster
         self.ceph_ctl.go_dark(cluster_id)
         initial_update_time = update_time()
-        time.sleep(HEARTBEAT_INTERVAL)
+        log.debug("Sleeping for %s seconds, don't panic!" % LOSE_CONTACT_TIMEOUT)
+        time.sleep(LOSE_CONTACT_TIMEOUT)
         # The update time should not have been incremented
         self.assertEqual(initial_update_time, update_time())
 
         # Regain contact with the cluster
         self.ceph_ctl.go_dark(cluster_id, dark=False)
         # The update time should start incrementing again
-        wait_until_true(lambda: update_time() != initial_update_time, timeout=HEARTBEAT_INTERVAL)
+        wait_until_true(lambda: update_time() != initial_update_time, timeout=NEXT_HEARTBEAT_TIMEOUT)
         self.assertNotEqual(initial_update_time, update_time())
 
     def test_mon_down(self):
@@ -126,10 +159,10 @@ class TestMonitoring(ServerTestCase):
             # This will give a timeout exception if calamari did not
             # re establish monitoring after the mon server went offline.
             try:
-                wait_until_true(lambda: last_update_time != update_time(), timeout=CALAMARI_RESYNC_PERIOD)
+                wait_until_true(lambda: last_update_time != update_time(), timeout=NEW_FAVORITE_TIMEOUT)
             except WaitTimeout:
                 self.fail("Failed to recover from killing %s in %s seconds" % (
-                    mon_fqdn, CALAMARI_RESYNC_PERIOD))
+                    mon_fqdn, NEW_FAVORITE_TIMEOUT))
 
             self.ceph_ctl.go_dark(cluster_id, dark=False, minion_id=mon_fqdn)
 
