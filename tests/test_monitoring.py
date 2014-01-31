@@ -230,6 +230,7 @@ class TestMultiCluster(ServerTestCase):
         self.calamari_ctl.configure()
 
         cluster_a, cluster_b = self._wait_for_cluster(2)
+        self._wait_for_servers()
 
         osd_map_a = self.api.get("cluster/%s/sync_object/osd_map" % cluster_a).json()
         osd_map_b = self.api.get("cluster/%s/sync_object/osd_map" % cluster_b).json()
