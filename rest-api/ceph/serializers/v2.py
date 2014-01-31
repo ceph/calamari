@@ -70,13 +70,13 @@ class OsdSerializer(serializers.Serializer):
     id = serializers.IntegerField(source='osd', help_text="ID of this OSD within this cluster")
     uuid = fields.UuidField(help_text="Globally unique ID for this OSD")
     up = fields.BooleanField(help_text="Whether the OSD is running from the point of view of the rest of the cluster")
-    _in = fields.BooleanField(help_text="Whether the OSD is currently 'in' ")
-    reweight = serializers.FloatField()
-    server = serializers.CharField()
-    pools = serializers.Field()
+    _in = fields.BooleanField(help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
+    reweight = serializers.FloatField(help_text="CRUSH weight factor")
+    server = serializers.CharField(help_text="FQDN of server this OSD was last running on")
+    pools = serializers.Field(help_text="List of pool IDs which use this OSD for storage")
 
-    public_addr = serializers.CharField()
-    cluster_addr = serializers.CharField()
+    public_addr = serializers.CharField(help_text="Public/frontend IP address")
+    cluster_addr = serializers.CharField(help_text="Cluster/backend IP address")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
