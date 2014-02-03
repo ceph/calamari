@@ -1,3 +1,9 @@
+calamari (1.1.0) stable; urgency=low
+
+  * Calamari version 1.1
+
+ -- Dan Mick <dan.mick@inktank.com>  Mon, 03 Feb 2014 13:44:13 -0800
+
 calamari (1.0.0-1) precise; urgency=low
 
   * New upstream release 
