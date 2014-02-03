@@ -143,6 +143,7 @@ Calamari accepts messages from a server, the server's key must be accepted.
         self._validate_list(request)
 
         keys = request.DATA
+        log.debug("KEYS %s" % keys)
         for key in keys:
             self._partial_update(key['id'], key)
 

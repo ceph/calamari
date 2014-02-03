@@ -3,6 +3,7 @@
 import os
 from os.path import dirname, abspath, join
 import sys
+from django.core.exceptions import ImproperlyConfigured
 
 from cthulhu.config import CalamariConfig
 config = CalamariConfig()
@@ -135,6 +136,15 @@ INSTALLED_APPS = (
     'graphite.metrics',
     'graphite.dashboard'
 )
+
+try:
+    import django_nose  # noqa
+except ImportError:
+    pass
+except ImproperlyConfigured:
+    INSTALLED_APPS = INSTALLED_APPS + ('django_nose',)
+
+TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
