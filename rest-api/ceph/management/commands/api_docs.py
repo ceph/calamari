@@ -224,7 +224,8 @@ class ApiIntrospector(object):
                     field_help_text = field.help_text
                 else:
                     field_help_text = ""
-                field_table.append([field_name, field.type_label, str(field.read_only), field_help_text])
+                field_table.append(
+                    [field_name, field.type_label, str(field.read_only), field_help_text if field_help_text else ""])
             field_table_rst = make_table(field_table)
         else:
             field_table_rst = "*No field data available*"
