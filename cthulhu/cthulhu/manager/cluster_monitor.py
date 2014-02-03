@@ -405,6 +405,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             self._requests.on_map(sync_type, self._sync_objects)
             self._persister.update_sync_object(
                 self.fsid,
+                self.name,
                 sync_type.str,
                 new_object.version if isinstance(new_object.version, int) else None,
                 now(), data['data'])

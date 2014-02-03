@@ -153,9 +153,9 @@ class Manager(object):
             ), server.fqdn if server else None)
 
         # I want the most recent version of every sync_object
-        fsids = [row[0] for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
-        for fsid in fsids:
-            cluster_monitor = ClusterMonitor(fsid, 'ceph', self.notifier, self.persister, self.servers, self.eventer)
+        fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
+        for fsid, name in fsids:
+            cluster_monitor = ClusterMonitor(fsid, name, self.notifier, self.persister, self.servers, self.eventer)
             self.clusters[fsid] = cluster_monitor
 
             object_types = [row[0] for row in session.query(SyncObject.sync_type).filter_by(fsid=fsid).distinct()]

@@ -79,8 +79,8 @@ class Persister(gevent.greenlet.Greenlet):
                 except AttributeError:
                     return object.__getattribute__(self, item)
 
-    def _update_sync_object(self, fsid, sync_type, version, when, data):
-        self._session.add(SyncObject(fsid=fsid, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
+    def _update_sync_object(self, fsid, name, sync_type, version, when, data):
+        self._session.add(SyncObject(fsid=fsid, cluster_name=name, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
 
         # Time-limited FIFO
         threshold = now() - CLUSTER_MAP_RETENTION
