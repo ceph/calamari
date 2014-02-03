@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import json
 import logging
+import os
 import gevent.event
 import signal
 from dateutil.tz import tzutc
@@ -153,7 +154,7 @@ class Manager(object):
             ), server.fqdn if server else None)
 
         # I want the most recent version of every sync_object
-        fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid).distinct(SyncObject.fsid)]
+        fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid, SyncObject.cluster_name).distinct(SyncObject.fsid)]
         for fsid, name in fsids:
             cluster_monitor = ClusterMonitor(fsid, name, self.notifier, self.persister, self.servers, self.eventer)
             self.clusters[fsid] = cluster_monitor
@@ -193,7 +194,11 @@ class Manager(object):
 
         # Before we start listening to the outside world, recover
         # our last known state from persistent storage
-        self._recover()
+        try:
+            self._recover()
+        except:
+            log.exception("Recovery failed")
+            os._exit(-1)
 
         self._rpc_thread.bind()
         self._rpc_thread.start()
