@@ -188,7 +188,10 @@ docs: rest-docs dev-docs
 unit-tests: dev/calamari.conf
 	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test rest-api/tests cthulhu/tests
 
-check: unit-tests
+lint:
+	echo "Checking code style:" && flake8 cthulhu/ --ignore=E501 && echo "OK"
+
+check: unit-tests lint
 
 .PHONY: dist clean build-venv dpkg install install-conf
 .PHONY: build-venv install-venv

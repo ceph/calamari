@@ -41,7 +41,7 @@ class PluginMonitor(gevent.greenlet.Greenlet):
                     plugin_module = importlib.import_module('.'.join((module, plugin, 'status_processor')))
                     status_processor = plugin_module.StatusProcessor()
                 except ImportError, e:
-                    log.info("Error importing plugin %s %s" % (plugin,str(e)))
+                    log.info("Error importing plugin %s %s" % (plugin, str(e)))
 
                 if status_processor is not None:
                     loaded_plugins.append((plugin, status_processor))
