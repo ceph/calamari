@@ -120,8 +120,8 @@ class SaltKeySerializer(serializers.Serializer):
     class Meta:
         fields = ('id', 'status')
 
-    id = serializers.CharField()
-    status = serializers.CharField()
+    id = serializers.CharField(help_text="The minion ID, usually equal to a host's FQDN")
+    status = serializers.CharField(help_text="One of 'accepted', 'rejected' or 'pre'")
 
 
 class ServiceSerializer(serializers.Serializer):

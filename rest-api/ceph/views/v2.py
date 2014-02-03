@@ -109,31 +109,60 @@ Calamari accepts messages from a server, the server's key must be accepted.
     def list(self, request):
         return Response(self.serializer_class(self.client.minion_status(None), many=True).data)
 
-    def partial_update(self, request, pk):
+    def partial_update(self, request, minion_id):
+        self._partial_update(minion_id, request.DATA)
+
+        # TODO handle 404
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
-        if not 'status' in request.DATA:
-            return Response({'status': "This field is mandatory"}, status=status.HTTP_400_BAD_REQUEST)
-        elif request.DATA['status'] not in valid_status:
-            return Response({'status': "Must be one of %s" % ",".join(valid_status)},
-                            status=status.HTTP_400_BAD_REQUEST)
+        if not 'status' in data:
+            raise ParseError({'status': "This field is mandatory"})
+        elif data['status'] not in valid_status:
+            raise ParseError({'status': "Must be one of %s" % ",".join(valid_status)})
         else:
-            if request.DATA['status'] == 'accepted':
-                self.client.minion_accept(pk)
+            # TODO validate transitions, cannot go from rejected to accepted.
+            if data['status'] == 'accepted':
+                self.client.minion_accept(minion_id)
+            elif data['status'] == 'rejected':
+                self.client.minion_reject(minion_id)
             else:
-                self.client.minion_reject(pk)
+                raise NotImplementedError()
 
-        # TODO validate transitions, cannot go from rejected to accepted.
-        # TODO handle 404
+    def _validate_list(self, request):
+        keys = request.DATA
+        if not isinstance(keys, list):
+            return Response("Bulk PATCH must send a list", status=status.HTTP_400_BAD_REQUEST)
+        for key in keys:
+            if not 'id' in key:
+                return Response("Items in bulk PATCH must have 'id' attribute", status=status.HTTP_400_BAD_REQUEST)
+
+    def list_partial_update(self, request):
+        self._validate_list(request)
+
+        keys = request.DATA
+        for key in keys:
+            self._partial_update(key['id'], key)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def destroy(self, request, pk):
+    def destroy(self, request, minion_id):
         # TODO handle 404
-        self.client.minion_delete(pk)
+        self.client.minion_delete(minion_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def retrieve(self, request, pk):
-        return Response(self.serializer_class(self.client.minion_get(pk)).data)
+    def list_destroy(self, request):
+        self._validate_list(request)
+        keys = request.DATA
+        for key in keys:
+            self.client.minion_delete(key['id'])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, minion_id):
+        return Response(self.serializer_class(self.client.minion_get(minion_id)).data)
 
 
 class ClusterViewSet(RPCViewSet):

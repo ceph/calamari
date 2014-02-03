@@ -34,6 +34,19 @@ The ``PATCH`` verb is preferred to ``PUT`` for modifying objects, because it all
 be more specific about what they are changing and avoid unintended side effects.  Modifying an
 object is
 
+
+Bulk modification and deletion
+------------------------------
+
+Where a resource permits modifying or deleting many objects at once, this is exposed as a ``PATCH``
+or ``DELETE`` operation on the base resource URL.  The content of the request must be a list of objects,
+where each object includes its identifying attribute as well as any attributes to be changed.
+
+The response to a bulk modification will describe success or failure of the operation as a whole: if
+any of the sent modifications could not be applied then an error will be returned, even though some or
+most of the sent modifications may have been applied successfully.  If an API consumer needs to find out
+which of its operations applied successfully in a failing request, it must ``GET`` the objects to check.
+
 Cluster FSIDs and names
 -----------------------
 

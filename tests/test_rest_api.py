@@ -64,7 +64,7 @@ class TestApi(ServerTestCase):
             "<osd_id>": ["0"],
             "<pool_id>": ["0"],
             "server/<pk>": ["server/%s" % self.ceph_ctl.get_server_fqdns()[0]],
-            "key/<pk>": ["key/%s" % self.ceph_ctl.get_server_fqdns()[0]],
+            "<minion_id>": [self.ceph_ctl.get_server_fqdns()[0]],
             "cluster/<pk>": ["cluster/%s" % fsid],
             "<request_id>": [request_id],
             "user/<pk>": ["user/1"],

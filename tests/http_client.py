@@ -39,9 +39,14 @@ class AuthenticatedHttpClient(requests.Session):
         return super(AuthenticatedHttpClient, self).post(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        if isinstance(data, dict):
+        if isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
         return super(AuthenticatedHttpClient, self).patch(url, data, **kwargs)
+
+    def delete(self, url, data=None, **kwargs):
+        if isinstance(data, dict):
+            data = json.dumps(data)
+        return super(AuthenticatedHttpClient, self).delete(url, data=data, **kwargs)
 
     def login(self):
         """
