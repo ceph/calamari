@@ -161,5 +161,34 @@ dist:
 	@rm -rf $(PKGDIR)
 	@echo "tar file made in $(TARNAME)"
 
+
+dev/calamari.conf:
+	pushd dev/ && python configure.py && popd
+
+rest-api-integration: dev/calamari.conf
+	nosetests tests/test_rest_api.py
+
+doc/rest-api/api_examples.json: rest-api-integration
+	cp api_examples.json doc/rest-api
+
+rest-api-generated: doc/rest-api/api_examples.json dev/calamari.conf
+	pushd doc/rest-api && CALAMARI_CONFIG=../../dev/calamari.conf python ../../webapp/calamari/manage.py api_docs && popd
+
+rest-docs: rest-api-generated dev/calamari.conf
+	pushd doc/rest-api && make html
+
+dev-docs: dev/calamari.conf
+	pushd doc/development && make html
+
+plugin-docs: dev/calamari.conf
+	pushd doc/plugin && make html
+
+docs: rest-docs dev-docs
+
+unit-tests: dev/calamari.conf
+	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test rest-api/tests cthulhu/tests
+
+check: unit-tests
+
 .PHONY: dist clean build-venv dpkg install install-conf
 .PHONY: build-venv install-venv
