@@ -163,7 +163,7 @@ dist:
 
 
 dev/calamari.conf:
-	pushd dev/ && python configure.py && popd
+	cd dev/ && python configure.py
 
 rest-api-integration: dev/calamari.conf
 	nosetests tests/test_rest_api.py
@@ -172,16 +172,16 @@ doc/rest-api/api_examples.json: rest-api-integration
 	cp api_examples.json doc/rest-api
 
 rest-api-generated: doc/rest-api/api_examples.json dev/calamari.conf
-	pushd doc/rest-api && CALAMARI_CONFIG=../../dev/calamari.conf python ../../webapp/calamari/manage.py api_docs && popd
+	cd doc/rest-api && CALAMARI_CONFIG=../../dev/calamari.conf python ../../webapp/calamari/manage.py api_docs
 
 rest-docs: rest-api-generated dev/calamari.conf
-	pushd doc/rest-api && make html
+	cd doc/rest-api && make html
 
 dev-docs: dev/calamari.conf
-	pushd doc/development && make html
+	cd doc/development && make html
 
 plugin-docs: dev/calamari.conf
-	pushd doc/plugin && make html
+	cd doc/plugin && make html
 
 docs: rest-docs dev-docs
 
