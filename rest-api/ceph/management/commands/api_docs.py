@@ -16,6 +16,8 @@ RESOURCES_FILE = "resources.rst"
 EXAMPLES_PREFIX = "api_example_"
 
 old_as_view = rest_framework.viewsets.ViewSetMixin.as_view
+
+
 @classmethod
 def as_view(cls, actions=None, **initkwargs):
     view = old_as_view.__func__(cls)
@@ -166,7 +168,7 @@ class ApiIntrospector(object):
                 if isinstance(url_pattern, RegexURLResolver):
                     parse_urls(url_pattern.urlconf_module)
                 elif isinstance(url_pattern, RegexURLPattern):
-                    if url_pattern.regex.pattern.endswith('\.(?P<format>[a-z]+)$'):
+                    if url_pattern.regex.pattern.endswith('\.(?P<format>[a-z0-9]+)$'):
                         # Suppress the .<format> urls that rest_framework generates
                         continue
 
