@@ -4,19 +4,20 @@ from django.utils.unittest.case import skipIf
 import os
 
 if os.environ.get('CALAMARI_CONFIG'):
-   from cthulhu.manager import manager, rpc, derived, cluster_monitor, plugin_monitor
+    from cthulhu.manager import manager, rpc, derived, cluster_monitor, plugin_monitor
 
 
 class TestManager(TestCase):
     def setUp(self):
         self.manager = manager.Manager()
-    
+
     def tearDown(self):
         self.manager.stop()
 
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testCreateManager(self):
-        assert self.manager != None
+        assert self.manager is not None
+
 
 class TestRpcThread(TestCase):
     def setUp(self):
@@ -27,14 +28,12 @@ class TestRpcThread(TestCase):
 
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testCreateRpcThread(self):
-        assert self.rpc_thread != None
+        assert self.rpc_thread is not None
 
 
 class TestDerivedObjects(TestCase):
-
     def setUp(self):
         self.derived_TestCase = derived.DerivedObjects()
-
 
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testDerivedObject(self):
@@ -42,9 +41,8 @@ class TestDerivedObjects(TestCase):
 
 
 class TestSyncObjects(TestCase):
-
     def setUp(self):
-        self.sync_TestCases = cluster_monitor.SyncObjects()
+        self.sync_TestCases = cluster_monitor.SyncObjects('ceph')
 
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testCreateSyncObjects(self):
