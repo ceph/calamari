@@ -68,7 +68,7 @@ def tail(subpath, n_lines):
     """
     path = _resolve(BASE, subpath)
     if not os.path.isfile(path):
-        raise IOError("'%s' not found or not an ordinary file")
+        raise IOError("'%s' not found or not an ordinary file" % path)
 
     # To emit exception if they pass something naughty, rather than have `tail`
     # experience an error
