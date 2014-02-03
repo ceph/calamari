@@ -6,6 +6,7 @@ import salt.client
 import time
 from cthulhu.manager import config
 from cthulhu.log import log
+from cthulhu.util import memoize
 
 
 class PluginMonitor(gevent.greenlet.Greenlet):
@@ -15,11 +16,15 @@ class PluginMonitor(gevent.greenlet.Greenlet):
 
     def __init__(self, servers):
         super(PluginMonitor, self).__init__()
-        self.salt_client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         # plugin_name to status processor output
         self.plugin_results = {}
         self._complete = event.Event()
         self._servers = servers
+
+    @property
+    @memoize
+    def salt_client(self):
+        return salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
 
     def load_plugins(self):
 
