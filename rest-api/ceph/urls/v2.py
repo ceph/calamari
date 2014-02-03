@@ -12,10 +12,6 @@ router.register(r'user', ceph.views.v1.UserViewSet)
 # Information about each Ceph cluster (FSID), see sub-URLs
 router.register(r'cluster', ceph.views.v2.ClusterViewSet, base_name='cluster')
 
-# Information about authenticated servers
-router.register(r'server', ceph.views.v2.ServerViewSet, base_name='server')
-
-
 urlpatterns = patterns(
     '',
 
@@ -71,7 +67,12 @@ urlpatterns = patterns(
         {'get': 'list', 'patch': 'list_partial_update', 'delete': 'list_destroy'})),
     url(r'^key/(?P<minion_id>[a-zA-Z0-9-\.]+)',
         ceph.views.v2.SaltKeyViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'})),
+
+    url(r'^server$', ceph.views.v2.ServerViewSet.as_view({'get': 'list'})),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',
+        ceph.views.v2.ServerViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'})),
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$', ceph.views.v2.ServerViewSet.as_view({'get': 'retrieve_grains'})),
+
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server$', ceph.views.v2.ServerClusterViewSet.as_view({'get': 'list'}),
         name='cluster-server-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',

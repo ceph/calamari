@@ -392,16 +392,16 @@ server then the FQDN will be modified to its correct value.
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def retrieve(self, request, pk):
+    def retrieve(self, request, fqdn):
         return Response(
-            self.serializer_class(DataObject(self.client.server_get(pk))).data
+            self.serializer_class(DataObject(self.client.server_get(fqdn))).data
         )
 
     def list(self, request):
         return Response(self.serializer_class([DataObject(s) for s in self.client.server_list()], many=True).data)
 
-    def destroy(self, request, pk):
-        self.client.server_delete(pk)
+    def destroy(self, request, fqdn):
+        self.client.server_delete(fqdn)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
