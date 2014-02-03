@@ -86,7 +86,7 @@ OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
 
 class CrushRuleSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
 
     id = serializers.IntegerField(source='rule_id')
     name = serializers.CharField(source='rule_name')
@@ -95,14 +95,16 @@ class CrushRuleSerializer(serializers.Serializer):
     min_size = serializers.IntegerField()
     max_size = serializers.IntegerField()
     steps = serializers.Field()
+    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
 class CrushRuleSetSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'rules',)
+        fields = ('id', 'rules', 'osd_count')
 
     id = serializers.IntegerField()
     rules = CrushRuleSerializer(many=True)
+    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
 class RequestSerializer(serializers.Serializer):

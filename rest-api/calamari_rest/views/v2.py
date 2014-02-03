@@ -77,6 +77,9 @@ together to a pool.
 
     def list(self, request, fsid):
         rules = self.client.list(fsid, CRUSH_RULE)
+        osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+        for rule in rules:
+            rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
         return Response(CrushRuleSerializer([DataObject(r) for r in rules], many=True).data)
 
 
@@ -88,13 +91,17 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
 
     def list(self, request, fsid):
         rules = self.client.list(fsid, CRUSH_RULE)
+        osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+        osds_by_rule_set_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_set_id'])
         rulesets_data = defaultdict(list)
         for rule in rules:
+            rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
             rulesets_data[rule['ruleset']].append(rule)
 
         rulesets = [DataObject({
             'id': rd_id,
-            'rules': [DataObject(r) for r in rd_rules]
+            'rules': [DataObject(r) for r in rd_rules],
+            'osd_count': len(osds_by_rule_set_id[rd_id])
         }) for (rd_id, rd_rules) in rulesets_data.items()]
 
         return Response(CrushRuleSetSerializer(rulesets, many=True).data)
@@ -361,7 +368,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
                 pool_id = int(request.GET['pool'])
             except ValueError:
                 return Response("Pool ID must be an integer", status=status.HTTP_400_BAD_REQUEST)
-            osds_in_pool = self.client.get_sync_object(fsid, 'osd_map', ['pool_osds', pool_id])
+            osds_in_pool = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_pool', pool_id])
             if osds_in_pool is None:
                 return Response("Unknown pool ID", status=status.HTTP_400_BAD_REQUEST)
 

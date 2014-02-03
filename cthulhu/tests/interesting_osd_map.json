@@ -1,0 +1,834 @@
+{
+    "blacklist": [],
+    "pool_max": 7,
+    "max_osd": 6,
+    "created": "2014-01-30 16:53:27.821951",
+    "tree": {
+        "nodes": [
+            {
+                "children": [
+                    -7,
+                    -6,
+                    -5,
+                    -4,
+                    -3,
+                    -2
+                ],
+                "type": "root",
+                "id": -1,
+                "name": "default",
+                "type_id": 6
+            },
+            {
+                "children": [
+                    1,
+                    0
+                ],
+                "type": "host",
+                "id": -2,
+                "name": "gravel1",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.0",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 0
+            },
+            {
+                "status": "up",
+                "name": "osd.1",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 1
+            },
+            {
+                "children": [
+                    3,
+                    2
+                ],
+                "type": "host",
+                "id": -3,
+                "name": "gravel2",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.2",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 2
+            },
+            {
+                "status": "up",
+                "name": "osd.3",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 3
+            },
+            {
+                "children": [
+                    5,
+                    4
+                ],
+                "type": "host",
+                "id": -4,
+                "name": "gravel3",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.4",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 4
+            },
+            {
+                "status": "up",
+                "name": "osd.5",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 5
+            },
+            {
+                "children": [
+                    0
+                ],
+                "type": "initialdrives",
+                "id": -5,
+                "name": "gravel1_id",
+                "type_id": 7
+            },
+            {
+                "status": "up",
+                "name": "osd.0",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 0
+            },
+            {
+                "children": [
+                    2
+                ],
+                "type": "initialdrives",
+                "id": -6,
+                "name": "gravel2_id",
+                "type_id": 7
+            },
+            {
+                "status": "up",
+                "name": "osd.2",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 2
+            },
+            {
+                "children": [
+                    4
+                ],
+                "type": "initialdrives",
+                "id": -7,
+                "name": "gravel3_id",
+                "type_id": 7
+            },
+            {
+                "status": "up",
+                "name": "osd.4",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.899994",
+                "depth": 2,
+                "type": "osd",
+                "id": 4
+            }
+        ],
+        "stray": []
+    },
+    "modified": "2014-02-06 12:35:01.088769",
+    "osd_xinfo": [
+        {
+            "laggy_probability": "0.000000",
+            "down_stamp": "2014-02-06 11:52:39.747327",
+            "osd": 0,
+            "laggy_interval": 0
+        },
+        {
+            "laggy_probability": "0.000000",
+            "down_stamp": "2014-02-06 11:52:37.203997",
+            "osd": 1,
+            "laggy_interval": 0
+        },
+        {
+            "laggy_probability": "0.035295",
+            "down_stamp": "2014-02-05 22:21:58.718646",
+            "osd": 2,
+            "laggy_interval": 0
+        },
+        {
+            "laggy_probability": "0.000000",
+            "down_stamp": "2014-02-05 22:21:58.718646",
+            "osd": 3,
+            "laggy_interval": 0
+        },
+        {
+            "laggy_probability": "0.000000",
+            "down_stamp": "2014-02-06 11:52:37.203997",
+            "osd": 4,
+            "laggy_interval": 0
+        },
+        {
+            "laggy_probability": "0.000000",
+            "down_stamp": "2014-02-06 11:52:39.747327",
+            "osd": 5,
+            "laggy_interval": 0
+        }
+    ],
+    "osds": [
+        {
+            "down_at": 1016,
+            "uuid": "2fafa56b-1382-483e-8c65-aac1774bcf09",
+            "heartbeat_front_addr": "192.168.18.1:6803/1495",
+            "heartbeat_back_addr": "192.168.19.1:6801/1495",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1017,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1007,
+            "last_clean_end": 1011,
+            "in": 1,
+            "public_addr": "192.168.18.1:6802/1495",
+            "up_thru": 1030,
+            "cluster_addr": "192.168.19.1:6800/1495",
+            "osd": 0
+        },
+        {
+            "down_at": 1014,
+            "uuid": "538be450-797a-49f5-8e38-f365323ca735",
+            "heartbeat_front_addr": "192.168.18.1:6805/1497",
+            "heartbeat_back_addr": "192.168.19.1:6803/1497",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1015,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1006,
+            "last_clean_end": 1011,
+            "in": 1,
+            "public_addr": "192.168.18.1:6801/1497",
+            "up_thru": 1030,
+            "cluster_addr": "192.168.19.1:6802/1497",
+            "osd": 1
+        },
+        {
+            "down_at": 1011,
+            "uuid": "614f8798-1975-4881-b2a8-dbcf0df94b8b",
+            "heartbeat_front_addr": "192.168.18.2:6804/1666",
+            "heartbeat_back_addr": "192.168.19.2:6803/1666",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1018,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1007,
+            "last_clean_end": 1010,
+            "in": 1,
+            "public_addr": "192.168.18.2:6803/1666",
+            "up_thru": 1028,
+            "cluster_addr": "192.168.19.2:6802/1666",
+            "osd": 2
+        },
+        {
+            "down_at": 1011,
+            "uuid": "9f196306-44b9-4001-9bb5-cc47c217db4b",
+            "heartbeat_front_addr": "192.168.18.2:6801/1667",
+            "heartbeat_back_addr": "192.168.19.2:6801/1667",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1013,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1007,
+            "last_clean_end": 1010,
+            "in": 1,
+            "public_addr": "192.168.18.2:6800/1667",
+            "up_thru": 1025,
+            "cluster_addr": "192.168.19.2:6800/1667",
+            "osd": 3
+        },
+        {
+            "down_at": 1014,
+            "uuid": "27b6c5ee-153f-43a5-b381-ea5f2a1919f3",
+            "heartbeat_front_addr": "192.168.18.3:6802/1639",
+            "heartbeat_back_addr": "192.168.19.3:6801/1639",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1015,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1007,
+            "last_clean_end": 1011,
+            "in": 1,
+            "public_addr": "192.168.18.3:6800/1639",
+            "up_thru": 1028,
+            "cluster_addr": "192.168.19.3:6800/1639",
+            "osd": 4
+        },
+        {
+            "down_at": 1016,
+            "uuid": "d223fc2f-8345-44d2-8a50-f0f15805a609",
+            "heartbeat_front_addr": "192.168.18.3:6804/1636",
+            "heartbeat_back_addr": "192.168.19.3:6803/1636",
+            "lost_at": 0,
+            "up": 1,
+            "up_from": 1017,
+            "state": [
+                "exists",
+                "up"
+            ],
+            "last_clean_begin": 1007,
+            "last_clean_end": 1011,
+            "in": 1,
+            "public_addr": "192.168.18.3:6801/1636",
+            "up_thru": 1025,
+            "cluster_addr": "192.168.19.3:6802/1636",
+            "osd": 5
+        }
+    ],
+    "crush": {
+        "rules": [
+            {
+                "min_size": 1,
+                "rule_name": "data",
+                "steps": [
+                    {
+                        "item": -1,
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "type": "host",
+                        "op": "chooseleaf_firstn"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "ruleset": 0,
+                "type": 1,
+                "rule_id": 0,
+                "max_size": 10
+            },
+            {
+                "min_size": 1,
+                "rule_name": "metadata",
+                "steps": [
+                    {
+                        "item": -1,
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "type": "host",
+                        "op": "chooseleaf_firstn"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "ruleset": 1,
+                "type": 1,
+                "rule_id": 1,
+                "max_size": 10
+            },
+            {
+                "min_size": 1,
+                "rule_name": "rbd",
+                "steps": [
+                    {
+                        "item": -1,
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "type": "host",
+                        "op": "chooseleaf_firstn"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "ruleset": 2,
+                "type": 1,
+                "rule_id": 2,
+                "max_size": 10
+            },
+            {
+                "min_size": 1,
+                "rule_name": "id",
+                "steps": [
+                    {
+                        "item": -1,
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "type": "initialdrives",
+                        "op": "choose_firstn"
+                    },
+                    {
+                        "num": 1,
+                        "type": "osd",
+                        "op": "chooseleaf_firstn"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "ruleset": 3,
+                "type": 1,
+                "rule_id": 3,
+                "max_size": 10
+            },
+            {
+                "min_size": 1,
+                "rule_name": "firstserver",
+                "steps": [
+                    {
+                        "item": -2,
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "type": "osd",
+                        "op": "chooseleaf_firstn"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "ruleset": 4,
+                "type": 1,
+                "rule_id": 4,
+                "max_size": 10
+            }
+        ],
+        "tunables": {
+            "choose_local_fallback_tries": 5,
+            "chooseleaf_descend_once": 0,
+            "choose_total_tries": 19,
+            "choose_local_tries": 2
+        },
+        "buckets": [
+            {
+                "hash": "rjenkins1",
+                "name": "default",
+                "weight": 530838,
+                "type_id": 6,
+                "alg": "straw",
+                "type_name": "root",
+                "items": [
+                    {
+                        "id": -2,
+                        "weight": 117964,
+                        "pos": 0
+                    },
+                    {
+                        "id": -3,
+                        "weight": 117964,
+                        "pos": 1
+                    },
+                    {
+                        "id": -4,
+                        "weight": 117964,
+                        "pos": 2
+                    },
+                    {
+                        "id": -5,
+                        "weight": 58982,
+                        "pos": 3
+                    },
+                    {
+                        "id": -6,
+                        "weight": 58982,
+                        "pos": 4
+                    },
+                    {
+                        "id": -7,
+                        "weight": 58982,
+                        "pos": 5
+                    }
+                ],
+                "id": -1
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel1",
+                "weight": 117964,
+                "type_id": 1,
+                "alg": "straw",
+                "type_name": "host",
+                "items": [
+                    {
+                        "id": 0,
+                        "weight": 58982,
+                        "pos": 0
+                    },
+                    {
+                        "id": 1,
+                        "weight": 58982,
+                        "pos": 1
+                    }
+                ],
+                "id": -2
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel2",
+                "weight": 117964,
+                "type_id": 1,
+                "alg": "straw",
+                "type_name": "host",
+                "items": [
+                    {
+                        "id": 2,
+                        "weight": 58982,
+                        "pos": 0
+                    },
+                    {
+                        "id": 3,
+                        "weight": 58982,
+                        "pos": 1
+                    }
+                ],
+                "id": -3
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel3",
+                "weight": 117964,
+                "type_id": 1,
+                "alg": "straw",
+                "type_name": "host",
+                "items": [
+                    {
+                        "id": 4,
+                        "weight": 58982,
+                        "pos": 0
+                    },
+                    {
+                        "id": 5,
+                        "weight": 58982,
+                        "pos": 1
+                    }
+                ],
+                "id": -4
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel1_id",
+                "weight": 58982,
+                "type_id": 7,
+                "alg": "straw",
+                "type_name": "initialdrives",
+                "items": [
+                    {
+                        "id": 0,
+                        "weight": 58982,
+                        "pos": 0
+                    }
+                ],
+                "id": -5
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel2_id",
+                "weight": 58982,
+                "type_id": 7,
+                "alg": "straw",
+                "type_name": "initialdrives",
+                "items": [
+                    {
+                        "id": 2,
+                        "weight": 58982,
+                        "pos": 0
+                    }
+                ],
+                "id": -6
+            },
+            {
+                "hash": "rjenkins1",
+                "name": "gravel3_id",
+                "weight": 58982,
+                "type_id": 7,
+                "alg": "straw",
+                "type_name": "initialdrives",
+                "items": [
+                    {
+                        "id": 4,
+                        "weight": 58982,
+                        "pos": 0
+                    }
+                ],
+                "id": -7
+            }
+        ],
+        "devices": [
+            {
+                "id": 0,
+                "name": "osd.0"
+            },
+            {
+                "id": 1,
+                "name": "osd.1"
+            },
+            {
+                "id": 2,
+                "name": "osd.2"
+            },
+            {
+                "id": 3,
+                "name": "osd.3"
+            },
+            {
+                "id": 4,
+                "name": "osd.4"
+            },
+            {
+                "id": 5,
+                "name": "osd.5"
+            }
+        ],
+        "types": [
+            {
+                "name": "osd",
+                "type_id": 0
+            },
+            {
+                "name": "host",
+                "type_id": 1
+            },
+            {
+                "name": "rack",
+                "type_id": 2
+            },
+            {
+                "name": "row",
+                "type_id": 3
+            },
+            {
+                "name": "room",
+                "type_id": 4
+            },
+            {
+                "name": "datacenter",
+                "type_id": 5
+            },
+            {
+                "name": "root",
+                "type_id": 6
+            },
+            {
+                "name": "initialdrives",
+                "type_id": 7
+            }
+        ]
+    },
+    "epoch": 1032,
+    "pg_temp": [
+    ],
+    "flags": "",
+    "cluster_snapshot": "",
+    "pools": [
+        {
+            "flags_names": "",
+            "tier_of": -1,
+            "pg_placement_num": 64,
+            "quota_max_bytes": 0,
+            "size": 2,
+            "snap_seq": 0,
+            "auid": 0,
+            "pg_num": 64,
+            "type": 1,
+            "crush_ruleset": 2,
+            "pool_name": "rbd",
+            "snap_mode": "selfmanaged",
+            "tiers": [],
+            "min_size": 1,
+            "crash_replay_interval": 0,
+            "object_hash": 2,
+            "write_tier": -1,
+            "properties": [],
+            "pool": 2,
+            "removed_snaps": "[]",
+            "cache_mode": "none",
+            "pool_snaps": {},
+            "quota_max_objects": 0,
+            "flags": 0,
+            "snap_epoch": 0,
+            "last_change": "1",
+            "read_tier": -1
+        },
+        {
+            "flags_names": "",
+            "tier_of": -1,
+            "pg_placement_num": 256,
+            "quota_max_bytes": 0,
+            "size": 2,
+            "snap_seq": 0,
+            "auid": 0,
+            "pg_num": 256,
+            "type": 1,
+            "crush_ruleset": 0,
+            "pool_name": "newdata",
+            "snap_mode": "selfmanaged",
+            "tiers": [],
+            "min_size": 1,
+            "crash_replay_interval": 0,
+            "object_hash": 2,
+            "write_tier": -1,
+            "properties": [],
+            "pool": 4,
+            "removed_snaps": "[]",
+            "cache_mode": "none",
+            "pool_snaps": {},
+            "quota_max_objects": 0,
+            "flags": 0,
+            "snap_epoch": 0,
+            "last_change": "949",
+            "read_tier": -1
+        },
+        {
+            "flags_names": "",
+            "tier_of": -1,
+            "pg_placement_num": 256,
+            "quota_max_bytes": 0,
+            "size": 2,
+            "snap_seq": 0,
+            "auid": 0,
+            "pg_num": 256,
+            "type": 1,
+            "crush_ruleset": 0,
+            "pool_name": "newmetadatadata",
+            "snap_mode": "selfmanaged",
+            "tiers": [],
+            "min_size": 1,
+            "crash_replay_interval": 0,
+            "object_hash": 2,
+            "write_tier": -1,
+            "properties": [],
+            "pool": 5,
+            "removed_snaps": "[]",
+            "cache_mode": "none",
+            "pool_snaps": {},
+            "quota_max_objects": 0,
+            "flags": 0,
+            "snap_epoch": 0,
+            "last_change": "951",
+            "read_tier": -1
+        },
+        {
+            "flags_names": "",
+            "tier_of": -1,
+            "pg_placement_num": 128,
+            "quota_max_bytes": 0,
+            "size": 2,
+            "snap_seq": 0,
+            "auid": 0,
+            "pg_num": 128,
+            "type": 1,
+            "crush_ruleset": 3,
+            "pool_name": "using_ids",
+            "snap_mode": "selfmanaged",
+            "tiers": [],
+            "min_size": 1,
+            "crash_replay_interval": 0,
+            "object_hash": 2,
+            "write_tier": -1,
+            "properties": [],
+            "pool": 6,
+            "removed_snaps": "[]",
+            "cache_mode": "none",
+            "pool_snaps": {},
+            "quota_max_objects": 0,
+            "flags": 0,
+            "snap_epoch": 0,
+            "last_change": "1027",
+            "read_tier": -1
+        },
+        {
+            "flags_names": "",
+            "tier_of": -1,
+            "pg_placement_num": 128,
+            "quota_max_bytes": 0,
+            "size": 2,
+            "snap_seq": 0,
+            "auid": 0,
+            "pg_num": 128,
+            "type": 1,
+            "crush_ruleset": 4,
+            "pool_name": "using_firstserver",
+            "snap_mode": "selfmanaged",
+            "tiers": [],
+            "min_size": 1,
+            "crash_replay_interval": 0,
+            "object_hash": 2,
+            "write_tier": -1,
+            "properties": [],
+            "pool": 7,
+            "removed_snaps": "[]",
+            "cache_mode": "none",
+            "pool_snaps": {},
+            "quota_max_objects": 0,
+            "flags": 0,
+            "snap_epoch": 0,
+            "last_change": "1030",
+            "read_tier": -1
+        }
+    ],
+    "fsid": "466b2ff9-970e-44a4-85d1-db0718a0c836"
+}

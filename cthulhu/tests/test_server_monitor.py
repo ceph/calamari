@@ -1,8 +1,8 @@
 
 
-import json
 import os
 import mock
+from tests.util import load_fixture
 
 os.environ['CALAMARI_CONFIG'] = os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf")
 
@@ -11,11 +11,6 @@ from mock import Mock
 
 from cthulhu.manager.server_monitor import ServerMonitor, ServiceId
 
-
-def load_fixture(name):
-    return json.load(
-        open(os.path.join(os.path.dirname(__file__), name), 'r')
-    )
 
 OSD_MAP = load_fixture('osd_map.json')
 MON_MAP = load_fixture('mon_map.json')

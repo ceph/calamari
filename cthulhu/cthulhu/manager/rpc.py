@@ -110,6 +110,8 @@ class RpcInterface(object):
 
         if path:
             obj = self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
+            print "obj=%s" % obj
+            print obj.osds_by_rule_id
             try:
                 for part in path:
                     if isinstance(obj, dict):

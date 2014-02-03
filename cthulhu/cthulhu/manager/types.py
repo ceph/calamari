@@ -1,3 +1,4 @@
+from collections import defaultdict
 from cthulhu.util import memoize
 
 
@@ -52,33 +53,7 @@ class OsdMap(VersionedSyncObject):
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
 
-    @memoize
-    def get_pool_crush_root_nodes(self, pool_id):
-        """
-        Get the nearest-root nodes in the crush map which enclose the OSDs which
-        may be used in this pool.
-        """
-        pool = self.pools_by_id[pool_id]
-        # Select the rules that apply to this pool, via ruleset
-        crush_rules = [rule for rule in self.data['crush']['rules'] if rule['ruleset'] == pool['crush_ruleset']]
-
-        root_node_ids = set()
-        for rule in crush_rules:
-            for step in rule['steps']:
-                if step['op'] == "take":
-                    root_node_ids.add(step['item'])
-
-        return root_node_ids
-
-    @property
-    @memoize
-    def pool_osds(self):
-        """
-        Get the OSDS which may be used in this pool
-
-        :return dict of pool ID to OSD IDs in the pool
-        """
-
+    def _get_crush_rule_osds(self, rule):
         nodes_by_id = self.get_tree_nodes_by_id()
 
         def _gather_leaves(node):
@@ -91,12 +66,62 @@ class OsdMap(VersionedSyncObject):
 
             return result
 
+        def _gather_osds(root, steps):
+            if root['id'] >= 0:
+                return set([root['id']])
+
+            osds = set()
+            for step in steps:
+                if step['op'] == 'choose_firstn':
+                    # Choose all children of the current node of type 'type'
+                    for child_node in [nodes_by_id[i] for i in root['children']]:
+                        if child_node['type'] == step['type']:
+                            osds |= _gather_osds(child_node, steps[1:])
+                elif step['op'] == 'chooseleaf_firstn':
+                    for child_node in [nodes_by_id[i] for i in root['children']]:
+                        if child_node['type'] == step['type']:
+                            osds |= _gather_leaves(root)
+                elif step['op'] == 'emit':
+                    break
+
+            return osds
+
+        osds = set()
+        for i, step in enumerate(rule['steps']):
+            if step['op'] == 'take':
+                osds |= _gather_osds(nodes_by_id[step['item']], rule['steps'][i + 1:])
+        return osds
+
+    @property
+    @memoize
+    def osds_by_rule_id(self):
         result = {}
-        for pool_id in self.pools_by_id.keys():
-            osd_ids = set()
-            for node_id in self.get_pool_crush_root_nodes(pool_id):
-                osd_ids |= _gather_leaves(nodes_by_id[node_id])
-            result[pool_id] = list(osd_ids)
+        for rule in self.data['crush']['rules']:
+            result[rule['rule_id']] = list(self._get_crush_rule_osds(rule))
+
+        return result
+
+    @property
+    @memoize
+    def osds_by_rule_set_id(self):
+        result = defaultdict(set)
+        for rule in self.data['crush']['rules']:
+            result[rule['ruleset']] |= self._get_crush_rule_osds(rule)
+
+        return dict([(k, list(v)) for (k, v) in result.items()])
+
+    @property
+    @memoize
+    def osds_by_pool(self):
+        """
+        Get the OSDS which may be used in this pool
+
+        :return dict of pool ID to OSD IDs in the pool
+        """
+
+        result = {}
+        for pool_id, pool in self.pools_by_id.items():
+            result[pool_id] = self.osds_by_rule_set_id[pool['crush_ruleset']]
 
         return result
 
@@ -108,7 +133,7 @@ class OsdMap(VersionedSyncObject):
         """
         osds = dict([(osd_id, []) for osd_id in self.osds_by_id.keys()])
         for pool_id in self.pools_by_id.keys():
-            for in_pool_id in self.pool_osds[pool_id]:
+            for in_pool_id in self.osds_by_pool[pool_id]:
                 osds[in_pool_id].append(pool_id)
 
         return osds
