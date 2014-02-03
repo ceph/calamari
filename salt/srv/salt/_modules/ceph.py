@@ -100,7 +100,8 @@ SYNC_TYPES = ['mon_status',
               'mds_map',
               'pg_map',
               'pg_brief',
-              'health']
+              'health',
+              'config']
 
 
 def md5(raw):
@@ -170,6 +171,21 @@ def rados_commands(fsid, cluster_name, commands):
     }
 
 
+def _get_config(cluster_name):
+    """
+    :return JSON-encoded config object
+    """
+
+    try:
+        mon_socket = glob("/var/run/ceph/{cluster_name}-mon.*.asok".format(cluster_name=cluster_name))[0]
+    except IndexError:
+        raise RuntimeError("Cannot find mon socket for %s" % cluster_name)
+    config_response = admin_socket(mon_socket, ['config', 'show'], 'json')
+    if not config_response:
+        raise RuntimeError("Cannot contact mon for %s to get config" % cluster_name)
+    return config_response
+
+
 def get_cluster_object(cluster_name, sync_type, since):
     # TODO: for the synced objects that support it, support
     # fetching older-than-present versions to allow the master
@@ -185,54 +201,56 @@ def get_cluster_object(cluster_name, sync_type, since):
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
+    try:
+        cluster_handle = rados.Rados(name='client.admin', clustername=cluster_name, conffile='')
+    except:
+        raise RuntimeError("cluster_name = %s" % cluster_name)
     cluster_handle.connect()
 
     ret, outbuf, outs = json_command(cluster_handle, prefix='status', argdict={'format': 'json'})
     status = json.loads(outbuf)
-    #latest_version = {
-    #    'mds': lambda s: s['mdsmap']['epoch'],
-    #    'osd': lambda s: s['osdmap']['osdmap']['epoch'],
-    #    'pg': lambda s: s['pgmap']['version'],
-    #    'mon': lambda s: s['monmap']['epoch']
-    #}[type](status)
-    #
     fsid = status['fsid']
 
-    command, kwargs, version_fn = {
-        'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
-        'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
-        'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
-        'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-        'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
-        'health': ('health', {'detail': ''}, lambda d, r: md5(r))
-    }[sync_type]
-    kwargs['format'] = 'json'
-    ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
-    assert ret == 0
-
-    if sync_type == 'pg_brief':
-        data = zlib.compress(raw)
-        version = version_fn(None, raw)
-    else:
+    if sync_type == 'config':
+        # Special case for config, get this via admin socket instead of librados
+        raw = _get_config(cluster_name)
+        version = md5(raw)
         data = json.loads(raw)
-        version = version_fn(data, raw)
+    else:
+        command, kwargs, version_fn = {
+            'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
+            'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
+            'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
+            'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
+            'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
+            'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
+        }[sync_type]
+        kwargs['format'] = 'json'
+        ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
+        assert ret == 0
 
-    # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
-    # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
-    # send back to the calamari server.
-    if sync_type == 'osd_map':
-        ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
-            'format': 'json',
-            'epoch': version
-        })
-        assert ret == 0
-        data['tree'] = json.loads(raw)
-        # FIXME: crush dump does not support an epoch argument, so this is potentially
-        # from a higher-versioned OSD map than the one we've just read
-        ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs)
-        assert ret == 0
-        data['crush'] = json.loads(raw)
+        if sync_type == 'pg_brief':
+            data = zlib.compress(raw)
+            version = version_fn(None, raw)
+        else:
+            data = json.loads(raw)
+            version = version_fn(data, raw)
+
+        # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
+        # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
+        # send back to the calamari server.
+        if sync_type == 'osd_map':
+            ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
+                'format': 'json',
+                'epoch': version
+            })
+            assert ret == 0
+            data['tree'] = json.loads(raw)
+            # FIXME: crush dump does not support an epoch argument, so this is potentially
+            # from a higher-versioned OSD map than the one we've just read
+            ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs)
+            assert ret == 0
+            data['crush'] = json.loads(raw)
 
     return {
         'type': sync_type,
@@ -360,6 +378,9 @@ def cluster_status(cluster_handle, cluster_name):
     assert ret == 0
     pgs_brief_digest = md5(outbuf)
 
+    # Get digest of configuration
+    config_digest = md5(_get_config(cluster_name))
+
     return {
         'name': cluster_name,
         'fsid': fsid,
@@ -369,7 +390,8 @@ def cluster_status(cluster_handle, cluster_name):
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,
             'pg_brief': pgs_brief_digest,
-            'health': health_digest
+            'health': health_digest,
+            'config': config_digest
         }
     }
 

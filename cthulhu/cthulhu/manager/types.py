@@ -141,11 +141,15 @@ class Health(SyncObject):
     str = 'health'
 
 
+class Config(SyncObject):
+    str = 'config'
+
+
 OSD = 'osd'
 POOL = 'pool'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
 
 # The objects that ClusterMonitor keeps copies of from the mon
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgBrief, Health]
+SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgBrief, Health, Config]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
