@@ -7,6 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
+from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
 
 
@@ -94,15 +95,32 @@ class RpcInterface(object):
         # Clear out records of the cluster itself
         self._manager.delete_cluster(fs_id)
 
-    def get_sync_object(self, fs_id, object_type):
+    def get_sync_object(self, fs_id, object_type, path=None):
         """
         Get one of the objects that ClusterMonitor keeps a copy of from the mon, such
         as the cluster maps.
 
         :param fs_id: The fsid of a cluster
         :param object_type: String, one of SYNC_OBJECT_TYPES
+        :param path: List, optional, a path within the object to return instead of the whole thing
+
+        :return: the requested data, or None if it was not found (including if any element of ``path``
+                 was not found)
         """
-        return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
+
+        if path:
+            obj = self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
+            try:
+                for part in path:
+                    if isinstance(obj, dict):
+                        obj = obj[part]
+                    else:
+                        obj = getattr(obj, part)
+            except (AttributeError, KeyError):
+                return None
+            return obj
+        else:
+            return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
 
     def get_derived_object(self, fs_id, object_type):
         """
@@ -191,6 +209,7 @@ class RpcInterface(object):
             'id': request.id,
             'state': request.state,
             'error': request.error,
+            'error_message': request.error_message,
             'status': request.status,
             'headline': request.headline
         }
@@ -209,7 +228,7 @@ class RpcInterface(object):
         return [self._dump_request(r) for r in requests]
 
     @property
-    def salt_key(self):
+    def _salt_key(self):
         return Key(salt.config.master_config(config.get('cthulhu', 'salt_config_path')))
 
     def minion_status(self, status_filter):
@@ -223,7 +242,7 @@ class RpcInterface(object):
         # for this stuff to call out to the master instead of touching
         # the files directly (need to set up some auth to do that though)
 
-        keys = self.salt_key.list_keys()
+        keys = self._salt_key.list_keys()
         result = []
 
         key_to_status = {
@@ -246,22 +265,22 @@ class RpcInterface(object):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.accept(minion_id)
+        return self._salt_key.accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.reject(minion_id)
+        return self._salt_key.reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
-        return self.salt_key.delete_key(minion_id)
+        return self._salt_key.delete_key(minion_id)
 
     def minion_get(self, minion_id):
-        result = self.salt_key.name_match(minion_id, full=True)
+        result = self._salt_key.name_match(minion_id, full=True)
         if not result:
             return None
 
@@ -293,6 +312,15 @@ class RpcInterface(object):
             self._manager.servers.dump_cluster(s, self._manager.clusters[fsid])
             for s in self._manager.servers.get_all_cluster(fsid)
         ]
+
+    def server_by_service(self, services):
+        """
+        Return a list of 2-tuples mapping of service ID to server FQDN
+
+        Note that we would rather return a dict but tuple dict keys are awkward to serialize
+        """
+        result = self._manager.servers.list_by_service([ServiceId(*s) for s in services])
+        return result
 
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)

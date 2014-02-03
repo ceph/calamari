@@ -10,6 +10,7 @@ import struct
 
 # Note: do not import ceph modules at this scope, otherwise this module won't be able
 # to cleanly talk to us about systems where ceph isn't installed yet.
+import zlib
 
 _REST_CLIENT_DEFAULT_TIMEOUT = 10.0
 
@@ -204,14 +205,18 @@ def get_cluster_object(cluster_name, sync_type, since):
         'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
         'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
         'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
-        'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
+        'health': ('health', {'detail': ''}, lambda d, r: md5(r))
     }[sync_type]
     kwargs['format'] = 'json'
     ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
     assert ret == 0
 
-    data = json.loads(raw)
-    version = version_fn(data, raw)
+    if sync_type == 'pg_brief':
+        data = zlib.compress(raw)
+        version = version_fn(None, raw)
+    else:
+        data = json.loads(raw)
+        version = version_fn(data, raw)
 
     # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
     # is generated from the OSD map.  We synthesize a 'full' OSD map dump to

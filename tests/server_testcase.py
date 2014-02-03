@@ -4,26 +4,11 @@ from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 
-# TODO: make these configurable or perhaps query them
-# from CalamariControl (it should know all about
-# the calamari server)
 from tests.utils import wait_until_true
 
 
 log = logging.getLogger(__name__)
 
-
-# The tests need to have a rough idea of how often
-# calamari checks things, so that they can set
-# sane upper bounds on wait.
-
-# This is how long you should wait if you're waiting
-# for something to happen roughly 'on the next heartbeat'.
-HEARTBEAT_INTERVAL = 120
-
-# How long should calamari take to re-establish
-# sync after a mon goes down?
-CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 
 # Roughly how long should it take for one OSD to
 # recover its PGs after an outage?  This is a 'finger in the air'
@@ -31,6 +16,11 @@ CALAMARI_RESYNC_PERIOD = HEARTBEAT_INTERVAL * 2
 # how long you should wait calamari to report a cluster healthy
 # after you've cycled an OSD in-out-in.
 OSD_RECOVERY_PERIOD = 600
+
+
+# This is the latency for a command to run and then for the
+# resulting OSD map to get synced up to the calamari server
+REQUEST_TIMEOUT = 20
 
 
 if True:
@@ -76,7 +66,11 @@ class ServerTestCase(TestCase):
         self.calamari_ctl.authorize_keys(self.ceph_ctl.get_server_fqdns())
         log.debug("Authorized keys")
 
-        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=HEARTBEAT_INTERVAL * 3)
+        # Once I've authorized the keys, the first mon to retry its salt authentication
+        # will cause the cluster to get noticed.
+        salt_auth_retry_interval = 10
+
+        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=salt_auth_retry_interval * 2)
         log.debug("Detected cluster")
 
         if cluster_count == 1:
@@ -89,6 +83,13 @@ class ServerTestCase(TestCase):
                 wait_until_true(lambda: self._maps_populated(cluster['id']))
                 result.append(cluster['id'])
             return result
+
+    def _wait_for_servers(self):
+        """
+        Wait for all the expected servers to appear in the REST API
+        """
+        expected_servers = self.ceph_ctl.get_server_fqdns()
+        wait_until_true(lambda: set([s['fqdn'] for s in self.api.get("server").json()]) == set(expected_servers))
 
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")
@@ -106,3 +107,31 @@ class ServerTestCase(TestCase):
         response.raise_for_status()
         osds = response.json()
         return bool(len(osds))
+
+
+class RequestTestCase(ServerTestCase):
+    """
+    For test cases that need to deal with running requests
+    """
+    def _request_complete(self, cluster_id, request_id):
+        """
+        Return whether a request has completed successfully.
+        If the request has failed, raise an exception.
+        """
+        r = self.api.get("cluster/%s/request/%s" % (cluster_id, request_id))
+        r.raise_for_status()
+
+        if r.json()['error']:
+            raise self.failureException("Request %s failed: %s" % (request_id, r.json()['error_message']))
+
+        return r.json()['state'] == 'complete'
+
+    def _wait_for_completion(self, fsid, response, timeout=None):
+        """
+        Wait for a user request to complete successfully, given the response from a PATCH/POST/DELETE
+        """
+        if timeout is None:
+            timeout = REQUEST_TIMEOUT
+        self.assertEqual(response.status_code, 202)
+        request_id = response.json()['request_id']
+        wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=timeout)

@@ -1,7 +1,9 @@
+import getpass
 import logging
 import shutil
 import tempfile
 import time
+import psutil
 from minion_sim.sim import MinionSim
 from itertools import chain
 
@@ -78,10 +80,12 @@ class EmbeddedCephControl(CephControl):
         self.fsid = None
 
     def configure(self, server_count, cluster_count=1):
+        osds_per_host = 4
+
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
-            sim = MinionSim(config_dir, server_count, port=8761 + i, domain=domain)
+            sim = MinionSim(config_dir, server_count, osds_per_host, port=8761 + i, domain=domain)
             self.fsid = sim.cluster.fsid
             self._config_dirs[self.fsid] = config_dir
             self._sims[self.fsid] = sim
@@ -93,6 +97,14 @@ class EmbeddedCephControl(CephControl):
         for sim in self._sims.values():
             sim.stop()
             sim.join()
+
+        log.debug("lingering processes: %s" %
+                  [p.name for p in psutil.process_iter() if p.username == getpass.getuser()])
+        # Sleeps in tests suck... this one is here because the salt minion doesn't give us a nice way
+        # to ensure that when we shut it down, subprocesses are complete before it returns, and even
+        # so we can't be sure that messages from a dead minion aren't still winding their way
+        # to cthulhu after this point.  So we fudge it.
+        time.sleep(5)
 
         for config_dir in self._config_dirs.values():
             shutil.rmtree(config_dir)

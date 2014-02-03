@@ -52,7 +52,8 @@ urlpatterns = patterns(
     # In v2, you can get these directly using the TODO view that takes a tuple of stat names and gives you latest values
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/space$', ceph.views.v1.Space.as_view(), name='osd-space'),
 
-    # TODO what does this look like in v2 (remember frontend depends on filtering by pg state)
+    # In v2 this no longer has "pg_state" filtering (was unused in UI and relied on expensive PG
+    # map traversal)
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', ceph.views.v1.OSDList.as_view(), name='cluster-osd-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', ceph.views.v1.OSDDetail.as_view(),
         name='cluster-osd-detail'),

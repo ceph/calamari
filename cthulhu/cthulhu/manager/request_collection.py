@@ -165,6 +165,7 @@ class RequestCollection(object):
             log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
 
             if not data['success']:
+                # This indicates a failure at the salt level, i.e. job threw an exception
                 log.error("Remote execution failed for request %s: %s" % (request.id, result))
                 if isinstance(result, dict):
                     # Handler ran and recorded an error for us
@@ -172,6 +173,15 @@ class RequestCollection(object):
                 else:
                     # An exception, probably, stringized by salt for us
                     request.set_error(result)
+                request.complete()
+            elif result['error']:
+                # This indicates a failure within ceph.rados_commands which was caught
+                # by our code, like one of our Ceph commands returned an error code.
+                # NB in future there may be UserRequest subclasses which want to receive
+                # and handle these errors themselves, so this branch would be refactored
+                # to allow that.
+                log.error("Request %s experienced an error: %s" % (request.id, result['err_outs']))
+                request.set_error(result['err_outs'])
                 request.complete()
             else:
                 if request.state != UserRequest.SUBMITTED:

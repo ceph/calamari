@@ -10,12 +10,13 @@ from django.contrib.auth.decorators import login_required
 
 from ceph.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    SyncObjectSerializer, ClusterSerializer, EventSerializer, LogTailSerializer
+    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer
 from ceph.views.database_view_set import DatabaseViewSet
 
 from ceph.views.rpc_view import RPCViewSet, DataObject
 from ceph.views.v1 import _get_local_grains
-from cthulhu.manager.types import CRUSH_RULE, POOL
+from cthulhu.manager.server_monitor import ServiceId
+from cthulhu.manager.types import CRUSH_RULE, POOL, OSD
 
 from cthulhu.config import CalamariConfig
 # FIXME: these imports of cthulhu stuff from the rest layer are too much
@@ -48,6 +49,8 @@ the examples for which fields are available.
     return Response(_get_local_grains())
 
 
+# TODO: ensure we are sorting by time of request creation
+# TODO: allow filtering by status (especially filtering to only show incomplete)
 class RequestViewSet(RPCViewSet):
     """
 Calamari server requests, tracking long-running operations on the Calamari server.  Some
@@ -184,7 +187,18 @@ class PoolDataObject(DataObject):
         return bool(self.flags & self.FLAG_FULL)
 
 
-class PoolViewSet(RPCViewSet):
+class RequestReturner(object):
+    """
+    Helper for ViewSets that sometimes need to return a request handle
+    """
+    def _return_request(self, request):
+        if request:
+            return Response(request, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(status=status.HTTP_304_NOT_MODIFIED)
+
+
+class PoolViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph storage pools.
     """
@@ -192,7 +206,6 @@ Manage Ceph storage pools.
 
     def list(self, request, fsid):
         pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL)]
-
         return Response(PoolSerializer(pools, many=True).data)
 
     def retrieve(self, request, fsid, pool_id):
@@ -220,7 +233,59 @@ Manage Ceph storage pools.
         # TODO: validation, but we don't want to check all fields are present (because
         # this is a PATCH), just that those present are valid.  rest_framework serializer
         # may or may not be able to do that out the box.
-        return Response(self.client.update(fsid, POOL, int(pool_id), updates), status=status.HTTP_202_ACCEPTED)
+        return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
+
+
+class OsdViewSet(RPCViewSet, RequestReturner):
+    """
+Manage Ceph OSDs.
+
+Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
+
+    """
+    serializer_class = OsdSerializer
+
+    def list(self, request, fsid):
+        osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+
+        if 'pool' in request.GET:
+            try:
+                pool_id = int(request.GET['pool'])
+            except ValueError:
+                return Response("Pool ID must be an integer", status=status.HTTP_400_BAD_REQUEST)
+            osds_in_pool = self.client.get_sync_object(fsid, 'osd_map', ['pool_osds', pool_id])
+            if osds_in_pool is None:
+                return Response("Unknown pool ID", status=status.HTTP_400_BAD_REQUEST)
+
+            osds = [o for o in osds if o['osd'] in osds_in_pool]
+
+        crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
+        for o in osds:
+            o.update({'reweight': crush_nodes[o['osd']]['reweight']})
+
+        server_info = self.client.server_by_service([ServiceId(fsid, OSD, str(osd['osd'])) for osd in osds])
+        for o, (service_id, fqdn) in zip(osds, server_info):
+            o['server'] = fqdn
+
+        osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'])
+        for o in osds:
+            o['pools'] = osd_to_pools[o['osd']]
+
+        return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
+
+    def retrieve(self, request, fsid, osd_id):
+        osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
+        crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
+        osd['reweight'] = crush_node['reweight']
+        osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]
+
+        pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
+        osd['pools'] = pools
+
+        return Response(self.serializer_class(DataObject(osd)).data)
+
+    def update(self, request, fsid, osd_id):
+        return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
 
 class SyncObject(RPCViewSet):
@@ -228,11 +293,9 @@ class SyncObject(RPCViewSet):
 These objects are the raw data received by the Calamari server from the Ceph cluster,
 such as the cluster maps
     """
-    serializer_class = SyncObjectSerializer
 
     def retrieve(self, request, fsid, sync_type):
-        obj = DataObject({'data': self.client.get_sync_object(fsid, sync_type)})
-        return Response(SyncObjectSerializer(obj).data)
+        return Response(self.client.get_sync_object(fsid, sync_type))
 
     def describe(self, request, fsid):
         return Response([s.str for s in SYNC_OBJECT_TYPES])
@@ -243,13 +306,9 @@ class DerivedObject(RPCViewSet):
 These objects are generated by Calamari server in response to cluster maps,
 to provide more convenient or high level representations of the cluster state.
     """
-    # FIXME: just using SyncObjectSerializer because it's a 'data' wrapper,
-    # should really avoid a Serializer at all and just return the data
-    serializer_class = SyncObjectSerializer
 
     def retrieve(self, request, fsid, derived_type):
-        obj = DataObject({'data': self.client.get_derived_object(fsid, derived_type)})
-        return Response(SyncObjectSerializer(obj).data)
+        return Response(self.client.get_derived_object(fsid, derived_type))
 
     def describe(self, request, fsid):
         return Response([p for g in derived.generators for p in g.provides])

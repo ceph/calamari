@@ -1,7 +1,9 @@
 import os
 import sys
 import xmlrpclib
+import json
 import yaml
+import zlib
 from minion_sim.log import log
 import time
 
@@ -63,7 +65,12 @@ def main():
             __salt__['event.fire_master'](cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     def get_cluster_object(cluster_name, sync_type, since):
-        return cluster.get_cluster_object(cluster_name, sync_type, since)
+        result = cluster.get_cluster_object(cluster_name, sync_type, since)
+
+        if sync_type == 'pg_brief':
+            result['data'] = zlib.compress(json.dumps(result['data']))
+
+        return result
 
     def rados_commands(fsid, cluster_name, commands):
         services = cluster.get_services(fqdn)
@@ -91,9 +98,21 @@ def main():
                     cluster.pool_update(args['srcpool'], 'pool_name', args['destpool'])
                 elif prefix == "osd pool delete":
                     cluster.pool_delete(args['pool'])
+                elif prefix == "osd in":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), None, 1)
+                elif prefix == "osd out":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), None, 0)
+                elif prefix == "osd down":
+                    for osd_id in args['ids']:
+                        cluster.set_osd_state(int(osd_id), 0, None)
+                elif prefix == "osd reweight":
+                    cluster.set_osd_weight(args['id'], args['weight'])
                 else:
                     raise NotImplementedError()
             except Exception as e:
+                log.exception("Exception running %s" % command)
                 status = cluster.get_heartbeat(fsid)
                 return {
                     'error': True,
@@ -139,7 +158,7 @@ def main():
         """
         For self-test only.  Run forever
         """
-        while(True):
+        while True:
             time.sleep(1)
 
     def selftest_exception():
@@ -151,7 +170,7 @@ def main():
     import salt.loader
     old_minion_mods = salt.loader.minion_mods
 
-    def my_minion_mods(opts):
+    def my_minion_mods(opts, context=None, whilelist=None):
         global __salt__
         data = old_minion_mods(opts)
         data['ceph.heartbeat'] = heartbeat

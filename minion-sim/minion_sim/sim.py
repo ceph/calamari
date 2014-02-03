@@ -15,7 +15,7 @@ from minion_sim.log import log
 
 
 class MinionSim(threading.Thread):
-    def __init__(self, config_dir, count, port=8761, prefix=PREFIX, domain=DOMAIN):
+    def __init__(self, config_dir, count, osds_per_host, port=8761, prefix=PREFIX, domain=DOMAIN):
         super(MinionSim, self).__init__()
         self._config_dir = config_dir
         self._count = count
@@ -29,7 +29,7 @@ class MinionSim(threading.Thread):
 
         config_file = os.path.join(self._config_dir, 'cluster.json')
         if not os.path.exists(config_file):
-            CephCluster.create(config_file, [get_dns(i)[1] for i in range(0, self._count)])
+            CephCluster.create(config_file, [get_dns(i)[1] for i in range(0, self._count)], osds_per_host=osds_per_host)
 
         self.cluster = CephCluster(config_file)
 
@@ -108,11 +108,13 @@ class MinionSim(threading.Thread):
 def main():
     parser = argparse.ArgumentParser(description='Start simulated salt minions.')
     parser.add_argument('--count', dest='count', type=int, default=3, help='Number of simulated minions')
+    parser.add_argument('--osds-per-host', dest='osds_per_host', type=int, default=4,
+                        help='Number of OSDs on each simulated server')
     args = parser.parse_args()
 
     config_path = os.getcwd()
 
-    sim = MinionSim(config_path, args.count)
+    sim = MinionSim(config_path, args.count, args.osds_per_host)
 
     log.debug("Starting simulator...")
     sim.start()

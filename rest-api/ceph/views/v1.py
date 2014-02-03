@@ -138,9 +138,9 @@ class OSDList(RPCView):
         """
         pg_states = set(map(lambda s: s.lower(), pg_states.split(",")))
         target_osds = set([])
-        for state, osds in osds_by_pg_state.iteritems():
+        for state, state_osds in osds_by_pg_state.iteritems():
             if state in pg_states:
-                target_osds |= set(osds)
+                target_osds |= set(state_osds)
         return [o for o in osds if o['id'] in target_osds]
 
     def get(self, request, fsid):
@@ -151,7 +151,7 @@ class OSDList(RPCView):
 
         pg_states = request.QUERY_PARAMS.get('pg_states', None)
         if pg_states:
-            self._filter_by_pg_state(osds, pg_states, osds_by_pg_state)
+            osds = self._filter_by_pg_state(osds, pg_states, osds_by_pg_state)
 
         osd_list = DataObject({
             #'osds': [DataObject({'osd': o}) for o in osds],
@@ -338,7 +338,8 @@ class ServerViewSet(RPCViewSet):
         )
 
     def list(self, request, fsid):
-        return Response(self.serializer_class([DataObject(s) for s in self.client.server_list()], many=True).data)
+        return Response(
+            self.serializer_class([DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
 
 
 class PoolViewSet(RPCViewSet):
