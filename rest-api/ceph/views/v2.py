@@ -291,10 +291,10 @@ but those without static defaults will be set to null.
             return Response("Cluster configuration unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         defaults = NullableDataObject({
-            'size': ceph_config['osd_pool_default_size'],
-            'crush_ruleset': ceph_config['osd_pool_default_crush_rule'],
-            'min_size': ceph_config['osd_pool_default_min_size'],
-            'hashpspool': ceph_config['osd_pool_default_flag_hashpspool'],
+            'size': int(ceph_config['osd_pool_default_size']),
+            'crush_ruleset': int(ceph_config['osd_pool_default_crush_rule']),
+            'min_size': int(ceph_config['osd_pool_default_min_size']),
+            'hashpspool': int(ceph_config['osd_pool_default_flag_hashpspool']),
             # Crash replay interval is zero by default when you create a pool, but when ceph creates
             # its own data pool it applies 'osd_default_data_pool_replay_window'.  If we add UI for adding
             # pools to a filesystem, we should check that those data pools have this set.

@@ -211,4 +211,4 @@ class ConfigSettingSerializer(serializers.Serializer):
     # schema information, allowed values, defaults.
 
     key = serializers.CharField(help_text="Name of the configuration setting")
-    value = serializers.Field(help_text="Current value of the setting, may be integer, float or string")
+    value = serializers.CharField(help_text="Current value of the setting, as a string")
