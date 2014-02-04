@@ -147,8 +147,6 @@ Impersonate some Ceph servers with the minion simulator:
     minion-sim --count=3
 
 
-
-
 Real minions
 ____________
 
@@ -174,6 +172,7 @@ Authorize the simulated salt minions to connect to the calamari server:
 
 You should see some debug logging in cthulhu.log, and if you visit /api/v1/cluster in your browser
 a Ceph cluster should be appear.
+
 
 Further reading (including running tests)
 -----------------------------------------

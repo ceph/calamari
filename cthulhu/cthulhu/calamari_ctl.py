@@ -111,6 +111,19 @@ def change_password(args):
     execute_from_command_line(["", "changepassword", args.username])
 
 
+def clear(args):
+    if not args.yes_i_am_sure:
+        log.warn("This will remove all stored Calamari monitoring status and history.  Use '--yes-i-am-sure' to proceed")
+        return
+
+    log.info("Loading configuration..")
+    config = CalamariConfig()
+
+    log.info("Dropping tables")
+    persister.drop(config.get('cthulhu', 'db_path'))
+    log.info("Complete.  Now run `%s initialize`" % os.path.basename(sys.argv[0]))
+
+
 def main():
     parser = argparse.ArgumentParser(description="""
 Calamari setup tool.
@@ -135,6 +148,10 @@ Calamari setup tool.
                                           help="Reset the password for a Calamari user account")
     passwd_parser.add_argument('username')
     passwd_parser.set_defaults(func=change_password)
+
+    clear_parser = subparsers.add_parser('clear', help="Clear the Calamari database")
+    clear_parser.add_argument('--yes-i-am-sure', dest="yes_i_am_sure", action='store_true', default=False)
+    clear_parser.set_defaults(func=clear)
 
     args = parser.parse_args()
     args.func(args)

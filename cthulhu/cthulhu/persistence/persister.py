@@ -31,6 +31,11 @@ def initialize(db_path):
     Base.metadata.create_all(engine)
 
 
+def drop(db_path):
+    engine = create_engine(db_path)
+    Base.metadata.drop_all(engine)
+
+
 DeferredCall = namedtuple('DeferredCall', ['fn', 'args', 'kwargs'])
 
 
