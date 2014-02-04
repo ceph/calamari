@@ -228,13 +228,53 @@ class RequestReturner(object):
             return Response(status=status.HTTP_304_NOT_MODIFIED)
 
 
+class NullableDataObject(DataObject):
+    """
+    A DataObject which synthesizes Nones for any attributes it doesn't have
+    """
+    def __getattr__(self, item):
+        if not item.startswith('_'):
+            return self.__dict__.get(item, None)
+        else:
+            raise AttributeError
+
+
 class PoolViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph storage pools.
+
+To get the default values which will be used for any fields omitted from a POST, do
+a GET with the ?defaults argument.  The returned pool object will contain all attributes,
+but those without static defaults will be set to null.
+
     """
     serializer_class = PoolSerializer
 
+    def _defaults(self, fsid):
+
+        ceph_config = self.client.get_sync_object(fsid, 'config')
+        if not ceph_config:
+            return Response("Cluster configuration unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        defaults = NullableDataObject({
+            'size': ceph_config['osd_pool_default_size'],
+            'crush_ruleset': ceph_config['osd_pool_default_crush_rule'],
+            'min_size': ceph_config['osd_pool_default_min_size'],
+            'hashpspool': ceph_config['osd_pool_default_flag_hashpspool'],
+            # Crash replay interval is zero by default when you create a pool, but when ceph creates
+            # its own data pool it applies 'osd_default_data_pool_replay_window'.  If we add UI for adding
+            # pools to a filesystem, we should check that those data pools have this set.
+            'crash_replay_interval': 0,
+            'quota_max_objects': 0,
+            'quota_max_bytes': 0
+        })
+
+        return Response(PoolSerializer(defaults).data)
+
     def list(self, request, fsid):
+        if 'defaults' in request.GET:
+            return self._defaults(fsid)
+
         pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL)]
         return Response(PoolSerializer(pools, many=True).data)
 
