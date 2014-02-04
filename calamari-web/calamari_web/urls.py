@@ -16,8 +16,8 @@ urlpatterns = patterns(
 
     url(r'^$', 'calamari_web.views.home'),
 
-    url(r'^api/v1/', include('ceph.urls.v1')),
-    url(r'^api/v2/', include('ceph.urls.v2')),
+    url(r'^api/v1/', include('calamari_rest.urls.v1')),
+    url(r'^api/v2/', include('calamari_rest.urls.v2')),
 
     url(r'^admin/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
         {'document_root': '%s/admin/' % STATIC_ROOT}),

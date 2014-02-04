@@ -17,7 +17,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
 
-from ceph.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
+from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
     PoolSerializer, ServerSerializer, InfoSerializer
 
@@ -26,7 +26,7 @@ from salt.loader import _create_loader
 
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
-from ceph.views.rpc_view import RPCView, DataObject, RPCViewSet
+from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from cthulhu.manager.types import POOL
 
 

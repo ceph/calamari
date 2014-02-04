@@ -309,7 +309,7 @@ class Command(NoArgsCommand):
     )
 
     def handle_noargs(self, list_urls, **options):
-        introspector = ApiIntrospector("ceph.urls.v2")
+        introspector = ApiIntrospector("calamari_rest.urls.v2")
         if list_urls:
             print json.dumps(introspector.get_url_list())
         else:

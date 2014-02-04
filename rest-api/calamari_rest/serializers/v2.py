@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from cthulhu.manager.eventer import severity_str
-import ceph.serializers.fields as fields
+import calamari_rest.serializers.fields as fields
 from cthulhu.manager.user_request import UserRequest
 
 

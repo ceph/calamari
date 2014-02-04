@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from django.test import TestCase
 import mock
 
-import ceph.views.rpc_view
+import calamari_rest.views.rpc_view
 
 
 class RestApiUnitTest(TestCase):
@@ -13,14 +13,14 @@ class RestApiUnitTest(TestCase):
         # Patch in a mock for RPCs
         rpc = mock.Mock()
         self.rpc = rpc
-        old_init = ceph.views.rpc_view.RPCViewSet.__init__
+        old_init = calamari_rest.views.rpc_view.RPCViewSet.__init__
 
         def init(_self, *args, **kwargs):
             old_init(_self, *args, **kwargs)
             _self.client = rpc
 
         self._old_init = old_init
-        ceph.views.rpc_view.RPCViewSet.__init__ = init
+        calamari_rest.views.rpc_view.RPCViewSet.__init__ = init
 
         # Create a user to log in as
         User.objects.create_superuser('admin', 'admin@admin.com', 'admin')
@@ -30,7 +30,7 @@ class RestApiUnitTest(TestCase):
         self.client.login(username='admin', password='admin')
 
     def tearDown(self):
-        ceph.views.rpc_view.RPCViewSet.__init__ = self._old_init
+        calamari_rest.views.rpc_view.RPCViewSet.__init__ = self._old_init
 
 
 class TestKey(RestApiUnitTest):

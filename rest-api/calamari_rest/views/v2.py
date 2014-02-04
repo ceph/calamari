@@ -9,13 +9,13 @@ from rest_framework import status
 
 from django.contrib.auth.decorators import login_required
 
-from ceph.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer
-from ceph.views.database_view_set import DatabaseViewSet
+from calamari_rest.views.database_view_set import DatabaseViewSet
 
-from ceph.views.rpc_view import RPCViewSet, DataObject
-from ceph.views.v1 import _get_local_grains
+from calamari_rest.views.rpc_view import RPCViewSet, DataObject
+from calamari_rest.views.v1 import _get_local_grains
 from cthulhu.manager.server_monitor import ServiceId
 from cthulhu.manager.types import CRUSH_RULE, POOL, OSD
 

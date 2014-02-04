@@ -27,7 +27,7 @@ class TestApi(ServerTestCase):
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
         from cthulhu.manager.types import SYNC_OBJECT_TYPES
         from cthulhu.manager import derived
-        from ceph.management.commands.api_docs import ApiIntrospector
+        from calamari_rest.management.commands.api_docs import ApiIntrospector
 
         url_list_buffer = StringIO()
 
@@ -39,7 +39,7 @@ class TestApi(ServerTestCase):
         sys.stdout = old_stdout
         url_patterns = json.loads(url_list_buffer.getvalue())
 
-        url_patterns = ApiIntrospector("ceph.urls.v2").get_url_list()
+        url_patterns = ApiIntrospector("calamari_rest.urls.v2").get_url_list()
 
         # Spin up a running Calamari+Ceph environment
         self.ceph_ctl.configure(3)

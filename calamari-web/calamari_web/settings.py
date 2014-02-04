@@ -130,7 +130,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'calamari_web',
     'rest_framework',
-    'ceph',
+    'calamari_rest',
     'graphite.render',
     'graphite.account',
     'graphite.metrics',
