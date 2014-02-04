@@ -69,6 +69,7 @@ class TestApi(ServerTestCase):
             "<request_id>": [request_id],
             "user/<pk>": ["user/1"],
             "<log_path>": "ceph/ceph.log",
+            "config/<key>": ["config/mds_bal_interval"]
 
         }
 
