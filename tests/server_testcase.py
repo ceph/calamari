@@ -103,10 +103,19 @@ class ServerTestCase(TestCase):
             raise self.failureException("Too many clusters: %s" % clusters)
 
     def _maps_populated(self, cluster_id):
-        response = self.api.get("cluster/{0}/osd".format(cluster_id))
-        response.raise_for_status()
-        osds = response.json()
-        return bool(len(osds))
+        """
+        Check that Calmari server has got all the data for a cluster, as well
+        as just knowing the cluster exists.
+        """
+        any_absent = False
+        for url in ["cluster/{0}/osd", "cluster/{0}/config", "cluster/{0}/server"]:
+            response = self.api.get(url.format(cluster_id))
+            if response.status_code == 500:
+                response.raise_for_status()
+            if response.status_code != 200 or not len(response.json()):
+                any_absent = True
+                break
+        return not any_absent
 
 
 class RequestTestCase(ServerTestCase):
