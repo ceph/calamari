@@ -201,3 +201,14 @@ class LogTailSerializer(serializers.Serializer):
         fields = ('lines',)
 
     lines = serializers.CharField("Retrieved log data as a newline-separated string")
+
+
+class ConfigSettingSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('key', 'value')
+
+    # This is very simple for now, but later we may add more things like
+    # schema information, allowed values, defaults.
+
+    key = serializers.CharField(help_text="Name of the configuration setting")
+    value = serializers.Field(help_text="Current value of the setting, may be integer, float or string")

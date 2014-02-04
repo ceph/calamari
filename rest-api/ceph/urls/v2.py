@@ -78,6 +78,11 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',
         ceph.views.v2.ServerClusterViewSet.as_view({'get': 'retrieve'}), name='cluster-server-detail'),
 
+    # Ceph configuration settings
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/config$', ceph.views.v2.ConfigViewSet.as_view({'get': 'list'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/config/(?P<key>[a-zA-Z0-9_]+)$',
+        ceph.views.v2.ConfigViewSet.as_view({'get': 'retrieve'})),
+
     # Events
     url(r'^event$', ceph.views.v2.EventViewSet.as_view({'get': 'list'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/event$', ceph.views.v2.EventViewSet.as_view({'get': 'list_cluster'})),

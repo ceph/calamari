@@ -1,6 +1,7 @@
 from collections import defaultdict
 import logging
-from rest_framework.exceptions import ParseError
+from django.http import Http404
+from rest_framework.exceptions import ParseError, APIException
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -10,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 
 from ceph.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer
+    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer
 from ceph.views.database_view_set import DatabaseViewSet
 
 from ceph.views.rpc_view import RPCViewSet, DataObject
@@ -237,6 +238,39 @@ class NullableDataObject(DataObject):
             return self.__dict__.get(item, None)
         else:
             raise AttributeError
+
+
+class ServiceUnavailable(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "Service unavailable"
+
+
+class ConfigViewSet(RPCViewSet):
+    """
+Configuration settings from a Ceph Cluster.
+    """
+    serializer_class = ConfigSettingSerializer
+
+    def _get_config(self, fsid):
+        ceph_config = self.client.get_sync_object(fsid, 'config')
+        if not ceph_config:
+            raise ServiceUnavailable("Cluster configuration unavailable")
+        else:
+            return ceph_config
+
+    def list(self, request, fsid):
+        ceph_config = self._get_config(fsid)
+        settings = [DataObject({'key': k, 'value': v}) for (k, v) in ceph_config.items()]
+        return Response(self.serializer_class(settings, many=True).data)
+
+    def retrieve(self, request, fsid, key):
+        ceph_config = self._get_config(fsid)
+        try:
+            setting = DataObject({'key': key, 'value': ceph_config[key]})
+        except KeyError:
+            raise Http404("Key '%s' not found" % key)
+        else:
+            return Response(self.serializer_class(setting).data)
 
 
 class PoolViewSet(RPCViewSet, RequestReturner):
