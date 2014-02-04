@@ -3,6 +3,7 @@
 from rest_framework import serializers
 from cthulhu.manager.eventer import severity_str
 import ceph.serializers.fields as fields
+from cthulhu.manager.user_request import UserRequest
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -108,12 +109,14 @@ class RequestSerializer(serializers.Serializer):
     class Meta:
         fields = ('id', 'state', 'error', 'error_message', 'headline', 'status')
 
-    id = serializers.CharField()
-    state = serializers.CharField()
-    error = serializers.BooleanField()
-    error_message = serializers.CharField()
-    headline = serializers.CharField()
-    status = serializers.CharField()
+    id = serializers.CharField(help_text="A globally unique ID for this request")
+    state = serializers.CharField(help_text="One of '{complete}', '{submitted}'".format(
+        complete=UserRequest.COMPLETE, submitted=UserRequest.SUBMITTED))
+    error = serializers.BooleanField(help_text="True if the request completed unsuccessfully")
+    error_message = serializers.CharField(help_text="Human readable string describing failure if ``error`` is True")
+    headline = serializers.CharField(help_text="Single sentence human readable description of the request")
+    status = serializers.CharField(help_text="Single sentence human readable description of the request's current "
+                                             "activity, if it has more than one stage.  May be null.")
 
 
 class SaltKeySerializer(serializers.Serializer):
