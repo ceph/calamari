@@ -273,6 +273,10 @@ Configuration settings from a Ceph Cluster.
             return Response(self.serializer_class(setting).data)
 
 
+def _config_to_bool(config_val):
+    return {'true': True, 'false': False}[config_val.lower()]
+
+
 class PoolViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph storage pools.
@@ -294,7 +298,7 @@ but those without static defaults will be set to null.
             'size': int(ceph_config['osd_pool_default_size']),
             'crush_ruleset': int(ceph_config['osd_pool_default_crush_rule']),
             'min_size': int(ceph_config['osd_pool_default_min_size']),
-            'hashpspool': int(ceph_config['osd_pool_default_flag_hashpspool']),
+            'hashpspool': _config_to_bool(ceph_config['osd_pool_default_flag_hashpspool']),
             # Crash replay interval is zero by default when you create a pool, but when ceph creates
             # its own data pool it applies 'osd_default_data_pool_replay_window'.  If we add UI for adding
             # pools to a filesystem, we should check that those data pools have this set.
