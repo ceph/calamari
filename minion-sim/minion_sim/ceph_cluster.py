@@ -990,6 +990,7 @@ class CephCluster(object):
                     s['id'] for s in services if s['type'] == 'osd'
                 ]
             })
+            tree['nodes'][0]['children'].append(host_tree_id)
             host_tree_id -= 1
 
         objects['osd_map']['tree'] = tree
