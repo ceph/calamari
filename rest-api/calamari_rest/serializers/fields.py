@@ -18,3 +18,18 @@ class UuidField(serializers.CharField):
     """
     type_name = "UuidField"
     type_label = "uuid string"
+
+
+class EnumField(serializers.CharField):
+    def __init__(self, mapping, *args, **kwargs):
+        super(EnumField, self).__init__(*args, **kwargs)
+        self.mapping = mapping
+        self.reverse_mapping = dict([(v, k) for (k, v) in self.mapping.items()])
+        if self.help_text:
+            self.help_text += " (one of %s)" % ", ".join(self.mapping.values())
+
+    def from_native(self, value):
+        return self.reverse_mapping.get(value, value)
+
+    def to_native(self, value):
+        return self.mapping.get(value, value)

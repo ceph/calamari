@@ -5,6 +5,10 @@ import logging
 log = logging.getLogger('cthulhu.types')
 
 
+CRUSH_RULE_TYPE_REPLICATED = 1
+CRUSH_RULE_TYPE_ERASURE = 3
+
+
 class SyncObject(object):
     """
     An object from a Ceph cluster that we are maintaining

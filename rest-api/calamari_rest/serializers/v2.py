@@ -3,6 +3,7 @@
 from rest_framework import serializers
 from cthulhu.manager.eventer import severity_str
 import calamari_rest.serializers.fields as fields
+from cthulhu.manager.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE
 from cthulhu.manager.user_request import UserRequest
 
 
@@ -91,7 +92,7 @@ class CrushRuleSerializer(serializers.Serializer):
     id = serializers.IntegerField(source='rule_id')
     name = serializers.CharField(source='rule_name', help_text="Human readable name")
     ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member")
-    type = serializers.IntegerField()
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type")
     min_size = serializers.IntegerField(
         help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule")
     max_size = serializers.IntegerField(
