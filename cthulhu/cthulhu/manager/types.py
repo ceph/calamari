@@ -1,5 +1,8 @@
-from collections import defaultdict
+
 from cthulhu.util import memoize
+import logging
+
+log = logging.getLogger('cthulhu.types')
 
 
 class SyncObject(object):
@@ -103,15 +106,6 @@ class OsdMap(VersionedSyncObject):
 
     @property
     @memoize
-    def osds_by_rule_set_id(self):
-        result = defaultdict(set)
-        for rule in self.data['crush']['rules']:
-            result[rule['ruleset']] |= self._get_crush_rule_osds(rule)
-
-        return dict([(k, list(v)) for (k, v) in result.items()])
-
-    @property
-    @memoize
     def osds_by_pool(self):
         """
         Get the OSDS which may be used in this pool
@@ -121,7 +115,18 @@ class OsdMap(VersionedSyncObject):
 
         result = {}
         for pool_id, pool in self.pools_by_id.items():
-            result[pool_id] = self.osds_by_rule_set_id[pool['crush_ruleset']]
+            osds = None
+            for rule in [r for r in self.data['crush']['rules'] if r['ruleset'] == pool['crush_ruleset']]:
+                if rule['min_size'] <= pool['size'] <= rule['max_size']:
+                    osds = self.osds_by_rule_id[rule['rule_id']]
+
+            if osds is None:
+                # Fallthrough, the pool size didn't fall within any of the rules in its ruleset, Calamari
+                # doesn't understand.  Just report all OSDs instead of failing horribly.
+                log.error("Cannot determine OSDS for pool %s" % pool_id)
+                osds = self.osds_by_id.keys()
+
+            result[pool_id] = osds
 
         return result
 

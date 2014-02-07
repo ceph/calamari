@@ -92,7 +92,6 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
     def list(self, request, fsid):
         rules = self.client.list(fsid, CRUSH_RULE)
         osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
-        osds_by_rule_set_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_set_id'])
         rulesets_data = defaultdict(list)
         for rule in rules:
             rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
@@ -100,8 +99,7 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
 
         rulesets = [DataObject({
             'id': rd_id,
-            'rules': [DataObject(r) for r in rd_rules],
-            'osd_count': len(osds_by_rule_set_id[rd_id])
+            'rules': [DataObject(r) for r in rd_rules]
         }) for (rd_id, rd_rules) in rulesets_data.items()]
 
         return Response(CrushRuleSetSerializer(rulesets, many=True).data)

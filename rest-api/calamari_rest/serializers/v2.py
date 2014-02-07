@@ -89,22 +89,23 @@ class CrushRuleSerializer(serializers.Serializer):
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
 
     id = serializers.IntegerField(source='rule_id')
-    name = serializers.CharField(source='rule_name')
-    ruleset = serializers.IntegerField()
+    name = serializers.CharField(source='rule_name', help_text="Human readable name")
+    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member")
     type = serializers.IntegerField()
-    min_size = serializers.IntegerField()
-    max_size = serializers.IntegerField()
-    steps = serializers.Field()
+    min_size = serializers.IntegerField(
+        help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule")
+    max_size = serializers.IntegerField(
+        help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule")
+    steps = serializers.Field(help_text="List of operations used to select OSDs")
     osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
 class CrushRuleSetSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'rules', 'osd_count')
+        fields = ('id', 'rules')
 
     id = serializers.IntegerField()
     rules = CrushRuleSerializer(many=True)
-    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
 class RequestSerializer(serializers.Serializer):
