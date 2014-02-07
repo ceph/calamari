@@ -154,11 +154,17 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': "%(asctime)s - %(levelname)s - %(name)s %(message)s"
+        }
+    },
     'handlers': {
         'log_file': {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename':
-            config.get('calamari_web', 'log_path')
+            config.get('calamari_web', 'log_path'),
+            'formatter': 'simple'
         },
     },
     'loggers': {
