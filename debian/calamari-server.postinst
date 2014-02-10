@@ -31,8 +31,17 @@ calamari_httpd()
 case "$1" in
 	configure)
 		calamari_httpd
+
+		# Restart apache (without trusting 'restart' to work properly)
 		service apache2 stop || true
 		service apache2 start
+
+        # Prompt the user to proceed with the final script-driven
+        # part of the installation process
+        echo "Thank you for installing Calamari."
+        echo ""
+        echo "Please run 'sudo calamari-ctl initialize' to complete the installation."
+
 		# rpm/centos
 		# service httpd restart
 		# chkconfig httpd on
