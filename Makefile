@@ -90,14 +90,14 @@ build-venv: venv
 dpkg:
 	dpkg-buildpackage -b -us -uc
 
-install-common: install-conf install-venv
+install-common: install-conf install-venv install-salt install-alembic install-scripts
 	@echo "install-common"
 
 install-rpm: install-common install-rh-conf
 	@echo "install-rpm"
 
 # for deb
-install: install-common install-deb-conf install-salt install-alembic
+install: install-common install-deb-conf
 	@echo "install"
 
 install-conf: $(CONFFILES)
@@ -155,6 +155,12 @@ install-venv: build-venv
 	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
 	cp -rp webapp/calamari $(DESTDIR)/opt/calamari/webapp
 	cp -rp venv $(DESTDIR)/opt/calamari
+
+install-scripts: install-venv
+	@echo "install-scripts"
+	# Link our scripts from the virtualenv into the global PATH
+	$(INSTALL) -d $(DESTDIR)/usr/bin
+	ln -s ../../opt/calamari/venv/bin/calamari-ctl $(DESTDIR)/usr/bin/
 
 clean:
 	rm -rf venv
