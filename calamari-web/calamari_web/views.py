@@ -66,10 +66,14 @@ else:
 # trying to apt-get install it from the net would be a catch-22
 open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/ubuntu precise main")
 
+# Emplace minion config prior to installation so that it is present
+# when the minion first starts.
+os.makedirs(os.path.join(SALT_CONFIG_PATH, "minion.d"))
+open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
+
 # Deploy salt minion
 subprocess.check_call(["apt-get", "update"])
 subprocess.check_call(["apt-get", "install", "-y", "--force-yes", SALT_PACKAGE])
-open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
 
 """
 
