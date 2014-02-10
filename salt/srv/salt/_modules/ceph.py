@@ -276,14 +276,15 @@ def terse_status():
     - Report the mapping of cluster name to FSID from /etc/ceph/<cluster name>.conf
     - For all clusters, report the latest versions of all cluster maps.
 
-    :return None if ceph modules are unavailable, else a dict.
+    :return A 2-tuple of dicts for services, clusters
 
     """
 
     try:
         import rados
     except ImportError:
-        return None
+        # Ceph isn't installed, report no services or clusters
+        return {}, {}
 
     services = {}
 
