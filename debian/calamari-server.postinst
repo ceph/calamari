@@ -9,9 +9,11 @@ calamari_httpd()
 	# www-data shouldn't need to write, but it does because graphite creates index on read
 	chown -R www-data:www-data /var/lib/graphite
 
-	a2dissite 000-default
-	a2ensite calamari.conf
-	a2enmod wsgi
+    # Redirect the a2* output to /dev/null because it advises
+    # user to restart apache, which we already do for them.
+	a2dissite 000-default > /dev/null
+	a2ensite calamari.conf > /dev/null
+	a2enmod wsgi > /dev/null
 	chown -R www-data:www-data /var/log/calamari
 	chown -R www-data:www-data /var/lib/calamari_web
 	cd $d
