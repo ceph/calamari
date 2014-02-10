@@ -1,4 +1,4 @@
-
+from collections import namedtuple
 from cthulhu.util import memoize
 import logging
 
@@ -7,6 +7,9 @@ log = logging.getLogger('cthulhu.types')
 
 CRUSH_RULE_TYPE_REPLICATED = 1
 CRUSH_RULE_TYPE_ERASURE = 3
+
+
+ServiceId = namedtuple('ServiceId', ['fsid', 'service_type', 'service_id'])
 
 
 class SyncObject(object):
@@ -187,3 +190,6 @@ CLUSTER = 'cluster'
 # The objects that ClusterMonitor keeps copies of from the mon
 SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgBrief, Health, Config]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
+
+USER_REQUEST_COMPLETE = 'complete'
+USER_REQUEST_SUBMITTED = 'submitted'

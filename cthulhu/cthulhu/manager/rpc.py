@@ -7,8 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.manager.server_monitor import ServiceId
-from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE
+from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE, ServiceId
 
 
 class NotFound(Exception):

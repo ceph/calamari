@@ -2,8 +2,7 @@ from collections import defaultdict
 import datetime
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from cthulhu.manager.server_monitor import ServiceId
-from cthulhu.manager.types import OsdMap, Health, MonStatus
+from cthulhu.manager.types import OsdMap, Health, MonStatus, ServiceId
 from cthulhu.manager import config
 from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from cthulhu.util import now

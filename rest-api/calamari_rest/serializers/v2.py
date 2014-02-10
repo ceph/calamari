@@ -1,10 +1,9 @@
 
 
 from rest_framework import serializers
-from cthulhu.manager.eventer import severity_str
+from cthulhu.persistence.event import severity_str
 import calamari_rest.serializers.fields as fields
-from cthulhu.manager.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE
-from cthulhu.manager.user_request import UserRequest
+from cthulhu.manager.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -115,7 +114,7 @@ class RequestSerializer(serializers.Serializer):
 
     id = serializers.CharField(help_text="A globally unique ID for this request")
     state = serializers.CharField(help_text="One of '{complete}', '{submitted}'".format(
-        complete=UserRequest.COMPLETE, submitted=UserRequest.SUBMITTED))
+        complete=USER_REQUEST_COMPLETE, submitted=USER_REQUEST_SUBMITTED))
     error = serializers.BooleanField(help_text="True if the request completed unsuccessfully")
     error_message = serializers.CharField(help_text="Human readable string describing failure if ``error`` is True")
     headline = serializers.CharField(help_text="Single sentence human readable description of the request")

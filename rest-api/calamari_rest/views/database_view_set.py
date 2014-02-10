@@ -3,8 +3,10 @@ from rest_framework.exceptions import ParseError
 from rest_framework.pagination import PaginationSerializer
 from rest_framework.viewsets import ViewSet
 from sqlalchemy import create_engine
-from cthulhu.persistence.persister import Session
 from calamari_web.settings import config
+
+from sqlalchemy.orm import sessionmaker
+Session = sessionmaker()
 
 
 class DatabaseViewSet(ViewSet):

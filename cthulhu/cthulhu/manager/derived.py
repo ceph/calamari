@@ -1,6 +1,5 @@
 from collections import defaultdict
-from cthulhu.manager.server_monitor import ServiceId
-from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus
+from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus, ServiceId
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',

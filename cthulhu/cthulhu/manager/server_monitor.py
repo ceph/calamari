@@ -4,7 +4,7 @@ While the cluster monitor pays attention to events about Ceph clusters (which
 span non-disjoint sets of servers), the server monitor just pays attention to
 individual hosts with no regard to the relations between them.
 """
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 import json
 
 from gevent import greenlet
@@ -18,7 +18,7 @@ from cthulhu.manager import salt_config, config
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
-from cthulhu.manager.types import OsdMap, MonMap
+from cthulhu.manager.types import OsdMap, MonMap, ServiceId
 from cthulhu.persistence.servers import Server, Service
 from cthulhu.util import now
 
@@ -61,9 +61,6 @@ class ServerState(object):
 
     def __repr__(self):
         return "<ServerState '%s'>" % self.fqdn
-
-
-ServiceId = namedtuple('ServiceId', ['fsid', 'service_type', 'service_id'])
 
 
 class ServiceState(object):

@@ -5,7 +5,7 @@ import salt
 import salt.client
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, PgBrief
+from cthulhu.manager.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
 
 
@@ -41,8 +41,8 @@ class UserRequest(object):
     """
 
     NEW = 'new'
-    SUBMITTED = 'submitted'
-    COMPLETE = 'complete'
+    SUBMITTED = USER_REQUEST_SUBMITTED
+    COMPLETE = USER_REQUEST_COMPLETE
     states = [NEW, SUBMITTED, COMPLETE]
 
     def __init__(self, fsid, cluster_name, commands):

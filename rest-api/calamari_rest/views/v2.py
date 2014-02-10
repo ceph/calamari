@@ -16,12 +16,11 @@ from calamari_rest.views.database_view_set import DatabaseViewSet
 
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
-from cthulhu.manager.server_monitor import ServiceId
-from cthulhu.manager.types import CRUSH_RULE, POOL, OSD
 
 from cthulhu.config import CalamariConfig
+from cthulhu.manager.types import CRUSH_RULE, POOL, OSD
 # FIXME: these imports of cthulhu stuff from the rest layer are too much
-from cthulhu.manager.types import SYNC_OBJECT_TYPES
+from cthulhu.manager.types import SYNC_OBJECT_TYPES, ServiceId
 from cthulhu.manager import derived
 from cthulhu.persistence.event import Event, severity_from_str, SEVERITIES
 import salt.client
