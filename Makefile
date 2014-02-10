@@ -97,7 +97,7 @@ install-rpm: install-common install-rh-conf
 	@echo "install-rpm"
 
 # for deb
-install: install-common install-deb-conf install-salt
+install: install-common install-deb-conf install-salt install-alembic
 	@echo "install"
 
 install-conf: $(CONFFILES)
@@ -128,10 +128,16 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
 	@$(INSTALL) -D conf/calamari.conf \
 		$(DESTDIR)/etc/calamari/calamari.conf
+	@$(INSTALL) -D conf/alembic.ini \
+		$(DESTDIR)/etc/calamari/alembic.ini
 
 install-salt:
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
 	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/
+
+install-alembic:
+	@$(INSTALL) -d $(DESTDIR)/opt/calamari/alembic
+	cp -rp alembic/* $(DESTDIR)/opt/calamari/alembic
 
 install-deb-conf:
 	@echo "install-deb-conf"

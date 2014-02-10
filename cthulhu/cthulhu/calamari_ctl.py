@@ -2,6 +2,7 @@
 import argparse
 from contextlib import contextmanager
 import logging
+from alembic import command
 import os
 import sys
 from StringIO import StringIO
@@ -11,7 +12,7 @@ import pwd
 from django.utils.crypto import get_random_string
 from cthulhu.persistence import persister
 from django.contrib.auth import get_user_model
-from cthulhu.config import CalamariConfig
+from cthulhu.config import CalamariConfig, AlembicConfig
 
 
 log = logging.getLogger('calamari_ctl')
@@ -57,7 +58,11 @@ def initialize(args):
 
     # Cthulhu's database
     log.info("Initializing database...")
+    # If database already exists, migrate forward with alembic
+    # If database does not exist, create with create_all then stamp with alembic
     persister.initialize(config.get('cthulhu', 'db_path'))
+    alembic_config = AlembicConfig()
+    command.stamp(alembic_config, "head")
 
     # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")

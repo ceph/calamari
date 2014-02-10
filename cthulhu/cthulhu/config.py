@@ -1,4 +1,4 @@
-
+import alembic.config
 import os
 import ConfigParser
 
@@ -24,3 +24,9 @@ class CalamariConfig(ConfigParser.SafeConfigParser):
             raise ConfigNotFound("Configuration not found at %s" % self.path)
 
         self.read(self.path)
+
+
+class AlembicConfig(alembic.config.Config):
+    def __init__(self):
+        path = CalamariConfig().get('cthulhu', 'alembic_config_path')
+        super(AlembicConfig, self).__init__(path)
