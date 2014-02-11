@@ -223,10 +223,11 @@ class RpcInterface(object):
         request = cluster.get_request(request_id)
         return self._dump_request(request)
 
-    def list_requests(self, fs_id):
+    def list_requests(self, fs_id, state):
         cluster = self._fs_resolve(fs_id)
         requests = cluster.list_requests()
-        return [self._dump_request(r) for r in requests]
+        return sorted([self._dump_request(r) for r in requests if (state is None or r.state == state)],
+                      lambda a, b: cmp(a['requested_at'], b['requested_at']))
 
     @property
     def _salt_key(self):
