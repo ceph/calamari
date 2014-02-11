@@ -809,7 +809,7 @@ def _pool_template(name, pool_id, pg_num):
         "crush_ruleset": 2,
         "object_hash": 2,
         "pg_num": pg_num,
-        "pg_placement_num": 64,
+        "pg_placement_num": pg_num,
         "crash_replay_interval": 0,
         "last_change": "1",
         "auid": 0,
