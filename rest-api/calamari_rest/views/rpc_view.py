@@ -31,7 +31,13 @@ class RPCView(APIView):
     def __init__(self, *args, **kwargs):
         super(RPCView, self).__init__(*args, **kwargs)
         self.client = zerorpc.Client()
+
+    def dispatch(self, request, *args, **kwargs):
         self.client.connect(config.get('cthulhu', 'rpc_url'))
+        try:
+            return super(RPCView, self).dispatch(request, *args, **kwargs)
+        finally:
+            self.client.close()
 
     @property
     def help(self):
