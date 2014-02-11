@@ -110,7 +110,7 @@ class CrushRuleSetSerializer(serializers.Serializer):
 
 class RequestSerializer(serializers.Serializer):
     class Meta:
-        fields = ('id', 'state', 'error', 'error_message', 'headline', 'status')
+        fields = ('id', 'state', 'error', 'error_message', 'headline', 'status', 'requested_at', 'completed_at')
 
     id = serializers.CharField(help_text="A globally unique ID for this request")
     state = serializers.CharField(help_text="One of '{complete}', '{submitted}'".format(
@@ -120,6 +120,8 @@ class RequestSerializer(serializers.Serializer):
     headline = serializers.CharField(help_text="Single sentence human readable description of the request")
     status = serializers.CharField(help_text="Single sentence human readable description of the request's current "
                                              "activity, if it has more than one stage.  May be null.")
+    requested_at = serializers.DateTimeField(help_text="Time at which the request was received by calamari server")
+    completed_at = serializers.DateTimeField(help_text="Time at which the request completed, may be null.")
 
 
 class SaltKeySerializer(serializers.Serializer):

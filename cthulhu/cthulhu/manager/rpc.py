@@ -210,7 +210,9 @@ class RpcInterface(object):
             'error': request.error,
             'error_message': request.error_message,
             'status': request.status,
-            'headline': request.headline
+            'headline': request.headline,
+            'requested_at': request.requested_at.isoformat(),
+            'completed_at': request.completed_at.isoformat() if request.completed_at else None
         }
 
     def get_request(self, fs_id, request_id):

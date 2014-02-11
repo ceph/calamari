@@ -1,6 +1,4 @@
-import datetime
 import uuid
-from dateutil.tz import tzlocal
 import salt
 import salt.client
 from cthulhu.manager import config
@@ -54,7 +52,8 @@ class UserRequest(object):
         """
         self.log = log.getChild(self.__class__.__name__)
 
-        self.requested_at = datetime.datetime.now(tzlocal())
+        self.requested_at = now()
+        self.completed_at = None
 
         # This is actually kind of overkill compared with having a counter,
         # somewhere but it's easy.
@@ -172,6 +171,7 @@ class UserRequest(object):
         """
         self.log.info("Request %s completed with error=%s (%s)" % (self.id, self.error, self.error_message))
         self.state = self.COMPLETE
+        self.completed_at = now()
 
     def on_map(self, sync_type, sync_objects):
         pass
