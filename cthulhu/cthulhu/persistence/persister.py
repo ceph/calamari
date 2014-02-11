@@ -9,32 +9,16 @@ import gevent.greenlet
 import gevent.queue
 import gevent.event
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from cthulhu.manager import config
 
-from cthulhu.persistence import Base
 from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.servers import Server, Service
-# FIXME I have to import this to get create_all to see it :-/
-from cthulhu.persistence.event import Event
-Event.foo = ""  # STFU pyflakes
 
 from cthulhu.util import now
 from cthulhu.log import log
 
 Session = sessionmaker()
-
-
-def initialize(db_path):
-    engine = create_engine(db_path)
-    Base.metadata.create_all(engine)
-
-
-def drop(db_path):
-    engine = create_engine(db_path)
-    Base.metadata.drop_all(engine)
-
 
 DeferredCall = namedtuple('DeferredCall', ['fn', 'args', 'kwargs'])
 

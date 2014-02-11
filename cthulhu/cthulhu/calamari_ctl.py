@@ -10,10 +10,15 @@ import subprocess
 from django.core.management import execute_from_command_line
 import pwd
 from django.utils.crypto import get_random_string
-from cthulhu.persistence import persister
 from django.contrib.auth import get_user_model
 from cthulhu.config import CalamariConfig, AlembicConfig
+from sqlalchemy import create_engine
+from cthulhu.persistence import Base
 
+# Import sqlalchemy objects so that create_all sees them
+from cthulhu.persistence.sync_objects import SyncObject  # noqa
+from cthulhu.persistence.servers import Server, Service  # noqa
+from cthulhu.persistence.event import Event  # noqa
 
 log = logging.getLogger('calamari_ctl')
 log.setLevel(logging.INFO)
@@ -57,12 +62,19 @@ def initialize(args):
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
     # Cthulhu's database
-    log.info("Initializing database...")
-    # If database already exists, migrate forward with alembic
-    # If database does not exist, create with create_all then stamp with alembic
-    persister.initialize(config.get('cthulhu', 'db_path'))
+    db_path = config.get('cthulhu', 'db_path')
+    engine = create_engine(db_path)
+    Base.metadata.reflect(engine)
     alembic_config = AlembicConfig()
-    command.stamp(alembic_config, "head")
+    if 'alembic_version' in Base.metadata.tables:
+        log.info("Updating database...")
+        # Database already populated, migrate forward
+        command.upgrade(alembic_config, "head")
+    else:
+        log.info("Initializing database...")
+        # Blank database, do initial population
+        Base.metadata.create_all(engine)
+        command.stamp(alembic_config, "head")
 
     # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
@@ -125,7 +137,9 @@ def clear(args):
     config = CalamariConfig()
 
     log.info("Dropping tables")
-    persister.drop(config.get('cthulhu', 'db_path'))
+    db_path = config.get('cthulhu', 'db_path')
+    engine = create_engine(db_path)
+    Base.metadata.drop_all(engine)
     log.info("Complete.  Now run `%s initialize`" % os.path.basename(sys.argv[0]))
 
 
