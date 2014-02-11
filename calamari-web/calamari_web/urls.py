@@ -74,4 +74,4 @@ patch_views(graphite.metrics.urls)
 patch_views(graphite.dashboard.urls)
 
 # Explicitly reset to default or graphite hijacks it
-handler500 = 'django.views.defaults.bad_request'
+handler500 = 'django.views.defaults.server_error'
