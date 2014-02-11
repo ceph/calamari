@@ -27,7 +27,10 @@ def serve_dir_or_index(request, path, document_root):
 def dashboard(request, path, document_root):
     client = zerorpc.Client()
     client.connect(config.get('cthulhu', 'rpc_url'))
-    clusters = client.list_clusters()
+    try:
+        clusters = client.list_clusters()
+    finally:
+        client.close()
     if not clusters:
         return redirect("/admin/#cluster")
     return serve_dir_or_index(request, path, document_root)
