@@ -205,6 +205,15 @@ class RequestCollection(object):
                                 log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
                                 self._sync_objects.on_version(data['id'], sync_type, version)
 
+                            # The request may be waiting for an epoch that we already have, if so
+                            # give it to the request right away
+                            for sync_type, want_version in request.awaiting_versions.items():
+                                got_version = self._sync_objects.get_version(sync_type)
+                                if sync_type.cmp(got_version, want_version) >= 0:
+                                    log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
+                                    with self._update_index(request):
+                                        request.on_map(sync_type, self._sync_objects)
+
                 except Exception as e:
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
                     # results in a terminated job, not a zombie job
