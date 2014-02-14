@@ -43,7 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ('id', 'username', 'password')
+        fields = ('id', 'username', 'password', 'email')
 
     def to_native(self, obj):
         # Before conversion, remove the password field. This prevents the hash

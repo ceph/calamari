@@ -1,10 +1,13 @@
 
 import logging
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.urlresolvers import reverse
+from django.http import Http404
 import pytz
 import socket
 
 from rest_framework import viewsets
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
@@ -178,27 +181,62 @@ class OSDDetail(RPCView):
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    The Calamari UI/API user account information
+    The Calamari UI/API user account information.
+
+    You may pass 'me' as the user ID to refer to the currently logged in user,
+    otherwise the user ID is a numeric ID.
+
+    Because all users are superusers, everybody can see each others accounts
+    using this resource.  However, users can only modify their own account (i.e.
+    the user being modified must be the user associated with the current login session).
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    def _get_user(self, request, user_id):
+        if user_id == "me":
+            if request.user.is_authenticated():
+                return request.user
+            else:
+                raise AuthenticationFailed()
+        else:
+            try:
+                user = self.queryset.get(pk=user_id)
+            except User.DoesNotExist:
+                raise Http404("User not found")
+            else:
+                return user
 
-class UserMe(APIView):
-    """
-Return information about the current user. If the user is not authenticated
-(i.e. an anonymous user), then 401 is returned with an error message.
-    """
-    permission_classes = (AllowAny,)
-    serializer_class = UserSerializer
+    def update(self, request, *args, **kwargs):
+        # Note that unlike the parent update() we do not support
+        # creating users with PUT.
+        partial = kwargs.pop('partial', False)
+        user = self.get_object()
 
-    @never_cache
-    def get(self, request):
-        if request.user.is_authenticated():
-            return Response(self.serializer_class(request.user).data)
-        return Response({
-            'message': 'Session expired or invalid',
-        }, status.HTTP_401_UNAUTHORIZED)
+        if user.id != self.request.user.id:
+            raise PermissionDenied("May not change another user's password")
+
+        serializer = self.get_serializer(user, data=request.DATA, partial=partial)
+
+        if serializer.is_valid():
+            try:
+                self.pre_save(serializer.object)
+            except ValidationError as err:
+                # full_clean on model instance may be called in pre_save, so we
+                # have to handle eventual errors.
+                return Response(err.message_dict, status=status.HTTP_400_BAD_REQUEST)
+            user = serializer.save(force_update=True)
+            log.debug("saved user %s" % user)
+            # self.post_save(user, created=False)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_object(self, queryset=None):
+        user = self._get_user(self.request, self.kwargs['pk'])
+        if self.kwargs['pk'] == 'me':
+            self.kwargs['pk'] = user.id
+        return user
 
 
 @api_view(['GET', 'POST'])
