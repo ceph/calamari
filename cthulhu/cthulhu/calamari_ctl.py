@@ -1,7 +1,10 @@
 
 import argparse
 from contextlib import contextmanager
+import json
 import logging
+import tempfile
+import traceback
 from alembic import command
 import os
 import sys
@@ -11,6 +14,7 @@ from django.core.management import execute_from_command_line
 import pwd
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
+import time
 from cthulhu.config import CalamariConfig, AlembicConfig
 from sqlalchemy import create_engine
 from cthulhu.persistence import Base
@@ -25,6 +29,12 @@ log.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 log.addHandler(handler)
+
+log_buffer = StringIO()
+log_tmp = tempfile.NamedTemporaryFile()
+buffer_handler = logging.FileHandler(log_tmp.name)
+buffer_handler.setFormatter(logging.Formatter("[%(asctime)s %(levelname)s] %(message)s"))
+log.addHandler(buffer_handler)
 
 
 @contextmanager
@@ -173,4 +183,16 @@ Calamari setup tool.
     clear_parser.set_defaults(func=clear)
 
     args = parser.parse_args()
-    args.func(args)
+
+    try:
+        args.func(args)
+    except:
+        debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
+        open(debug_filename, 'w').write(json.dumps({
+            'argv': sys.argv,
+            'log': open(log_tmp.name, 'r').read(),
+            'backtrace': traceback.format_exc()
+        }, indent=2))
+        log.error("We are sorry, an unexpected error occurred.  Debugging information has\n"
+                  "been written to a file at '{0}', please include this when seeking technical\n"
+                  "support.".format(debug_filename))
