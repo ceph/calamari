@@ -20,7 +20,6 @@ urlpatterns = patterns(
     url(r'^info', calamari_rest.views.v1.Info.as_view()),
 
     # Wrapping django auth
-    url(r'^user/me', calamari_rest.views.v1.UserMe.as_view()),
     url(r'^auth/login', calamari_rest.views.v1.login),
     url(r'^auth/logout', calamari_rest.views.v1.logout),
 

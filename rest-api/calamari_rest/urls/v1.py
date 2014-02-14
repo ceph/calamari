@@ -4,8 +4,10 @@ import calamari_rest.views.v1
 
 router = routers.DefaultRouter(trailing_slash=False)
 
-# In v1, the /user list URL existed but only told you usernames
-# In v2 it should include displaynames and email addresses too (TODO #7097)
+# In v1, the user/ URL existed but did almost nothing, it only supported GET and told
+# you your current username.
+# In v2, the view gets filled out to return the displayname and email address to, and support
+# PUT/PATCH operations for users to change their passwords
 router.register(r'user', calamari_rest.views.v1.UserViewSet)
 
 # The cluster view exists in both v1 and v2
@@ -17,11 +19,6 @@ router.register(r'cluster', calamari_rest.views.v1.ClusterViewSet, base_name='cl
 urlpatterns = patterns(
     '',
 
-    # In v1, the user/me URL existed but did almost nothing, it only supported GET and told
-    # you your current username.
-    # In v2, the view gets filled out to return the displayname and email address to, and support
-    # PUT/PATCH operations for users to change their passwords (TODO #7097)
-    url(r'^user/me$', calamari_rest.views.v1.UserMe.as_view()),
     # In v1 this required a POST but also allowed GET for some reason
     # In v2 it's post only
     url(r'^auth/login', calamari_rest.views.v1.login),
