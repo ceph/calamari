@@ -45,3 +45,10 @@ class OsdRequestFactory(RequestFactory):
 
     def deep_scrub(self, osd_id):
         return self.scrub(osd_id, True)
+
+    def _validate_operation(self, command, osd_id):
+        osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+        try:
+            return bool(osd_map.osds_by_id[osd_id]['up'])
+        except KeyError:
+            return False
