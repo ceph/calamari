@@ -44,12 +44,15 @@ urlpatterns = patterns(
         'patch': 'update',
         'delete': 'destroy'}),
         name='cluster-pool-detail'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'list'}), name='cluster-osd-list'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', calamari_rest.views.v2.OsdViewSet.as_view(
-        {'get': 'retrieve', 'patch': 'update'}),
-        name='cluster-osd-detail'),
-    # TODO implement POST to /osd/<id>/commands/<command> for operations
-    # that don't directly change an attribute, e.g. initiating scrub, repair
+
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/', include(patterns('',
+        url(r'^osd$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'list'}), name='cluster-osd-list'),
+        url(r'^osd/(?P<osd_id>\d+)$', calamari_rest.views.v2.OsdViewSet.as_view(
+            {'get': 'retrieve', 'patch': 'update'}),
+            name='cluster-osd-detail'),
+        url(r'^osd/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'implemented_commands'})),
+        url(r'^osd/(?P<osd_id>\d+)/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'valid_commands'}))))),
+
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',

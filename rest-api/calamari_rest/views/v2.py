@@ -411,6 +411,16 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     def update(self, request, fsid, osd_id):
         return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
+    def apply(self, request, fsid, osd_id):
+        return self._return_request(self.client.apply(fsid, OSD, int(osd_id), dict(request.DATA)))
+
+    # TODO improve the accuracy of this info
+    def implemented_commands(self, *args, **kwargs):
+        return Response(['scrub', 'repair'])
+
+    # TODO imporve the accuracy of this info
+    def valid_commands(self, request, fsid, osd_id):
+        return Response(['scrub'])
 
 class SyncObject(RPCViewSet):
     """
