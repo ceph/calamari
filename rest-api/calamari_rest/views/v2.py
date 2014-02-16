@@ -418,9 +418,10 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     def implemented_commands(self, *args, **kwargs):
         return Response(['scrub', 'repair'])
 
-    # TODO imporve the accuracy of this info
+    # TODO improve the accuracy of this info
     def valid_commands(self, request, fsid, osd_id):
         return Response(['scrub'])
+
 
 class SyncObject(RPCViewSet):
     """

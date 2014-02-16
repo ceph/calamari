@@ -51,7 +51,7 @@ urlpatterns = patterns(
             {'get': 'retrieve', 'patch': 'update'}),
             name='cluster-osd-detail'),
         url(r'^osd/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'implemented_commands'})),
-        url(r'^osd/(?P<osd_id>\d+)/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'valid_commands'}))))),
+        url(r'^osd/(?P<osd_id>\d+)/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'valid_commands', 'post': 'apply'}))))),
 
 
     # Direct access to SyncObjects, DerivedObjects, graphite stats
