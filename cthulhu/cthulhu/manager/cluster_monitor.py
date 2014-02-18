@@ -465,7 +465,21 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def request_update(self, obj_type, obj_id, attributes):
         return self._request('update', obj_type, obj_id, attributes)
 
-    def request_apply(self, obj_type, obj_id, attributes):
-        # TODO this patter creates the possibility of letting a user request arbitrary ceph commands, separate that out
-        command = 'scrub'
+    def request_apply(self, obj_type, obj_id, command, attributes):
         return self._request(command, obj_type, obj_id, attributes)
+
+    def request_validate(self, object_type, obj_id, command):
+        try:
+            request_factory = self._request_factories[object_type](self)
+        except KeyError:
+            raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
+
+        return getattr(request_factory, '_validate_command')(obj_id, command)
+
+    def request_implemented(self, object_type):
+        try:
+            request_factory = self._request_factories[object_type](self)
+        except KeyError:
+            raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
+
+        return getattr(request_factory, '_implemented_commands')()

@@ -12,7 +12,7 @@ class PublishError(Exception):
     pass
 
 
-class UserRequest(object):
+class UserRequestBase(object):
     """
     A request acts on one or more Ceph-managed objects, i.e.
     mon, mds, osd, pg.
@@ -178,7 +178,12 @@ class UserRequest(object):
         pass
 
 
-class OsdMapModifyingRequest(UserRequest):
+class UserRequest(UserRequestBase):
+    def headline(self):
+        # TODO what should really go here
+        return 'Fruits and frozen bears'
+
+class OsdMapModifyingRequest(UserRequestBase):
     """
     Specialization of UserRequest which waits for Calamari's copy of
     the OsdMap sync object to catch up after execution of RADOS commands.

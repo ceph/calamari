@@ -152,7 +152,7 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
-    def apply(self, fs_id, object_type, object_id, attributes):
+    def apply(self, fs_id, object_type, object_id, command, attributes):
         """
         Apply commands that do not modify an object in a cluster.
         """
@@ -164,10 +164,19 @@ class RpcInterface(object):
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
-            return cluster.request_apply(OSD, object_id, attributes)
+            return cluster.request_apply(OSD, object_id, command, attributes)
 
         else:
             raise NotImplementedError(object_type)
+
+    def validate(self, fs_id, object_type, object_id, command):
+        cluster = self._fs_resolve(fs_id)
+        return cluster.request_validate(OSD, object_id, command)
+
+    def implemented(self, fs_id, object_type, attributes):
+        cluster = self._fs_resolve(fs_id)
+        return cluster.request_implemented(OSD)
+
 
     def create(self, fs_id, object_type, attributes):
         """

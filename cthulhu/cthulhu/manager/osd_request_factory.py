@@ -40,18 +40,22 @@ class OsdRequestFactory(RequestFactory):
                 cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
             ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
-    def scrub(self, osd_id, deep_scrub=False):
-        commands = []
-        return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+    def scrub(self, osd_id):
+        return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd scrub {0}'.format(osd_id))
 
     def deep_scrub(self, osd_id):
-        return self.scrub(osd_id, True)
+        return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd deep-scrub {0}'.format(osd_id))
 
+    def repair(self, osd_id):
+        return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd repair {0}'.format(osd_id))
 
-    def _validate_operation(self, command, osd_id):
+    def _validate_command(self, osd_id, command):
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
         try:
-            return bool(osd_map.osds_by_id[osd_id]['up'])
+            return bool(osd_map.osds_by_id[osd_id]['up']) and command in self._implemented_commands()
         except KeyError:
             # TODO raise runtime error here?
             return False
+
+    def _implemented_commands(self):
+        return [command for command in dir(OsdRequestFactory) if not command.startswith('_')]
