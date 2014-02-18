@@ -179,9 +179,11 @@ class UserRequestBase(object):
 
 
 class UserRequest(UserRequestBase):
+
+    @property
     def headline(self):
         # TODO what should really go here
-        return 'Fruits and frozen bears'
+        return self._commands
 
 class OsdMapModifyingRequest(UserRequestBase):
     """

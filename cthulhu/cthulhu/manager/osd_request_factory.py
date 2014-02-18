@@ -50,6 +50,9 @@ class OsdRequestFactory(RequestFactory):
         return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd repair {0}'.format(osd_id))
 
     def _validate_command(self, osd_id, command):
+        """
+        Check that a command is valid given that state of the OSD osd_id
+        """
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
         try:
             return bool(osd_map.osds_by_id[osd_id]['up']) and command in self._implemented_commands()
@@ -58,4 +61,10 @@ class OsdRequestFactory(RequestFactory):
             return False
 
     def _implemented_commands(self):
+        """
+        Performs introspection on OsdRequestFactory to determine what we have implemented
+        returns a list of implemented ceph commands
+        """
+        # I like that this is a SPOT for what is implemented.
+        # By calling it through the rpc we don't add a dependency on cthulhu in the API
         return [command for command in dir(OsdRequestFactory) if not command.startswith('_')]
