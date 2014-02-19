@@ -1,6 +1,8 @@
 from collections import defaultdict
 import os
 import json
+import logging
+logging.basicConfig()
 
 from tests.server_testcase import ServerTestCase
 
@@ -90,7 +92,7 @@ class TestApi(ServerTestCase):
                 response = self.api.get(url[len(prefix):])
                 if response.status_code != 200:
                     # import pdb; pdb.set_trace()
-                    fails.append((url, response.raise_for_status()))
+                    fails.append((url, response.status_code, response.reason))
                     continue
                 else:
                     results[pattern][url] = response.content

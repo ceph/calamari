@@ -477,7 +477,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         except KeyError:
             raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
 
-        return getattr(request_factory, '_validate_command')(obj_id, command)
+        return request_factory._validate_command(obj_id, command)
 
     def request_implemented(self, object_type):
         try:
@@ -485,4 +485,4 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         except KeyError:
             raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
 
-        return getattr(request_factory, '_implemented_commands')()
+        return request_factory._implemented_commands()
