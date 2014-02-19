@@ -19,7 +19,7 @@ from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
 
 from cthulhu.config import CalamariConfig
-from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, OSD_IMPLEMENTED_COMMANDS
 # FIXME: these imports of cthulhu stuff from the rest layer are too much
 from cthulhu.manager.types import SYNC_OBJECT_TYPES, ServiceId
 from cthulhu.manager import derived
@@ -362,7 +362,7 @@ but those without static defaults will be set to null.
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
-Manage Ceph OSDs.
+Manage Ceph OSDs. Apply ceph commands with osd/commands/{scrub, repair, ...}
 
 Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
@@ -418,8 +418,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
             return Response('{0} not valid on {1}'.format(command, osd_id), status=403)
 
     def implemented_commands(self, request, fsid):
-        # TODO this response should be cached
-        return Response(self.client.implemented(fsid, OSD, dict(request.DATA)))
+        return Response(OSD_IMPLEMENTED_COMMANDS)
 
     def valid_commands(self, request, fsid, osd_id, command):
         return Response(self.client.validate(fsid, OSD, int(osd_id), command))

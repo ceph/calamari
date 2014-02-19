@@ -59,12 +59,3 @@ class OsdRequestFactory(RequestFactory):
         except KeyError:
             # TODO raise runtime error here?
             return False
-
-    def _implemented_commands(self):
-        """
-        Performs introspection on OsdRequestFactory to determine what we have implemented
-        returns a list of implemented ceph commands
-        """
-        # I like that this is a SPOT for what is implemented.
-        # By calling it through the rpc we don't add a dependency on cthulhu in the API
-        return [command for command in dir(OsdRequestFactory) if not command.startswith('_')]

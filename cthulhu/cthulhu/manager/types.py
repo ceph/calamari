@@ -1,6 +1,10 @@
 from collections import namedtuple
 from cthulhu.util import memoize
+
+from osd_request_factory import OsdRequestFactory
+
 import logging
+
 
 log = logging.getLogger('cthulhu.types')
 
@@ -193,3 +197,5 @@ SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
 USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
+
+OSD_IMPLEMENTED_COMMANDS = [command for command in dir(OsdRequestFactory) if not command.startswith('_')]

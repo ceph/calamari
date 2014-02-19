@@ -436,10 +436,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         # nosleep during preparation phase (may touch ClusterMonitor/ServerMonitor state)
         with nosleep_mgr():
-            try:
-                request_factory = self._request_factories[obj_type](self)
-            except KeyError:
-                raise ValueError("{0} is not one of {1}".format(obj_type, self._request_factories.keys()))
+            request_factory = self.get_request_factory(obj_type)
 
             if self._favorite_mon is None:
                 raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
@@ -469,18 +466,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         return self._request(command, obj_type, obj_id, attributes)
 
     def request_validate(self, object_type, obj_id, command):
-        # TODO this request factory checking should probably be abstracted into a decorator
+        return self.get_request_factory(object_type)._validate_command(obj_id, command)
+
+    def get_request_factory(self, object_type):
         try:
-            request_factory = self._request_factories[object_type](self)
+            return self._request_factories[object_type](self)
         except KeyError:
             raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
-
-        return request_factory._validate_command(obj_id, command)
-
-    def request_implemented(self, object_type):
-        try:
-            request_factory = self._request_factories[object_type](self)
-        except KeyError:
-            raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
-
-        return request_factory._implemented_commands()

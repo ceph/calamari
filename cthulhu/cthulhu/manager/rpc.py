@@ -173,15 +173,11 @@ class RpcInterface(object):
         """
         Determine if command can be run on OSD object_id
         """
-        cluster = self._fs_resolve(fs_id)
-        return cluster.request_validate(OSD, object_id, command)
+        if object_type != OSD:
+            raise NotImplementedError(object_type)
 
-    def implemented(self, fs_id, object_type, attributes):
-        """
-        List what operations are implemented for OSDs
-        """
         cluster = self._fs_resolve(fs_id)
-        return cluster.request_implemented(OSD)
+        return cluster.request_validate(object_type, object_id, command)
 
     def create(self, fs_id, object_type, attributes):
         """
