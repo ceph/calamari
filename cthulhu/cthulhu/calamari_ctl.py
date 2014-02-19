@@ -36,6 +36,8 @@ buffer_handler = logging.FileHandler(log_tmp.name)
 buffer_handler.setFormatter(logging.Formatter("[%(asctime)s %(levelname)s] %(message)s"))
 log.addHandler(buffer_handler)
 
+ALEMBIC_TABLE = 'alembic_version'
+
 
 @contextmanager
 def quiet():
@@ -76,7 +78,7 @@ def initialize(args):
     engine = create_engine(db_path)
     Base.metadata.reflect(engine)
     alembic_config = AlembicConfig()
-    if 'alembic_version' in Base.metadata.tables:
+    if ALEMBIC_TABLE in Base.metadata.tables:
         log.info("Updating database...")
         # Database already populated, migrate forward
         command.upgrade(alembic_config, "head")
@@ -150,6 +152,9 @@ def clear(args):
     db_path = config.get('cthulhu', 'db_path')
     engine = create_engine(db_path)
     Base.metadata.drop_all(engine)
+    Base.metadata.reflect(engine)
+    if ALEMBIC_TABLE in Base.metadata.tables:
+        Base.metadata.tables[ALEMBIC_TABLE].drop(engine)
     log.info("Complete.  Now run `%s initialize`" % os.path.basename(sys.argv[0]))
 
 
