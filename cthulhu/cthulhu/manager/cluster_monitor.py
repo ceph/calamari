@@ -466,8 +466,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         return self._request('update', obj_type, obj_id, attributes)
 
     def request_apply(self, obj_type, obj_id, command, attributes):
-        # TODO we can't really query the status of these requests on the cluster
-        # so an HTTP 202 and this response is probably misleading
         return self._request(command, obj_type, obj_id, attributes)
 
     def request_validate(self, object_type, obj_id, command):
