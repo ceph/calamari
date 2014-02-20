@@ -1,5 +1,5 @@
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap
+from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS
 from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 #TODO a named tuple here could easily represent what is allowed, and that would give us a handy arg to apply()
@@ -55,7 +55,7 @@ class OsdRequestFactory(RequestFactory):
         """
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
         try:
-            return bool(osd_map.osds_by_id[osd_id]['up']) and command in self._implemented_commands()
+            return bool(osd_map.osds_by_id[osd_id]['up']) and command in OSD_IMPLEMENTED_COMMANDS
         except KeyError:
             # TODO raise runtime error here?
             return False

@@ -16,7 +16,7 @@ class CalamariTestCase(TestCase):
 
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import UserRequest
-
+from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS
 
 class TestOSDFactory(CalamariTestCase):
 
@@ -59,3 +59,12 @@ class TestOSDFactory(CalamariTestCase):
 
     def test_validate_op_key_error(self):
         self.assertFalse(self.osd_request_factory._validate_command(2, 'scrub'))
+
+
+class TestImplementedCommands(CalamariTestCase):
+    """
+    That the list of implemented commands in cthulhu/manager/types.py agrees with what is actually implemented
+    """
+    def test_list_agrees_with_module(self):
+        osd_commands = [x for x in dir(OsdRequestFactory) if not x.startswith('_')]
+        self.assertEqual(sorted(OSD_IMPLEMENTED_COMMANDS), sorted(osd_commands))
