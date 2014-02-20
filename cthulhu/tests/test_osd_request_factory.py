@@ -45,12 +45,3 @@ class TestOSDFactory(TestCase):
 
     def test_validate_op_key_error(self):
         self.assertEqual(self.osd_request_factory._get_valid_commands([2]), {})
-
-
-class TestImplementedCommands(TestCase):
-    """
-    That the list of implemented commands in cthulhu/manager/types.py agrees with what is actually implemented
-    """
-    def test_list_agrees_with_module(self):
-        osd_commands = [x for x in dir(OsdRequestFactory) if not x.startswith('_')]
-        self.assertEqual(sorted(OSD_IMPLEMENTED_COMMANDS), sorted(osd_commands))

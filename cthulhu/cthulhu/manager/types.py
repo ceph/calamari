@@ -1,7 +1,6 @@
 from collections import namedtuple
 from cthulhu.util import memoize
 
-# from osd_request_factory import OsdRequestFactory
 
 import logging
 
@@ -198,4 +197,6 @@ SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
 
-OSD_IMPLEMENTED_COMMANDS = ['create', 'update', 'delete', 'scrub', 'deep_scrub','repair']
+# TODO I am not too happy that this is separate from the implementation of OsdRequestFactory
+# It seems that it will be easy for them to fall out of sync
+OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub','repair']
