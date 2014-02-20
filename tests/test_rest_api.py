@@ -32,7 +32,6 @@ class TestApi(ServerTestCase):
         from pprint import pprint
         pprint(url_patterns)
 
-        # raise SyntaxError()
         # Spin up a running Calamari+Ceph environment
         self.ceph_ctl.configure(3)
         self.calamari_ctl.configure()

@@ -84,7 +84,6 @@ class TestOsdManagement(RequestTestCase):
             response = self.api.get(osd_url)
             self.assertEqual(response.status_code, 200, 'HTTP status not 200 for %s' % osd_url)
             osd = response.json()
-            # import pdb; pdb.set_trace()
             self.assertIn(x, osd.get(str(osd_id)).get('valid_commands'))
             response = self.api.post(osd_url)
             self.assertEqual(response.status_code, 200, 'HTTP status not 200 for %s' % osd_url)
