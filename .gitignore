@@ -21,3 +21,5 @@ pip_cache
 *.db
 *.pid
 build/
+dev/var/
+figment*/
