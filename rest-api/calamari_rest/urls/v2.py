@@ -50,6 +50,8 @@ urlpatterns = patterns(
         {'get': 'retrieve', 'patch': 'update'}),
         name='cluster-osd-detail'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'valid_commands'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/command/implemented$', calamari_rest.views.v2.OsdViewSet.as_view(
+        {'get': 'implemented_commands'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)/command/(?P<command>[a-zA-Z_]+)$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'valid_commands', 'post': 'apply'})),
 

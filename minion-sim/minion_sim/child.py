@@ -111,6 +111,10 @@ def main():
                     cluster.set_osd_weight(args['id'], args['weight'])
                 elif prefix == "osd scrub":
                     pass
+                elif prefix == "osd deep_scrub":
+                    pass
+                elif prefix == "osd repair":
+                    pass
                 else:
                     raise NotImplementedError()
             except Exception as e:
