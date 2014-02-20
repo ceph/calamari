@@ -33,5 +33,5 @@ static_root = {{calamari_root}}/webapp/content/
 
 [graphite]
 
-storage_path = {{calamari_root}}/env/storage
-root = {{calamari_root}}/env
+root = {{venv}}
+storage_path = {{venv}}/storage
