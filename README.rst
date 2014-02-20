@@ -181,6 +181,5 @@ Build the docs:
 
 ::
 
-    cd docs/
-    make html
-    open _build/html/index.html
+    make docs
+    open doc/{rest-api,development}/_build/html/index.html

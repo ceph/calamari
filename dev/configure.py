@@ -12,8 +12,10 @@ TEMPLATES = ["dev/etc/salt/master.template", "dev/calamari.conf.template", "dev/
 
 calamari_root = "/" + os.path.join(*(os.path.abspath(__file__).split(os.sep)[0:-2]))
 calamari_user = getpass.getuser()
+venv = os.environ.get('VIRTUAL_ENV', calamari_root + 'env')
 
-print "Calamari repo is at: %s, user is %s" % (calamari_root, calamari_user)
+print "Calamari repo is at: %s, user is %s, venv %s" % \
+    (calamari_root, calamari_user, venv)
 
 for template in TEMPLATES:
     template = os.path.join(calamari_root, template)
@@ -22,7 +24,8 @@ for template in TEMPLATES:
     template_str = open(template).read()
     output_str = Template(template_str).render(
         calamari_root=calamari_root,
-        calamari_user=calamari_user
+        calamari_user=calamari_user,
+        venv=venv,
     )
     open(output_file, 'w').write(output_str)
 

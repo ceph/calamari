@@ -177,8 +177,13 @@ dist:
 dev/calamari.conf:
 	cd dev/ && python configure.py
 
+# prefer the local version of nosetests, but allow system version
 rest-api-integration: dev/calamari.conf
-	nosetests tests/test_rest_api.py
+	if [ -n "$$VIRTUAL_ENV" ] && [ -x $$VIRTUAL_ENV/bin/nosetests ] ; then \
+		nosetests tests/test_rest_api.py; \
+	else \
+		python $$(which nosetests) tests/test_rest_api.py ; \
+	fi
 
 doc/rest-api/api_examples.json: rest-api-integration
 	cp api_examples.json doc/rest-api
