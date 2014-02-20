@@ -197,6 +197,5 @@ SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
 
-# TODO I am not too happy that this is separate from the implementation of OsdRequestFactory
-# It seems that it will be easy for them to fall out of sync
+# List of allowable things to send as ceph commands to OSDs
 OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub','repair']
