@@ -462,8 +462,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def request_update(self, obj_type, obj_id, attributes):
         return self._request('update', obj_type, obj_id, attributes)
 
-    def request_apply(self, obj_type, obj_id, command, attributes):
-        return self._request(command, obj_type, obj_id, attributes)
+    def request_apply(self, obj_type, obj_id, command):
+        return self._request(command, obj_type, obj_id)
 
     def request_validate(self, object_type, obj_ids):
         return self.get_request_factory(object_type)._get_valid_commands(obj_ids)

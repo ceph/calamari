@@ -412,23 +412,22 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
     def apply(self, request, fsid, osd_id, command):
-        if self.client.validate(fsid, OSD, int(osd_id), command):
-            return Response(self.client.apply(fsid, OSD, int(osd_id), command, dict(request.DATA)), status=200)
+        if command in self.client.validate(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
+            return Response(self.client.apply(fsid, OSD, int(osd_id), command), status=200)
         else:
             return Response('{0} not valid on {1}'.format(command, osd_id), status=403)
 
     def implemented_commands(self, request, fsid):
         return Response(OSD_IMPLEMENTED_COMMANDS)
 
-    def valid_commands(self, request, fsid, osd_id=None):
+    def valid_commands(self, request, fsid, osd_id=None, command=None):
         osds = []
         if osd_id is None:
-            osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+            osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).keys()
         else:
             osds.append(int(osd_id))
 
-        return Response(self.client.validate(fsid, OSD, osds)
-
+        return Response(self.client.validate(fsid, OSD, osds))
 
 
 class SyncObject(RPCViewSet):
