@@ -2,7 +2,6 @@ from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS
 from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
-#TODO a named tuple here could easily represent what is allowed, and that would give us a handy arg to apply()
 
 class OsdRequestFactory(RequestFactory):
     def update(self, osd_id, attributes):
