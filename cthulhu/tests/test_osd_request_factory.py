@@ -1,24 +1,10 @@
 from django.utils.unittest import TestCase
 from mock import MagicMock, patch
-
-
-class CalamariConfig(type):
-    def __new__(mcs, name, parents, dct):
-        import os
-        if os.environ.get("CALAMARI_CONFIG") is None:
-            os.environ["CALAMARI_CONFIG"] = "/home/vagrant/calamari/dev/calamari.conf"
-
-        return super(CalamariConfig, mcs).__new__(mcs, name, parents, dct)
-
-
-class CalamariTestCase(TestCase):
-    __metaclass__ = CalamariConfig
-
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import UserRequest
 from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS
 
-class TestOSDFactory(CalamariTestCase):
+class TestOSDFactory(TestCase):
 
     salt_local_client = MagicMock(run_job=MagicMock())
     salt_local_client.return_value = salt_local_client
@@ -61,7 +47,7 @@ class TestOSDFactory(CalamariTestCase):
         self.assertEqual(self.osd_request_factory._get_valid_commands([2]), {})
 
 
-class TestImplementedCommands(CalamariTestCase):
+class TestImplementedCommands(TestCase):
     """
     That the list of implemented commands in cthulhu/manager/types.py agrees with what is actually implemented
     """
