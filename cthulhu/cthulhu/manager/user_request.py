@@ -1,6 +1,7 @@
 import uuid
 import salt
 import salt.client
+from salt.client import LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from cthulhu.manager.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
@@ -11,7 +12,7 @@ class PublishError(Exception):
     pass
 
 
-class UserRequest(object):
+class UserRequestBase(object):
     """
     A request acts on one or more Ceph-managed objects, i.e.
     mon, mds, osd, pg.
@@ -135,7 +136,7 @@ class UserRequest(object):
     def _submit(self, commands):
         self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
         pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
                                   [self._fsid, self._cluster_name, commands])
         if not pub_data:
@@ -177,7 +178,14 @@ class UserRequest(object):
         pass
 
 
-class OsdMapModifyingRequest(UserRequest):
+class UserRequest(UserRequestBase):
+
+    @property
+    def headline(self):
+        # TODO what should really go here
+        return self._commands
+
+class OsdMapModifyingRequest(UserRequestBase):
     """
     Specialization of UserRequest which waits for Calamari's copy of
     the OsdMap sync object to catch up after execution of RADOS commands.
