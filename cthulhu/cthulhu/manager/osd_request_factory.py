@@ -49,13 +49,19 @@ class OsdRequestFactory(RequestFactory):
     def repair(self, osd_id):
         return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd repair {0}'.format(osd_id))
 
-    def _validate_command(self, osd_id, command):
+    def _get_valid_commands(self, osds):
         """
-        Check that a command is valid given that state of the OSD osd_id
+        For each OSD in osds list valid commands
         """
+        ret_val = {}
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
-        try:
-            return bool(osd_map.osds_by_id[osd_id]['up']) and command in OSD_IMPLEMENTED_COMMANDS
-        except KeyError:
-            # TODO raise runtime error here?
-            return False
+        for osd_id in osds:
+            try:
+                if osd_map.osds_by_id[osd_id]['up']:
+                    ret_val[osd_id] = {'valid_commands': OSD_IMPLEMENTED_COMMANDS}
+                else:
+                    ret_val[osd_id] = {'valid_commands': []}
+            except KeyError:
+                pass
+
+        return ret_val

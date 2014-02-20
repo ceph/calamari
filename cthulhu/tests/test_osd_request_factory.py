@@ -52,13 +52,13 @@ class TestOSDFactory(CalamariTestCase):
         self.assertIsInstance(deep_scrub, UserRequest, 'Failed to make a deep scrub request')
 
     def test_validate_scrub(self):
-        self.assertTrue(self.osd_request_factory._validate_command(0, 'scrub'))
+        self.assertEqual(self.osd_request_factory._get_valid_commands([0]), {0: {'valid_commands': OSD_IMPLEMENTED_COMMANDS}})
 
     def test_validate_scrub_on_down_osd(self):
-        self.assertFalse(self.osd_request_factory._validate_command(1, 'scrub'))
+        self.assertEqual(self.osd_request_factory._get_valid_commands([1]), {1: {'valid_commands': []}})
 
     def test_validate_op_key_error(self):
-        self.assertFalse(self.osd_request_factory._validate_command(2, 'scrub'))
+        self.assertEqual(self.osd_request_factory._get_valid_commands([2]), {})
 
 
 class TestImplementedCommands(CalamariTestCase):

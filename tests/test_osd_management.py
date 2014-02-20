@@ -71,11 +71,12 @@ class TestOsdManagement(RequestTestCase):
         """
         That we can apply ceph commands to an OSD
         """
-        commands = ['scrub', 'deep-scrub', 'repair']
+        commands = ['scrub', 'deep_scrub', 'repair']
         osd_id = 0
         fsid = self._wait_for_cluster()
         for x in commands:
             osd_url = "cluster/%s/ods/%s/command/%s" % (fsid, osd_id, x)
+            import pdb; pdb.set_trace()
             osd = self.api.get(osd_url).json()
             self.assertEqual(osd['up'], True)
             response = self.api.post(osd_url)

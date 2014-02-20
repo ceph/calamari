@@ -465,8 +465,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def request_apply(self, obj_type, obj_id, command, attributes):
         return self._request(command, obj_type, obj_id, attributes)
 
-    def request_validate(self, object_type, obj_id, command):
-        return self.get_request_factory(object_type)._validate_command(obj_id, command)
+    def request_validate(self, object_type, obj_ids):
+        return self.get_request_factory(object_type)._get_valid_commands(obj_ids)
 
     def get_request_factory(self, object_type):
         try:

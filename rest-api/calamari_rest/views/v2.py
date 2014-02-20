@@ -420,8 +420,14 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     def implemented_commands(self, request, fsid):
         return Response(OSD_IMPLEMENTED_COMMANDS)
 
-    def valid_commands(self, request, fsid, osd_id, command):
-        return Response(self.client.validate(fsid, OSD, int(osd_id), command))
+    def valid_commands(self, request, fsid, osd_id=None):
+        osds = []
+        if osd_id is None:
+            osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+        else:
+            osds.append(int(osd_id))
+
+        return Response(self.client.validate(fsid, OSD, osds)
 
 
 
