@@ -27,8 +27,8 @@ build-venv: venv
 	./bin/python ./bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		build/carbon/setup.py; \
-	./bin/python ./bin/pip install \
-		  --install-option="--prefix=$(SRC)/venv" \
+	./bin/python ./bin/pip install --no-download\
+	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
