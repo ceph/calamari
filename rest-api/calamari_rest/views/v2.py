@@ -397,7 +397,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds])
         for o in osds:
-            o['valid_commands'] = osd_commands[o['osd']]
+            o.update(osd_commands[o['osd']])
 
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
