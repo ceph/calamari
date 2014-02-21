@@ -19,7 +19,7 @@ build-venv: venv
 	cd venv; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
-	  pyzmq>=13.0; \
+	  'pyzmq>=13.0'; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements.production.txt; \
 	./bin/python ./bin/pip install --no-install carbon; \
