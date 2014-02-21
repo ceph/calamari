@@ -4,10 +4,12 @@
 Helpers for writing django views and rest_framework ViewSets that get
 their data from cthulhu with zeroRPC
 """
-
+from collections import defaultdict
+import logging
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
+import time
 from zerorpc import LostRemote, RemoteError
 from rest_framework.response import Response
 import zerorpc
@@ -26,19 +28,53 @@ class DataObject(object):
         self.__dict__.update(data)
 
 
+class ProfiledRpcClient(zerorpc.Client):
+    # Finger in the air, over 100ms is too long
+    SLOW_THRESHOLD = 0.2
+
+    def __init__(self, *args, **kwargs):
+        super(ProfiledRpcClient, self).__init__(*args, **kwargs)
+
+        self.method_times = defaultdict(list)
+
+    def _process_response(self, request_event, bufchan, timeout):
+        a = time.time()
+        result = super(ProfiledRpcClient, self)._process_response(request_event, bufchan, timeout)
+        b = time.time()
+        self.method_times[request_event.name].append(b - a)
+        return result
+
+    def report(self, log):
+        total = 0.0
+        for method_name, times in self.method_times.items():
+            for time in times:
+                if time > self.SLOW_THRESHOLD:
+                    log.warn("Slow RPC '%s' (%sms)" % (method_name, time * 1000))
+                total += time
+            log.debug("RPC timing for '%s': %s/%s/%s avg/min/max ms" % (
+                method_name, sum(times) * 1000.0 / len(times), min(times) * 1000.0, max(times) * 1000.0
+            ))
+        log.debug("Total time in RPC: %sms" % (total * 1000))
+
+
 class RPCView(APIView):
     serializer_class = None
+    log = logging.getLogger('django.request.profile')
 
     def __init__(self, *args, **kwargs):
         super(RPCView, self).__init__(*args, **kwargs)
-        self.client = zerorpc.Client()
+        self.client = ProfiledRpcClient()
 
     def dispatch(self, request, *args, **kwargs):
         self.client.connect(config.get('cthulhu', 'rpc_url'))
+        a = time.time()
         try:
             return super(RPCView, self).dispatch(request, *args, **kwargs)
         finally:
+            b = time.time()
             self.client.close()
+            self.log.debug("[%sms] %s" % ((b - a) * 1000.0, request.path))
+            self.client.report(self.log)
 
     @property
     def help(self):
