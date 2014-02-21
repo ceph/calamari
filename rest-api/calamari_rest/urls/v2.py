@@ -56,7 +56,7 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)/command/(?P<command>[a-zA-Z_]+)$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'validate_command', 'post': 'apply'})),
 
-# Direct access to SyncObjects, DerivedObjects, graphite stats
+    # Direct access to SyncObjects, DerivedObjects, graphite stats
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',
         calamari_rest.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',

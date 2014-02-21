@@ -417,7 +417,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
     def apply(self, request, fsid, osd_id, command):
         if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
-            return Response(self.client.apply(fsid, OSD, int(osd_id), command), status=200)
+            return Response(self.client.apply(fsid, OSD, int(osd_id), command), status=202)
         else:
             return Response('{0} not valid on {1}'.format(command, osd_id), status=403)
 
