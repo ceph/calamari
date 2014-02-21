@@ -34,7 +34,7 @@ class PluginMonitor(gevent.greenlet.Greenlet):
         loaded_plugins = []
         # FIXME this assumes that plugin_path has been added to PYTHONPATH and/or is in site-packages
         plugin_path = config.get('cthulhu', 'plugin_path')
-        module = os.path.basename(plugin_path)
+
         if os.path.exists(plugin_path):
             for plugin in os.listdir(plugin_path):
                 plugin = plugin.split('.')[0]
@@ -43,7 +43,7 @@ class PluginMonitor(gevent.greenlet.Greenlet):
 
                 status_processor = None
                 try:
-                    plugin_module = importlib.import_module('.'.join((module, plugin, 'status_processor')))
+                    plugin_module = importlib.import_module('.'.join((plugin, 'status_processor')))
                     status_processor = plugin_module.StatusProcessor()
                 except ImportError, e:
                     log.info("Error importing plugin %s %s" % (plugin, str(e)))
