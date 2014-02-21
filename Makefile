@@ -20,13 +20,13 @@ build-venv: venv
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
 	  'pyzmq>=13.0'; \
+	./bin/python ./bin/pip install \
+	  https://github.com/jcsp/whisper/tarball/calamari; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements.production.txt; \
 	./bin/python ./bin/pip install --no-install carbon; \
 	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 		build/carbon/setup.py; \
-	./bin/python ./bin/pip install \
-	  https://github.com/jcsp/whisper/tarball/calamari; \
 	./bin/python ./bin/pip install \
 		  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
