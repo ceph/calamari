@@ -395,6 +395,10 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
 
+        osd_commands = self.client.list_available_commands(fsid, OSD, [x['osd'] for x in osds])
+        for o in osds:
+            o['valid_commands'] = osd_commands[o['osd']]
+
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
@@ -412,23 +416,25 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
     def apply(self, request, fsid, osd_id, command):
-        if command in self.client.validate(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
+        if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
             return Response(self.client.apply(fsid, OSD, int(osd_id), command), status=200)
         else:
             return Response('{0} not valid on {1}'.format(command, osd_id), status=403)
 
-    def implemented_commands(self, request, fsid):
+    def get_implemented_commands(self, request, fsid):
         return Response(OSD_IMPLEMENTED_COMMANDS)
 
-    def valid_commands(self, request, fsid, osd_id=None, command=None):
+    def get_valid_commands(self, request, fsid, osd_id=None):
         osds = []
         if osd_id is None:
             osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).keys()
         else:
             osds.append(int(osd_id))
 
-        return Response(self.client.validate(fsid, OSD, osds))
+        return Response(self.client.get_valid_commands(fsid, OSD, osds))
 
+    def validate_command(self, request, fsid, osd_id, command):
+        return Response(command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'))
 
 class SyncObject(RPCViewSet):
     """

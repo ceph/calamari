@@ -166,7 +166,7 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
-    def validate(self, fs_id, object_type, object_ids):
+    def get_available_commands(self, fs_id, object_type, object_ids):
         """
         Determine what commands can be run on OSD object_ids
         """
@@ -174,7 +174,7 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
         cluster = self._fs_resolve(fs_id)
-        return cluster.request_validate(object_type, object_ids)
+        return cluster.get_valid_commands(object_type, object_ids)
 
     def create(self, fs_id, object_type, attributes):
         """

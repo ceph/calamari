@@ -48,7 +48,7 @@ class OsdRequestFactory(RequestFactory):
     def repair(self, osd_id):
         return UserRequest(self._cluster_monitor.fsid, self._cluster_monitor.name, 'osd repair {0}'.format(osd_id))
 
-    def _get_valid_commands(self, osds):
+    def get_valid_commands(self, osds):
         """
         For each OSD in osds list valid commands
         """
