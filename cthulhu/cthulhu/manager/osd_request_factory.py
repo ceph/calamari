@@ -4,9 +4,6 @@ from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
 class OsdRequestFactory(RequestFactory):
-    def __init__(self):
-        self._headline =
-
 
     def update(self, osd_id, attributes):
         commands = []
@@ -50,16 +47,16 @@ class OsdRequestFactory(RequestFactory):
                            'osd scrub {0}'.format(osd_id))
 
     def deep_scrub(self, osd_id):
-         return UserRequest("Deep-scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
-                            self._cluster_monitor.fsid,
-                            self._cluster_monitor.name,
-                            'osd deep-scrub {0}'.format(osd_id))
+        return UserRequest("Deep-scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
+                           self._cluster_monitor.fsid,
+                           self._cluster_monitor.name,
+                           'osd deep-scrub {0}'.format(osd_id))
 
     def repair(self, osd_id):
         return UserRequest("Repairing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
-                            self._cluster_monitor.fsid,
-                            self._cluster_monitor.name,
-                            'osd repair {0}'.format(osd_id))
+                           self._cluster_monitor.fsid,
+                           self._cluster_monitor.name,
+                           'osd repair {0}'.format(osd_id))
 
     def get_valid_commands(self, osds):
         """
