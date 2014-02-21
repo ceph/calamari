@@ -178,10 +178,14 @@ class UserRequestBase(object):
 
 class UserRequest(UserRequestBase):
 
+    def __init__(self, headline, fsid, cluster_name, commands):
+        super(UserRequest, self).__init__(fsid, cluster_name, commands)
+        self._await_version = None
+        self._headline = headline
+
     @property
     def headline(self):
-        # TODO what should really go here
-        return self._commands
+        return self._headline
 
 
 class OsdMapModifyingRequest(UserRequestBase):
