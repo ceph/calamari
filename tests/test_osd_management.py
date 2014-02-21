@@ -88,4 +88,4 @@ class TestOsdManagement(RequestTestCase):
             self.assertIn(x, osd.get(str(osd_id)).get('valid_commands'))
             osd_url = "cluster/%s/osd/%s/command/%s" % (fsid, osd_id, x)
             response = self.api.post(osd_url)
-            self.assertEqual(response.status_code, 200, 'HTTP status not 200 for %s' % osd_url)
+            self.assertEqual(response.status_code, 202, 'HTTP status not 202 for %s' % osd_url)
