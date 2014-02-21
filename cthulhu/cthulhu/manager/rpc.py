@@ -166,7 +166,7 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
-    def get_available_commands(self, fs_id, object_type, object_ids):
+    def get_valid_commands(self, fs_id, object_type, object_ids):
         """
         Determine what commands can be run on OSD object_ids
         """

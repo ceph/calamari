@@ -395,7 +395,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
 
-        osd_commands = self.client.list_available_commands(fsid, OSD, [x['osd'] for x in osds])
+        osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds])
         for o in osds:
             o['valid_commands'] = osd_commands[o['osd']]
 
