@@ -198,4 +198,4 @@ USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
 
 # List of allowable things to send as ceph commands to OSDs
-OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub','repair']
+OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub', 'repair']

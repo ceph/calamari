@@ -4,6 +4,7 @@ from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import UserRequest
 from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS
 
+
 class TestOSDFactory(TestCase):
 
     salt_local_client = MagicMock(run_job=MagicMock())
@@ -15,9 +16,8 @@ class TestOSDFactory(TestCase):
         attributes = {'name': 'I am a fake',
                       'fsid': 12345,
                       'get_sync_object.return_value': fake_cluster_monitor,
-                      'osds_by_id': {0:{'up': True}, 1:{'up': False}}}
+                      'osds_by_id': {0: {'up': True}, 1: {'up': False}}}
         fake_cluster_monitor.configure_mock(**attributes)
-
 
         self.osd_request_factory = OsdRequestFactory(fake_cluster_monitor)
 
@@ -29,7 +29,6 @@ class TestOSDFactory(TestCase):
         scrub = self.osd_request_factory.scrub(0)
         self.assertIsInstance(scrub, UserRequest, 'Testing Scrub')
 
-        #import pdb; pdb.set_trace()
         scrub.submit(54321)
         self.salt_local_client.run_job.assert_called_with(54321, 'ceph.rados_commands', [12345, 'I am a fake', 'osd scrub 0'])
 

@@ -1,6 +1,4 @@
 import uuid
-import salt
-import salt.client
 from salt.client import LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
@@ -184,6 +182,7 @@ class UserRequest(UserRequestBase):
     def headline(self):
         # TODO what should really go here
         return self._commands
+
 
 class OsdMapModifyingRequest(UserRequestBase):
     """
