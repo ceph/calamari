@@ -28,10 +28,10 @@ class MinionSim(threading.Thread):
             return host, "{0}.{1}".format(host, domain)
 
         config_file = os.path.join(self._config_dir, 'cluster.json')
-        if not os.path.exists(config_file):
-            CephCluster.create(config_file, [get_dns(i)[1] for i in range(0, self._count)], osds_per_host=osds_per_host)
-
         self.cluster = CephCluster(config_file)
+        if not os.path.exists(config_file):
+            self.cluster.create([get_dns(i)[1] for i in range(0, self._count)], osds_per_host=osds_per_host)
+            self.cluster.save()
 
         # An XMLRPC service for the minions' fake ceph plugins to
         # get their state
