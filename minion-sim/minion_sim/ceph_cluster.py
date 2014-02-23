@@ -1,6 +1,7 @@
 from collections import defaultdict
 import hashlib
 import json
+import os
 import uuid
 import random
 import datetime
@@ -840,21 +841,65 @@ def get_hostname(fqdn):
     return fqdn.split(".")[0]
 
 
-class CephCluster(object):
-    """
-    An approximate simulation of a Ceph cluster.
+class CephClusterState(object):
+    def __init__(self, filename=None):
+        self._filename = filename
+        if self._filename is not None and os.path.exists(self._filename):
+            self.load()
+        else:
+            self.fsid = None
+            self.name = None
 
-    Use for driving test/demo environments.
-    """
+            self._service_locations = {
+                "osd": {},
+                "mon": {}
+            }
+            self._host_services = defaultdict(list)
+            self._objects = dict()
+            self._pg_stats = {}
+            self._osd_stats = {}
 
-    @staticmethod
-    def create(filename, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2 * TERABYTES):
+    def load(self):
+        assert self._filename is not None
+
+        data = json.load(open(self._filename))
+        self._service_locations = data['service_locations']
+        self._host_services = defaultdict(list, data['host_services'])
+        self.fsid = data['fsid']
+        self.name = data['name']
+
+        # The public objects (health, OSD map, brief PG info, etc)
+        # This is the subset the RADOS interface that Calamari needs
+        self._objects = data['objects']
+
+        # The hidden state (in real ceph this would be accessible but
+        # we hide it so that we can use simplified versions of things
+        # like the PG map)
+        self._osd_stats = data['osd_stats']
+        self._pg_stats = data['pg_stats']
+
+    def save(self):
+        assert self._filename is not None
+
+        dump = {
+            'fsid': self.fsid,
+            'name': self.name,
+            'objects': self._objects,
+            'osd_stats': self._osd_stats,
+            'pg_stats': self._pg_stats,
+            'service_locations': self._service_locations,
+            'host_services': self._host_services
+        }
+        json.dump(dump, open(self._filename, 'w'))
+
+    def create(self, fqdns, mon_count=3, osds_per_host=4, osd_overlap=False, osd_size=2 * TERABYTES):
         """
         Generate initial state for a cluster
         """
-        log.info("Creating ceph_cluster at %s" % filename)
-        fsid = uuid.uuid4().__str__()
-        name = 'ceph_fake'
+        log.info("Creating ceph_cluster")
+
+        self.fsid = uuid.uuid4().__str__()
+        self.name = 'ceph_fake'
 
         mon_hosts = fqdns[0:mon_count]
         if osd_overlap:
@@ -862,37 +907,29 @@ class CephCluster(object):
         else:
             osd_hosts = fqdns
 
-        service_locations = {
-            "osd": {},
-            "mon": {}
-        }
-        host_services = defaultdict(list)
-
         osd_id = 0
         for fqdn in osd_hosts:
             for i in range(0, osds_per_host):
-                service_locations["osd"][osd_id] = fqdn
-                host_services[fqdn].append({
+                self._service_locations["osd"][osd_id] = fqdn
+                self._host_services[fqdn].append({
                     'type': 'osd',
                     'id': osd_id,
-                    'fsid': fsid
+                    'fsid': self.fsid
                 })
                 osd_id += 1
 
         for fqdn in mon_hosts:
             mon_id = get_hostname(fqdn)
-            service_locations["mon"][mon_id] = fqdn
-            host_services[fqdn].append({
+            self._service_locations["mon"][mon_id] = fqdn
+            self._host_services[fqdn].append({
                 "type": "mon",
                 "id": mon_id,
-                'fsid': fsid
+                'fsid': self.fsid
             })
-
-        objects = dict()
 
         # Mon health check output
         # =======================
-        objects['health'] = {
+        self._objects['health'] = {
             'detail': [],
             'health': {
                 'health_services': [],
@@ -904,15 +941,14 @@ class CephCluster(object):
 
         # Cluster config settings
         # =======================
-        objects['config'] = DEFAULT_CONFIG
+        self._objects['config'] = DEFAULT_CONFIG
 
         # OSD map
         # =======
         osd_count = len(osd_hosts) * osds_per_host
 
-        osd_stats = {}
-        objects['osd_map'] = {
-            'fsid': fsid,
+        self._objects['osd_map'] = {
+            'fsid': self.fsid,
             'max_osd': osd_count,
             'epoch': 1,
             'osds': [],
@@ -924,7 +960,7 @@ class CephCluster(object):
             # TODO populate public_addr and cluster_addr from imagined
             # interface addresses of servers
             osd_id = i
-            objects['osd_map']['osds'].append({
+            self._objects['osd_map']['osds'].append({
                 'osd': osd_id,
                 'uuid': uuid.uuid4().__str__(),
                 'up': 1,
@@ -941,13 +977,13 @@ class CephCluster(object):
                 'heartbeat_front_addr': "",
                 "state": ["exists", "up"]
             })
-            osd_stats[osd_id] = {
+            self._osd_stats[osd_id] = {
                 'total_bytes': osd_size
             }
 
         for i, pool in enumerate(['data', 'metadata', 'rbd']):
             # TODO these should actually have a different crush ruleset etc each
-            objects['osd_map']['pools'].append(_pool_template(pool, i, 64))
+            self._objects['osd_map']['pools'].append(_pool_template(pool, i, 64))
 
         tree = {
             "nodes": [
@@ -962,7 +998,7 @@ class CephCluster(object):
         }
 
         host_tree_id = -2
-        for fqdn, services in host_services.items():
+        for fqdn, services in self._host_services.items():
             # Entries for OSDs on this host
             for s in services:
                 if s['type'] != 'osd':
@@ -993,13 +1029,13 @@ class CephCluster(object):
             tree['nodes'][0]['children'].append(host_tree_id)
             host_tree_id -= 1
 
-        objects['osd_map']['tree'] = tree
+        self._objects['osd_map']['tree'] = tree
 
         # Mon status
         # ==========
-        objects['mon_map'] = {
+        self._objects['mon_map'] = {
             'epoch': 0,
-            'fsid': fsid,
+            'fsid': self.fsid,
             'modified': datetime.datetime.now().isoformat(),
             'created': datetime.datetime.now().isoformat(),
             'mons': [
@@ -1009,21 +1045,21 @@ class CephCluster(object):
         }
         for i, mon_fqdn in enumerate(mon_hosts):
             # TODO: populate addr
-            objects['mon_map']['mons'].append({
+            self._objects['mon_map']['mons'].append({
                 'rank': i,
                 'name': get_hostname(mon_fqdn),
                 'addr': ""
             })
-            objects['mon_map']['quorum'].append(i)
-        objects['mon_status'] = {
-            "election_epoch": 0,
+            self._objects['mon_map']['quorum'].append(i)
+        self._objects['mon_status'] = {
+            "election_epoch": 77,
             "rank": 0,  # IRL the rank here is an arbitrary one from within quorum
             "state": "leader",
-            "monmap": objects['mon_map'],
-            "quorum": [m['rank'] for m in objects['mon_map']['mons']]
+            "monmap": self._objects['mon_map'],
+            "quorum": [m['rank'] for m in self._objects['mon_map']['mons']]
         }
 
-        objects['mds_map'] = {
+        self._objects['mds_map'] = {
             "max_mds": 1,
             "in": [],
             "up": {},
@@ -1032,44 +1068,43 @@ class CephCluster(object):
 
         # PG map
         # ======
-        pg_stats = {}
-        objects['pg_brief'] = []
+        self._objects['pg_brief'] = []
         # Don't maintain a full PG map but do maintain a version counter.
-        objects['pg_map'] = {"version": 1}
-        for pool in objects['osd_map']['pools']:
+        self._objects['pg_map'] = {"version": 1}
+        for pool in self._objects['osd_map']['pools']:
             n_replicas = pool['size']
             for pg_num in range(pool['pg_num']):
                 pg_id = "%s.%s" % (pool['pool'], pg_num)
                 osds = pseudorandom_subset(range(0, osd_count), n_replicas, pg_id)
-                objects['pg_brief'].append({
+                self._objects['pg_brief'].append({
                     'pgid': pg_id,
                     'state': 'active+clean',
                     'up': osds,
                     'acting': osds
                 })
 
-                pg_stats[pg_id] = {
+                self._pg_stats[pg_id] = {
                     'num_objects': 0,
                     'num_bytes': 0,
                     'num_bytes_wr': 0,
                     'num_bytes_rd': 0
                 }
 
-        json.dump({'service_locations': service_locations,
-                   'host_services': host_services,
-                   'fsid': fsid,
-                   'name': name,
-                   'objects': objects,
-                   'osd_stats': osd_stats,
-                   'pg_stats': pg_stats}, open(filename, 'w'))
+
+class CephCluster(CephClusterState):
+    """
+    An approximate simulation of a Ceph cluster.
+
+    Use for driving test/demo environments.
+    """
 
     def get_services(self, fqdn):
         return self._host_services[fqdn]
 
     def get_heartbeat(self, fsid):
         return {
-            'name': self._name,
-            'fsid': self._fsid,
+            'name': self.name,
+            'fsid': self.fsid,
             'versions': {
                 'health': md5(json.dumps(self._objects['health'])),
                 'mds_map': 1,
@@ -1093,7 +1128,7 @@ class CephCluster(object):
             version = 1
 
         return {
-            'fsid': self._fsid,
+            'fsid': self.fsid,
             'version': version,
             'type': sync_type,
             'data': data
@@ -1373,7 +1408,7 @@ class CephCluster(object):
             for pool_id, pstats in pool_stats.items():
                 total_used += pstats['bytes_used']
                 for k, v in pstats.items():
-                    stats["ceph.cluster.{0}.pool.{1}.{2}".format(self._name, pool_id, k)] = v
+                    stats["ceph.cluster.{0}.pool.{1}.{2}".format(self.name, pool_id, k)] = v
 
             total_space = sum([o['total_bytes'] for o in self._osd_stats.values()])
 
@@ -1384,21 +1419,9 @@ class CephCluster(object):
                 'total_avail': (total_space - total_used) / 1024
             }
             for k, v in df_stats.items():
-                stats["ceph.cluster.{0}.df.{1}".format(self._name, k)] = v
+                stats["ceph.cluster.{0}.df.{1}".format(self.name, k)] = v
 
         return stats.items()
-
-    def save(self):
-        dump = {
-            'fsid': self._fsid,
-            'name': self._name,
-            'objects': self._objects,
-            'osd_stats': self._osd_stats,
-            'pg_stats': self._pg_stats,
-            'service_locations': self._service_locations,
-            'host_services': self._host_services
-        }
-        json.dump(dump, open(self._filename, 'w'))
 
     def get_service_fqdns(self, service_type):
         """
@@ -1407,27 +1430,8 @@ class CephCluster(object):
         """
         return self._service_locations[service_type].values()
 
-    @property
-    def fsid(self):
-        return self._fsid
-
     def get_name(self):
-        return self._name
-
-    def __init__(self, filename):
-        self._filename = filename
-        data = json.load(open(self._filename))
-        self._service_locations = data['service_locations']
-        self._host_services = defaultdict(list, data['host_services'])
-        self._fsid = data['fsid']
-        self._name = data['name']
-
-        # The public objects (health, OSD map, brief PG info, etc)
-        # This is the subset the RADOS interface that Calamari needs
-        self._objects = data['objects']
-
-        # The hidden state (in real ceph this would be accessible but
-        # we hide it so that we can use simplified versions of things
-        # like the PG map)
-        self._osd_stats = data['osd_stats']
-        self._pg_stats = data['pg_stats']
+        """
+        Getter for the benefit of XMLRPC clients who can't access properties
+        """
+        return self.name
