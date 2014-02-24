@@ -41,19 +41,19 @@ class OsdRequestFactory(RequestFactory):
             ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def scrub(self, osd_id):
-        return UserRequest("Scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
+        return UserRequest("Scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
                            self._cluster_monitor.fsid,
                            self._cluster_monitor.name,
                            [('osd scrub', {'who': str(osd_id)})])
 
     def deep_scrub(self, osd_id):
-        return UserRequest("Deep-scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
+        return UserRequest("Deep-scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
                            self._cluster_monitor.fsid,
                            self._cluster_monitor.name,
                            [('osd deep-scrub', {'who': str(osd_id)})])
 
     def repair(self, osd_id):
-        return UserRequest("Repairing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
+        return UserRequest("Repairing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
                            self._cluster_monitor.fsid,
                            self._cluster_monitor.name,
                            [('osd repair', {'who': str(osd_id)})])
