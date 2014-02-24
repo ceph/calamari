@@ -81,6 +81,10 @@ class ServiceState(object):
         # is whether Ceph believes the service to be in an 'up' state.
         self.running = True
 
+        # For mons, we keep a copy of mon_status so that we can make sense
+        # of situations where quorum is lost
+        self.status = None
+
     @property
     def id(self):
         return ServiceId(self.fsid, self.service_type, self.service_id)
@@ -237,7 +241,7 @@ class ServerMonitor(greenlet.Greenlet):
                 if not server_state.managed:
                     # Only pay attention to these services for unmanaged servers,
                     # for managed servers rely on ceph/server salt messages
-                    self._register_service(server_state, service_id, running=bool(osd['up']))
+                    self._register_service(server_state, service_id, bool(osd['up']), None)
 
         # Remove ServiceState for any OSDs for this FSID which are not
         # mentioned in hostname_to_osds
@@ -290,7 +294,7 @@ class ServerMonitor(greenlet.Greenlet):
         """
         Call back for when a ceph.service message is received from a salt minion
         """
-        log.debug("ServerMonitor.on_service_heartbeat: %s" % fqdn)
+        log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
         # For any service which was last reported on this server but
         # is now gone, mark it as not running
         new_server = True
@@ -343,7 +347,7 @@ class ServerMonitor(greenlet.Greenlet):
         for service_name, service in services_data.items():
             id_tuple = ServiceId(service['fsid'], service['type'], service['id'])
             seen_id_tuples.add(id_tuple)
-            self._register_service(server_state, id_tuple, running=True)
+            self._register_service(server_state, id_tuple, running=True, status=service['status'])
 
         for unseen_id_tuple in set(server_state.services.keys()) ^ seen_id_tuples:
             service_state = self.services[unseen_id_tuple]
@@ -356,7 +360,8 @@ class ServerMonitor(greenlet.Greenlet):
             # the ServiceState objects have been created
             self._eventer.on_server(server_state)
 
-    def _register_service(self, server_state, service_id, running):
+    def _register_service(self, server_state, service_id, running, status):
+        log.debug("ServerMonitor._register_service: %s" % (service_id,))
         try:
             service_state = self.services[service_id]
         except KeyError:
@@ -367,7 +372,8 @@ class ServerMonitor(greenlet.Greenlet):
             self._persister.create_service(Service(
                 fsid=service_state.fsid,
                 service_type=service_state.service_type,
-                service_id=service_state.service_id
+                service_id=service_state.service_id,
+                status=json.dumps(status)
             ), associate_fqdn=server_state.fqdn)
 
         if running != service_state.running:
@@ -379,6 +385,13 @@ class ServerMonitor(greenlet.Greenlet):
                 service_state.running = False
 
             self._persister.update_service(service_state.id, running=service_state.running)
+
+        if status != service_state.status:
+            # This usually means the mon status object has changed, we'll get one
+            # of these from each up mon every time the mon cluster state changes.
+            log.info("Service %s status update" % service_state)
+            service_state.status = status
+            self._persister.update_service(service_state.id, status=json.dumps(service_state.status))
 
         if service_state.server_state != server_state:
             old_server_state = service_state.server_state
@@ -431,6 +444,16 @@ class ServerMonitor(greenlet.Greenlet):
             result.append((service_id, server.fqdn if server else None))
         return result
 
+    def get_services(self, service_ids):
+        """
+        Look up a list of ServiceState objects by ID.
+
+        :param service_ids: A list of ServiceId
+        :return A list of the same length as service_ids, containing ServiceState
+                objects or None for any unfound ServiceIds.
+        """
+        return [self.services.get(service_id, None) for service_id in service_ids]
+
     def delete(self, fqdn):
         """
         Forget about this server.  Does not prevent it popping back into
@@ -469,18 +492,6 @@ class ServerMonitor(greenlet.Greenlet):
 
         del self.fsid_services[fsid]
 
-    def dump(self, server_state):
-        """
-        Convert a ServerState into a serializable format
-        """
-        return {
-            'fqdn': server_state.fqdn,
-            'hostname': server_state.hostname,
-            'managed': server_state.managed,
-            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
-            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
-        }
-
     def _addr_to_iface(self, addr, ip_interfaces):
         """
         Resolve an IP address to a network interface.
@@ -493,6 +504,18 @@ class ServerMonitor(greenlet.Greenlet):
                 return iface_name
 
         return None
+
+    def dump(self, server_state):
+        """
+        Convert a ServerState into a serializable format
+        """
+        return {
+            'fqdn': server_state.fqdn,
+            'hostname': server_state.hostname,
+            'managed': server_state.managed,
+            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
+            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+        }
 
     def dump_cluster(self, server_state, cluster):
         """
