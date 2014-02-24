@@ -410,6 +410,9 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
         osd['pools'] = pools
 
+        osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
+        osd.update(osd_commands[int(osd_id)])
+
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):
@@ -434,7 +437,8 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.client.get_valid_commands(fsid, OSD, osds))
 
     def validate_command(self, request, fsid, osd_id, command):
-        return Response(command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'))
+        return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
+
 
 class SyncObject(RPCViewSet):
     """
