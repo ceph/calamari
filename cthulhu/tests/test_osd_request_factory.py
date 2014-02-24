@@ -30,7 +30,7 @@ class TestOSDFactory(TestCase):
         self.assertIsInstance(scrub, UserRequest, 'Testing Scrub')
 
         scrub.submit(54321)
-        self.salt_local_client.run_job.assert_called_with(54321, 'ceph.rados_commands', [12345, 'I am a fake', 'osd scrub 0'])
+        self.salt_local_client.run_job.assert_called_with(54321, 'ceph.rados_commands', [12345, 'I am a fake', [('osd scrub', {'who': '0'})]])
 
     def testDeepScrub(self):
         deep_scrub = self.osd_request_factory.deep_scrub(0)

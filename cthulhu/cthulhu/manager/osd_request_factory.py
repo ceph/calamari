@@ -52,13 +52,11 @@ class OsdRequestFactory(RequestFactory):
                            self._cluster_monitor.name,
                            [('osd deep-scrub', {'who': str(osd_id)})])
 
-
     def repair(self, osd_id):
         return UserRequest("Repairing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.fsid, id=osd_id),
                            self._cluster_monitor.fsid,
                            self._cluster_monitor.name,
                            [('osd repair', {'who': str(osd_id)})])
-
 
     def get_valid_commands(self, osds):
         """
