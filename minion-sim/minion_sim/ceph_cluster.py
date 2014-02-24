@@ -1016,6 +1016,9 @@ class CephCluster(object):
             })
             objects['mon_map']['quorum'].append(i)
         objects['mon_status'] = {
+            "election_epoch": 0,
+            "rank": 0,  # IRL the rank here is an arbitrary one from within quorum
+            "state": "leader",
             "monmap": objects['mon_map'],
             "quorum": [m['rank'] for m in objects['mon_map']['mons']]
         }
@@ -1071,7 +1074,7 @@ class CephCluster(object):
                 'health': md5(json.dumps(self._objects['health'])),
                 'mds_map': 1,
                 'mon_map': 1,
-                'mon_status': 1,
+                'mon_status': self._objects['mon_status']['election_epoch'],
                 'osd_map': self._objects['osd_map']['epoch'],
                 'osd_tree': 1,
                 'pg_map': self._objects['pg_map']['version'],
