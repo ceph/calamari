@@ -53,12 +53,13 @@ def main():
                 'id': str(service['id']),
                 'type': service['type'],
                 'cluster': cluster_name,
-                'fsid': service['fsid']
+                'fsid': service['fsid'],
+                'status': None
             }
             if service['type'] == 'mon':
                 fsid = service['fsid']
-
                 report_clusters[fsid] = cluster.get_heartbeat(fsid)
+                services[service_name]['status'] = cluster.get_cluster_object(fsid, 'mon_status', None)['data']
 
         __salt__['event.fire_master'](services, "ceph/server")
         for fsid, cluster_data in report_clusters.items():

@@ -33,7 +33,12 @@ class Service(Base):
 
     fsid = Column(Text, primary_key=True)
     service_type = Column(Text, primary_key=True)
+    # mon name or OSD id (as string)
     service_id = Column(Text, primary_key=True)
+
+    # Whether the service process is running
     running = Column(Boolean)
+    # Any status metadata (mon_status) reported, as json string
+    status = Column(Text)
 
     server = Column(Integer, ForeignKey("cthulhu_server.id"), nullable=True)

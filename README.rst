@@ -1,13 +1,10 @@
 
 
-DEVELOPMENT BRANCH
-==================
-
-Calamari 2.0
-============
+Calamari server
+===============
 
 Check out the `Architecture document`_ to get an idea of the overall
-structure.
+structure this code is aiming towards.
 
 .. _Architecture document: https://docs.google.com/document/d/11Sq5UW3ZzeTwPBk3hPbrPI002ScycZQOzXPev7ixJPU/edit?usp=sharing
 

@@ -351,6 +351,11 @@ class RpcInterface(object):
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)
 
+    def status_by_service(self, services):
+        result = self._manager.servers.get_services([ServiceId(*s) for s in services])
+        return [({'running': ss.running, 'server': ss.server_state.fqdn, 'status': ss.status} if ss else None)
+                for ss in result]
+
 
 class RpcThread(gevent.greenlet.Greenlet):
     """
