@@ -23,3 +23,6 @@ class RequestFactory(object):
 
     def create(self, attributes):
         raise NotImplementedError()
+
+    def get_valid_commands(self, obj_ids):
+        return {}

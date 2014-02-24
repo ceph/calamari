@@ -66,7 +66,7 @@ class PoolSerializer(serializers.Serializer):
 
 class OsdSerializer(serializers.Serializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'public_addr', 'cluster_addr')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr')
 
     id = serializers.IntegerField(source='osd', help_text="ID of this OSD within this cluster")
     uuid = fields.UuidField(help_text="Globally unique ID for this OSD")
@@ -75,6 +75,7 @@ class OsdSerializer(serializers.Serializer):
     reweight = serializers.FloatField(help_text="CRUSH weight factor")
     server = serializers.CharField(help_text="FQDN of server this OSD was last running on")
     pools = serializers.Field(help_text="List of pool IDs which use this OSD for storage")
+    valid_commands = serializers.CharField(help_text="List of commands that can be applied to this OSD")
 
     public_addr = serializers.CharField(help_text="Public/frontend IP address")
     cluster_addr = serializers.CharField(help_text="Cluster/backend IP address")

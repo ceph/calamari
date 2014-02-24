@@ -431,15 +431,12 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     def _request(self, method, obj_type, *args, **kwargs):
         """
-        Create and submit UserRequest for a create, update or delete.
+        Create and submit UserRequest for an apply, create, update or delete.
         """
 
         # nosleep during preparation phase (may touch ClusterMonitor/ServerMonitor state)
         with nosleep_mgr():
-            try:
-                request_factory = self._request_factories[obj_type](self)
-            except KeyError:
-                raise ValueError("{0} is not one of {1}".format(obj_type, self._request_factories.keys()))
+            request_factory = self.get_request_factory(obj_type)
 
             if self._favorite_mon is None:
                 raise ClusterUnavailable("Ceph cluster is currently unavailable for commands")
@@ -464,3 +461,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     def request_update(self, obj_type, obj_id, attributes):
         return self._request('update', obj_type, obj_id, attributes)
+
+    def request_apply(self, obj_type, obj_id, command):
+        return self._request(command, obj_type, obj_id)
+
+    def get_valid_commands(self, object_type, obj_ids):
+        return self.get_request_factory(object_type).get_valid_commands(obj_ids)
+
+    def get_request_factory(self, object_type):
+        try:
+            return self._request_factories[object_type](self)
+        except KeyError:
+            raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))

@@ -35,6 +35,14 @@ be more specific about what they are changing and avoid unintended side effects.
 object is
 
 
+Uses of HTTP verbs to apply cluster commands
+--------------------------------------------
+
+Components of the cluster support operations which do not change the objects exposed in the API.
+These actions are identified using the <object_type>/command path component they can be discovered
+with ``GET`` and applied with ``POST``
+
+
 Bulk modification and deletion
 ------------------------------
 

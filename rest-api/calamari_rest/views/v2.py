@@ -19,7 +19,7 @@ from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
 
 from cthulhu.config import CalamariConfig
-from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, OSD_IMPLEMENTED_COMMANDS
 # FIXME: these imports of cthulhu stuff from the rest layer are too much
 from cthulhu.manager.types import SYNC_OBJECT_TYPES, ServiceId
 from cthulhu.manager import derived
@@ -362,7 +362,7 @@ but those without static defaults will be set to null.
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
-Manage Ceph OSDs.
+Manage Ceph OSDs. Apply ceph commands with osd/commands/{scrub, repair, ...}
 
 Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
@@ -395,6 +395,10 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
 
+        osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds])
+        for o in osds:
+            o.update(osd_commands[o['osd']])
+
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
@@ -406,10 +410,34 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
         osd['pools'] = pools
 
+        osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
+        osd.update(osd_commands[int(osd_id)])
+
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):
         return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
+
+    def apply(self, request, fsid, osd_id, command):
+        if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
+            return Response(self.client.apply(fsid, OSD, int(osd_id), command), status=202)
+        else:
+            return Response('{0} not valid on {1}'.format(command, osd_id), status=403)
+
+    def get_implemented_commands(self, request, fsid):
+        return Response(OSD_IMPLEMENTED_COMMANDS)
+
+    def get_valid_commands(self, request, fsid, osd_id=None):
+        osds = []
+        if osd_id is None:
+            osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).keys()
+        else:
+            osds.append(int(osd_id))
+
+        return Response(self.client.get_valid_commands(fsid, OSD, osds))
+
+    def validate_command(self, request, fsid, osd_id, command):
+        return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
 
 
 class SyncObject(RPCViewSet):

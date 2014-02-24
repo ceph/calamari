@@ -1,9 +1,10 @@
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap
-from cthulhu.manager.user_request import OsdMapModifyingRequest
+from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS
+from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
 class OsdRequestFactory(RequestFactory):
+
     def update(self, osd_id, attributes):
         commands = []
 
@@ -38,3 +39,38 @@ class OsdRequestFactory(RequestFactory):
             "Modifying {cluster_name}-osd.{id} ({attrs})".format(
                 cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
             ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+    def scrub(self, osd_id):
+        return UserRequest("Scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+                           self._cluster_monitor.fsid,
+                           self._cluster_monitor.name,
+                           [('osd scrub', {'who': str(osd_id)})])
+
+    def deep_scrub(self, osd_id):
+        return UserRequest("Deep-scrubbing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+                           self._cluster_monitor.fsid,
+                           self._cluster_monitor.name,
+                           [('osd deep-scrub', {'who': str(osd_id)})])
+
+    def repair(self, osd_id):
+        return UserRequest("Repairing {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+                           self._cluster_monitor.fsid,
+                           self._cluster_monitor.name,
+                           [('osd repair', {'who': str(osd_id)})])
+
+    def get_valid_commands(self, osds):
+        """
+        For each OSD in osds list valid commands
+        """
+        ret_val = {}
+        osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+        for osd_id in osds:
+            try:
+                if osd_map.osds_by_id[osd_id]['up']:
+                    ret_val[osd_id] = {'valid_commands': OSD_IMPLEMENTED_COMMANDS}
+                else:
+                    ret_val[osd_id] = {'valid_commands': []}
+            except KeyError:
+                pass
+
+        return ret_val

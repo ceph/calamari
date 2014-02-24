@@ -1,10 +1,9 @@
 from collections import defaultdict
-import sys
 import os
 import json
+import logging
+logging.basicConfig()
 
-from django.core.management import execute_from_command_line
-from StringIO import StringIO
 from tests.server_testcase import ServerTestCase
 
 
@@ -29,17 +28,9 @@ class TestApi(ServerTestCase):
         from cthulhu.manager import derived
         from calamari_rest.management.commands.api_docs import ApiIntrospector
 
-        url_list_buffer = StringIO()
-
-        # Run 'api_doc --list-urls' to get the API docs view of what URLs exist
-        old_stdout = sys.stdout
-        sys.stdout = url_list_buffer
-        execute_from_command_line(["", "api_docs", "--list-urls"])
-        sys.stdout.flush()
-        sys.stdout = old_stdout
-        url_patterns = json.loads(url_list_buffer.getvalue())
-
         url_patterns = ApiIntrospector("calamari_rest.urls.v2").get_url_list()
+        from pprint import pprint
+        pprint(url_patterns)
 
         # Spin up a running Calamari+Ceph environment
         self.ceph_ctl.configure(3)
@@ -69,7 +60,8 @@ class TestApi(ServerTestCase):
             "<request_id>": [request_id],
             "user/<pk>": ["user/1"],
             "<log_path>": "ceph/ceph.log",
-            "config/<key>": ["config/mds_bal_interval"]
+            "config/<key>": ["config/mds_bal_interval"],
+            "command/<command>": ["command/%s" %x for x in ("scrub", "deep_scrub", "repair")],
 
         }
 
@@ -99,7 +91,8 @@ class TestApi(ServerTestCase):
                     continue
                 response = self.api.get(url[len(prefix):])
                 if response.status_code != 200:
-                    fails.append(url)
+                    # import pdb; pdb.set_trace()
+                    fails.append((url, response.status_code, response.reason))
                     continue
                 else:
                     results[pattern][url] = response.content

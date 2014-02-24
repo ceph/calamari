@@ -66,3 +66,26 @@ class TestOsdManagement(RequestTestCase):
             self.assertEqual(response.status_code, 304)
             osd = self.api.get(osd_url).json()
             self.assertEqual(osd[k], v)
+
+    def test_apply(self):
+        """
+        That we can apply ceph commands to an OSD
+        """
+        commands = ['scrub', 'deep_scrub', 'repair']
+        osd_id = 1
+        fsid = self._wait_for_cluster()
+
+        osd_url = "cluster/%s/osd/%s" % (fsid, osd_id)
+        osd = self.api.get(osd_url).json()
+        self.assertEqual(osd['up'], True)
+
+        osd_url = "cluster/%s/osd/%s/command" % (fsid, osd_id)
+        response = self.api.get(osd_url)
+        self.assertEqual(response.status_code, 200, 'HTTP status not 200 for %s' % osd_url)
+        osd = response.json()
+
+        for x in commands:
+            self.assertIn(x, osd.get(str(osd_id)).get('valid_commands'))
+            osd_url = "cluster/%s/osd/%s/command/%s" % (fsid, osd_id, x)
+            response = self.api.post(osd_url)
+            self.assertEqual(response.status_code, 202, 'HTTP status not 202 for %s' % osd_url)

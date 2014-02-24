@@ -1,6 +1,9 @@
 from collections import namedtuple
 from cthulhu.util import memoize
+
+
 import logging
+
 
 log = logging.getLogger('cthulhu.types')
 
@@ -193,3 +196,6 @@ SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
 USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
+
+# List of allowable things to send as ceph commands to OSDs
+OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub', 'repair']

@@ -152,6 +152,30 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
+    def apply(self, fs_id, object_type, object_id, command):
+        """
+        Apply commands that do not modify an object in a cluster.
+        """
+        cluster = self._fs_resolve(fs_id)
+
+        if object_type == OSD:
+            # Run a resolve to throw exception if it's unknown
+            self._osd_resolve(cluster, object_id)
+            return cluster.request_apply(OSD, object_id, command)
+
+        else:
+            raise NotImplementedError(object_type)
+
+    def get_valid_commands(self, fs_id, object_type, object_ids):
+        """
+        Determine what commands can be run on OSD object_ids
+        """
+        if object_type != OSD:
+            raise NotImplementedError(object_type)
+
+        cluster = self._fs_resolve(fs_id)
+        return cluster.get_valid_commands(object_type, object_ids)
+
     def create(self, fs_id, object_type, attributes):
         """
         Create a new object in a cluster

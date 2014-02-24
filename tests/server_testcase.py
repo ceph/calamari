@@ -6,7 +6,7 @@ from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 from tests.utils import wait_until_true
 
-
+logging.basicConfig()
 log = logging.getLogger(__name__)
 
 
