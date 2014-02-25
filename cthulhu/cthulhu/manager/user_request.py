@@ -255,41 +255,85 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     Specialization of OsdMapModifyingRequest to issue a request
     to issue a second set of commands after PGs created by an
     initial set of commands have left the 'creating' state.
+
+    This handles issuing multiple smaller "osd pool set pg_num" calls when
+    the number of new PGs requested is greater than mon_osd_max_split_count,
+    caller is responsible for telling us how many we may create at once.
     """
     PRE_CREATE = 'pre_create'
     CREATING = 'creating'
     POST_CREATE = 'post_create'
 
-    def __init__(self, headline, fsid, cluster_name, commands, post_create_commands, pool_id, pg_count):
-        super(PgCreatingRequest, self).__init__(headline, fsid, cluster_name, commands)
-        self._post_create_commands = post_create_commands
+    # I need to know:
+    # - starting number of PGs
+    # - goal number of PGs
+    # - how many PGs I may create in one go.
+
+    def __init__(self, headline, fsid, cluster_name, commands,
+                 pool_id, pool_name, pgp_num,
+                 initial_pg_count, final_pg_count, block_size):
+        """
+        :param commands: Commands to execute before creating PGs
+        :param initial_pg_count: How many PGs the pool has before we change anything
+        :param final_pg_count: How many PGs the pool should have when we are done
+        :param block_size: How many PGs we may create in one "osd pool set" command
+        """
 
         self._phase = self.PRE_CREATE
         self._await_osd_version = None
 
         self._pool_id = pool_id
-        self._pg_count = pg_count
+        self._pool_name = pool_name
+        self._final_count = final_pg_count
+        self._initial_count = initial_pg_count
+        self._block_size = block_size
 
         self._headline = headline
+
+        self._intermediate_goal = min(self._final_count, self._initial_count + self._block_size)
+        commands.append(('osd pool set', {
+            'pool': self._pool_name,
+            'var': 'pg_num',
+            'val': self._intermediate_goal
+        }))
+        self._still_to_create = self._final_count - self._initial_count
+
+        self._post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
+
+        super(PgCreatingRequest, self).__init__(headline, fsid, cluster_name, commands)
 
     @property
     def status(self):
         if self._phase == self.CREATING:
-            return "Waiting for PGs to be created"
+            total_creating = (self._final_count - self._initial_count)
+            created = total_creating - self._still_to_create
+
+            if self._intermediate_goal != self._final_count:
+                currently_creating_min = max(self._intermediate_goal - self._block_size, self._initial_count)
+                currently_creating_max = self._intermediate_goal
+                return "Waiting for PG creation (%s/%s), currently creating PGs %s-%s" % (
+                    created, total_creating, currently_creating_min, currently_creating_max)
+            else:
+                return "Waiting for PG creation (%s/%s)" % (created, total_creating)
         else:
             return super(PgCreatingRequest, self).status
 
     def complete_jid(self, result):
         if self._phase == self.PRE_CREATE:
+            self.log.debug("PgCreatingRequest.complete_jid PRE_CREATE->CREATING")
             # The initial tranche of jobs has completed, start waiting
             # for PG creation to complete
             self.jid = None
             self._await_osd_version = result['versions']['osd_map']
             self._phase = self.CREATING
-            self.log.debug("PgCreatingRequest PRE_CREATE->CREATING")
         elif self._phase == self.POST_CREATE:
+            self.log.debug("PgCreatingRequest.complete_jid POST_CREATE->complete")
             # Act just like an OSD map modification
             super(PgCreatingRequest, self).complete_jid(result)
+        elif self._phase == self.CREATING:
+            self.jid = None
+            self.log.debug(
+                "PgCreatingRequest.complete_jid: successfully issued request for %s" % self._intermediate_goal)
 
     def on_map(self, sync_type, sync_objects):
         self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
@@ -312,10 +356,23 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                         if 'creating' not in states:
                             pg_counter += 1
 
-                self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s" % (pg_counter, self._pg_count))
-                if pg_counter >= self._pg_count:
-                    self._phase = self.POST_CREATE
-                    self.log.debug("PgCreatingRequest CREATING->POST_CREATE")
-                    self._submit(self._post_create_commands)
+                self._still_to_create = max(self._final_count - pg_counter, 0)
+                self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s (final %s)" % (
+                    pg_counter, self._intermediate_goal, self._final_count))
+                if pg_counter >= self._intermediate_goal:
+                    if self._intermediate_goal == self._final_count:
+                        self._phase = self.POST_CREATE
+                        self.log.debug("PgCreatingRequest.on_map CREATING->POST_CREATE")
+                        self._submit(self._post_create_commands)
+                    else:
+                        self.log.debug("PgCreatingREQUEST.on_map CREATING->CREATING")
+                        self._intermediate_goal = min(self._final_count, self._intermediate_goal + self._block_size)
+                        # Request another tranche of PGs up to _block_size
+                        self._submit([('osd pool set', {
+                            'pool': self._pool_name,
+                            'var': 'pg_num',
+                            'val': self._intermediate_goal
+                        })])
+
         elif self._phase == self.POST_CREATE:
             super(PgCreatingRequest, self).on_map(sync_type, sync_objects)
