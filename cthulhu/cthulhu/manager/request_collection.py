@@ -215,8 +215,7 @@ class RequestCollection(object):
                                 got_version = self._sync_objects.get_version(sync_type)
                                 if sync_type.cmp(got_version, want_version) >= 0:
                                     log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
-                                    with self._update_index(request):
-                                        request.on_map(sync_type, self._sync_objects)
+                                    request.on_map(sync_type, self._sync_objects)
 
                 except Exception as e:
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
