@@ -90,6 +90,11 @@ class PoolRequestFactory(RequestFactory):
             # Perhaps subclass Request for each type of object, and have that subclass provide
             # both the patches->commands mapping and the human readable and machine readable
             # descriptions of it?
+
+            # Objects may be decorated with 'id' from use in a bulk PATCH, but we don't want anything
+            # from this point onwards to see that.
+            if 'id' in attributes:
+                del attributes['id']
             return OsdMapModifyingRequest(
                 "Modifying pool '{name}' ({attrs})".format(
                     name=pool_name, attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
