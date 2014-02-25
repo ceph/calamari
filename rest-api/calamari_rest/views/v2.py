@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+from collections import defaultdict
 import logging
 from dateutil.parser import parse as dateutil_parse
 
@@ -442,6 +443,12 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
     def validate_command(self, request, fsid, osd_id, command):
         return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
+
+    def osd_config(self, request, fsid):
+        return Response()
+
+    def update_osd_config(self, request, fsid):
+        return Response()
 
 
 class SyncObject(RPCViewSet):
