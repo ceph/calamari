@@ -81,19 +81,6 @@ def admin_socket(asok_path, cmd, format=''):
 # <<< XXX unclean XXX
 
 
-def memoize(function):
-    memo = {}
-
-    def wrapper(*args):
-        if args in memo:
-            return memo[args]
-        else:
-            rv = function(*args)
-            memo[args] = rv
-            return rv
-    return wrapper
-
-
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
@@ -303,19 +290,29 @@ def terse_status():
         if config_response is None:
             # Dead socket, defunct service
             continue
+
         config = json.loads(config_response)
         fsid = config['fsid']
+
+        status = None
+        if service_type == 'mon':
+            # For mons, we send some extra info here, because if they're out
+            # of quorum we may not find out from the cluster heartbeats, so
+            # need to use the service heartbeats to detect that.
+            status = json.loads(admin_socket(filename, ['mon_status'], 'json'))
+
+            if status['rank'] in status['quorum']:
+                # A mon in quorum is elegible to emit a cluster heartbeat
+                mon_sockets[fsid] = filename
 
         services[service_name] = {
             'cluster': cluster_name,
             'type': service_type,
             'id': service_id,
-            'fsid': fsid
+            'fsid': fsid,
+            'status': status
         }
         fsid_names[fsid] = cluster_name
-
-        if service_type == 'mon':
-            mon_sockets[fsid] = filename
 
     clusters = {}
     for fsid, socket_path in mon_sockets.items():

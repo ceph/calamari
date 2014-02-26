@@ -45,6 +45,16 @@ class TestApi(ServerTestCase):
         self.assertEqual(response.status_code, 202)
         request_id = response.json()['request_id']
 
+        # Pick a user ID
+        response = self.api.get("user")
+        response.raise_for_status()
+        user_id = response.json()[0]['id']
+
+        # Pick a mon ID
+        response = self.api.get("cluster/{0}/mon".format(fsid))
+        response.raise_for_status()
+        mon_id = response.json()[0]['name']
+
         # To go from URL patterns to something we can GET, substitute IDs from
         # the Ceph cluster we're running against
         replacements = {
@@ -58,11 +68,11 @@ class TestApi(ServerTestCase):
             "<minion_id>": [self.ceph_ctl.get_server_fqdns()[0]],
             "cluster/<pk>": ["cluster/%s" % fsid],
             "<request_id>": [request_id],
-            "user/<pk>": ["user/1"],
+            "user/<pk>": ["user/{0}".format(user_id)],
             "<log_path>": "ceph/ceph.log",
             "config/<key>": ["config/mds_bal_interval"],
-            "command/<command>": ["command/%s" %x for x in ("scrub", "deep_scrub", "repair")],
-
+            "command/<command>": ["command/%s" % x for x in ("scrub", "deep_scrub", "repair")],
+            "<mon_id>": [mon_id]
         }
 
         concrete_urls = {}
