@@ -123,6 +123,7 @@ class Eventer(gevent.greenlet.Greenlet):
             fsid = None
 
         self._emit(INFO, msg, fqdn=server_state.fqdn, fsid=fsid)
+        self._flush()
 
     @nosleep
     def on_tick(self):
