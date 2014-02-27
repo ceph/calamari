@@ -2,7 +2,7 @@ from django.utils.unittest import TestCase
 from mock import MagicMock, patch
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import UserRequest
-from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS
+from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS, OsdMap
 
 
 class TestOSDFactory(TestCase):
@@ -54,38 +54,44 @@ class TestOsdMapUpdates(TestCase):
                       'get_sync_object.return_value': fake_cluster_monitor,
                       'osds_by_id': {0: {'up': True}, 1: {'up': False}}}
         fake_cluster_monitor.configure_mock(**attributes)
-
+        self.osd_map = OsdMap(1, None)
         self.factory = OsdRequestFactory(fake_cluster_monitor)
 
     def test_no_op(self):
-        self.assertEqual([], self.factory._commands_to_set_flags({}, {}))
+        self.assertEqual([], self.factory._commands_to_set_flags(self.osd_map, {}))
 
     def test_unset_one(self):
+        self.osd_map.flags['noup'] = True
         self.assertEqual([('osd unset', {'key': 'noup'})],
-                         self.factory._commands_to_set_flags({'flags': ['noup']}, {'noup': False}))
+                         self.factory._commands_to_set_flags(self.osd_map, {'noup': False}))
 
     def test_set_one(self):
+        self.osd_map.flags['noup'] = False
         self.assertEqual([('osd set', {'key': 'noup'})],
-                         self.factory._commands_to_set_flags({'flags': []}, {'noup': True}))
+                         self.factory._commands_to_set_flags(self.osd_map, {'noup': True}))
 
     def test_set_one_that_is_already_set(self):
+        self.osd_map.flags['noup'] = True
         self.assertEqual([],
-                         self.factory._commands_to_set_flags({'flags': ['noup']}, {'noup': True}))
+                         self.factory._commands_to_set_flags(self.osd_map, {'noup': True}))
 
     def test_unset_one_that_is_not_set(self):
         self.assertEqual([],
-                         self.factory._commands_to_set_flags({'flags': []}, {'noup': False}))
+                         self.factory._commands_to_set_flags(self.osd_map, {'noup': False}))
 
     def test_set_something_not_valid(self):
         self.assertRaises(RuntimeError,
-                          self.factory._commands_to_set_flags, {}, {'nom': True})
+                          self.factory._commands_to_set_flags, self.osd_map, {'nom': True})
 
     def test_set_and_unset_many(self):
+        self.osd_map.flags['noscrub'] = True
+        self.osd_map.flags['norecover'] = True
+
         self.assertEqual([('osd set', {'key': 'noup'}),
                           ('osd set', {'key': 'pause'}),
                           ('osd unset', {'key': 'noscrub'}),
                           ('osd unset', {'key': 'norecover'})],
-                         self.factory._commands_to_set_flags({'flags': ['noscrub', 'norecover']},
+                         self.factory._commands_to_set_flags(self.osd_map,
                                                              {'noscrub': False,
                                                               'norecover': False,
                                                               'noup': True,

@@ -1,6 +1,5 @@
 
 from collections import defaultdict
-from collections import defaultdict
 import logging
 from dateutil.parser import parse as dateutil_parse
 
@@ -24,7 +23,7 @@ from calamari_rest.views.v1 import _get_local_grains
 
 from cthulhu.config import CalamariConfig
 from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP
 # FIXME: these imports of cthulhu stuff from the rest layer are too much
 from cthulhu.manager.types import SYNC_OBJECT_TYPES, ServiceId
 from cthulhu.manager import derived
@@ -420,8 +419,16 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         return Response(self.serializer_class(DataObject(osd)).data)
 
-    def update(self, request, fsid, osd_id):
-        return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
+    def update(self, request, fsid, osd_id=None):
+        """
+        osd_id: OSD to update, if None update applies to the OSDmap
+        """
+        object_type = OSD_MAP
+        if osd_id is not None:
+            osd_id = int(osd_id)
+            object_type = OSD
+
+        return self._return_request(self.client.update(fsid, object_type, osd_id, dict(request.DATA)))
 
     def apply(self, request, fsid, osd_id, command):
         if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
@@ -445,10 +452,8 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
 
     def osd_config(self, request, fsid):
-        return Response()
-
-    def update_osd_config(self, request, fsid):
-        return Response()
+        osd_map = self.client.get_sync_object(fsid, OSD_MAP, ['flags'])
+        return Response({'flags': osd_map})
 
 
 class SyncObject(RPCViewSet):

@@ -29,7 +29,7 @@ class OsdRequestFactory(RequestFactory):
                 commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
 
         if 'flags' in attributes:
-            commands.extend(self._commands_to_set_flags(osd_map, attributes))
+            commands.extend(self._commands_to_set_flags(osd_map, attributes['flags']))
 
         if not commands:
             # Returning None indicates no-op
@@ -87,7 +87,7 @@ class OsdRequestFactory(RequestFactory):
 
         flags_to_set = set(k for k, v in attributes.iteritems() if v)
         flags_to_unset = set(k for k, v in attributes.iteritems() if not v)
-        flags_that_are_set = set(osd_map.get('flags', []))
+        flags_that_are_set = set(k for k, v in osd_map.flags.iteritems() if v)
 
         for x in flags_to_set - flags_that_are_set:
             commands.append(('osd set', {'key': x}))

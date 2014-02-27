@@ -7,7 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, POOL, CLUSTER, CRUSH_RULE, ServiceId
+from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
 
 
 class NotFound(Exception):
@@ -150,6 +150,12 @@ class RpcInterface(object):
                 attributes['id'] = object_id
 
             return cluster.request_update(POOL, object_id, attributes)
+        elif object_type == OSD_MAP:
+            if not 'id' in attributes:
+                attributes['id'] = object_id
+
+            return cluster.request_update(OSD, object_id, attributes)
+
         else:
             raise NotImplementedError(object_type)
 
