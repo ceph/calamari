@@ -141,16 +141,24 @@ class Eventer(gevent.greenlet.Greenlet):
                 # worry about whether they sent us one recently.
                 continue
 
+            if len(server_state.clusters) == 1:
+                # Because Events can only be associated with one FSID, we only make this
+                # association for servers with exactly one cluster.  This is a bit cheeky and
+                # kind of an unnecessary limitation in the Event DB schema.
+                fsid = server_state.clusters[0]
+            else:
+                fsid = None
+
             if now_utc - server_state.last_contact > datetime.timedelta(seconds=CONTACT_THRESHOLD):
                 if fqdn not in self._servers_complained:
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
-                    ), fqdn=fqdn)
+                    ), fqdn=fqdn, fsid=fsid)
                     self._servers_complained.add(fqdn)
             else:
                 if fqdn in self._servers_complained:
                     self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
-                               fqdn=fqdn)
+                               fqdn=fqdn, fsid=fsid)
                     self._servers_complained.discard(fqdn)
 
         for fsid, cluster_monitor in self._manager.clusters.items():

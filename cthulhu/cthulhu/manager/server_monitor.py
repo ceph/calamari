@@ -59,6 +59,15 @@ class ServerState(object):
 
         self.last_contact = last_contact
 
+    @property
+    def clusters(self):
+        """
+        Which clusters is this server involved with?
+
+        return: A list of zero or more FSIDs
+        """
+        return list(set([service.fsid for service in self.services]))
+
     def __repr__(self):
         return "<ServerState '%s'>" % self.fqdn
 
