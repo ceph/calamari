@@ -1,5 +1,8 @@
+
 from collections import defaultdict
 import logging
+from dateutil.parser import parse as dateutil_parse
+
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException
 
@@ -602,11 +605,15 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
 
         # Resolve FSID to list of mon FQDNs
         servers = self.client.server_list_cluster(fsid)
-        mon_fqdns = set()
+        # Sort to get most recently contact server first
+        servers = sorted(servers,
+                         lambda a, b: cmp(dateutil_parse(b['last_contact']), dateutil_parse(a['last_contact'])))
+        mon_fqdns = []
         for server in servers:
             for service in server['services']:
-                if service['running'] and ServiceId(*service['id']).service_type == MON:
-                    mon_fqdns.add(server['fqdn'])
+                service_id = ServiceId(*(service['id']))
+                if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
+                    mon_fqdns.append(server['fqdn'])
 
         client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
