@@ -184,6 +184,7 @@ class RequestCollection(object):
                 # and handle these errors themselves, so this branch would be refactored
                 # to allow that.
                 log.error("Request %s experienced an error: %s" % (request.id, result['err_outs']))
+                request.jid = None
                 request.set_error(result['err_outs'])
                 request.complete()
             else:
@@ -221,6 +222,7 @@ class RequestCollection(object):
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
                     # results in a terminated job, not a zombie job
                     log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                    request.jid = None
                     request.set_error("Internal error: %s" % e)
                     request.complete()
 
