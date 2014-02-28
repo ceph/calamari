@@ -150,6 +150,9 @@ class RequestCollection(object):
                     request.set_error("Internal error %s" % e)
                     request.complete()
 
+                if request.state == UserRequest.COMPLETE:
+                    self._eventer.on_user_request_complete(request)
+
     def on_completion(self, data):
         """
         Callback for when a salt/job/<jid>/ret event is received, in which
@@ -221,7 +224,7 @@ class RequestCollection(object):
                     request.set_error("Internal error: %s" % e)
                     request.complete()
 
-        if request.complete:
+        if request.state == UserRequest.COMPLETE:
             self._eventer.on_user_request_complete(request)
 
     def _update_index(self, request):
