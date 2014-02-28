@@ -304,9 +304,8 @@ class ServerMonitor(greenlet.Greenlet):
         Call back for when a ceph.service message is received from a salt minion
         """
         log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
-        # For any service which was last reported on this server but
-        # is now gone, mark it as not running
         new_server = True
+        newly_managed_server = False
         try:
             server_state = self.servers[fqdn]
             new_server = False
@@ -328,7 +327,8 @@ class ServerMonitor(greenlet.Greenlet):
                     self._persister.update_server(old_fqdn, fqdn=fqdn, managed=True)
                     new_server = False
                     log.info("Server %s went from unmanaged to managed" % fqdn)
-                    self._eventer.on_server(server_state)
+                    newly_managed_server = True
+
                 else:
                     # We will go on to treat these as distinct servers even though
                     # they have the same hostname
@@ -358,13 +358,15 @@ class ServerMonitor(greenlet.Greenlet):
             seen_id_tuples.add(id_tuple)
             self._register_service(server_state, id_tuple, running=True, status=service['status'])
 
+        # For any service which was last reported on this server but
+        # is now gone, mark it as not running
         for unseen_id_tuple in set(server_state.services.keys()) ^ seen_id_tuples:
             service_state = self.services[unseen_id_tuple]
             if service_state.running:
                 log.info("Service %s stopped on server %s" % (service_state, server_state))
                 service_state.running = False
 
-        if new_server:
+        if new_server or newly_managed_server:
             # We do this at the end so that by the time we emit the event
             # the ServiceState objects have been created
             self._eventer.on_server(server_state)
