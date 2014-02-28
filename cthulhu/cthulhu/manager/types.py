@@ -187,6 +187,7 @@ class Config(SyncObject):
 
 MON = 'mon'
 OSD = 'osd'
+MDS = 'mds'
 POOL = 'pool'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
