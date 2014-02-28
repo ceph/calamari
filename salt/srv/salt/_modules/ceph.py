@@ -210,7 +210,7 @@ def get_cluster_object(cluster_name, sync_type, since):
             'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
             'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
             'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
-            'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
+            'health': ('health', {'detail': ''}, lambda d, r: md5(r))
         }[sync_type]
         kwargs['format'] = 'json'
         ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
