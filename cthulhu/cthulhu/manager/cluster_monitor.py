@@ -134,7 +134,7 @@ class SyncObjects(object):
 
         # Don't store this if we already got something newer
         if sync_type.cmp(version, self.get_version(sync_type)) <= 0:
-            log.warn("Ignoring outdated update %s/%s" % sync_type.str, version)
+            log.warn("Ignoring outdated update %s/%s" % (sync_type.str, version))
             new_object = None
         else:
             log.info("Got new version %s/%s" % (sync_type.str, version))
