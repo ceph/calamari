@@ -1,4 +1,12 @@
-VERSION=1.0.0
+VERSION ?= $(shell ./get-versions.sh VERSION)
+REVISION ?= $(shell ./get-versions.sh REVISION)
+DIST ?= unstable
+BPTAG ?= ""
+DEBEMAIL ?= dan.mick@inktank.com
+
+# debian upstream tarballs: {name}_{version}.orig.tar.gz
+# rpm tarball names: apparently whatever you name in Source0, but
+# {name}_{version}.tar.gz will work
 DISTNAMEVER=calamari_$(VERSION)
 PKGDIR=calamari-$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
@@ -6,11 +14,23 @@ SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
 
+build: set_deb_version version build-venv
 
-
+DATESTR=$(shell /bin/echo -n "built on "; date)
+set_deb_version:
+	DEBEMAIL=$(DEBEMAIL) dch \
+                --newversion $(VERSION)-$(REVISION)$(BPTAG) \
+                -D $(DIST) --force-bad-version --force-distribution "$(DATESTR)"
 
 venv:
-	virtualenv --system-site-packages venv; \
+	virtualenv --system-site-packages venv
+
+
+VERSION_PY = rest-api/calamari_rest/version.py
+version: $(VERSION_PY)
+
+$(VERSION_PY):
+	echo "VERSION=\"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
 build-venv: venv
 	@echo "build-venv"
@@ -58,7 +78,7 @@ build-venv: venv
 # this source is just not very amenable to building source packages.
 # the Javascript directories don't really go back to "clean"; it might
 # be possible to change that, but for now, just skip the source build
-dpkg:
+dpkg: set_deb_version
 	dpkg-buildpackage -b -us -uc
 
 install-common: install-conf install-venv install-salt install-alembic install-scripts
@@ -68,8 +88,12 @@ install-rpm: install-common install-rh-conf
 	@echo "install-rpm"
 
 # for deb
-install: install-common install-deb-conf
-	@echo "install"
+install:
+	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
+		else $(MAKE) install_real ; fi
+
+install_real: install-common install-deb-conf
+	@echo "install_real"
 
 install-conf: $(CONFFILES)
 	@echo "install-conf"
@@ -134,7 +158,7 @@ install-scripts: install-venv
 	ln -s ../../opt/calamari/venv/bin/calamari-ctl $(DESTDIR)/usr/bin/
 
 clean:
-	rm -rf venv
+	rm -rf venv $(VERSION_PY)
 
 dist:
 	@echo "making dist tarball in $(TARNAME)"
@@ -182,4 +206,4 @@ lint:
 check: unit-tests lint
 
 .PHONY: dist clean build-venv dpkg install install-conf
-.PHONY: build-venv install-venv
+.PHONY: build-venv install-venv set-deb-version version
