@@ -28,13 +28,6 @@ from cthulhu.util import now
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
-# Stuff still to do:
-# - (maybe) report ceph version in ceph.services
-# - (maybe) add a sanity check of the mons known to ServerMonitor vs those known in
-#   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
-#   server in ServerMonitor.  Could just be to log to begin with, later hook into event
-#   generation.
-
 
 class GrainsNotFound(Exception):
     pass
@@ -45,7 +38,7 @@ class ServerState(object):
     A Ceph server, may be something we have had a heartbeat from or
     may be something we learned about from Ceph.
     """
-    def __init__(self, fqdn, hostname, managed, last_contact, boot_time):
+    def __init__(self, fqdn, hostname, managed, last_contact, boot_time, ceph_version):
         # Note that FQDN is fudged when we learn about a server via
         # the CRUSH map (i.e. when we're talking to mons but not OSDs)
         # to contain the hostname instead.  The implied assumption
@@ -62,6 +55,7 @@ class ServerState(object):
 
         self.last_contact = last_contact
         self.boot_time = boot_time
+        self.ceph_version = ceph_version
 
     @property
     def clusters(self):
@@ -241,7 +235,8 @@ class ServerMonitor(greenlet.Greenlet):
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
-                server_state = ServerState(hostname, hostname, managed=False, last_contact=None, boot_time=None)
+                server_state = ServerState(hostname, hostname, managed=False,
+                                           last_contact=None, boot_time=None, ceph_version=None)
                 self.inject_server(server_state)
                 self._persister.create_server(Server(
                     fqdn=server_state.fqdn,
@@ -344,7 +339,8 @@ class ServerMonitor(greenlet.Greenlet):
         if new_server:
             hostname = self._get_grains(fqdn)['host']
             server_state = ServerState(fqdn, hostname, managed=True,
-                                       last_contact=now(), boot_time=boot_time)
+                                       last_contact=now(), boot_time=boot_time,
+                                       ceph_version=server_heartbeat['ceph_version'])
             self.inject_server(server_state)
             self._persister.create_server(Server(
                 fqdn=server_state.fqdn,
@@ -366,6 +362,13 @@ class ServerMonitor(greenlet.Greenlet):
                     fqdn, server_state.boot_time, old_boot_time
                 ))
                 self._eventer.on_reboot(server_state, False)
+
+        if server_state.ceph_version != server_heartbeat['ceph_version']:
+            old_ceph_version = server_state.ceph_version
+            server_state.ceph_version = server_heartbeat['ceph_version']
+            self._persister.update_server(server_state.fqdn, ceph_version=server_state.ceph_version)
+            if old_ceph_version is not None:
+                self._eventer.on_new_version(server_state)
 
         seen_id_tuples = set()
         for service_name, service in server_heartbeat['services'].items():
@@ -528,6 +531,7 @@ class ServerMonitor(greenlet.Greenlet):
             'managed': server_state.managed,
             'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
             'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'ceph_version': server_state.ceph_version,
             'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
         }
 
@@ -592,6 +596,7 @@ class ServerMonitor(greenlet.Greenlet):
             'managed': server_state.managed,
             'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
             'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'ceph_version': server_state.ceph_version,
             'services': [{'id': tuple(s.id), 'running': s.running} for s in services],
             'frontend_addr': frontend_addr,
             'backend_addr': backend_addr,

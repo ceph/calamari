@@ -157,6 +157,17 @@ class Eventer(gevent.greenlet.Greenlet):
                    fsid=self._server_fsid(server_state))
 
     @nosleep
+    def on_new_version(self, server_state):
+        """
+        Tell me that the version of ceph changed
+        """
+        self._emit(INFO,
+                   "Server {fqdn} Ceph version {version} installed".format(
+                       fqdn=server_state.fqdn, version=server_state.ceph_version),
+                   fqdn=server_state.fqdn,
+                   fsid=self._server_fsid(server_state))
+
+    @nosleep
     def on_tick(self):
         """
         Periodically call this to drive non-event-driven events (i.e. things

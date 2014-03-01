@@ -137,7 +137,8 @@ class Manager(object):
                 hostname=server.hostname,
                 managed=server.managed,
                 last_contact=last_contact,
-                boot_time=server.boot_time
+                boot_time=server.boot_time,
+                ceph_version=server.ceph_version
             ))
 
         for service in session.query(Service).all():

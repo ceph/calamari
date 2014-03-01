@@ -159,7 +159,7 @@ class ServiceSerializer(serializers.Serializer):
 
 class SimpleServerSerializer(serializers.Serializer):
     class Meta:
-        fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'boot_time', 'services')
+        fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'boot_time', 'ceph_version', 'services')
 
     # Identifying information
     fqdn = serializers.CharField(help_text="Fully qualified domain name")
@@ -175,7 +175,9 @@ class SimpleServerSerializer(serializers.Serializer):
     boot_time = serializers.DateTimeField(
         help_text="The time at which this server booted. "
                   "This is always null for unmanaged servers")
-
+    ceph_version = serializers.CharField(
+        help_text="The version of Ceph in use.  This is always null for unmanaged servers."
+    )
     # Ceph usage
     services = ServiceSerializer(many=True, help_text="List of Ceph services seen"
                                  "on this server")
@@ -184,7 +186,8 @@ class SimpleServerSerializer(serializers.Serializer):
 class ServerSerializer(SimpleServerSerializer):
     class Meta:
         fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
-                  'frontend_iface', 'backend_iface', 'managed', 'last_contact', 'boot_time')
+                  'frontend_iface', 'backend_iface', 'managed',
+                  'last_contact', 'boot_time', 'ceph_version')
 
     # Ceph network configuration
     frontend_addr = serializers.CharField()  # may be null if no OSDs or mons on server

@@ -303,7 +303,7 @@ def get_boot_time():
     return int(re.search('^btime (\d+)$', data, re.MULTILINE).group(1))
 
 
-def terse_status():
+def get_heartbeats():
     """
     The goal here is *not* to give a helpful summary of
     the cluster status, rather it is to give the minimum
@@ -336,6 +336,8 @@ def terse_status():
 
     # FSID string to cluster name string
     fsid_names = {}
+
+    ceph_version = None
 
     for filename in glob("/var/run/ceph/*.asok"):
         cluster_name, service_type, service_id = re.match("^(.*)-(.*)\.(.*).asok$", os.path.basename(filename)).groups()
@@ -373,6 +375,17 @@ def terse_status():
         if service_type == 'mon':
             mon_sockets[fsid] = filename
 
+        if ceph_version is None:
+            version_response = admin_socket(filename, ['version'], 'json')
+            if version_response is not None:
+                ceph_version = json.loads(version_response)['version']
+
+    if ceph_version is None:
+        # No running services told us the ceph version, query package manager
+        ceph_version_str = __salt__['pkg.version']('ceph')  # noqa
+        if ceph_version_str:
+            ceph_version = ceph_version_str
+
     cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         # First, are we quorate?
@@ -396,7 +409,8 @@ def terse_status():
 
     server_heartbeat = {
         'services': services,
-        'boot_time': get_boot_time()
+        'boot_time': get_boot_time(),
+        'ceph_version': ceph_version
     }
 
     return server_heartbeat, cluster_heartbeat
@@ -484,18 +498,11 @@ def heartbeat():
     """
     Send an event to the master with the terse status
     """
-    services, clusters = terse_status()
+    service_heartbeat, cluster_heartbeat = get_heartbeats()
 
-    fire_event(services, 'ceph/server')
-    for fsid, cluster_data in clusters.items():
+    fire_event(service_heartbeat, 'ceph/server')
+    for fsid, cluster_data in cluster_heartbeat.items():
         fire_event(cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     # Return the emitted data because it's useful if debugging with salt-call
-    return services, clusters
-
-
-if __name__ == '__main__':
-    # Debug, just dump everything
-    print json.dumps(terse_status(), indent=2)
-    for typ in SYNC_TYPES:
-        get_cluster_object('ceph', typ, 0)
+    return service_heartbeat, cluster_heartbeat
