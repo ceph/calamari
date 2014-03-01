@@ -8,35 +8,6 @@ INSTALL=/usr/bin/install
 
 
 
-# Strategy for building dist tarball: find what we know is source
-# "grunt clean" doesn't take us back to a pristine source dir, so instead
-# we filter out what we know is build product and tar up only what we
-# want in sources.
-
-# this is crazy convoluted to work around files with spaces in their names.
-# also, debian is pruned because we want to add only specific parts of it
-FINDCMD =find . \
-		-name .git -prune \
-		-o -name node_modules -prune \
-		-o -name .tmp -prune \
-		-o -name .sass-cache -prune \
-		-o -name debian -prune \
-		-o -print0
-
-# add in just the debian files we want
-DEBFILES = \
-	calamari-server.init \
-	calamari-server.docs \
-	calamari-server.install \
-	calamari-server.postinst \
-	calamari-server.prerm \
-	calamari-server.postrm \
-	changelog \
-	compat \
-	control \
-	copyright \
-	rules \
-	source/format
 
 venv:
 	virtualenv --system-site-packages venv; \
