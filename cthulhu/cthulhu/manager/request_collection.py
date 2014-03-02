@@ -63,8 +63,8 @@ class RequestCollection(object):
         _now = now()
         for request in self._by_jid.values():
             if _now - request.alive_at > datetime.timedelta(seconds=TICK_PERIOD * 3):
-                log.error("Request JID stale: now=%s, alive_at=%s" % (
-                    _now, request.alive_at
+                log.error("Request %s JID %s stale: now=%s, alive_at=%s" % (
+                    request.id, request.jid, _now, request.alive_at
                 ))
                 stale_jobs.add(request)
 
