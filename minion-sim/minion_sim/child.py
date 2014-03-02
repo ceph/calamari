@@ -112,7 +112,7 @@ def main():
                     cluster.set_osd_weight(args['id'], args['weight'])
                 elif prefix == "osd scrub":
                     pass
-                elif prefix == "osd deep_scrub":
+                elif prefix == "osd deep-scrub":
                     pass
                 elif prefix == "osd repair":
                     pass
