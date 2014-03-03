@@ -28,9 +28,6 @@ class OsdRequestFactory(RequestFactory):
             if attributes['reweight'] != osd_map.osd_tree_node_by_id[osd_id]['reweight']:
                 commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
 
-        if 'flags' in attributes:
-            commands.extend(self._commands_to_set_flags(osd_map, attributes['flags']))
-
         if not commands:
             # Returning None indicates no-op
             return None
@@ -96,3 +93,18 @@ class OsdRequestFactory(RequestFactory):
             commands.append(('osd unset', {'key': x}))
 
         return commands
+
+    def update_config(self, _, attributes):
+
+        osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+
+        commands = self._commands_to_set_flags(osd_map, attributes['flags'])
+
+        if commands:
+            return OsdMapModifyingRequest(
+                "Modifying OSD config {cluster_name} ({attrs})".format(
+                    cluster_name=self._cluster_monitor.name, attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
+                    ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+        else:
+            return None

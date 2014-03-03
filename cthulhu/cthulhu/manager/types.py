@@ -57,7 +57,8 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
-            self.flags = dict([(x, x in data.get('flags', [])) for x in OSD_FLAGS])
+            tokenized_flags = data.get('flags', '').split(',')
+            self.flags = dict([(x, x in tokenized_flags) for x in OSD_FLAGS])
         else:
             self.osds_by_id = {}
             self.pools_by_id = {}
