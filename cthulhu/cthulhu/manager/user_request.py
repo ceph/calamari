@@ -248,6 +248,48 @@ class OsdMapModifyingRequest(UserRequestBase):
             self.log.debug("check pending (%s < %s)" % (osd_map.version, self._await_version))
 
 
+class PgProgress(object):
+    """
+    Encapsulate the state that PgCreatingRequest uses for splitting up
+    creation operations into blocks.
+    """
+    def __init__(self, initial, final, block_size):
+        self.initial = initial
+        self.final = final
+        self._block_size = block_size
+
+        self._still_to_create = self.final - self.initial
+
+        self._intermediate_goal = self.initial
+        self.advance_goal()
+
+    def advance_goal(self):
+        assert not self.is_final_block()
+        self._intermediate_goal = min(self.final, self._intermediate_goal + self._block_size)
+
+    def set_created_pg_count(self, pg_count):
+        self._still_to_create = max(self.final - pg_count, 0)
+
+    def get_status(self):
+        total_creating = (self.final - self.initial)
+        created = total_creating - self._still_to_create
+
+        if self._intermediate_goal != self.final:
+            currently_creating_min = max(self._intermediate_goal - self._block_size, self.initial)
+            currently_creating_max = self._intermediate_goal
+            return "Waiting for PG creation (%s/%s), currently creating PGs %s-%s" % (
+                created, total_creating, currently_creating_min, currently_creating_max)
+        else:
+            return "Waiting for PG creation (%s/%s)" % (created, total_creating)
+
+    def is_final_block(self):
+        return self._intermediate_goal == self.final
+
+    @property
+    def goal(self):
+        return self._intermediate_goal
+
+
 class PgCreatingRequest(OsdMapModifyingRequest):
     """
     Specialization of OsdMapModifyingRequest to issue a request
@@ -282,19 +324,14 @@ class PgCreatingRequest(OsdMapModifyingRequest):
 
         self._pool_id = pool_id
         self._pool_name = pool_name
-        self._final_count = final_pg_count
-        self._initial_count = initial_pg_count
-        self._block_size = block_size
-
         self._headline = headline
 
-        self._intermediate_goal = min(self._final_count, self._initial_count + self._block_size)
+        self._pg_progress = PgProgress(initial_pg_count, final_pg_count, block_size)
         commands.append(('osd pool set', {
             'pool': self._pool_name,
             'var': 'pg_num',
-            'val': self._intermediate_goal
+            'val': self._pg_progress.goal
         }))
-        self._still_to_create = self._final_count - self._initial_count
 
         self._post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
 
@@ -303,16 +340,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     @property
     def status(self):
         if not self.state == self.COMPLETE and self._phase == self.CREATING:
-            total_creating = (self._final_count - self._initial_count)
-            created = total_creating - self._still_to_create
-
-            if self._intermediate_goal != self._final_count:
-                currently_creating_min = max(self._intermediate_goal - self._block_size, self._initial_count)
-                currently_creating_max = self._intermediate_goal
-                return "Waiting for PG creation (%s/%s), currently creating PGs %s-%s" % (
-                    created, total_creating, currently_creating_min, currently_creating_max)
-            else:
-                return "Waiting for PG creation (%s/%s)" % (created, total_creating)
+            return self._pg_progress.get_status()
         else:
             return super(PgCreatingRequest, self).status
 
@@ -331,7 +359,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
         elif self._phase == self.CREATING:
             self.jid = None
             self.log.debug(
-                "PgCreatingRequest.complete_jid: successfully issued request for %s" % self._intermediate_goal)
+                "PgCreatingRequest.complete_jid: successfully issued request for %s" % self._pg_progress.goal)
 
     def on_map(self, sync_type, sync_objects):
         self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
@@ -354,22 +382,23 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                         if 'creating' not in states:
                             pg_counter += 1
 
-                self._still_to_create = max(self._final_count - pg_counter, 0)
+                self._pg_progress.set_created_pg_count(pg_counter)
+
                 self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s (final %s)" % (
-                    pg_counter, self._intermediate_goal, self._final_count))
-                if pg_counter >= self._intermediate_goal:
-                    if self._intermediate_goal == self._final_count:
+                    pg_counter, self._pg_progress.goal, self._pg_progress.final))
+                if pg_counter >= self._pg_progress.goal:
+                    if self._pg_progress.is_final_block():
                         self._phase = self.POST_CREATE
                         self.log.debug("PgCreatingRequest.on_map CREATING->POST_CREATE")
                         self._submit(self._post_create_commands)
                     else:
                         self.log.debug("PgCreatingREQUEST.on_map CREATING->CREATING")
-                        self._intermediate_goal = min(self._final_count, self._intermediate_goal + self._block_size)
+                        self._pg_progress.advance_goal()
                         # Request another tranche of PGs up to _block_size
                         self._submit([('osd pool set', {
                             'pool': self._pool_name,
                             'var': 'pg_num',
-                            'val': self._intermediate_goal
+                            'val': self._pg_progress.goal
                         })])
 
         elif self._phase == self.POST_CREATE:
