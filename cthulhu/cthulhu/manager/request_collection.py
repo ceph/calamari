@@ -222,7 +222,7 @@ class RequestCollection(object):
                     # results in a terminated job, not a zombie job
                     log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
                     request.jid = None
-                    request.set_error("Internal error: %s" % e)
+                    request.set_error("Internal error %s" % e)
                     request.complete()
 
         if request.state == UserRequest.COMPLETE:
