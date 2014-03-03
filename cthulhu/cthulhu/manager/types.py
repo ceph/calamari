@@ -185,9 +185,10 @@ class Config(SyncObject):
     str = 'config'
 
 
-OSD = 'osd'
-POOL = 'pool'
 MON = 'mon'
+OSD = 'osd'
+MDS = 'mds'
+POOL = 'pool'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
 

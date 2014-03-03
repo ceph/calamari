@@ -115,7 +115,8 @@ class RpcInterface(object):
                         obj = obj[part]
                     else:
                         obj = getattr(obj, part)
-            except (AttributeError, KeyError):
+            except (AttributeError, KeyError) as e:
+                log.exception("Exception %s traversing %s: obj=%s" % (e, path, obj))
                 return None
             return obj
         else:

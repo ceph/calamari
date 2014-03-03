@@ -168,6 +168,9 @@ class UserRequestBase(object):
         """
         Call this when you're all done
         """
+        assert self.state != self.COMPLETE
+        assert self.jid is None
+
         self.log.info("Request %s completed with error=%s (%s)" % (self.id, self.error, self.error_message))
         self.state = self.COMPLETE
         self.completed_at = now()
@@ -207,7 +210,7 @@ class OsdMapModifyingRequest(UserRequestBase):
     def status(self):
         if self._await_version:
             return "Waiting for OSD map epoch %s" % self._await_version
-        elif not self.state != self.COMPLETE:
+        elif self.state != self.COMPLETE:
             return "Running remote commands"
         else:
             return super(OsdMapModifyingRequest, self).status
