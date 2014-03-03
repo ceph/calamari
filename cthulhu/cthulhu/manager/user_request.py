@@ -208,10 +208,8 @@ class OsdMapModifyingRequest(UserRequestBase):
 
     @property
     def status(self):
-        if self._await_version:
+        if self.state != self.COMPLETE and self._await_version:
             return "Waiting for OSD map epoch %s" % self._await_version
-        elif self.state != self.COMPLETE:
-            return "Running remote commands"
         else:
             return super(OsdMapModifyingRequest, self).status
 
@@ -304,7 +302,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
 
     @property
     def status(self):
-        if self._phase == self.CREATING:
+        if not self.state == self.COMPLETE and self._phase == self.CREATING:
             total_creating = (self._final_count - self._initial_count)
             created = total_creating - self._still_to_create
 
