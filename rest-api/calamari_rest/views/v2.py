@@ -451,9 +451,25 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     def validate_command(self, request, fsid, osd_id, command):
         return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
 
+
+class OsdConfigViewSet(RPCViewSet, RequestReturner):
+    """
+Manage Ceph OSDs. Apply ceph commands with osd/commands/{scrub, repair, ...}
+
+Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
+
+    """
+    # TODO write your own serializer
+    # There's probably no need to embed this stuff in a 'flags' attribute,
+    # so you could just have a serializer with a series of Boolean fields for each of the flags.
+    serializer_class = OsdSerializer
+
     def osd_config(self, request, fsid):
         osd_map = self.client.get_sync_object(fsid, OSD_MAP, ['flags'])
         return Response({'flags': osd_map})
+
+    def update(self, request, fsid):
+        return self._return_request(self.client.update(fsid, OSD_MAP, None, dict(request.DATA)))
 
 
 class SyncObject(RPCViewSet):

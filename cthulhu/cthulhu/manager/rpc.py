@@ -151,9 +151,6 @@ class RpcInterface(object):
 
             return cluster.request_update(POOL, object_id, attributes)
         elif object_type == OSD_MAP:
-            if not 'id' in attributes:
-                attributes['id'] = object_id
-
             return cluster.request_update(OSD, object_id, attributes)
 
         else:

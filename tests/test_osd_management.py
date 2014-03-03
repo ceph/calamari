@@ -89,3 +89,20 @@ class TestOsdManagement(RequestTestCase):
             osd_url = "cluster/%s/osd/%s/command/%s" % (fsid, osd_id, x)
             response = self.api.post(osd_url)
             self.assertEqual(response.status_code, 202, 'HTTP status not 202 for %s' % osd_url)
+
+    def test_osd_config_change(self):
+        """
+        That we can change the flags on an OsdMap
+        """
+        fsid = self._wait_for_cluster()
+
+        url = "cluster/%s/osd/osd_config" % (fsid)
+
+        config = self.api.get(url).json()
+        self.assertEqual(False, config['flags']['pause'])
+
+        response = self.api.patch(url, data={'flags': {'pause': 'true'}})
+        self._wait_for_completion(fsid, response)
+
+        config = self.api.get(url).json()
+        self.assertEqual(True, config['flags']['pause'])
