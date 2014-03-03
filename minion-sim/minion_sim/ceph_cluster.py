@@ -637,7 +637,8 @@ DEFAULT_CONFIG = json.loads("""
     "auth_supported": "",
     "rgw_thread_pool_size": "100",
     "mon_globalid_prealloc": "100",
-    "filestore_fiemap": "false"
+    "filestore_fiemap": "false",
+    "mon_osd_max_split_count": "32"
 }
 """)
 
@@ -1237,6 +1238,10 @@ class CephCluster(CephClusterState):
                 pool['pg_num'], val
             ))
             # Growing a pool, creating PGs
+            new_pg_count = val - pool['pg_num']
+            osd_count = min(pool['pg_num'], len(self._objects['osd_map']['osds']))
+            if new_pg_count > osd_count * int(self._objects['config']['mon_osd_max_split_count']):
+                raise RuntimeError("Exceeded mon_osd_max_split_count")
             self._create_pgs(pool['pool'], range(pool['pg_num'], val))
 
         if var == 'pgp_num':

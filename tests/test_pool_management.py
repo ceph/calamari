@@ -1,5 +1,6 @@
 
 import logging
+from unittest import SkipTest
 from tests.server_testcase import RequestTestCase
 
 log = logging.getLogger(__name__)
@@ -76,7 +77,6 @@ class TestPoolManagement(RequestTestCase):
 
         pool_name = 'test1'
 
-        # TODO: in creation, support setting crush ruleset
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
 
@@ -215,7 +215,29 @@ class TestPoolManagement(RequestTestCase):
         for k, v in updates.items():
             self.assertEqual(pool[k], v, "pool[%s]=%s (should be %s)" % (k, pool[k], v))
 
-    # TODO: document the creation semantics for REST API consumers: that on creation
-    # and pg_num increase, we promise the OSD map will be up to date when the job completes,
-    # but we make no assurances about the resulting PG creations: to learn when they complete
-    # REST API consumer would have to watch the PG state.
+    def test_big_pg_creation(self):
+        """
+        Test that when creating a number of PGs that exceeds mon_osd_max_split_count
+        calamari is breaking up the operation so that it succeeds.
+        """
+        cluster_id = self._wait_for_cluster()
+        pool_name = 'test_big_pg_creation'
+        self._create(cluster_id, pool_name, pg_num=64)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        config_response = self.api.get("cluster/%s/config/mon_osd_max_split_count" % cluster_id)
+        if config_response.status_code == 404:
+            raise SkipTest("Pre-firefly Ceph, skipping mon_osd_max_split_count test")
+        else:
+            config_response.raise_for_status()
+
+        mon_osd_max_split_count = int(config_response.json()['value'])
+        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+        osd_count = len(self.api.get("cluster/%s/osd" % cluster_id).json())
+        pgs_to_create = osd_count * mon_osd_max_split_count * 2
+        new_pg_num = pool['pg_num'] + pgs_to_create
+
+        self._update(cluster_id, pool_id, {'pg_num': new_pg_num})
+        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+        self.assertEqual(pool['pg_num'], new_pg_num)
+        self.assertEqual(pool['pgp_num'], new_pg_num)
