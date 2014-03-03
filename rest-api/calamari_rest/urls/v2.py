@@ -64,15 +64,11 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/mon/(?P<mon_id>[a-zA-Z0-9-\.]+)/status$', calamari_rest.views.v2.MonViewSet.as_view(
         {'get': 'retrieve_status'}), name='cluster-mon-detail-status'),
 
-    # Direct access to SyncObjects, DerivedObjects, graphite stats
+    # Direct access to SyncObjects, mainly for debugging
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object$',
         calamari_rest.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
         calamari_rest.views.v2.SyncObject.as_view({'get': 'retrieve'}), name='cluster-sync-object'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object/(?P<derived_type>[a-zA-Z0-9-_]+)$',
-        calamari_rest.views.v2.DerivedObject.as_view({'get': 'retrieve'}), name='cluster-derived-object'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/derived_object$',
-        calamari_rest.views.v2.DerivedObject.as_view({'get': 'describe'}), name='cluster-derived-object-describe'),
 
     # All about servers
     url(r'^key$', calamari_rest.views.v2.SaltKeyViewSet.as_view(
