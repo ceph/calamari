@@ -103,8 +103,9 @@ class OsdRequestFactory(RequestFactory):
         if commands:
             return OsdMapModifyingRequest(
                 "Modifying OSD config {cluster_name} ({attrs})".format(
-                    cluster_name=self._cluster_monitor.name, attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
-                    ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+                    cluster_name=self._cluster_monitor.name,
+                    attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
+                ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
         else:
             return None
