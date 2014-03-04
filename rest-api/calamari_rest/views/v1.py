@@ -32,6 +32,11 @@ from graphite.render.datalib import fetchData
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from cthulhu.manager.types import POOL
 
+try:
+    from calamari_rest.version import VERSION
+except ImportError:
+    # could create version here if we wanted to be fancier
+    VERSION = 'dev'
 
 from cthulhu.config import CalamariConfig
 config = CalamariConfig()
@@ -347,7 +352,7 @@ Provides metadata about the installation of Calamari server in use
         BOOTSTRAP_RHEL = "curl {url} | python"
 
         return Response(self.serializer_class(DataObject({
-            "version": "2.0",  # TODO: populate from build version (ticket #7082)
+            "version": str(VERSION),
             "license": "N/A",
             "registered": "N/A",
             "hostname": grains['host'],
