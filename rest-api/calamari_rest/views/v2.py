@@ -454,14 +454,8 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
 class OsdConfigViewSet(RPCViewSet, RequestReturner):
     """
-Manage Ceph OSDs. Apply ceph commands with osd/commands/{scrub, repair, ...}
-
-Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
-
+Manage flags in the OsdMap
     """
-    # TODO write your own serializer
-    # There's probably no need to embed this stuff in a 'flags' attribute,
-    # so you could just have a serializer with a series of Boolean fields for each of the flags.
     serializer_class = OsdConfigSerializer
 
     def osd_config(self, request, fsid):
