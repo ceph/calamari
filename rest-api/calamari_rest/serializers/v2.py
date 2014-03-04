@@ -3,7 +3,7 @@
 from rest_framework import serializers
 from cthulhu.persistence.event import severity_str
 import calamari_rest.serializers.fields as fields
-from cthulhu.manager.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from cthulhu.manager.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, OSD_FLAGS
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -84,6 +84,12 @@ class OsdSerializer(serializers.Serializer):
 # to use a reserved word
 OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
 
+
+class OsdConfigSerializer(serializers.Serializer):
+    class Meta:
+        fields = OSD_FLAGS
+
+    #pause = serializers.BooleanField(help_text="something helpful")
 
 class CrushRuleSerializer(serializers.Serializer):
     class Meta:

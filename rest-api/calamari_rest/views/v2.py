@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer
+    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.paginated_mixin import PaginatedMixin
 
@@ -462,11 +462,11 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     # TODO write your own serializer
     # There's probably no need to embed this stuff in a 'flags' attribute,
     # so you could just have a serializer with a series of Boolean fields for each of the flags.
-    serializer_class = OsdSerializer
+    serializer_class = OsdConfigSerializer
 
     def osd_config(self, request, fsid):
         osd_map = self.client.get_sync_object(fsid, OSD_MAP, ['flags'])
-        return Response({'flags': osd_map})
+        return Response(osd_map)
 
     def update(self, request, fsid):
         return self._return_request(self.client.update(fsid, OSD_MAP, None, dict(request.DATA)))

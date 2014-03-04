@@ -98,7 +98,7 @@ class OsdRequestFactory(RequestFactory):
 
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
 
-        commands = self._commands_to_set_flags(osd_map, attributes['flags'])
+        commands = self._commands_to_set_flags(osd_map, attributes)
 
         if commands:
             return OsdMapModifyingRequest(

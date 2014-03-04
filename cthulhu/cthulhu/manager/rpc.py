@@ -144,14 +144,14 @@ class RpcInterface(object):
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
-            return cluster.request_update(OSD, object_id, attributes)
+            return cluster.request_update('update', OSD, object_id, attributes)
         elif object_type == POOL:
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
-            return cluster.request_update(POOL, object_id, attributes)
+            return cluster.request_update('update', POOL, object_id, attributes)
         elif object_type == OSD_MAP:
-            return cluster.request_update(OSD, object_id, attributes)
+            return cluster.request_update('update_config', OSD, object_id, attributes)
 
         else:
             raise NotImplementedError(object_type)
