@@ -96,13 +96,14 @@ class TestOsdManagement(RequestTestCase):
         """
         fsid = self._wait_for_cluster()
 
-        url = "cluster/%s/osd/osd_config" % (fsid)
+        url = "cluster/%s/osd_config" % (fsid)
 
         config = self.api.get(url).json()
-        self.assertEqual(False, config['flags']['pause'])
 
-        response = self.api.patch(url, data={'flags': {'pause': 'true'}})
+        self.assertEqual(False, config['pause'])
+
+        response = self.api.patch(url, data={"pause": True})
         self._wait_for_completion(fsid, response)
 
         config = self.api.get(url).json()
-        self.assertEqual(True, config['flags']['pause'])
+        self.assertEqual(True, config['pause'])
