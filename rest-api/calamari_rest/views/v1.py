@@ -32,8 +32,11 @@ from graphite.render.datalib import fetchData
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from cthulhu.manager.types import POOL
 
-from calamari_rest.version import VERSION
-
+try:
+    from calamari_rest.version import VERSION
+except ImportError:
+    # could create version here if we wanted to be fancier
+    VERSION = 'dev'
 
 from cthulhu.config import CalamariConfig
 config = CalamariConfig()
