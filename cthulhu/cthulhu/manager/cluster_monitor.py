@@ -462,8 +462,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def request_create(self, obj_type, attributes):
         return self._request('create', obj_type, attributes)
 
-    def request_update(self, obj_type, obj_id, attributes):
-        return self._request('update', obj_type, obj_id, attributes)
+    def request_update(self, command, obj_type, obj_id, attributes):
+        return self._request(command, obj_type, obj_id, attributes)
 
     def request_apply(self, obj_type, obj_id, command):
         return self._request(command, obj_type, obj_id)

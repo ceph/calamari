@@ -116,6 +116,8 @@ def main():
                     pass
                 elif prefix == "osd repair":
                     pass
+                elif prefix == "osd set":
+                    cluster.set_osd_flags(args['key'])
                 else:
                     raise NotImplementedError()
             except Exception as e:

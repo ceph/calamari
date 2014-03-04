@@ -950,6 +950,7 @@ class CephClusterState(object):
 
         self._objects['osd_map'] = {
             'fsid': self.fsid,
+            'flags': '',
             'max_osd': osd_count,
             'epoch': 1,
             'osds': [],
@@ -1200,6 +1201,10 @@ class CephCluster(CephClusterState):
 
         self._pg_monitor()
         self._update_health()
+
+    def set_osd_flags(self, osd_flags):
+        self._objects['osd_map']['flags'] = osd_flags
+        self._objects['osd_map']['epoch'] += 1
 
     def _create_pgs(self, pool_id, new_ids):
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool'] == pool_id][0]

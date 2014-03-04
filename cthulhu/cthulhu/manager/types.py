@@ -57,10 +57,17 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
+
+            # Special case Yuck
+            flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
+            tokenized_flags = flags.split(',')
+
+            self.flags = dict([(x, x in tokenized_flags) for x in OSD_FLAGS])
         else:
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
+            self.flags = dict([(x, False) for x in OSD_FLAGS])
 
     @memoize
     def get_tree_nodes_by_id(self):
@@ -189,6 +196,7 @@ MON = 'mon'
 OSD = 'osd'
 MDS = 'mds'
 POOL = 'pool'
+OSD_MAP = 'osd_map'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
 
@@ -200,4 +208,5 @@ USER_REQUEST_COMPLETE = 'complete'
 USER_REQUEST_SUBMITTED = 'submitted'
 
 # List of allowable things to send as ceph commands to OSDs
-OSD_IMPLEMENTED_COMMANDS = ['scrub', 'deep_scrub', 'repair']
+OSD_IMPLEMENTED_COMMANDS = ('scrub', 'deep_scrub', 'repair')
+OSD_FLAGS = ('pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub')

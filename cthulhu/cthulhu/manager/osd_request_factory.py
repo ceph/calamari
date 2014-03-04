@@ -1,5 +1,5 @@
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS
+from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
 from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
@@ -74,3 +74,38 @@ class OsdRequestFactory(RequestFactory):
                 pass
 
         return ret_val
+
+    def _commands_to_set_flags(self, osd_map, attributes):
+        commands = []
+
+        flags_not_implemented = set(attributes.keys()) - set(OSD_FLAGS)
+        if flags_not_implemented:
+            raise RuntimeError("%s not valid to set/unset" % list(flags_not_implemented))
+
+        flags_to_set = set(k for k, v in attributes.iteritems() if v)
+        flags_to_unset = set(k for k, v in attributes.iteritems() if not v)
+        flags_that_are_set = set(k for k, v in osd_map.flags.iteritems() if v)
+
+        for x in flags_to_set - flags_that_are_set:
+            commands.append(('osd set', {'key': x}))
+
+        for x in flags_that_are_set & flags_to_unset:
+            commands.append(('osd unset', {'key': x}))
+
+        return commands
+
+    def update_config(self, _, attributes):
+
+        osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+
+        commands = self._commands_to_set_flags(osd_map, attributes)
+
+        if commands:
+            return OsdMapModifyingRequest(
+                "Modifying OSD config {cluster_name} ({attrs})".format(
+                    cluster_name=self._cluster_monitor.name,
+                    attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
+                ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+        else:
+            return None
