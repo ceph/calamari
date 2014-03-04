@@ -2,9 +2,11 @@
 
 from django.views.static import serve as static_serve
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, \
+    HttpResponseServerError
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
+from django.views.decorators.csrf import requires_csrf_token
 
 import zerorpc
 
@@ -34,6 +36,16 @@ def dashboard(request, path, document_root):
     if not clusters:
         return redirect("/admin/#cluster")
     return serve_dir_or_index(request, path, document_root)
+
+
+@requires_csrf_token
+def server_error(request, template_name='500.html'):
+    """
+    Just like Django's default views.defaults.server_error, except we
+    don't search for templates, because Graphite has its own set of
+    templates that we don't want to use
+    """
+    return HttpResponseServerError('<h1>Server Error (500)</h1>')
 
 
 BOOTSTRAP_TEMPLATE = """
