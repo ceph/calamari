@@ -1,13 +1,10 @@
 
 
-DEVELOPMENT BRANCH
-==================
-
-Calamari 2.0
-============
+Calamari server
+===============
 
 Check out the `Architecture document`_ to get an idea of the overall
-structure.
+structure this code is aiming towards.
 
 .. _Architecture document: https://docs.google.com/document/d/11Sq5UW3ZzeTwPBk3hPbrPI002ScycZQOzXPev7ixJPU/edit?usp=sharing
 
@@ -18,7 +15,9 @@ where it us running out of a git repo somewhere in your home directory.
 
 *In a hurry?* you don't have to follow the detailed development mode
 installation instructions below if you use the vagrant setup in
-``vagrant/devmode``.
+``vagrant/devmode``.  Note: you'll need a box named ``precise64`` and a
+Vagrant that supports the salt provisioner (1.2.7 does not, 1.3.5 and
+later do).
 
 Installing in production mode is not described here because the short
 version is "follow the same instructions we give to users".  Installing

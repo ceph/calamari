@@ -115,7 +115,8 @@ class RpcInterface(object):
                         obj = obj[part]
                     else:
                         obj = getattr(obj, part)
-            except (AttributeError, KeyError):
+            except (AttributeError, KeyError) as e:
+                log.exception("Exception %s traversing %s: obj=%s" % (e, path, obj))
                 return None
             return obj
         else:
@@ -350,6 +351,11 @@ class RpcInterface(object):
 
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)
+
+    def status_by_service(self, services):
+        result = self._manager.servers.get_services([ServiceId(*s) for s in services])
+        return [({'running': ss.running, 'server': ss.server_state.fqdn, 'status': ss.status} if ss else None)
+                for ss in result]
 
 
 class RpcThread(gevent.greenlet.Greenlet):

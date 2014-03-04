@@ -2,7 +2,7 @@ from collections import defaultdict
 import datetime
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, Health, MonStatus, ServiceId
+from cthulhu.manager.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
 from cthulhu.manager import config
 from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from cthulhu.util import now
@@ -86,7 +86,7 @@ class Eventer(gevent.greenlet.Greenlet):
             self._emit(WARNING, "Failed: {headline} ({error})".format(
                 headline=request.headline, error=request.error_message), **request.associations)
         else:
-            self._emit(INFO, "Succeeded: %s" % request.headline)
+            self._emit(INFO, "Succeeded: %s" % request.headline, **request.assocations)
         self._flush()
 
     def _flush(self):
@@ -98,12 +98,26 @@ class Eventer(gevent.greenlet.Greenlet):
     # we can tell people about their services in the absence of up to date
     # cluster map information.
 
+    def _humanize_service(self, service_count, service_type):
+        """
+        String helper for printing strings like "1 OSD", "2 MDSs"
+        """
+        human_singular = {
+            MON: 'monitor service',
+            OSD: 'OSD',
+            MDS: 'MDS'
+        }
+        return "{count} {human_service}{pluralize}".format(
+            count=service_count,
+            human_service=human_singular[service_type],
+            pluralize="s" if service_count > 1 else ""
+        )
+
     @nosleep
     def on_server(self, server_state):
         """
         Tell me about a new server
         """
-
         msg = "Added server %s" % server_state.fqdn
         counts_by_type = defaultdict(int)
         for service in server_state.services:
@@ -111,7 +125,7 @@ class Eventer(gevent.greenlet.Greenlet):
         if counts_by_type:
             msg += " with "
             msg += ", ".join([
-                "{count} {service_type}".format(count=count, service_type=service_type)
+                self._humanize_service(count, service_type)
                 for (service_type, count) in counts_by_type.items()])
 
         # If the server has only services for exactly one FSID, then we
@@ -123,6 +137,7 @@ class Eventer(gevent.greenlet.Greenlet):
             fsid = None
 
         self._emit(INFO, msg, fqdn=server_state.fqdn, fsid=fsid)
+        self._flush()
 
     @nosleep
     def on_tick(self):
@@ -140,16 +155,24 @@ class Eventer(gevent.greenlet.Greenlet):
                 # worry about whether they sent us one recently.
                 continue
 
+            if len(server_state.clusters) == 1:
+                # Because Events can only be associated with one FSID, we only make this
+                # association for servers with exactly one cluster.  This is a bit cheeky and
+                # kind of an unnecessary limitation in the Event DB schema.
+                fsid = server_state.clusters[0]
+            else:
+                fsid = None
+
             if now_utc - server_state.last_contact > datetime.timedelta(seconds=CONTACT_THRESHOLD):
                 if fqdn not in self._servers_complained:
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
-                    ), fqdn=fqdn)
+                    ), fqdn=fqdn, fsid=fsid)
                     self._servers_complained.add(fqdn)
             else:
                 if fqdn in self._servers_complained:
                     self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
-                               fqdn=fqdn)
+                               fqdn=fqdn, fsid=fsid)
                     self._servers_complained.discard(fqdn)
 
         for fsid, cluster_monitor in self._manager.clusters.items():
