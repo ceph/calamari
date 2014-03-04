@@ -142,7 +142,7 @@ class ServerMonitor(greenlet.Greenlet):
             ev = subscription.get_event(tag="ceph/server")
 
             if ev is not None:
-                log.info("ServerMonitor got ceph/server message from %s" % ev['id'])
+                log.debug("ServerMonitor got ceph/server message from %s" % ev['id'])
                 try:
                     # NB assumption that FQDN==minion_id is true unless
                     # someone has modded their salt minion config.

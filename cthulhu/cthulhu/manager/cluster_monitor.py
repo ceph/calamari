@@ -99,6 +99,9 @@ class SyncObjects(object):
                     log.warn("Abandoning fetch for %s started at %s" % (
                         sync_type.str, self._fetching_at[sync_type]))
 
+            log.info("on_version: fetching %s/%s from %s, currently got %s, know %s" % (
+                sync_type, new_version, reported_by, old_version, known_version
+            ))
             self.fetch(reported_by, sync_type)
 
     def fetch(self, minion_id, sync_type):
@@ -134,7 +137,7 @@ class SyncObjects(object):
 
         # Don't store this if we already got something newer
         if sync_type.cmp(version, self.get_version(sync_type)) <= 0:
-            log.warn("Ignoring outdated update %s/%s" % (sync_type.str, version))
+            log.warn("Ignoring outdated update %s/%s from %s" % (sync_type.str, version, minion_id))
             new_object = None
         else:
             log.info("Got new version %s/%s" % (sync_type.str, version))
@@ -417,7 +420,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 new_object.version if isinstance(new_object.version, int) else None,
                 now(), sync_object)
         else:
-            log.warn("ClusterMonitor.on_sync_object: stale object received")
+            log.warn("ClusterMonitor.on_sync_object: stale object received from %s" % minion_id)
 
     @nosleep
     def on_completion(self, data):
