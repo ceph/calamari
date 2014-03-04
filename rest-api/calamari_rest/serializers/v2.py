@@ -89,7 +89,6 @@ class OsdConfigSerializer(serializers.Serializer):
     class Meta:
         fields = OSD_FLAGS
 
-    #pause = serializers.BooleanField(help_text="something helpful")
 
 class CrushRuleSerializer(serializers.Serializer):
     class Meta:
