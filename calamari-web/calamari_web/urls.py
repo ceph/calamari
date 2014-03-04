@@ -51,6 +51,8 @@ urlpatterns = patterns(
         {'document_root': '%s/ubuntu/' % STATIC_ROOT}),
 )
 
+handler500 = 'calamari_web.views.server_error'
+
 # Graphite dashboard client code is not CSRF enabled, but we have
 # global CSRF protection enabled.  Make exceptions for the views
 # that the graphite dashboard wants to POST to.
@@ -73,5 +75,3 @@ import graphite.dashboard.urls
 patch_views(graphite.metrics.urls)
 patch_views(graphite.dashboard.urls)
 
-# Explicitly reset to default or graphite hijacks it
-handler500 = 'django.views.defaults.server_error'
