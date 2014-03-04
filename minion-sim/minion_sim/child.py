@@ -189,6 +189,8 @@ def main():
         data['ceph.selftest_wait'] = selftest_wait
         data['ceph.selftest_block'] = selftest_block
         data['ceph.selftest_exception'] = selftest_exception
+        data['state.highstate'] = lambda: None
+        data['saltutil.sync_modules'] = lambda: None
         __salt__ = data
         return data
 

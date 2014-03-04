@@ -1123,6 +1123,8 @@ class CephCluster(CephClusterState):
         data = self._objects[sync_type]
         if sync_type == 'osd_map':
             version = data['epoch']
+        elif sync_type == 'mon_status':
+            version = data['election_epoch']
         elif sync_type == 'health' or sync_type == 'pg_brief' or sync_type == 'config':
             version = md5(json.dumps(data))
         else:
