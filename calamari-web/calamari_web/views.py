@@ -40,11 +40,11 @@ def dashboard(request, path, document_root):
 
 @requires_csrf_token
 def server_error(request, template_name='500.html'):
-    '''
+    """
     Just like Django's default views.defaults.server_error, except we
     don't search for templates, because Graphite has its own set of
     templates that we don't want to use
-    '''
+    """
     return HttpResponseServerError('<h1>Server Error (500)</h1>')
 
 
