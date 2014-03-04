@@ -44,3 +44,49 @@ class TestOSDFactory(TestCase):
 
     def test_validate_op_key_error(self):
         self.assertEqual(self.osd_request_factory.get_valid_commands([2]), {})
+
+
+class TestOsdMapUpdates(TestCase):
+    def setUp(self):
+        fake_cluster_monitor = MagicMock()
+        attributes = {'name': 'I am a fake',
+                      'fsid': 12345,
+                      'get_sync_object.return_value': fake_cluster_monitor,
+                      'osds_by_id': {0: {'up': True}, 1: {'up': False}}}
+        fake_cluster_monitor.configure_mock(**attributes)
+
+        self.factory = OsdRequestFactory(fake_cluster_monitor)
+
+    def test_no_op(self):
+        self.assertEqual([], self.factory._commands_to_set_flags({}, {}))
+
+    def test_unset_one(self):
+        self.assertEqual([('osd unset', {'key': 'noup'})],
+                         self.factory._commands_to_set_flags({'flags': ['noup']}, {'noup': False}))
+
+    def test_set_one(self):
+        self.assertEqual([('osd set', {'key': 'noup'})],
+                         self.factory._commands_to_set_flags({'flags': []}, {'noup': True}))
+
+    def test_set_one_that_is_already_set(self):
+        self.assertEqual([],
+                         self.factory._commands_to_set_flags({'flags': ['noup']}, {'noup': True}))
+
+    def test_unset_one_that_is_not_set(self):
+        self.assertEqual([],
+                         self.factory._commands_to_set_flags({'flags': []}, {'noup': False}))
+
+    def test_set_something_not_valid(self):
+        self.assertRaises(RuntimeError,
+                          self.factory._commands_to_set_flags, {}, {'nom': True})
+
+    def test_set_and_unset_many(self):
+        self.assertEqual([('osd set', {'key': 'noup'}),
+                          ('osd set', {'key': 'pause'}),
+                          ('osd unset', {'key': 'noscrub'}),
+                          ('osd unset', {'key': 'norecover'})],
+                         self.factory._commands_to_set_flags({'flags': ['noscrub', 'norecover']},
+                                                             {'noscrub': False,
+                                                              'norecover': False,
+                                                              'noup': True,
+                                                              'pause': True}))

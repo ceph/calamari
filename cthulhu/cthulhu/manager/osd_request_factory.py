@@ -1,5 +1,5 @@
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS
+from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
 from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
@@ -27,6 +27,9 @@ class OsdRequestFactory(RequestFactory):
         if 'reweight' in attributes:
             if attributes['reweight'] != osd_map.osd_tree_node_by_id[osd_id]['reweight']:
                 commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
+
+        if 'flags' in attributes:
+            commands.extend(self._commands_to_set_flags(osd_map, attributes))
 
         if not commands:
             # Returning None indicates no-op
@@ -74,3 +77,22 @@ class OsdRequestFactory(RequestFactory):
                 pass
 
         return ret_val
+
+    def _commands_to_set_flags(self, osd_map, attributes):
+        commands = []
+
+        flags_not_implemented = set(attributes.keys()) - set(OSD_FLAGS)
+        if flags_not_implemented:
+            raise RuntimeError("%s not valid to set/unset" % list(flags_not_implemented))
+
+        flags_to_set = set(k for k, v in attributes.iteritems() if v)
+        flags_to_unset = set(k for k, v in attributes.iteritems() if not v)
+        flags_that_are_set = set(osd_map.get('flags', []))
+
+        for x in flags_to_set - flags_that_are_set:
+            commands.append(('osd set', {'key': x}))
+
+        for x in flags_that_are_set & flags_to_unset:
+            commands.append(('osd unset', {'key': x}))
+
+        return commands
