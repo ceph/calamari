@@ -1,5 +1,5 @@
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
+from calamari_common.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
 from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 

@@ -1,14 +1,15 @@
 from collections import defaultdict
 import datetime
-from cthulhu.gevent_util import nosleep
-from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
-from cthulhu.manager import config
-from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
-from cthulhu.util import now
 
 import gevent.event
 import gevent.greenlet
+
+from cthulhu.gevent_util import nosleep
+from cthulhu.log import log
+from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
+from cthulhu.manager import config
+from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
+from cthulhu.util import now
 
 
 # The tick handler is very cheap (no I/O) so we call

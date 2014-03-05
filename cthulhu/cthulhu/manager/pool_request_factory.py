@@ -1,6 +1,6 @@
 from cthulhu.log import log
 from cthulhu.manager.request_factory import RequestFactory
-from cthulhu.manager.types import OsdMap, Config
+from calamari_common.types import OsdMap, Config
 from cthulhu.manager.user_request import OsdMapModifyingRequest, PgCreatingRequest
 
 # Valid values for the 'var' argument to 'ceph osd pool set'

@@ -1,6 +1,8 @@
-from cthulhu.manager.types import OsdMap
 from django.utils.unittest.case import TestCase
+
+from calamari_common.types import OsdMap
 from tests.util import load_fixture
+
 
 # An OSD map with some non-default CRUSH rules in it
 INTERESTING_OSD_MAP = load_fixture('interesting_osd_map.json')

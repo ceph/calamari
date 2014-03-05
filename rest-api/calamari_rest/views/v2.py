@@ -1,15 +1,12 @@
-
 from collections import defaultdict
 import logging
-from dateutil.parser import parse as dateutil_parse
 
+from dateutil.parser import parse as dateutil_parse
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException
-
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-
 from django.contrib.auth.decorators import login_required
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
@@ -17,15 +14,11 @@ from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer,
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.paginated_mixin import PaginatedMixin
-
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
-
 from cthulhu.config import CalamariConfig
-from cthulhu.manager.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP
-# FIXME: these imports of cthulhu stuff from the rest layer are too much
-from cthulhu.manager.types import SYNC_OBJECT_TYPES, ServiceId
+from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from cthulhu.persistence.event import Event, severity_from_str, SEVERITIES
 import salt.client
 

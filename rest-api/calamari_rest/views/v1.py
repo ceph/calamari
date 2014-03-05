@@ -1,11 +1,10 @@
-
 import logging
+import socket
+
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import Http404
 import pytz
-import socket
-
 from rest_framework import viewsets
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
@@ -13,24 +12,17 @@ from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
-
-from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
-    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
-    PoolSerializer, ServerSerializer, InfoSerializer
-
 from salt.config import master_config
 from salt.loader import _create_loader
-
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
-from cthulhu.manager.types import POOL
+from calamari_common.types import POOL
 
 try:
     from calamari_rest.version import VERSION
@@ -38,7 +30,12 @@ except ImportError:
     # could create version here if we wanted to be fancier
     VERSION = 'dev'
 
+
+from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
+    ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
+    PoolSerializer, ServerSerializer, InfoSerializer
 from cthulhu.config import CalamariConfig
+
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')

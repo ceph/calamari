@@ -1,13 +1,13 @@
-import gevent.event
 import traceback
-import zerorpc
 
+import gevent.event
+import zerorpc
 from salt.key import Key
 import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
 
 
 class NotFound(Exception):

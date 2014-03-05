@@ -1,30 +1,29 @@
 import json
 import re
 import datetime
+import zlib
 
 from pytz import utc
 import dateutil
 import gevent.greenlet
 import gevent.event
-
 import salt
 import salt.utils.event
 import salt.client
 from salt.client import condition_kwarg
-import zlib
+
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
-
 from cthulhu.manager import derived, request_collection
 from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from cthulhu.manager.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, PgBrief
+from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, PgBrief
 from cthulhu.manager.request_collection import RequestCollection
-
 from cthulhu.manager import config, salt_config
 from cthulhu.util import now, Ticker
+
 
 FAVORITE_TIMEOUT_S = int(config.get('cthulhu', 'favorite_timeout_s'))
 

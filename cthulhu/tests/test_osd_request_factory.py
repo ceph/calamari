@@ -1,8 +1,9 @@
 from django.utils.unittest import TestCase
 from mock import MagicMock, patch
+
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import UserRequest
-from cthulhu.manager.types import OSD_IMPLEMENTED_COMMANDS, OsdMap
+from calamari_common.types import OSD_IMPLEMENTED_COMMANDS, OsdMap
 
 
 class TestOSDFactory(TestCase):

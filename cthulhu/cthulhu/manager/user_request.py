@@ -1,8 +1,10 @@
 import uuid
+
 from salt.client import LocalClient
+
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.manager.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from calamari_common.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
 
 
