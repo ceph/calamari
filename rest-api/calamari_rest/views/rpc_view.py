@@ -12,7 +12,7 @@ from zerorpc import LostRemote
 from rest_framework.response import Response
 import zerorpc
 
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
 config = CalamariConfig()
 
 

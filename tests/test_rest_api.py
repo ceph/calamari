@@ -24,7 +24,7 @@ class TestApi(ServerTestCase):
         # import errors are test errors rather than world-breakers.
         os.environ.setdefault("CALAMARI_CONFIG", "dev/calamari.conf")
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
-        from cthulhu.manager.types import SYNC_OBJECT_TYPES
+        from calamari_common.types import SYNC_OBJECT_TYPES
         from cthulhu.manager import derived
         from calamari_rest.management.commands.api_docs import ApiIntrospector
 

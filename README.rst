@@ -68,6 +68,7 @@ Calamari server consists of multiple modules, link them into your virtualenv:
 
 ::
 
+    pushd calamari-common ; python setup.py develop ; popd
     pushd rest-api ; python setup.py develop ; popd
     pushd cthulhu ; python setup.py develop ; popd
     pushd minion-sim ; python setup.py develop ; popd

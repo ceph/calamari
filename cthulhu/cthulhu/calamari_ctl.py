@@ -15,14 +15,14 @@ import pwd
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 import time
-from cthulhu.config import CalamariConfig, AlembicConfig
+from calamari_common.config import CalamariConfig, AlembicConfig
 from sqlalchemy import create_engine
 from cthulhu.persistence import Base
 
 # Import sqlalchemy objects so that create_all sees them
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
 from cthulhu.persistence.servers import Server, Service  # noqa
-from cthulhu.persistence.event import Event  # noqa
+from calamari_common.db.event import Event  # noqa
 
 log = logging.getLogger('calamari_ctl')
 log.setLevel(logging.INFO)

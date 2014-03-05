@@ -1,5 +1,7 @@
 from collections import defaultdict
-from cthulhu.manager.types import OsdMap, PgBrief, MdsMap, MonStatus, ServiceId
+
+from calamari_common.types import OsdMap, PgBrief, MdsMap, MonStatus, ServiceId
+
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
 OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',

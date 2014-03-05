@@ -1,6 +1,6 @@
 import logging
 
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
 config = CalamariConfig()
 
 
