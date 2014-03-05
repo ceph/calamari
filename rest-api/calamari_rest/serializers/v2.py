@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from cthulhu.persistence.event import severity_str
+from calamari_common.db.event import severity_str
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
     USER_REQUEST_SUBMITTED, OSD_FLAGS

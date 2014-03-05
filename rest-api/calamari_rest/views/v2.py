@@ -19,7 +19,7 @@ from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
-from cthulhu.persistence.event import Event, severity_from_str, SEVERITIES
+from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 import salt.client
 
 config = CalamariConfig()

@@ -22,7 +22,7 @@ from cthulhu.persistence import Base
 # Import sqlalchemy objects so that create_all sees them
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
 from cthulhu.persistence.servers import Server, Service  # noqa
-from cthulhu.persistence.event import Event  # noqa
+from calamari_common.db.event import Event  # noqa
 
 log = logging.getLogger('calamari_ctl')
 log.setLevel(logging.INFO)

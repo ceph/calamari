@@ -8,7 +8,7 @@ from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
 from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
 from cthulhu.manager import config
-from cthulhu.persistence.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
+from calamari_common.db.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from cthulhu.util import now
 
 
