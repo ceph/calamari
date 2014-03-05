@@ -114,10 +114,21 @@ class Eventer(gevent.greenlet.Greenlet):
             pluralize="s" if service_count > 1 else ""
         )
 
+    def _server_fsid(self, server_state):
+        # If the server has only services for exactly one FSID, then we
+        # can associate the event with the FSID.
+        fsids = set([s.fsid for s in server_state.services])
+        if len(fsids) == 1:
+            fsid = fsids.pop()
+        else:
+            fsid = None
+
+        return fsid
+
     @nosleep
     def on_server(self, server_state):
         """
-        Tell me about a new server
+        Tell me that a new (managed) server has appeared in our world.
         """
         msg = "Added server %s" % server_state.fqdn
         counts_by_type = defaultdict(int)
@@ -129,16 +140,21 @@ class Eventer(gevent.greenlet.Greenlet):
                 self._humanize_service(count, service_type)
                 for (service_type, count) in counts_by_type.items()])
 
-        # If the server has only services for exactly one FSID, then we
-        # can associate the event with the FSID.
-        fsids = set([s.fsid for s in server_state.services])
-        if len(fsids) == 1:
-            fsid = fsids.pop()
-        else:
-            fsid = None
+        self._emit(INFO, msg, fqdn=server_state.fqdn, fsid=self._server_fsid(server_state))
 
-        self._emit(INFO, msg, fqdn=server_state.fqdn, fsid=fsid)
-        self._flush()
+    @nosleep
+    def on_reboot(self, server_state, expected):
+        """
+        Tell me that a server rebooted.
+
+        :param expected: True if the server was in a rebooting state already (i.e.
+                         we told it to reboot).  False indicates spontaneity)
+        """
+        severity = INFO if expected else WARNING
+        self._emit(severity,
+                   "Server {fqdn} rebooted".format(fqdn=server_state.fqdn),
+                   fqdn=server_state.fqdn,
+                   fsid=self._server_fsid(server_state))
 
     @nosleep
     def on_tick(self):

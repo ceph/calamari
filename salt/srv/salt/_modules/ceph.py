@@ -293,6 +293,16 @@ def get_cluster_object(cluster_name, sync_type, since):
     }
 
 
+def get_boot_time():
+    """
+    Retrieve the 'btime' line from /proc/stat
+
+    :return integer, seconds since epoch at which system booted
+    """
+    data = open('/proc/stat').read()
+    return int(re.search('^btime (\d+)$', data, re.MULTILINE).group(1))
+
+
 def terse_status():
     """
     The goal here is *not* to give a helpful summary of
@@ -360,7 +370,10 @@ def terse_status():
         }
         fsid_names[fsid] = cluster_name
 
-    clusters = {}
+        if service_type == 'mon':
+            mon_sockets[fsid] = filename
+
+    cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         # First, are we quorate?
         admin_response = admin_socket(socket_path, ['mon_status'], 'json')
@@ -379,9 +392,14 @@ def terse_status():
         cluster_handle = rados.Rados(name='client.admin', clustername=fsid_names[fsid], conffile='')
         cluster_handle.connect()
 
-        clusters[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
+        cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
 
-    return services, clusters
+    server_heartbeat = {
+        'services': services,
+        'boot_time': get_boot_time()
+    }
+
+    return server_heartbeat, cluster_heartbeat
 
 
 def cluster_status(cluster_handle, cluster_name):

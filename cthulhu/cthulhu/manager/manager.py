@@ -136,7 +136,8 @@ class Manager(object):
                 fqdn=server.fqdn,
                 hostname=server.hostname,
                 managed=server.managed,
-                last_contact=last_contact
+                last_contact=last_contact,
+                boot_time=server.boot_time
             ))
 
         for service in session.query(Service).all():
