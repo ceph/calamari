@@ -34,7 +34,8 @@ except ImportError:
 from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
     PoolSerializer, ServerSerializer, InfoSerializer
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
+
 
 config = CalamariConfig()
 

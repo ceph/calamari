@@ -5,7 +5,7 @@ from os.path import dirname, abspath, join
 import sys
 from django.core.exceptions import ImproperlyConfigured
 
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
 config = CalamariConfig()
 
 DEBUG = False

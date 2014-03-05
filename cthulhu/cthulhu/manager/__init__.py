@@ -1,5 +1,5 @@
 
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
 import salt.config
 
 # A config instance for use from within the manager service

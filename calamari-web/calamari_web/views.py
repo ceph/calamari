@@ -10,7 +10,7 @@ from django.views.decorators.csrf import requires_csrf_token
 
 import zerorpc
 
-from cthulhu.config import CalamariConfig
+from calamari_common.config import CalamariConfig
 config = CalamariConfig()
 
 

@@ -15,7 +15,7 @@ import pwd
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 import time
-from cthulhu.config import CalamariConfig, AlembicConfig
+from calamari_common.config import CalamariConfig, AlembicConfig
 from sqlalchemy import create_engine
 from cthulhu.persistence import Base
 
