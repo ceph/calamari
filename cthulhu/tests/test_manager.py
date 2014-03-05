@@ -51,7 +51,7 @@ class TestSyncObjects(TestCase):
 
 class TestClusterMonitor(TestCase):
     def setUp(self):
-        self.cluster_monitor = cluster_monitor.ClusterMonitor(1, "None", None, None, [], [])
+        self.cluster_monitor = cluster_monitor.ClusterMonitor(1, "None", None, None, None, None)
 
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testCreateClusterMonitor(self):
