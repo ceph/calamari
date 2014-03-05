@@ -419,16 +419,8 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         return Response(self.serializer_class(DataObject(osd)).data)
 
-    def update(self, request, fsid, osd_id=None):
-        """
-        osd_id: OSD to update, if None update applies to the OSDmap
-        """
-        object_type = OSD_MAP
-        if osd_id is not None:
-            osd_id = int(osd_id)
-            object_type = OSD
-
-        return self._return_request(self.client.update(fsid, object_type, osd_id, dict(request.DATA)))
+    def update(self, request, fsid, osd_id):
+        return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
 
     def apply(self, request, fsid, osd_id, command):
         if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
