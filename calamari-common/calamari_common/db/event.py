@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, Text, DateTime, Index
-from cthulhu.persistence import Base
-
+from calamari_common.db.base import Base
 
 CRITICAL = 1
 ERROR = 2

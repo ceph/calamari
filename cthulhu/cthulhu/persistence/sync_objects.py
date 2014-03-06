@@ -1,7 +1,7 @@
 
 
 from sqlalchemy import Column, String, Text, DateTime, Integer
-from cthulhu.persistence import Base
+from calamari_common.db.base import Base
 
 
 class SyncObject(Base):

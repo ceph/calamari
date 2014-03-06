@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 import time
 from calamari_common.config import CalamariConfig, AlembicConfig
 from sqlalchemy import create_engine
-from cthulhu.persistence import Base
+from calamari_common.db.base import Base
 
 # Import sqlalchemy objects so that create_all sees them
 from cthulhu.persistence.sync_objects import SyncObject  # noqa

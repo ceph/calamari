@@ -1,7 +1,7 @@
 
 
 from sqlalchemy import Column, Text, Integer, ForeignKey, Boolean, DateTime
-from cthulhu.persistence import Base
+from calamari_common.db.base import Base
 
 
 class Server(Base):
