@@ -1,6 +1,5 @@
 from collections import namedtuple
-from cthulhu.util import memoize
-
+from calamari_common.util import memoize
 
 import logging
 

@@ -4,9 +4,9 @@ import importlib
 import os
 import salt.client
 import time
+from calamari_common.util import memoize
 from cthulhu.manager import config
 from cthulhu.log import log
-from cthulhu.util import memoize
 
 
 class PluginMonitor(gevent.greenlet.Greenlet):

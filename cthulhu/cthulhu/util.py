@@ -1,6 +1,5 @@
-
-
 import datetime
+
 from dateutil import tz
 import gevent.greenlet
 import gevent.event
@@ -27,16 +26,3 @@ class Ticker(gevent.greenlet.Greenlet):
         while not self._complete.is_set():
             self._callback()
             self._complete.wait(self._period)
-
-
-def memoize(function):
-    memo = {}
-
-    def wrapper(*args):
-        if args in memo:
-            return memo[args]
-        else:
-            rv = function(*args)
-            memo[args] = rv
-            return rv
-    return wrapper
