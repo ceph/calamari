@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from calamari_common.types import OsdMap, PgBrief, MdsMap, MonStatus, ServiceId
+from calamari_common.types import OsdMap, PgSummary, MdsMap, MonStatus, ServiceId
 
 
 PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -32,13 +32,14 @@ class DerivedObjects(dict):
 
 
 class OsdPgDetail(object):
-    depends = [OsdMap, PgBrief]
-    provides = ['osds', 'pgs', 'osds_by_pg_state']
+    depends = [OsdMap, PgSummary]
+    provides = ['osds', 'osds_by_pg_state']
 
     @classmethod
     def generate(cls, cluster_monitor, server_monitor, data):
-        osd_map = data[OsdMap]
-        pgs_brief = data[PgBrief]
+        osd_map = cluster_monitor.get_sync_object(OsdMap)
+
+        pg_summary = data[PgSummary]
         # map osd id to pg states
         pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
         # map osd id to set of pools
@@ -46,33 +47,22 @@ class OsdPgDetail(object):
         # map pg state to osd ids
         osds_by_pg_state = defaultdict(lambda: set([]))
 
-        # helper to modify each pg object
-        def fixup_pg(pg):
-            data = dict((k, pg[k]) for k in PG_FIELDS)
-            data['state'] = data['state'].split("+")
-            return data
-
-        # save the brief pg map
-        pgs = map(fixup_pg, pgs_brief)
-
         # get the list of pools
-        pools_by_id = dict((d['pool'], d['pool_name']) for d in osd_map['pools'])
+        pools_by_id = dict((p_id, p['pool_name']) for (p_id, p) in osd_map.pools_by_id.items())
 
-        # populate the indexes
-        for pg in pgs:
-            pool_id = int(pg['pgid'].split(".")[0])
-            acting = set(pg['acting'])
-            for state in pg['state']:
-                osds_by_pg_state[state] |= acting
-                for osd_id in acting:
-                    pg_states_by_osd[osd_id][state] += 1
-                    if pool_id in pools_by_id:
-                        pools_by_osd[osd_id] |= set([pools_by_id[pool_id]])
+        for pool_id, osds in osd_map.osds_by_pool.items():
+            for osd_id in osds:
+                pools_by_osd[osd_id].add(pools_by_id[pool_id])
+
+        for osd_id, osd_pg_summary in pg_summary['by_osd'].items():
+            for state_tuple, count in osd_pg_summary.items():
+                for state in state_tuple.split("+"):
+                    osds_by_pg_state[state].add(osd_id)
+                    pg_states_by_osd[osd_id][state] += count
 
         # convert set() to list to make JSON happy
         osds_by_pg_state = dict((k, list(v)) for k, v in
                                 osds_by_pg_state.iteritems())
-        osds_by_pg_state = osds_by_pg_state
 
         # helper to modify each osd object
         def fixup_osd(osd):
@@ -84,7 +74,7 @@ class OsdPgDetail(object):
             data.update({'pools': list(pools_by_osd[osd_id])})
 
             server = server_monitor.get_by_service(ServiceId(
-                osd_map['fsid'], 'osd', str(osd_id)
+                cluster_monitor.fsid, 'osd', str(osd_id)
             ))
 
             data.update({'host': server.hostname if server else None})
@@ -92,17 +82,16 @@ class OsdPgDetail(object):
             return data
 
         # add the pg states to each osd
-        osds = map(fixup_osd, osd_map['osds'])
+        osds = map(fixup_osd, osd_map.osds_by_id.values())
 
         return {
             'osds': osds,
-            'osds_by_pg_state': osds_by_pg_state,
-            'pgs': pgs
+            'osds_by_pg_state': osds_by_pg_state
         }
 
 
 class HealthCounters(object):
-    depends = [OsdMap, MdsMap, MonStatus, PgBrief]
+    depends = [OsdMap, MdsMap, MonStatus, PgSummary]
     provides = ['counters']
 
     @classmethod
@@ -111,7 +100,7 @@ class HealthCounters(object):
             'osd': cls._calculate_osd_counters(data[OsdMap]),
             'mds': cls._calculate_mds_counters(data[MdsMap]),
             'mon': cls._calculate_mon_counters(data[MonStatus]),
-            'pg': cls._calculate_pg_counters(data[PgBrief]),
+            'pg': cls._calculate_pg_counters(data[PgSummary]),
         }}
 
     @classmethod
@@ -154,14 +143,12 @@ class HealthCounters(object):
         return False
 
     @classmethod
-    def _calculate_pg_counters(cls, pg_map):
+    def _calculate_pg_counters(cls, pg_summary):
         # Although the mon already has a copy of this (in 'status' output),
         # it's such a simple thing to recalculate here and simplifies our
         # sync protocol.
-        pgs_by_state = defaultdict(int)
-        for pg in pg_map:
-            pgs_by_state[pg['state']] += 1
 
+        pgs_by_state = pg_summary['all']
         ok, warn, crit = [[0, defaultdict(int)] for _ in range(3)]
         for state_name, count in pgs_by_state.items():
             states = map(lambda s: s.lower(), state_name.split("+"))

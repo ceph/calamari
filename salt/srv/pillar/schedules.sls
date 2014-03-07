@@ -1,6 +1,6 @@
 schedule:
   ceph.heartbeat:
     function: ceph.heartbeat
-    seconds: 30
+    seconds: 10
     returner: local
     maxrunning: 1

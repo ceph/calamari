@@ -4,7 +4,7 @@ from salt.client import LocalClient
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, PgBrief, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from calamari_common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
 
 
@@ -368,27 +368,19 @@ class PgCreatingRequest(OsdMapModifyingRequest):
         if self._phase == self.PRE_CREATE:
             return
         elif self._phase == self.CREATING:
-            if sync_type == PgBrief:
+            if sync_type == PgSummary:
                 # Count the PGs in this pool which are not in state 'creating'
-                pgs = sync_objects.get(PgBrief).data
-                pg_counter = 0
-                for pg in pgs:
-                    pg_pool_id = int(pg['pgid'].split(".")[0])
-                    self.log.debug("PgCreatingRequest %s %s %s %s" % (
-                        pg['pgid'], pg_pool_id, self._pool_id, pg['state']
-                    ))
-                    if pg_pool_id != self._pool_id:
-                        continue
-                    else:
-                        states = pg['state'].split("+")
-                        if 'creating' not in states:
-                            pg_counter += 1
+                pg_summary = sync_objects.get(PgSummary)
+                pgs_not_creating = 0
+                for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
+                    states = state_tuple.split("+")
+                    if 'creating' not in states:
+                        pgs_not_creating += count
 
-                self._pg_progress.set_created_pg_count(pg_counter)
-
+                self._pg_progress.set_created_pg_count(pgs_not_creating)
                 self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s (final %s)" % (
-                    pg_counter, self._pg_progress.goal, self._pg_progress.final))
-                if pg_counter >= self._pg_progress.goal:
+                    pgs_not_creating, self._pg_progress.goal, self._pg_progress.final))
+                if pgs_not_creating >= self._pg_progress.goal:
                     if self._pg_progress.is_final_block():
                         self._phase = self.POST_CREATE
                         self.log.debug("PgCreatingRequest.on_map CREATING->POST_CREATE")

@@ -1,3 +1,4 @@
+
 from glob import glob
 import hashlib
 import os
@@ -10,7 +11,7 @@ import struct
 
 # Note: do not import ceph modules at this scope, otherwise this module won't be able
 # to cleanly talk to us about systems where ceph isn't installed yet.
-import zlib
+import msgpack
 
 _REST_CLIENT_DEFAULT_TIMEOUT = 10.0
 
@@ -85,8 +86,7 @@ SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
               'mds_map',
-              'pg_map',
-              'pg_brief',
+              'pg_summary',
               'health',
               'config']
 
@@ -95,6 +95,52 @@ def md5(raw):
     hasher = hashlib.md5()
     hasher.update(raw)
     return hasher.hexdigest()
+
+
+def pg_summary(pgs_brief):
+    """
+    Convert an O(pg count) data structure into an O(osd count) digest listing
+    the number of PGs in each combination of states.
+    """
+
+    osds = {}
+    pools = {}
+    all_pgs = {}
+    for pg in pgs_brief:
+        for osd in pg['acting']:
+            try:
+                osd_stats = osds[osd]
+            except KeyError:
+                osd_stats = {}
+                osds[osd] = osd_stats
+
+            try:
+                osd_stats[pg['state']] += 1
+            except KeyError:
+                osd_stats[pg['state']] = 1
+
+        pool = int(pg['pgid'].split('.')[0])
+        try:
+            pool_stats = pools[pool]
+        except KeyError:
+            pool_stats = {}
+            pools[pool] = pool_stats
+
+        try:
+            pool_stats[pg['state']] += 1
+        except KeyError:
+            pool_stats[pg['state']] = 1
+
+        try:
+            all_pgs[pg['state']] += 1
+        except KeyError:
+            all_pgs[pg['state']] = 1
+
+    return {
+        'by_osd': osds,
+        'by_pool': pools,
+        'all': all_pgs
+    }
 
 
 def rados_commands(fsid, cluster_name, commands):
@@ -209,16 +255,16 @@ def get_cluster_object(cluster_name, sync_type, since):
             'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
             'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
             'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-            'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
+            'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
             'health': ('health', {'detail': ''}, lambda d, r: md5(r))
         }[sync_type]
         kwargs['format'] = 'json'
         ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
         assert ret == 0
 
-        if sync_type == 'pg_brief':
-            data = zlib.compress(raw)
-            version = version_fn(None, raw)
+        if sync_type == 'pg_summary':
+            data = pg_summary(json.loads(raw))
+            version = version_fn(data, raw)
         else:
             data = json.loads(raw)
             version = version_fn(data, raw)
@@ -372,9 +418,9 @@ def cluster_status(cluster_handle, cluster_name):
 
     # Get digest of brief pg info
     ret, outbuf, outs = json_command(cluster_handle, prefix='pg dump', argdict={
-        'format': 'json', 'dumpcontents': ['pgs_brief'], 'fooffd': 'asdasd'})
+        'format': 'json', 'dumpcontents': ['pgs_brief']})
     assert ret == 0
-    pgs_brief_digest = md5(outbuf)
+    pg_summary_digest = md5(msgpack.packb(pg_summary(json.loads(outbuf))))
 
     # Get digest of configuration
     config_digest = md5(_get_config(cluster_name))
@@ -387,7 +433,7 @@ def cluster_status(cluster_handle, cluster_name):
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,
-            'pg_brief': pgs_brief_digest,
+            'pg_summary': pg_summary_digest,
             'health': health_digest,
             'config': config_digest
         }
