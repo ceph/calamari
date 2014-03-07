@@ -1,6 +1,6 @@
 
 
-from sqlalchemy import Column, String, Text, DateTime, Integer
+from sqlalchemy import Column, String, Text, DateTime, Integer, LargeBinary
 from calamari_common.db.base import Base
 
 
@@ -17,7 +17,7 @@ class SyncObject(Base):
     sync_type = Column(String, primary_key=True)
     version = Column(Integer, nullable=True, primary_key=True)
     when = Column(DateTime, index=True)
-    data = Column(Text)
+    data = Column(LargeBinary)
 
     def __repr__(self):
         return "<SyncObject %s/%s/%s>" % (self.fsid, self.sync_type, self.version if self.version else self.when)
