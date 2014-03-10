@@ -176,7 +176,10 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, minion_id):
-        return Response(self.serializer_class(self.client.minion_get(minion_id)).data)
+        minion_status = self.client.minion_get(minion_id)
+        if minion_status is None:
+            raise Http404("No minion on %s" % minion_id)
+        return Response(self.serializer_class(minion_status).data)
 
 
 class ClusterViewSet(RPCViewSet):
@@ -513,8 +516,12 @@ server then the FQDN will be modified to its correct value.
             return Response(status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, fqdn):
+        server = self.client.server_get(fqdn)
+        if server is None:
+            raise Http404('No server %s' % fqdn)
+
         return Response(
-            self.serializer_class(DataObject(self.client.server_get(fqdn))).data
+            self.serializer_class(DataObject(server)).data
         )
 
     def list(self, request):

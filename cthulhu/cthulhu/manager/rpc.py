@@ -329,7 +329,11 @@ class RpcInterface(object):
         }
 
     def server_get(self, fqdn):
-        return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
+        server_state = self._manager.servers.get_one(fqdn)
+        if server_state is not None:
+            return self._manager.servers.dump(server_state)
+
+        return None
 
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
