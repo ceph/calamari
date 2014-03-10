@@ -167,7 +167,7 @@ install-rh-conf:
 	@$(INSTALL) -D conf/httpd/rh/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
-install-venv: build-venv
+install-venv:
 	@echo "target: $@"
 	# copy calamari webapp files into place
 	$(INSTALL) -d -m 755 $(DESTDIR)/opt/calamari/webapp
