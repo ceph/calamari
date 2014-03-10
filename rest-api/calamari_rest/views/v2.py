@@ -398,7 +398,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
-        osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
+        osd = self.get_sync_object_or_404(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
         osd['reweight'] = crush_node['reweight']
         osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]

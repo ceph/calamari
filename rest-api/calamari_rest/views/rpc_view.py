@@ -5,7 +5,7 @@ Helpers for writing django views and rest_framework ViewSets that get
 their data from cthulhu with zeroRPC
 """
 
-
+from django.http import Http404
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from zerorpc import LostRemote, RemoteError
@@ -80,6 +80,13 @@ class RPCView(APIView):
         ret['actions'] = actions
 
         return ret
+
+    def get_sync_object_or_404(self, *args, **kwargs):
+        sync_object = self.client.get_sync_object(*args, **kwargs)
+        if sync_object is None:
+            raise Http404
+
+        return sync_object
 
 
 class RPCViewSet(viewsets.ViewSetMixin, RPCView):
