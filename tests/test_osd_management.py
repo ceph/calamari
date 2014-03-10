@@ -107,3 +107,13 @@ class TestOsdManagement(RequestTestCase):
 
         config = self.api.get(url).json()
         self.assertEqual(True, config['pause'])
+
+    def test_osd_update_validation(self):
+        fsid = self._wait_for_cluster()
+        url = "cluster/%s/osd/0" % (fsid)
+        response = self.api.patch(url, data={"up": False})
+
+        self._wait_for_completion(fsid, response)
+        response = self.api.patch(url, data={"up": True})
+
+        self.assertEqual(400, response.status_code)

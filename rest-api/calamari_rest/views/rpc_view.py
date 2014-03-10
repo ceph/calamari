@@ -8,7 +8,7 @@ their data from cthulhu with zeroRPC
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from zerorpc import LostRemote
+from zerorpc import LostRemote, RemoteError
 from rest_framework.response import Response
 import zerorpc
 
@@ -53,6 +53,13 @@ class RPCView(APIView):
         except LostRemote as e:
             return Response({'detail': "RPC error ('%s')" % e},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
+        except RemoteError as e:
+            # TODO figure out a better way to get the details of the the RemoteError
+            try:
+                message = e.traceback.split('\n')[-2]
+            except Exception:
+                message = str(e)
+            return Response(message, status=status.HTTP_400_BAD_REQUEST, exception=True)
 
     def metadata(self, request):
         ret = super(RPCView, self).metadata(request)
