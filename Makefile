@@ -34,9 +34,23 @@ $(VERSION_PY):
 	@echo "target: $@"
 	echo "VERSION=\"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
-build-venv: venv
-	@echo "build-venv"
-	set -e; \
+build-venv: venv build-venv-carbon build-venv-reqs fixup-venv
+
+build-venv-carbon:
+	@echo "target: $@"
+	set -ex; \
+	(export PYTHONDONTWRITEBYTECODE=1; \
+	cd venv; \
+	./bin/python ./bin/pip install --no-install carbon; \
+	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
+		build/carbon/setup.py; \
+	./bin/python ./bin/pip install --no-download\
+	  --install-option="--prefix=$(SRC)/venv" \
+	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; )
+
+build-venv-reqs:
+	@echo "target: $@"
+	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	./bin/python ./bin/pip install \
@@ -46,12 +60,6 @@ build-venv: venv
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements.production.txt; \
-	./bin/python ./bin/pip install --no-install carbon; \
-	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-		build/carbon/setup.py; \
-	./bin/python ./bin/pip install --no-download\
-	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
@@ -64,20 +72,27 @@ build-venv: venv
 	../venv/bin/python ./setup.py install ; \
 	cd ../cthulhu ; \
 	../venv/bin/python ./setup.py install ; \
-	cd ../venv ; \
-	(find . -type f | xargs grep -l '#!.*'$(SRC) ; \
-	   echo bin/activate bin/activate.csh bin/activate.fish ) | \
-	while read f; do \
-		echo -n "modifying $$f: "; \
-		grep $(SRC) $$f; \
-		sed -i -e 's;'$(SRC)';/opt/calamari;' $$f; \
+	cd ../venv ; )
+
+fixup-venv:
+	@echo "target: $@"
+	set -x; \
+	cd venv; \
+	fixfiles=$$(find . -type f -print0 | xargs -0 grep -l '\#!.*'$(SRC)) ; \
+	echo "fixfiles: $$fixfiles" ; \
+	fixfiles="$$fixfiles bin/activate*" ; \
+	echo "fixfiles: $$fixfiles" ; \
+	for f in $$fixfiles; do \
+		echo -n "fixing path in $$f: "; \
+		grep $(SRC) "$$f"; \
+		sed -i -e 's;'$(SRC)';/opt/calamari;' "$$f"; \
 	done; \
 	if [ -h local/bin ] ; then \
 		for p in bin include lib; do \
 			rm local/$$p; \
 			ln -s /opt/calamari/venv/$$p local/$$p; \
 		done; \
-	fi)
+	fi
 
 # when this repo contained the Javascript code, it was difficult to make
 # source packages work right; it might be easier now
