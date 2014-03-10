@@ -83,6 +83,8 @@ SUPPORT_MATRIX = "Inktank Ceph Enterprise supports RHEL 6.3, RHEL 6.4, CentOS 6.
 SALT_PACKAGE = "salt-minion"
 SALT_CONFIG_PATH = "/etc/salt/"
 
+print ""  # a blank line to separate our output from the preceding curl/wget
+
 if len(sys.argv) > 1:
     BASE_URL = sys.argv[1]
 else:
@@ -99,6 +101,10 @@ if len(sys.argv) > 3:
         print "Invalid distribution '%s', must be in %s" % (distro, DISTROS)
 else:
     distro = None
+
+if os.geteuid() != 0:
+    print "This command must be run as root or using sudo"
+    sys.exit(-1)
 
 try:
     ps = subprocess.Popen(["lsb_release", "-d", "-s"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
