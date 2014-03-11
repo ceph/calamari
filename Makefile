@@ -41,7 +41,7 @@ build-venv: venv
 	  --install-option="--zmq=bundled" \
 	  'pyzmq>=13.0'; \
 	./bin/python ./bin/pip install \
-	  https://github.com/jcsp/whisper/tarball/calamari; \
+	  https://github.com/graphite-project/whisper/tarball/a6e2176e; \
 	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements.production.txt; \
 	./bin/python ./bin/pip install --no-install carbon; \

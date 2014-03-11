@@ -31,7 +31,7 @@ gevent>=1.0
 #pip install graphite-web --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 Twisted==11.1.0
 django-tagging==0.3.1
--e git+https://github.com/jcsp/whisper.git@calamari#egg=whisper
+-e git+https://github.com/graphite-project/whisper.git@a6e2176e#egg=whisper
 pytz==2013.8
 
 # Cthulhu
