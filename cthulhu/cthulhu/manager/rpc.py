@@ -7,16 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
-
-
-class NotFound(Exception):
-    def __init__(self, object_type, object_id):
-        self.object_type = object_type
-        self.object_id = object_id
-
-    def __str__(self):
-        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId, NotFound
 
 
 class RpcInterface(object):
@@ -249,7 +240,10 @@ class RpcInterface(object):
         """
         cluster = self._fs_resolve(fs_id)
         request = cluster.get_request(request_id)
-        return self._dump_request(request)
+        if request is not None:
+            return self._dump_request(request)
+
+        return None
 
     def list_requests(self, fs_id, state):
         cluster = self._fs_resolve(fs_id)
@@ -329,13 +323,21 @@ class RpcInterface(object):
         }
 
     def server_get(self, fqdn):
-        return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
+        server_state = self._manager.servers.get_one(fqdn)
+        if server_state is not None:
+            return self._manager.servers.dump(server_state)
+
+        return None
 
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
     def server_get_cluster(self, fqdn, fsid):
-        return self._manager.servers.dump_cluster(self._manager.servers.get_one(fqdn), self._manager.clusters[fsid])
+        server_state = self._manager.servers.get_one(fqdn)
+        if server_state is not None:
+            return self._manager.servers.dump_cluster(server_state, self._manager.clusters[fsid])
+
+        return None
 
     def server_list_cluster(self, fsid):
         return [

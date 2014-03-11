@@ -432,7 +432,7 @@ class ServerMonitor(greenlet.Greenlet):
         """
         Give me a single ServerState, looked up by FQDN.
         """
-        return self.servers[fqdn]
+        return self.servers.get(fqdn)
 
     def get_by_service(self, service_id):
         """

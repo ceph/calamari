@@ -5,14 +5,15 @@ Helpers for writing django views and rest_framework ViewSets that get
 their data from cthulhu with zeroRPC
 """
 
-
+from django.http import Http404
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from zerorpc import LostRemote
+from zerorpc import LostRemote, RemoteError
 from rest_framework.response import Response
 import zerorpc
 
 from calamari_common.config import CalamariConfig
+from calamari_common.types import NotFound
 config = CalamariConfig()
 
 
@@ -53,6 +54,12 @@ class RPCView(APIView):
         except LostRemote as e:
             return Response({'detail': "RPC error ('%s')" % e},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
+        except RemoteError as e:
+            if 0:  # TODO figure out what we were catching
+                return Response(message, status=status.HTTP_400_BAD_REQUEST, exception=True)
+
+            if e.name == 'NotFound':
+                return Response(str(e.msg), status=status.HTTP_404_NOT_FOUND)
 
     def metadata(self, request):
         ret = super(RPCView, self).metadata(request)
@@ -73,6 +80,13 @@ class RPCView(APIView):
         ret['actions'] = actions
 
         return ret
+
+    def get_sync_object_or_404(self, *args, **kwargs):
+        sync_object = self.client.get_sync_object(*args, **kwargs)
+        if sync_object is None:
+            raise Http404
+
+        return sync_object
 
 
 class RPCViewSet(viewsets.ViewSetMixin, RPCView):

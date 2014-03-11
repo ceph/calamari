@@ -62,8 +62,11 @@ the first page of results contains the most recent requests).
     serializer_class = RequestSerializer
 
     def retrieve(self, request, fsid, request_id):
-        user_request = DataObject(self.client.get_request(fsid, request_id))
-        return Response(RequestSerializer(user_request).data)
+        user_request = self.client.get_request(fsid, request_id)
+        if user_request is None:
+            raise Http404("No such user request: %s" % request_id)
+
+        return Response(RequestSerializer(DataObject(user_request)).data)
 
     def list(self, request, fsid):
         filter_state = request.GET.get('state', None)
@@ -176,7 +179,10 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, minion_id):
-        return Response(self.serializer_class(self.client.minion_get(minion_id)).data)
+        minion_status = self.client.minion_get(minion_id)
+        if minion_status is None:
+            raise Http404("No minion on %s" % minion_id)
+        return Response(self.serializer_class(minion_status).data)
 
 
 class ClusterViewSet(RPCViewSet):
@@ -398,7 +404,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
     def retrieve(self, request, fsid, osd_id):
-        osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
+        osd = self.get_sync_object_or_404(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
         osd['reweight'] = crush_node['reweight']
         osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]
@@ -433,7 +439,11 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.client.get_valid_commands(fsid, OSD, osds))
 
     def validate_command(self, request, fsid, osd_id, command):
-        return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
+        valid_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id))
+        if valid_commands is None:
+            raise Http404("Cannot find valid commands for osd %s" % osd_id)
+
+        return Response({'valid': command in valid_commands.get(int(osd_id)).get('valid_commands')})
 
 
 class OsdConfigViewSet(RPCViewSet, RequestReturner):
@@ -483,7 +493,11 @@ all record of it from any/all clusters).
             [DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
 
     def retrieve(self, request, fsid, fqdn):
-        return Response(self.serializer_class(DataObject(self.client.server_get_cluster(fqdn, fsid))).data)
+        server_state = self.client.server_get_cluster(fqdn, fsid)
+        if server_state is None:
+            raise Http404("Can't get server state for %s" % fqdn)
+
+        return Response(self.serializer_class(DataObject(server_state)).data)
 
 
 class ServerViewSet(RPCViewSet):
@@ -513,8 +527,12 @@ server then the FQDN will be modified to its correct value.
             return Response(status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, fqdn):
+        server = self.client.server_get(fqdn)
+        if server is None:
+            raise Http404('No server %s' % fqdn)
+
         return Response(
-            self.serializer_class(DataObject(self.client.server_get(fqdn))).data
+            self.serializer_class(DataObject(server)).data
         )
 
     def list(self, request):
