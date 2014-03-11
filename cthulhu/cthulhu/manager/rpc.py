@@ -7,7 +7,8 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId, NotFound
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId,\
+    NotFound, SERVER
 
 
 class RpcInterface(object):
@@ -41,6 +42,12 @@ class RpcInterface(object):
             return self._manager.clusters[fs_id]
         except KeyError:
             raise NotFound(CLUSTER, fs_id)
+
+    def _server_resolve(self, fqdn):
+        try:
+            return self._manager.servers.get_one(fqdn)
+        except KeyError:
+            raise NotFound(SERVER, fqdn)
 
     def _osd_resolve(self, cluster, osd_id):
         osdmap = cluster.get_sync_object(OsdMap)
@@ -307,7 +314,7 @@ class RpcInterface(object):
     def minion_get(self, minion_id):
         result = self._salt_key.name_match(minion_id, full=True)
         if not result:
-            raise NotFound('server', minion_id)
+            raise NotFound(SERVER, minion_id)
 
         if 'minions' in result:
             status = "accepted"
@@ -324,19 +331,13 @@ class RpcInterface(object):
         }
 
     def server_get(self, fqdn):
-        try:
-            return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
-        except KeyError:
-            raise NotFound('server', fqdn)
+        return self._manager.servers.dump(self._server_resolve(fqdn))
 
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
     def server_get_cluster(self, fqdn, fsid):
-        try:
-            return self._manager.servers.dump_cluster(self.server_get(fqdn), self._manager.clusters[fsid])
-        except KeyError:
-            raise NotFound('cluster', fsid)
+        return self._manager.servers.dump_cluster(self._server_resolve(fqdn), self._fs_resolve(fsid))
 
     def server_list_cluster(self, fsid):
         return [

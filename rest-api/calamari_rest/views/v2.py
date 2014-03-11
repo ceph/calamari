@@ -434,11 +434,11 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
     def validate_command(self, request, fsid, osd_id, command):
         try:
-            valid_coomands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')
+            valid_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')
         except AttributeError:
             raise NotFound(OSD, osd_id)
 
-        return Response({'valid': command in valid_coomands})
+        return Response({'valid': command in valid_commands})
 
 
 class OsdConfigViewSet(RPCViewSet, RequestReturner):

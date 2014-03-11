@@ -210,6 +210,7 @@ POOL = 'pool'
 OSD_MAP = 'osd_map'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
+SERVER = 'server'
 
 # The objects that ClusterMonitor keeps copies of from the mon
 SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config]
