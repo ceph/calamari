@@ -34,7 +34,7 @@ def dashboard(request, path, document_root):
     finally:
         client.close()
     if not clusters:
-        return redirect("/admin/#cluster")
+        return redirect("/manage/")
     return serve_dir_or_index(request, path, document_root)
 
 
