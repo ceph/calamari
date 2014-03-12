@@ -176,7 +176,12 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
         cluster = self._fs_resolve(fs_id)
-        return cluster.get_valid_commands(object_type, object_ids)
+        try:
+            valid_commands = cluster.get_valid_commands(object_type, object_ids)
+        except KeyError as e:
+            raise NotFound(object_type, str(e))
+
+        return valid_commands
 
     def create(self, fs_id, object_type, attributes):
         """
