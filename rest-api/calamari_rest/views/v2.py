@@ -18,7 +18,7 @@ from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, NotFound
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 import salt.client
 
@@ -433,7 +433,12 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.client.get_valid_commands(fsid, OSD, osds))
 
     def validate_command(self, request, fsid, osd_id, command):
-        return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
+        try:
+            valid_coomands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')
+        except AttributeError:
+            raise NotFound(OSD, osd_id)
+
+        return Response({'valid': command in valid_coomands})
 
 
 class OsdConfigViewSet(RPCViewSet, RequestReturner):

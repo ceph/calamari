@@ -13,6 +13,7 @@ from rest_framework.response import Response
 import zerorpc
 
 from calamari_common.config import CalamariConfig
+from calamari_common.types import NotFound
 config = CalamariConfig()
 
 
@@ -54,11 +55,11 @@ class RPCView(APIView):
             return Response({'detail': "RPC error ('%s')" % e},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
         except RemoteError as e:
-            if 0:  # TODO figure out what we were catching
-                return Response(message, status=status.HTTP_400_BAD_REQUEST, exception=True)
-
             if e.name == 'NotFound':
                 return Response(str(e.msg), status=status.HTTP_404_NOT_FOUND)
+
+        except NotFound as e:
+                return Response(str(e), status=status.HTTP_404_NOT_FOUND)
 
     def metadata(self, request):
         ret = super(RPCView, self).metadata(request)

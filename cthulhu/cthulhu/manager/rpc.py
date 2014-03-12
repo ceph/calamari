@@ -239,7 +239,11 @@ class RpcInterface(object):
         Get a JSON representation of a UserRequest
         """
         cluster = self._fs_resolve(fs_id)
-        request = cluster.get_request(request_id)
+        try:
+            request = cluster.get_request(request_id)
+        except KeyError:
+            raise NotFound('request', request_id)
+
         return self._dump_request(request)
 
     def list_requests(self, fs_id, state):
@@ -303,7 +307,7 @@ class RpcInterface(object):
     def minion_get(self, minion_id):
         result = self._salt_key.name_match(minion_id, full=True)
         if not result:
-            return None
+            raise NotFound('server', minion_id)
 
         if 'minions' in result:
             status = "accepted"

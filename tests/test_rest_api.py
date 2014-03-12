@@ -8,7 +8,7 @@ from tests.server_testcase import ServerTestCase
 
 
 class TestApi(ServerTestCase):
-    def Xtest_touch_urls(self):
+    def test_touch_urls(self):
         """
         This has two purposes:
 
@@ -188,7 +188,8 @@ class TestApi(ServerTestCase):
                     continue
                 response = self.api.get(url[len(prefix):])
 
-                if response.status_code != 404:
+                # We are mostly interested that these are not 500
+                if response.status_code not in (404, 200, 503):
                     fails.append((url, response.status_code, response.reason))
 
         from pprint import pprint
