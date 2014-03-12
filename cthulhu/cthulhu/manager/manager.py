@@ -132,12 +132,13 @@ class Manager(object):
             # postgres stores dates in UTC, just set the timezone to tzutc() to get
             # a valid tz aware datetime out.
             last_contact = server.last_contact.replace(tzinfo=tzutc()) if server.last_contact else None
+            boot_time = server.boot_time.replace(tzinfo=tzutc()) if server.boot_time else None
             self.servers.inject_server(ServerState(
                 fqdn=server.fqdn,
                 hostname=server.hostname,
                 managed=server.managed,
                 last_contact=last_contact,
-                boot_time=server.boot_time,
+                boot_time=boot_time,
                 ceph_version=server.ceph_version
             ))
 
