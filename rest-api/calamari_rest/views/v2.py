@@ -22,6 +22,7 @@ from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, 
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 import salt.client
 
+from django.views.decorators.csrf import csrf_exempt
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
@@ -397,6 +398,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
+    @csrf_exempt
     def retrieve(self, request, fsid, osd_id):
         osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])

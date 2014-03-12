@@ -101,7 +101,6 @@ class TestApi(ServerTestCase):
                     continue
                 response = self.api.get(url[len(prefix):])
                 if response.status_code != 200:
-                    # import pdb; pdb.set_trace()
                     fails.append((url, response.status_code, response.reason))
                     continue
                 else:
@@ -191,6 +190,14 @@ class TestApi(ServerTestCase):
                 # We are mostly interested that these are not 500
                 if response.status_code not in (404, 200, 503):
                     fails.append((url, response.status_code, response.reason))
+
+                response = self.api.patch(url[len(prefix):], data={'status': 'accepted'})
+
+                # We are mostly interested that these are not 500
+                if response.status_code not in (404, 405, 503):
+                    fails.append((url, response.status_code, response.reason))
+
+
 
         from pprint import pprint
         pprint(fails)

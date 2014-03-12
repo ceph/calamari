@@ -144,6 +144,7 @@ class RpcInterface(object):
 
             return cluster.request_update('update', OSD, object_id, attributes)
         elif object_type == POOL:
+            self._pool_resolve(cluster, object_id)
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
@@ -302,18 +303,21 @@ class RpcInterface(object):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.delete_key(minion_id)
 
     def minion_get(self, minion_id):
