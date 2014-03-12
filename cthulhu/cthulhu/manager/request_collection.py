@@ -71,8 +71,8 @@ class RequestCollection(object):
         for request in stale_jobs:
             with self._update_index(request):
                 request.set_error("Lost contact")
-                request.complete()
                 request.jid = None
+                request.complete()
 
     def on_tick_response(self, minion_id, jobs):
         """
