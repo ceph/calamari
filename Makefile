@@ -24,7 +24,9 @@ set_deb_version:
                 -D $(DIST) --force-bad-version --force-distribution "$(DATESTR)"
 
 venv:
-	virtualenv --system-site-packages venv
+	if [ ! -d $(SRC)/venv ] ; then \
+		virtualenv --system-site-packages $(SRC)/venv ; \
+	fi
 
 
 VERSION_PY = rest-api/calamari_rest/version.py
@@ -34,21 +36,28 @@ $(VERSION_PY):
 	@echo "target: $@"
 	echo "VERSION=\"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
-build-venv: venv build-venv-carbon build-venv-reqs fixup-venv
+# separate targets exist below for debugging; the expected order is
+# "venv -> build-venv-carbon/build-venv-reqs -> fixup-venv"
 
-build-venv-carbon:
+build-venv: fixup-venv
+
+# try for idempotency with pip freeze | grep carbon
+build-venv-carbon: venv
 	@echo "target: $@"
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
-	./bin/python ./bin/pip install --no-install carbon; \
-	sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-		build/carbon/setup.py; \
-	./bin/python ./bin/pip install --no-download\
-	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; )
+	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
+		./bin/python ./bin/pip install --no-install carbon; \
+		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
+			build/carbon/setup.py; \
+		./bin/python ./bin/pip install --no-download \
+		  --install-option="--prefix=$(SRC)/venv" \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
+	fi \
+	)
 
-build-venv-reqs:
+build-venv-reqs: venv
 	@echo "target: $@"
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
@@ -74,7 +83,7 @@ build-venv-reqs:
 	../venv/bin/python ./setup.py install ; \
 	cd ../venv ; )
 
-fixup-venv:
+fixup-venv: build-venv-carbon build-venv-reqs
 	@echo "target: $@"
 	set -x; \
 	cd venv; \
@@ -112,7 +121,7 @@ install:
 	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
 		else $(MAKE) install_real ; fi
 
-install_real: install-common install-deb-conf
+install_real: build install-common install-deb-conf
 	@echo "target: $@"
 
 install-conf: $(CONFFILES)
