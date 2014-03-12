@@ -493,7 +493,11 @@ all record of it from any/all clusters).
             [DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
 
     def retrieve(self, request, fsid, fqdn):
-        return Response(self.serializer_class(DataObject(self.client.server_get_cluster(fqdn, fsid))).data)
+        server_state = self.client.server_get_cluster(fqdn, fsid)
+        if server_state is None:
+            raise Http404("Can't get server state for %s" % fqdn)
+
+        return Response(self.serializer_class(DataObject(server_state)).data)
 
 
 class ServerViewSet(RPCViewSet):

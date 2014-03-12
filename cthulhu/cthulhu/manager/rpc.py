@@ -342,7 +342,11 @@ class RpcInterface(object):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
     def server_get_cluster(self, fqdn, fsid):
-        return self._manager.servers.dump_cluster(self._manager.servers.get_one(fqdn), self._manager.clusters[fsid])
+        server_state = self._manager.servers.get_one(fqdn)
+        if server_state is not None:
+            return self._manager.servers.dump_cluster(server_state, self._manager.clusters[fsid])
+
+        return None
 
     def server_list_cluster(self, fsid):
         return [
