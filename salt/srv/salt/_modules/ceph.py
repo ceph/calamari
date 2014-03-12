@@ -337,8 +337,6 @@ def get_heartbeats():
     # FSID string to cluster name string
     fsid_names = {}
 
-    ceph_version = None
-
     for filename in glob("/var/run/ceph/*.asok"):
         cluster_name, service_type, service_id = re.match("^(.*)-(.*)\.(.*).asok$", os.path.basename(filename)).groups()
         service_name = "%s-%s.%s" % (cluster_name, service_type, service_id)
@@ -363,28 +361,31 @@ def get_heartbeats():
                 # A mon in quorum is elegible to emit a cluster heartbeat
                 mon_sockets[fsid] = filename
 
+        version_response = admin_socket(filename, ['version'], 'json')
+        if version_response is not None:
+            service_version = json.loads(version_response)['version']
+        else:
+            service_version = None
+
         services[service_name] = {
             'cluster': cluster_name,
             'type': service_type,
             'id': service_id,
             'fsid': fsid,
-            'status': status
+            'status': status,
+            'version': service_version
         }
         fsid_names[fsid] = cluster_name
 
         if service_type == 'mon':
             mon_sockets[fsid] = filename
 
-        if ceph_version is None:
-            version_response = admin_socket(filename, ['version'], 'json')
-            if version_response is not None:
-                ceph_version = json.loads(version_response)['version']
-
-    if ceph_version is None:
-        # No running services told us the ceph version, query package manager
-        ceph_version_str = __salt__['pkg.version']('ceph')  # noqa
-        if ceph_version_str:
-            ceph_version = ceph_version_str
+    # Installed Ceph version (as oppose to per-service running ceph version)
+    ceph_version_str = __salt__['pkg.version']('ceph')  # noqa
+    if ceph_version_str:
+        ceph_version = ceph_version_str
+    else:
+        ceph_version = None
 
     cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():

@@ -176,7 +176,7 @@ class SimpleServerSerializer(serializers.Serializer):
         help_text="The time at which this server booted. "
                   "This is always null for unmanaged servers")
     ceph_version = serializers.CharField(
-        help_text="The version of Ceph in use.  This is always null for unmanaged servers."
+        help_text="The version of Ceph installed.  This is always null for unmanaged servers."
     )
     # Ceph usage
     services = ServiceSerializer(many=True, help_text="List of Ceph services seen"
