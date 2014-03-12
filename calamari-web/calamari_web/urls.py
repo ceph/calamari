@@ -49,6 +49,8 @@ urlpatterns = patterns(
     # XXX this is a hack to serve apt repo in dev mode (Full installation serves this with apache)
     url(r'^static/ubuntu/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/ubuntu/' % STATIC_ROOT}),
+    url(r'^static/el6/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/el6/' % STATIC_ROOT}),
 )
 
 handler500 = 'calamari_web.views.server_error'
@@ -74,4 +76,3 @@ import graphite.metrics.urls
 import graphite.dashboard.urls
 patch_views(graphite.metrics.urls)
 patch_views(graphite.dashboard.urls)
-

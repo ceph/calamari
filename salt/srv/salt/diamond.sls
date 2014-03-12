@@ -13,6 +13,7 @@ diamond-config:
   require:
     - pip: diamond-install
 
+{% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
 diamond-init-config:
   file:
     - replace
@@ -21,6 +22,7 @@ diamond-init-config:
     - repl: DIAMOND_USER="root"
   require:
     - pip: diamond-install
+{% endif %}
 
 diamond-ceph-config:
   file:

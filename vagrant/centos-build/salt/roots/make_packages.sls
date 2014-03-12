@@ -1,7 +1,7 @@
 build-diamond:
   cmd.run:
     - user: vagrant
-    - name: make deb
+    - name: make rpm
     - cwd: /home/vagrant/Diamond
     - require:
       - git: /git/Diamond
@@ -9,22 +9,13 @@ build-diamond:
 build-repo:
   cmd.run:
     - user: vagrant
-    - name: make ubuntu
+    - name: make el6
     - cwd: /home/vagrant/calamari/repobuild
     - require:
       - git: /git/calamari
       - cmd: build-diamond
 
-build-calamari-server:
-  cmd.run:
-    - user: vagrant
-    - name: make dpkg
-    - cwd: /home/vagrant/calamari
-    - require:
-      - git: /git/calamari
-
-{% for path in ('calamari/repobuild/calamari-repo-ubuntu.tar.gz',
-                'calamari-server_1.0.0-1_all.deb',
+{% for path in ('calamari/repobuild/calamari-repo-el6.tar.gz',
                 'Diamond/build/diamond_*.deb') %}
 
 cp-artifacts-to-share {{ path }}:

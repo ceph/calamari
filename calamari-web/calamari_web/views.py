@@ -57,14 +57,33 @@ BOOTSTRAP_TEMPLATE = """
 #
 # The calamari server will attempt to infer the HTTP and Salt addresses
 # from the Host: used to download the script, if this fails override them
-# on the command line.
+# on the command line.  The HTTP URL and Salt master address are the first
+# and second arguments to this script.
+#
+# This script will refuse to run if a supported operating system is not detected.
+# In case the detection is not working correctly, you may override this by passing
+# the distribution type on the command line as the third argument.
+
 
 import sys
-import subprocess
 import os
+import subprocess
+import errno
+
+
+CENTOS = 'centos'
+REDHAT = 'redhat'
+UBUNTU = 'ubuntu'
+DEBIAN = 'debian'
+DISTROS = [CENTOS, REDHAT, UBUNTU, DEBIAN]
+
+SUPPORT_MATRIX = "Inktank Ceph Enterprise supports RHEL 6.3, RHEL 6.4, CentOS 6.3, CentOS 6.4, " \
+                 "Ubuntu 12.04 LTS, and Debian 7."
 
 SALT_PACKAGE = "salt-minion"
 SALT_CONFIG_PATH = "/etc/salt/"
+
+print ""  # a blank line to separate our output from the preceding curl/wget
 
 if len(sys.argv) > 1:
     BASE_URL = sys.argv[1]
@@ -76,19 +95,79 @@ if len(sys.argv) > 2:
 else:
     MASTER = "{master}"
 
+if len(sys.argv) > 3:
+    distro = sys.argv[3]
+    if distro not in DISTROS:
+        print "Invalid distribution '%s', must be in %s" % (distro, DISTROS)
+else:
+    distro = None
+
+if os.geteuid() != 0:
+    print "This command must be run as root or using sudo"
+    sys.exit(-1)
+
+try:
+    ps = subprocess.Popen(["lsb_release", "-d", "-s"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    ps_out, ps_err = ps.communicate()
+except OSError:
+    print "Error querying LSB version"
+    print SUPPORT_MATRIX
+    sys.exit(-1)
+else:
+    lsb_release = ps_out.strip(" \\"")
+
+if lsb_release.startswith("CentOS release 6."):
+    distro = CENTOS
+elif lsb_release.startswith("Red Hat Enterprise Linux Server release 6."):
+    distro = REDHAT
+elif lsb_release.startswith("Ubuntu 12.04"):
+    distro = UBUNTU
+elif lsb_release.startswith("Debian GNU/Linux 7."):
+    distro = DEBIAN
+else:
+    print "Unsupported distribution '%s'" % lsb_release
+    print SUPPORT_MATRIX
+    sys.exit(-1)
+
 # Configure package repository
-# Would be nice to use apt-add-repository, but it's not always there and
-# trying to apt-get install it from the net would be a catch-22
-open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/ubuntu precise main")
+if distro in [CENTOS, REDHAT]:
+    open("/etc/yum.repos.d/calamari.repo", 'w').write(
+    "[el6-calamari]\\n" \
+"name=Calamari\\n" \
+"baseurl={base_url}static/el6\\n" \
+"gpgcheck=0\\n" \
+"enabled=1\\n")
+elif distro == UBUNTU:
+    # Would be nice to use apt-add-repository, but it's not always there and
+    # trying to apt-get install it from the net would be a catch-22
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/ubuntu precise main")
+elif distro == DEBIAN:
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/debian wheezy main")
+else:
+    # Should never happen
+    raise NotImplmentedError()
 
 # Emplace minion config prior to installation so that it is present
 # when the minion first starts.
-os.makedirs(os.path.join(SALT_CONFIG_PATH, "minion.d"))
+try:
+    os.makedirs(os.path.join(SALT_CONFIG_PATH, "minion.d"))
+except OSError, e:
+    if e.errno == errno.EEXIST:
+        pass
+    else:
+        raise
+
 open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
 
 # Deploy salt minion
-subprocess.check_call(["apt-get", "update"])
-subprocess.check_call(["apt-get", "install", "-y", "--force-yes", SALT_PACKAGE])
+if distro in [CENTOS, REDHAT]:
+    subprocess.call(["yum", "check-update"])
+    subprocess.check_call(["yum", "install", "-y", SALT_PACKAGE])
+    subprocess.check_call(["chkconfig", "salt-minion", "on"])
+    subprocess.check_call(["service", "salt-minion", "start"])
+else:
+    subprocess.check_call(["apt-get", "update"])
+    subprocess.check_call(["apt-get", "install", "-y", "--force-yes", SALT_PACKAGE])
 
 """
 
