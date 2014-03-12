@@ -7,16 +7,7 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
-
-
-class NotFound(Exception):
-    def __init__(self, object_type, object_id):
-        self.object_type = object_type
-        self.object_id = object_id
-
-    def __str__(self):
-        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId, NotFound
 
 
 class RpcInterface(object):
