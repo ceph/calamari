@@ -1,6 +1,5 @@
 
 
-import json
 from collections import namedtuple
 import logging
 import datetime
@@ -8,6 +7,7 @@ import datetime
 import gevent.greenlet
 import gevent.queue
 import gevent.event
+import msgpack
 
 from sqlalchemy.orm import sessionmaker
 from cthulhu.manager import config
@@ -69,7 +69,8 @@ class Persister(gevent.greenlet.Greenlet):
                     return object.__getattribute__(self, item)
 
     def _update_sync_object(self, fsid, name, sync_type, version, when, data):
-        self._session.add(SyncObject(fsid=fsid, cluster_name=name, sync_type=sync_type, version=version, when=when, data=json.dumps(data)))
+        self._session.add(SyncObject(fsid=fsid, cluster_name=name, sync_type=sync_type, version=version, when=when,
+                                     data=msgpack.packb(data)))
 
         # Time-limited FIFO
         threshold = now() - CLUSTER_MAP_RETENTION
@@ -134,7 +135,7 @@ class Persister(gevent.greenlet.Greenlet):
                     # Catch-all because all kinds of things can go wrong and our
                     # behaviour is the same: log the exception, the data that
                     # caused it, then try to go back to functioning.
-                    log.exception("Persister exception persisting data: %s" % (data,))
+                    log.exception("Persister exception persisting data: %s" % (data.fn,))
 
                     self._session.rollback()
 

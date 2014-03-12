@@ -1,7 +1,6 @@
-import json
+
 import re
 import datetime
-import zlib
 
 from pytz import utc
 import dateutil
@@ -19,7 +18,7 @@ from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, PgBrief
+from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager import config, salt_config
 from cthulhu.util import now, Ticker
@@ -403,10 +402,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         assert data['fsid'] == self.fsid
 
-        if data['type'] == PgBrief.str:
-            sync_object = json.loads(zlib.decompress(data['data']))
-        else:
-            sync_object = data['data']
+        sync_object = data['data']
 
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
         new_object = self.inject_sync_object(minion_id, data['type'], data['version'], sync_object)

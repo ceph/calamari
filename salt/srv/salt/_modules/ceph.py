@@ -1,3 +1,4 @@
+
 from glob import glob
 import hashlib
 import os
@@ -10,7 +11,7 @@ import struct
 
 # Note: do not import ceph modules at this scope, otherwise this module won't be able
 # to cleanly talk to us about systems where ceph isn't installed yet.
-import zlib
+import msgpack
 
 _REST_CLIENT_DEFAULT_TIMEOUT = 10.0
 
@@ -85,8 +86,7 @@ SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
               'mds_map',
-              'pg_map',
-              'pg_brief',
+              'pg_summary',
               'health',
               'config']
 
@@ -95,6 +95,52 @@ def md5(raw):
     hasher = hashlib.md5()
     hasher.update(raw)
     return hasher.hexdigest()
+
+
+def pg_summary(pgs_brief):
+    """
+    Convert an O(pg count) data structure into an O(osd count) digest listing
+    the number of PGs in each combination of states.
+    """
+
+    osds = {}
+    pools = {}
+    all_pgs = {}
+    for pg in pgs_brief:
+        for osd in pg['acting']:
+            try:
+                osd_stats = osds[osd]
+            except KeyError:
+                osd_stats = {}
+                osds[osd] = osd_stats
+
+            try:
+                osd_stats[pg['state']] += 1
+            except KeyError:
+                osd_stats[pg['state']] = 1
+
+        pool = int(pg['pgid'].split('.')[0])
+        try:
+            pool_stats = pools[pool]
+        except KeyError:
+            pool_stats = {}
+            pools[pool] = pool_stats
+
+        try:
+            pool_stats[pg['state']] += 1
+        except KeyError:
+            pool_stats[pg['state']] = 1
+
+        try:
+            all_pgs[pg['state']] += 1
+        except KeyError:
+            all_pgs[pg['state']] = 1
+
+    return {
+        'by_osd': osds,
+        'by_pool': pools,
+        'all': all_pgs
+    }
 
 
 def rados_commands(fsid, cluster_name, commands):
@@ -209,16 +255,16 @@ def get_cluster_object(cluster_name, sync_type, since):
             'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
             'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
             'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-            'pg_brief': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(r)),
-            'health': ('health', {'detail': 'detail'}, lambda d, r: md5(r))
+            'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
+            'health': ('health', {'detail': ''}, lambda d, r: md5(r))
         }[sync_type]
         kwargs['format'] = 'json'
         ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs)
         assert ret == 0
 
-        if sync_type == 'pg_brief':
-            data = zlib.compress(raw)
-            version = version_fn(None, raw)
+        if sync_type == 'pg_summary':
+            data = pg_summary(json.loads(raw))
+            version = version_fn(data, raw)
         else:
             data = json.loads(raw)
             version = version_fn(data, raw)
@@ -247,7 +293,17 @@ def get_cluster_object(cluster_name, sync_type, since):
     }
 
 
-def terse_status():
+def get_boot_time():
+    """
+    Retrieve the 'btime' line from /proc/stat
+
+    :return integer, seconds since epoch at which system booted
+    """
+    data = open('/proc/stat').read()
+    return int(re.search('^btime (\d+)$', data, re.MULTILINE).group(1))
+
+
+def get_heartbeats():
     """
     The goal here is *not* to give a helpful summary of
     the cluster status, rather it is to give the minimum
@@ -305,16 +361,33 @@ def terse_status():
                 # A mon in quorum is elegible to emit a cluster heartbeat
                 mon_sockets[fsid] = filename
 
+        version_response = admin_socket(filename, ['version'], 'json')
+        if version_response is not None:
+            service_version = json.loads(version_response)['version']
+        else:
+            service_version = None
+
         services[service_name] = {
             'cluster': cluster_name,
             'type': service_type,
             'id': service_id,
             'fsid': fsid,
-            'status': status
+            'status': status,
+            'version': service_version
         }
         fsid_names[fsid] = cluster_name
 
-    clusters = {}
+        if service_type == 'mon':
+            mon_sockets[fsid] = filename
+
+    # Installed Ceph version (as oppose to per-service running ceph version)
+    ceph_version_str = __salt__['pkg.version']('ceph')  # noqa
+    if ceph_version_str:
+        ceph_version = ceph_version_str
+    else:
+        ceph_version = None
+
+    cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         # First, are we quorate?
         admin_response = admin_socket(socket_path, ['mon_status'], 'json')
@@ -333,9 +406,15 @@ def terse_status():
         cluster_handle = rados.Rados(name='client.admin', clustername=fsid_names[fsid], conffile='')
         cluster_handle.connect()
 
-        clusters[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
+        cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
 
-    return services, clusters
+    server_heartbeat = {
+        'services': services,
+        'boot_time': get_boot_time(),
+        'ceph_version': ceph_version
+    }
+
+    return server_heartbeat, cluster_heartbeat
 
 
 def cluster_status(cluster_handle, cluster_name):
@@ -372,9 +451,9 @@ def cluster_status(cluster_handle, cluster_name):
 
     # Get digest of brief pg info
     ret, outbuf, outs = json_command(cluster_handle, prefix='pg dump', argdict={
-        'format': 'json', 'dumpcontents': ['pgs_brief'], 'fooffd': 'asdasd'})
+        'format': 'json', 'dumpcontents': ['pgs_brief']})
     assert ret == 0
-    pgs_brief_digest = md5(outbuf)
+    pg_summary_digest = md5(msgpack.packb(pg_summary(json.loads(outbuf))))
 
     # Get digest of configuration
     config_digest = md5(_get_config(cluster_name))
@@ -387,7 +466,7 @@ def cluster_status(cluster_handle, cluster_name):
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,
-            'pg_brief': pgs_brief_digest,
+            'pg_summary': pg_summary_digest,
             'health': health_digest,
             'config': config_digest
         }
@@ -420,18 +499,11 @@ def heartbeat():
     """
     Send an event to the master with the terse status
     """
-    services, clusters = terse_status()
+    service_heartbeat, cluster_heartbeat = get_heartbeats()
 
-    fire_event(services, 'ceph/server')
-    for fsid, cluster_data in clusters.items():
+    fire_event(service_heartbeat, 'ceph/server')
+    for fsid, cluster_data in cluster_heartbeat.items():
         fire_event(cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     # Return the emitted data because it's useful if debugging with salt-call
-    return services, clusters
-
-
-if __name__ == '__main__':
-    # Debug, just dump everything
-    print json.dumps(terse_status(), indent=2)
-    for typ in SYNC_TYPES:
-        get_cluster_object('ceph', typ, 0)
+    return service_heartbeat, cluster_heartbeat

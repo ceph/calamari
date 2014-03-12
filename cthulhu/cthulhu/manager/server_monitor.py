@@ -6,6 +6,8 @@ individual hosts with no regard to the relations between them.
 """
 from collections import defaultdict
 import json
+import datetime
+from dateutil import tz
 
 from gevent import greenlet
 from gevent import event
@@ -26,13 +28,6 @@ from cthulhu.util import now
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
-# Stuff still to do:
-# - (maybe) report ceph version in ceph.services
-# - (maybe) add a sanity check of the mons known to ServerMonitor vs those known in
-#   mon map: loudly complain if there's anybody in the mon map who isn't on a managed
-#   server in ServerMonitor.  Could just be to log to begin with, later hook into event
-#   generation.
-
 
 class GrainsNotFound(Exception):
     pass
@@ -43,7 +38,7 @@ class ServerState(object):
     A Ceph server, may be something we have had a heartbeat from or
     may be something we learned about from Ceph.
     """
-    def __init__(self, fqdn, hostname, managed, last_contact):
+    def __init__(self, fqdn, hostname, managed, last_contact, boot_time, ceph_version):
         # Note that FQDN is fudged when we learn about a server via
         # the CRUSH map (i.e. when we're talking to mons but not OSDs)
         # to contain the hostname instead.  The implied assumption
@@ -59,6 +54,8 @@ class ServerState(object):
         self.services = {}
 
         self.last_contact = last_contact
+        self.boot_time = boot_time
+        self.ceph_version = ceph_version
 
     @property
     def clusters(self):
@@ -238,7 +235,8 @@ class ServerMonitor(greenlet.Greenlet):
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
-                server_state = ServerState(hostname, hostname, managed=False, last_contact=None)
+                server_state = ServerState(hostname, hostname, managed=False,
+                                           last_contact=None, boot_time=None, ceph_version=None)
                 self.inject_server(server_state)
                 self._persister.create_server(Server(
                     fqdn=server_state.fqdn,
@@ -300,7 +298,7 @@ class ServerMonitor(greenlet.Greenlet):
             raise GrainsNotFound(fqdn)
 
     @nosleep
-    def on_server_heartbeat(self, fqdn, services_data):
+    def on_server_heartbeat(self, fqdn, server_heartbeat):
         """
         Call back for when a ceph.service message is received from a salt minion
         """
@@ -337,10 +335,12 @@ class ServerMonitor(greenlet.Greenlet):
                         fqdn, server_state.fqdn, hostname
                     ))
 
+        boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
         if new_server:
             hostname = self._get_grains(fqdn)['host']
             server_state = ServerState(fqdn, hostname, managed=True,
-                                       last_contact=now())
+                                       last_contact=now(), boot_time=boot_time,
+                                       ceph_version=server_heartbeat['ceph_version'])
             self.inject_server(server_state)
             self._persister.create_server(Server(
                 fqdn=server_state.fqdn,
@@ -353,8 +353,25 @@ class ServerMonitor(greenlet.Greenlet):
         server_state.last_contact = now()
         self._persister.update_server(server_state.fqdn, last_contact=server_state.last_contact)
 
+        if server_state.boot_time != boot_time:
+            old_boot_time = server_state.boot_time
+            server_state.boot_time = boot_time
+            self._persister.update_server(server_state.fqdn, boot_time=server_state.boot_time)
+            if old_boot_time is not None:  # i.e. a reboot, not an unmanaged->managed transition
+                log.warn("Server reboot %s at %s (last boot was %s)" % (
+                    fqdn, server_state.boot_time, old_boot_time
+                ))
+                self._eventer.on_reboot(server_state, False)
+
+        if server_state.ceph_version != server_heartbeat['ceph_version']:
+            old_ceph_version = server_state.ceph_version
+            server_state.ceph_version = server_heartbeat['ceph_version']
+            self._persister.update_server(server_state.fqdn, ceph_version=server_state.ceph_version)
+            if old_ceph_version is not None:
+                self._eventer.on_new_version(server_state)
+
         seen_id_tuples = set()
-        for service_name, service in services_data.items():
+        for service_name, service in server_heartbeat['services'].items():
             id_tuple = ServiceId(service['fsid'], service['type'], service['id'])
             seen_id_tuples.add(id_tuple)
             self._register_service(server_state, id_tuple, running=True, status=service['status'])
@@ -504,6 +521,20 @@ class ServerMonitor(greenlet.Greenlet):
 
         del self.fsid_services[fsid]
 
+    def dump(self, server_state):
+        """
+        Convert a ServerState into a serializable format
+        """
+        return {
+            'fqdn': server_state.fqdn,
+            'hostname': server_state.hostname,
+            'managed': server_state.managed,
+            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
+            'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'ceph_version': server_state.ceph_version,
+            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+        }
+
     def _addr_to_iface(self, addr, ip_interfaces):
         """
         Resolve an IP address to a network interface.
@@ -516,18 +547,6 @@ class ServerMonitor(greenlet.Greenlet):
                 return iface_name
 
         return None
-
-    def dump(self, server_state):
-        """
-        Convert a ServerState into a serializable format
-        """
-        return {
-            'fqdn': server_state.fqdn,
-            'hostname': server_state.hostname,
-            'managed': server_state.managed,
-            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
-            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
-        }
 
     def dump_cluster(self, server_state, cluster):
         """
@@ -576,6 +595,8 @@ class ServerMonitor(greenlet.Greenlet):
             'hostname': server_state.hostname,
             'managed': server_state.managed,
             'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
+            'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'ceph_version': server_state.ceph_version,
             'services': [{'id': tuple(s.id), 'running': s.running} for s in services],
             'frontend_addr': frontend_addr,
             'backend_addr': backend_addr,

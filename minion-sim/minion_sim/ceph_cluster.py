@@ -5,6 +5,9 @@ import os
 import uuid
 import random
 import datetime
+from xmlrpclib import Binary
+import msgpack
+import sys
 from minion_sim.log import log
 
 KB = 1024
@@ -1103,6 +1106,17 @@ class CephCluster(CephClusterState):
     def get_services(self, fqdn):
         return self._host_services[fqdn]
 
+    def _pg_summary(self):
+        pgs_brief = self._objects['pg_brief']
+
+        # Load up our salt module to avoid replicating its processing
+        salt_module = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../salt/srv/salt/_modules")
+        sys.path.insert(0, salt_module)
+        import ceph
+        sys.path = sys.path[1:]
+
+        return ceph.pg_summary(pgs_brief)
+
     def get_heartbeat(self, fsid):
         return {
             'name': self.name,
@@ -1115,28 +1129,32 @@ class CephCluster(CephClusterState):
                 'osd_map': self._objects['osd_map']['epoch'],
                 'osd_tree': 1,
                 'pg_map': self._objects['pg_map']['version'],
-                'pg_brief': md5(json.dumps(self._objects['pg_brief'])),
+                'pg_summary': md5(json.dumps(self._pg_summary())),
                 'config': md5(json.dumps(self._objects['config']))
             }
         }
 
     def get_cluster_object(self, cluster_name, sync_type, since):
-        data = self._objects[sync_type]
+        if sync_type == 'pg_summary':
+            data = self._pg_summary()
+        else:
+            data = self._objects[sync_type]
+
         if sync_type == 'osd_map':
             version = data['epoch']
         elif sync_type == 'mon_status':
             version = data['election_epoch']
-        elif sync_type == 'health' or sync_type == 'pg_brief' or sync_type == 'config':
+        elif sync_type == 'health' or sync_type == 'pg_summary' or sync_type == 'config':
             version = md5(json.dumps(data))
         else:
             version = 1
 
-        return {
+        return Binary(msgpack.packb({
             'fsid': self.fsid,
             'version': version,
             'type': sync_type,
             'data': data
-        }
+        }))
 
     def _pg_id_to_osds(self, pg_id):
         # TODO: respect the pool's replication policy

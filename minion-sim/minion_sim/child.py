@@ -1,9 +1,8 @@
 import os
 import sys
 import xmlrpclib
-import json
+import msgpack
 import yaml
-import zlib
 from minion_sim.log import log
 import time
 
@@ -59,17 +58,21 @@ def main():
             if service['type'] == 'mon':
                 fsid = service['fsid']
                 report_clusters[fsid] = cluster.get_heartbeat(fsid)
-                services[service_name]['status'] = cluster.get_cluster_object(fsid, 'mon_status', None)['data']
+                services[service_name]['status'] = msgpack.unpackb(
+                    cluster.get_cluster_object(fsid, 'mon_status', None).data)['data']
 
-        __salt__['event.fire_master'](services, "ceph/server")
+        server_heartbeat = {
+            'services': services,
+            'ceph_version': 'cluster_simulator-0.314159',
+            'boot_time': 123456
+        }
+
+        __salt__['event.fire_master'](server_heartbeat, "ceph/server")
         for fsid, cluster_data in report_clusters.items():
             __salt__['event.fire_master'](cluster_data, 'ceph/cluster/{0}'.format(fsid))
 
     def get_cluster_object(cluster_name, sync_type, since):
-        result = cluster.get_cluster_object(cluster_name, sync_type, since)
-
-        if sync_type == 'pg_brief':
-            result['data'] = zlib.compress(json.dumps(result['data']))
+        result = msgpack.unpackb(cluster.get_cluster_object(cluster_name, sync_type, since).data)
 
         return result
 

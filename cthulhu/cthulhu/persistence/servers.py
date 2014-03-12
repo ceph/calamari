@@ -19,6 +19,8 @@ class Server(Base):
     hostname = Column(Text)
     managed = Column(Boolean)
     last_contact = Column(DateTime(timezone=True))
+    boot_time = Column(DateTime(timezone=True))
+    ceph_version = Column(Text)
 
     def __repr__(self):
         return "<Server %s>" % self.fqdn

@@ -1,6 +1,7 @@
 from copy import deepcopy
 import logging
 import mock
+import msgpack
 from rest_framework import status
 from minion_sim.ceph_cluster import CephCluster
 from tests.rest_api_unit_test import RestApiUnitTest
@@ -30,7 +31,7 @@ class TestMon(RestApiUnitTest):
         self.fsid = cluster.fsid
 
         # This will appear to be a completely happy healthy quorum of mons
-        self.mon_status = cluster.get_cluster_object('ceph_fake', 'mon_status', None)['data']
+        self.mon_status = msgpack.unpackb(cluster.get_cluster_object('ceph_fake', 'mon_status', None).data)['data']
 
         # XXX hmm, perhaps synthesizing this stuff should go into
         # ceph_cluster and then it be sensibly kept up to date with
