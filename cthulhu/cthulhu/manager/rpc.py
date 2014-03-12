@@ -108,7 +108,7 @@ class RpcInterface(object):
                         obj = getattr(obj, part)
             except (AttributeError, KeyError) as e:
                 log.exception("Exception %s traversing %s: obj=%s" % (e, path, obj))
-                return None
+                raise NotFound(object_type, path)
             return obj
         else:
             return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
@@ -320,13 +320,19 @@ class RpcInterface(object):
         }
 
     def server_get(self, fqdn):
-        return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
+        try:
+            return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
+        except KeyError:
+            raise NotFound('server', fqdn)
 
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
     def server_get_cluster(self, fqdn, fsid):
-        return self._manager.servers.dump_cluster(self._manager.servers.get_one(fqdn), self._manager.clusters[fsid])
+        try:
+            return self._manager.servers.dump_cluster(self.server_get(fqdn), self._manager.clusters[fsid])
+        except KeyError:
+            raise NotFound('cluster', fsid)
 
     def server_list_cluster(self, fsid):
         return [

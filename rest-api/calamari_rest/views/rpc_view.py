@@ -8,12 +8,11 @@ their data from cthulhu with zeroRPC
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from zerorpc import LostRemote
+from zerorpc import LostRemote, RemoteError
 from rest_framework.response import Response
 import zerorpc
 
 from calamari_common.config import CalamariConfig
-from calamari_common.types import NotFound
 config = CalamariConfig()
 
 
