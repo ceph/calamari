@@ -34,7 +34,7 @@ class RequestCollection(object):
         self._lock = RLock()
 
     def get_by_id(self, request_id):
-        return self._by_request_id[request_id]
+        return self._by_request_id.get(request_id)
 
     def get_by_jid(self, jid):
         return self._by_jid[jid]

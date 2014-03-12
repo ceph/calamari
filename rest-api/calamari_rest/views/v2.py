@@ -62,8 +62,11 @@ the first page of results contains the most recent requests).
     serializer_class = RequestSerializer
 
     def retrieve(self, request, fsid, request_id):
-        user_request = DataObject(self.client.get_request(fsid, request_id))
-        return Response(RequestSerializer(user_request).data)
+        user_request = self.client.get_request(fsid, request_id)
+        if user_request is None:
+            raise Http404("No such user request: %s" % request_id)
+
+        return Response(RequestSerializer(DataObject(user_request)).data)
 
     def list(self, request, fsid):
         filter_state = request.GET.get('state', None)

@@ -249,7 +249,10 @@ class RpcInterface(object):
         """
         cluster = self._fs_resolve(fs_id)
         request = cluster.get_request(request_id)
-        return self._dump_request(request)
+        if request is not None:
+            return self._dump_request(request)
+
+        return None
 
     def list_requests(self, fs_id, state):
         cluster = self._fs_resolve(fs_id)
