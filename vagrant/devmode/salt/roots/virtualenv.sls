@@ -35,7 +35,7 @@ carbon:
 
 graphite-web:
   pip:
-    - name: git+https://github.com/jcsp/graphite-web.git@calamari
+    - name: git+https://github.com/inktankstorage/graphite-web.git@calamari
     - installed
     - user: vagrant
     - bin_env: /home/vagrant/calamari/env

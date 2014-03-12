@@ -50,7 +50,7 @@ than with pip (and because of `m2crypto weirdness`_)
 ::
 
     pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
-    pip install git+https://github.com/jcsp/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
+    pip install git+https://github.com/inktankstorage/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 
 
 4. Grab the `GUI code <https://github.com/inktankstorage/clients>`_, build it and
