@@ -6,7 +6,7 @@ class WaitTimeout(Exception):
     pass
 
 
-def wait_until_true(condition, timeout=20):
+def wait_until_true(condition, timeout=10):
     elapsed = 0
     period = 1
     while not condition():
