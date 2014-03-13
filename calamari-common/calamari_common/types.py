@@ -194,6 +194,15 @@ class Config(SyncObject):
     str = 'config'
 
 
+class NotFound(Exception):
+    def __init__(self, object_type, object_id):
+        self.object_type = object_type
+        self.object_id = object_id
+
+    def __str__(self):
+        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+
+
 MON = 'mon'
 OSD = 'osd'
 MDS = 'mds'
@@ -201,6 +210,7 @@ POOL = 'pool'
 OSD_MAP = 'osd_map'
 CRUSH_RULE = 'crush_rule'
 CLUSTER = 'cluster'
+SERVER = 'server'
 
 # The objects that ClusterMonitor keeps copies of from the mon
 SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config]

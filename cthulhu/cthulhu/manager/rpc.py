@@ -7,16 +7,8 @@ import salt.config
 
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId
-
-
-class NotFound(Exception):
-    def __init__(self, object_type, object_id):
-        self.object_type = object_type
-        self.object_id = object_id
-
-    def __str__(self):
-        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId,\
+    NotFound, SERVER
 
 
 class RpcInterface(object):
@@ -50,6 +42,12 @@ class RpcInterface(object):
             return self._manager.clusters[fs_id]
         except KeyError:
             raise NotFound(CLUSTER, fs_id)
+
+    def _server_resolve(self, fqdn):
+        try:
+            return self._manager.servers.get_one(fqdn)
+        except KeyError:
+            raise NotFound(SERVER, fqdn)
 
     def _osd_resolve(self, cluster, osd_id):
         osdmap = cluster.get_sync_object(OsdMap)
@@ -117,7 +115,7 @@ class RpcInterface(object):
                         obj = getattr(obj, part)
             except (AttributeError, KeyError) as e:
                 log.exception("Exception %s traversing %s: obj=%s" % (e, path, obj))
-                return None
+                raise NotFound(object_type, path)
             return obj
         else:
             return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
@@ -146,6 +144,7 @@ class RpcInterface(object):
 
             return cluster.request_update('update', OSD, object_id, attributes)
         elif object_type == POOL:
+            self._pool_resolve(cluster, object_id)
             if not 'id' in attributes:
                 attributes['id'] = object_id
 
@@ -178,7 +177,12 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
         cluster = self._fs_resolve(fs_id)
-        return cluster.get_valid_commands(object_type, object_ids)
+        try:
+            valid_commands = cluster.get_valid_commands(object_type, object_ids)
+        except KeyError as e:
+            raise NotFound(object_type, str(e))
+
+        return valid_commands
 
     def create(self, fs_id, object_type, attributes):
         """
@@ -248,7 +252,11 @@ class RpcInterface(object):
         Get a JSON representation of a UserRequest
         """
         cluster = self._fs_resolve(fs_id)
-        request = cluster.get_request(request_id)
+        try:
+            request = cluster.get_request(request_id)
+        except KeyError:
+            raise NotFound('request', request_id)
+
         return self._dump_request(request)
 
     def list_requests(self, fs_id, state):
@@ -295,24 +303,27 @@ class RpcInterface(object):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
+        self.minion_get(minion_id)
         return self._salt_key.delete_key(minion_id)
 
     def minion_get(self, minion_id):
         result = self._salt_key.name_match(minion_id, full=True)
         if not result:
-            return None
+            raise NotFound(SERVER, minion_id)
 
         if 'minions' in result:
             status = "accepted"
@@ -329,13 +340,13 @@ class RpcInterface(object):
         }
 
     def server_get(self, fqdn):
-        return self._manager.servers.dump(self._manager.servers.get_one(fqdn))
+        return self._manager.servers.dump(self._server_resolve(fqdn))
 
     def server_list(self):
         return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
 
     def server_get_cluster(self, fqdn, fsid):
-        return self._manager.servers.dump_cluster(self._manager.servers.get_one(fqdn), self._manager.clusters[fsid])
+        return self._manager.servers.dump_cluster(self._server_resolve(fqdn), self._fs_resolve(fsid))
 
     def server_list_cluster(self, fsid):
         return [

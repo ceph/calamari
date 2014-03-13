@@ -65,13 +65,10 @@ class OsdRequestFactory(RequestFactory):
         ret_val = {}
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
         for osd_id in osds:
-            try:
-                if osd_map.osds_by_id[osd_id]['up']:
-                    ret_val[osd_id] = {'valid_commands': OSD_IMPLEMENTED_COMMANDS}
-                else:
-                    ret_val[osd_id] = {'valid_commands': []}
-            except KeyError:
-                pass
+            if osd_map.osds_by_id[osd_id]['up']:
+                ret_val[osd_id] = {'valid_commands': OSD_IMPLEMENTED_COMMANDS}
+            else:
+                ret_val[osd_id] = {'valid_commands': []}
 
         return ret_val
 

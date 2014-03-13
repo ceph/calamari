@@ -585,10 +585,11 @@ class ServerMonitor(greenlet.Greenlet):
         except GrainsNotFound:
             pass
         else:
-            if frontend_addr:
-                frontend_iface = self._addr_to_iface(frontend_addr, grains['ip_interfaces'])
-            if backend_addr:
-                backend_iface = self._addr_to_iface(backend_addr, grains['ip_interfaces'])
+            if grains:
+                if frontend_addr:
+                    frontend_iface = self._addr_to_iface(frontend_addr, grains['ip_interfaces'])
+                if backend_addr:
+                    backend_iface = self._addr_to_iface(backend_addr, grains['ip_interfaces'])
 
         return {
             'fqdn': server_state.fqdn,

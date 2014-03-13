@@ -18,10 +18,11 @@ from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, NotFound
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 import salt.client
 
+from django.views.decorators.csrf import csrf_exempt
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
@@ -397,6 +398,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
+    @csrf_exempt
     def retrieve(self, request, fsid, osd_id):
         osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
@@ -433,7 +435,9 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.client.get_valid_commands(fsid, OSD, osds))
 
     def validate_command(self, request, fsid, osd_id, command):
-        return Response({'valid': command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')})
+        valid_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands')
+
+        return Response({'valid': command in valid_commands})
 
 
 class OsdConfigViewSet(RPCViewSet, RequestReturner):

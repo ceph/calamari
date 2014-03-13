@@ -44,7 +44,7 @@ class TestOSDFactory(TestCase):
         self.assertEqual(self.osd_request_factory.get_valid_commands([1]), {1: {'valid_commands': []}})
 
     def test_validate_op_key_error(self):
-        self.assertEqual(self.osd_request_factory.get_valid_commands([2]), {})
+        self.assertRaises(KeyError, self.osd_request_factory.get_valid_commands, [2])
 
 
 class TestOsdMapUpdates(TestCase):

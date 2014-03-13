@@ -46,7 +46,7 @@ class ServerTestCase(TestCase):
             # actually fire it up/interact with it.
             self.ceph_ctl = CEPH_CTL()
 
-        except:
+        except Exception as e:
             log.exception("Exception during setup, tearing down")
             self.calamari_ctl.stop()
             raise
