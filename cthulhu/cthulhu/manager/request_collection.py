@@ -119,6 +119,9 @@ class RequestCollection(object):
         for request in self.get_all(UserRequest.SUBMITTED):
             with self._update_index(request):
                 request.set_error("Lost contact with server %s" % failed_minion)
+                if request.jid:
+                    log.error("Giving up on JID %s" % request.jid)
+                    request.jid = None
                 request.complete()
 
     def submit(self, request, minion):
