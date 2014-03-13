@@ -34,6 +34,9 @@ urlpatterns = patterns(
         {'document_root': '%s/dashboard/' % STATIC_ROOT},
         name='dashboard'),
 
+    url(r'^manage/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
+        {'document_root': '%s/manage/' % STATIC_ROOT}),
+
     url(r'^render/?', include('graphite.render.urls')),
     url(r'^metrics/?', include('graphite.metrics.urls')),
     url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
