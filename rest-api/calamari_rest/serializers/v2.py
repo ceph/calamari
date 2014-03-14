@@ -1,12 +1,58 @@
-from rest_framework import serializers
+from cStringIO import StringIO
 
+from rest_framework import serializers
+from rest_framework.parsers import JSONParser
 from calamari_common.db.event import severity_str
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
     USER_REQUEST_SUBMITTED, OSD_FLAGS
 
 
-class ClusterSerializer(serializers.Serializer):
+class ValidatingSerializer(serializers.Serializer):
+    def __init__(self, instance=None, data=None, **kwargs):
+        if data is not None:
+            data = JSONParser().parse(StringIO(data))
+
+        super(ValidatingSerializer, self).__init__(instance, data, **kwargs)
+
+    def is_valid(self, http_method):
+
+        self._errors = super(ValidatingSerializer, self).errors or {}
+
+        if self.init_data is not None:
+            if http_method is 'PUT':
+                self._errors.update(self.construct_errors(self.Meta.create_allowed,
+                                                          self.Meta.create_required,
+                                                          self.init_data.keys(),
+                                                          http_method))
+
+            elif http_method in ('PATCH', 'POST'):
+                self._errors.update(self.construct_errors(self.Meta.modify_allowed,
+                                                          self.Meta.modify_required,
+                                                          self.init_data.keys(),
+                                                          http_method))
+            else:
+                self._errors.update([[http_method, 'Not a valid method']])
+
+        return not self._errors
+
+    def construct_errors(self, allowed, required, init_data, action):
+        errors = {}
+
+        not_allowed = set(init_data) - set(allowed)
+        errors.update(dict([x, 'Not allowed during %s' % action] for x in not_allowed))
+
+        required = set(required) - set(init_data)
+        errors.update(dict([x, 'Required during %s' % action] for x in required))
+
+        return errors
+
+        '''
+        readonly = [x for x,y in self.fields.items() if y.read_only]
+        readonly_fields = dict([(x, 'This field is read_only') for x in set(self.init_data.keys()) & set(readonly)])
+        '''
+
+class ClusterSerializer(ValidatingSerializer):
     class Meta:
         fields = ('update_time', 'id', 'name')
 
@@ -21,7 +67,7 @@ class ClusterSerializer(serializers.Serializer):
     )
 
 
-class PoolSerializer(serializers.Serializer):
+class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
@@ -64,33 +110,50 @@ class PoolSerializer(serializers.Serializer):
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
 
-class OsdSerializer(serializers.Serializer):
+class OsdSerializer(ValidatingSerializer):
     class Meta:
         fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ('up', 'in', 'reweight')
+        modify_required = ()
 
-    id = serializers.IntegerField(source='osd', help_text="ID of this OSD within this cluster")
-    uuid = fields.UuidField(help_text="Globally unique ID for this OSD")
+    id = serializers.IntegerField(read_only=True, source='osd', help_text="ID of this OSD within this cluster")
+    uuid = fields.UuidField(read_only=True, help_text="Globally unique ID for this OSD")
     up = fields.BooleanField(help_text="Whether the OSD is running from the point of view of the rest of the cluster")
     _in = fields.BooleanField(help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
     reweight = serializers.FloatField(help_text="CRUSH weight factor")
-    server = serializers.CharField(help_text="FQDN of server this OSD was last running on")
+    server = serializers.CharField(read_only=True, help_text="FQDN of server this OSD was last running on")
     pools = serializers.Field(help_text="List of pool IDs which use this OSD for storage")
-    valid_commands = serializers.CharField(help_text="List of commands that can be applied to this OSD")
+    valid_commands = serializers.CharField(read_only=True, help_text="List of commands that can be applied to this OSD")
 
-    public_addr = serializers.CharField(help_text="Public/frontend IP address")
-    cluster_addr = serializers.CharField(help_text="Cluster/backend IP address")
+    public_addr = serializers.CharField(read_only=True, help_text="Public/frontend IP address")
+    cluster_addr = serializers.CharField(read_only=True, help_text="Cluster/backend IP address")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
 OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
 
 
-class OsdConfigSerializer(serializers.Serializer):
+class OsdConfigSerializer(ValidatingSerializer):
     class Meta:
         fields = OSD_FLAGS
 
+    pause = serializers.BooleanField(help_text="Something helpful", required=False)
+    noup = serializers.BooleanField(required=False)
+    nodown = serializers.BooleanField(required=False)
+    noout = serializers.BooleanField(required=False)
+    noin = serializers.BooleanField(required=False)
+    nobackfill = serializers.BooleanField(required=False)
+    norecover = serializers.BooleanField(required=False)
+    noscrub = serializers.BooleanField(required=False)
+    nodeepscrub = serializers.BooleanField(required=False)
 
-class CrushRuleSerializer(serializers.Serializer):
+
+OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
+
+
+class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
 
@@ -106,7 +169,7 @@ class CrushRuleSerializer(serializers.Serializer):
     osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
-class CrushRuleSetSerializer(serializers.Serializer):
+class CrushRuleSetSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'rules')
 
@@ -114,7 +177,7 @@ class CrushRuleSetSerializer(serializers.Serializer):
     rules = CrushRuleSerializer(many=True)
 
 
-class RequestSerializer(serializers.Serializer):
+class RequestSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'state', 'error', 'error_message', 'headline', 'status', 'requested_at', 'completed_at')
 
@@ -130,7 +193,7 @@ class RequestSerializer(serializers.Serializer):
     completed_at = serializers.DateTimeField(help_text="Time at which the request completed, may be null.")
 
 
-class SaltKeySerializer(serializers.Serializer):
+class SaltKeySerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'status')
 
@@ -138,7 +201,7 @@ class SaltKeySerializer(serializers.Serializer):
     status = serializers.CharField(help_text="One of 'accepted', 'rejected' or 'pre'")
 
 
-class ServiceSerializer(serializers.Serializer):
+class ServiceSerializer(ValidatingSerializer):
     class Meta:
         fields = ('fsid', 'type', 'id', 'running')
 
@@ -157,7 +220,7 @@ class ServiceSerializer(serializers.Serializer):
         return obj['id'][2]
 
 
-class SimpleServerSerializer(serializers.Serializer):
+class SimpleServerSerializer(ValidatingSerializer):
     class Meta:
         fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'boot_time', 'ceph_version', 'services')
 
@@ -196,7 +259,7 @@ class ServerSerializer(SimpleServerSerializer):
     backend_iface = serializers.CharField()  # may be null if interface for backend addr not up
 
 
-class EventSerializer(serializers.Serializer):
+class EventSerializer(ValidatingSerializer):
     class Meta:
         fields = ('when', 'severity', 'message')
 
@@ -210,7 +273,7 @@ class EventSerializer(serializers.Serializer):
         return severity_str(obj.severity)
 
 
-class LogTailSerializer(serializers.Serializer):
+class LogTailSerializer(ValidatingSerializer):
     """
     Trivial serializer to wrap a string blob of log output
     """
@@ -220,7 +283,7 @@ class LogTailSerializer(serializers.Serializer):
     lines = serializers.CharField("Retrieved log data as a newline-separated string")
 
 
-class ConfigSettingSerializer(serializers.Serializer):
+class ConfigSettingSerializer(ValidatingSerializer):
     class Meta:
         fields = ('key', 'value')
 
@@ -231,7 +294,7 @@ class ConfigSettingSerializer(serializers.Serializer):
     value = serializers.CharField(help_text="Current value of the setting, as a string")
 
 
-class MonSerializer(serializers.Serializer):
+class MonSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'rank', 'in_quorum', 'server', 'addr')
 

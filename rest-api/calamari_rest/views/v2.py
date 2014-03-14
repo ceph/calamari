@@ -457,7 +457,14 @@ Manage flags in the OsdMap
         return Response(osd_map)
 
     def update(self, request, fsid):
-        return self._return_request(self.client.update(fsid, OSD_MAP, None, dict(request.DATA)))
+
+        serializer = OsdConfigSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=403)
+
+        response = self.client.update(fsid, OSD_MAP, None, serializer.object)
+
+        return self._return_request(response)
 
 
 class SyncObject(RPCViewSet):
