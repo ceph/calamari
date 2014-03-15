@@ -56,11 +56,11 @@ class AuthenticatedHttpClient(requests.Session):
         it is exposed in the Calamari REST API.
         """
         log.info("Logging in as %s" % self._username)
-        response = self.get("auth/login/")
+        response = self.get("/api/v1/auth/login/")
         response.raise_for_status()
         self.headers['X-XSRF-TOKEN'] = response.cookies['XSRF-TOKEN']
 
-        self.post("auth/login/", {
+        self.post("api/v1/auth/login/", {
             'next': "/",
             'username': self._username,
             'password': self._password
@@ -68,7 +68,7 @@ class AuthenticatedHttpClient(requests.Session):
         response.raise_for_status()
 
         # Check we're allowed in now.
-        response = self.get("cluster")
+        response = self.get("api/v2/cluster")
         response.raise_for_status()
 
 if __name__ == "__main__":
