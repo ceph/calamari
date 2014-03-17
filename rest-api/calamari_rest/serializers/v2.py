@@ -9,6 +9,12 @@ from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ER
 
 
 class ValidatingSerializer(serializers.Serializer):
+    class Meta:
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
+
     def __init__(self, instance=None, data=None, **kwargs):
         if data is not None:
             data = JSONParser().parse(StringIO(data))
@@ -55,6 +61,10 @@ class ValidatingSerializer(serializers.Serializer):
 class ClusterSerializer(ValidatingSerializer):
     class Meta:
         fields = ('update_time', 'id', 'name')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     update_time = serializers.DateTimeField(
         help_text="The time at which the last status update from this cluster was received"
@@ -71,6 +81,10 @@ class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     # Required in creation
     name = serializers.CharField(source='pool_name',
@@ -138,6 +152,10 @@ OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
 class OsdConfigSerializer(ValidatingSerializer):
     class Meta:
         fields = OSD_FLAGS
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     pause = serializers.BooleanField(help_text="Something helpful", required=False)
     noup = serializers.BooleanField(required=False)
@@ -156,6 +174,10 @@ OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_field
 class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     id = serializers.IntegerField(source='rule_id')
     name = serializers.CharField(source='rule_name', help_text="Human readable name")
@@ -172,6 +194,10 @@ class CrushRuleSerializer(ValidatingSerializer):
 class CrushRuleSetSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'rules')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     id = serializers.IntegerField()
     rules = CrushRuleSerializer(many=True)
@@ -180,6 +206,10 @@ class CrushRuleSetSerializer(ValidatingSerializer):
 class RequestSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'state', 'error', 'error_message', 'headline', 'status', 'requested_at', 'completed_at')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     id = serializers.CharField(help_text="A globally unique ID for this request")
     state = serializers.CharField(help_text="One of '{complete}', '{submitted}'".format(
@@ -196,6 +226,10 @@ class RequestSerializer(ValidatingSerializer):
 class SaltKeySerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'status')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     id = serializers.CharField(help_text="The minion ID, usually equal to a host's FQDN")
     status = serializers.CharField(help_text="One of 'accepted', 'rejected' or 'pre'")
@@ -204,6 +238,10 @@ class SaltKeySerializer(ValidatingSerializer):
 class ServiceSerializer(ValidatingSerializer):
     class Meta:
         fields = ('fsid', 'type', 'id', 'running')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     fsid = serializers.SerializerMethodField("get_fsid")
     type = serializers.SerializerMethodField("get_type")
@@ -223,6 +261,10 @@ class ServiceSerializer(ValidatingSerializer):
 class SimpleServerSerializer(ValidatingSerializer):
     class Meta:
         fields = ('fqdn', 'hostname', 'managed', 'last_contact', 'boot_time', 'ceph_version', 'services')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     # Identifying information
     fqdn = serializers.CharField(help_text="Fully qualified domain name")
@@ -251,6 +293,10 @@ class ServerSerializer(SimpleServerSerializer):
         fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
                   'frontend_iface', 'backend_iface', 'managed',
                   'last_contact', 'boot_time', 'ceph_version')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     # Ceph network configuration
     frontend_addr = serializers.CharField()  # may be null if no OSDs or mons on server
@@ -262,6 +308,10 @@ class ServerSerializer(SimpleServerSerializer):
 class EventSerializer(ValidatingSerializer):
     class Meta:
         fields = ('when', 'severity', 'message')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     when = serializers.DateTimeField(help_text="Time at which event was generated")
     severity = serializers.SerializerMethodField('get_severity')
@@ -279,6 +329,10 @@ class LogTailSerializer(ValidatingSerializer):
     """
     class Meta:
         fields = ('lines',)
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     lines = serializers.CharField("Retrieved log data as a newline-separated string")
 
@@ -286,6 +340,10 @@ class LogTailSerializer(ValidatingSerializer):
 class ConfigSettingSerializer(ValidatingSerializer):
     class Meta:
         fields = ('key', 'value')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     # This is very simple for now, but later we may add more things like
     # schema information, allowed values, defaults.
@@ -297,6 +355,10 @@ class ConfigSettingSerializer(ValidatingSerializer):
 class MonSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'rank', 'in_quorum', 'server', 'addr')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
 
     name = serializers.CharField(help_text="Human readable name")
     rank = serializers.IntegerField(help_text="Unique of the mon within the cluster")

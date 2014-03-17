@@ -217,15 +217,35 @@ class ApiIntrospector(object):
         url_table_rst = make_table(url_table)
 
         if hasattr(view, 'serializer_class') and view.serializer_class:
-            field_table = [["Name", "Type", "Readonly", "Description"]]
+            field_table = [["Name", "Type", "Readonly", "Create", "Modify", "Description"]]
+            allowed_during_create = view.serializer_class().Meta.create_allowed
+            required_during_create = view.serializer_class().Meta.create_required
+            allowed_during_modify = view.serializer_class().Meta.modify_allowed
+            required_during_modify = view.serializer_class().Meta.modify_required
             fields = view.serializer_class().get_fields()
             for field_name, field in fields.items():
+                create = modify = ''
+                if field_name in allowed_during_create:
+                    create = 'Allowed'
+                if field_name in required_during_create:
+                    create = 'Required'
+
+                if field_name in allowed_during_modify:
+                    modify = 'Allowed'
+                if field_name in required_during_modify:
+                    modify = 'Required'
+
                 if hasattr(field, 'help_text'):
                     field_help_text = field.help_text
                 else:
                     field_help_text = ""
                 field_table.append(
-                    [field_name, field.type_label, str(field.read_only), field_help_text if field_help_text else ""])
+                    [field_name,
+                     field.type_label,
+                     str(field.read_only),
+                     create,
+                     modify,
+                     field_help_text if field_help_text else ""])
             field_table_rst = make_table(field_table)
         else:
             field_table_rst = "*No field data available*"
