@@ -157,15 +157,15 @@ class OsdConfigSerializer(ValidatingSerializer):
         modify_allowed = ()
         modify_required = ()
 
-    pause = serializers.BooleanField(help_text="Something helpful", required=False)
-    noup = serializers.BooleanField(required=False)
-    nodown = serializers.BooleanField(required=False)
-    noout = serializers.BooleanField(required=False)
-    noin = serializers.BooleanField(required=False)
-    nobackfill = serializers.BooleanField(required=False)
-    norecover = serializers.BooleanField(required=False)
-    noscrub = serializers.BooleanField(required=False)
-    nodeepscrub = serializers.BooleanField(required=False)
+    pause = serializers.BooleanField(help_text="Disable IO requests to all OSDs in cluster", required=False)
+    noup = serializers.BooleanField(help_text="Prevent OSDs from automatically getting marked as Up by the monitors. This setting is useful for troubleshooting", required=False)
+    nodown = serializers.BooleanField(help_text="Prevent OSDs from automatically getting marked as Down by the monitors. This setting is useful for troubleshooting", required=False)
+    noout = serializers.BooleanField(help_text="Prevent Down OSDs from being marked as out", required=False)
+    noin = serializers.BooleanField(help_text="Prevent OSDs from booting OSDs from being marked as IN. Will cause cluster health to be set to WARNING", required=False)
+    nobackfill = serializers.BooleanField(help_text="Disable backfill operations on cluster", required=False)
+    norecover = serializers.BooleanField(help_text="Disable replication of Placement Groups", required=False)
+    noscrub = serializers.BooleanField(help_text="Disables automatic periodic scrub operations on OSDs. May still be initiated on demand", required=False)
+    nodeepscrub = serializers.BooleanField(help_text="Disables automatic periodic deep scrub operations on OSDs. May still be initiated on demand", required=False)
 
 
 OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
