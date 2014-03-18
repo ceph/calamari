@@ -101,7 +101,7 @@ class Persister(gevent.greenlet.Greenlet):
             fsid=service_id.fsid,
             service_type=service_id.service_type,
             service_id=service_id.service_id
-        ).update(server=self._session.query(Server).filter_by(fqdn=location_fqdn).one().id)
+        ).update({'server': self._session.query(Server).filter_by(fqdn=location_fqdn).one().id})
 
     def _delete_service(self, service_id):
         self._session.query(Service).filter_by(
