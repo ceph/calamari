@@ -23,8 +23,8 @@ build-calamari-server:
     - require:
       - git: /git/calamari
 
-{% for path in ('calamari/repobuild/calamari-repo-ubuntu.tar.gz',
-                'calamari-server_1.0.0-1_all.deb',
+{% for path in ('calamari/repobuild/calamari-repo.tar.gz',
+                'calamari-server_*.deb',
                 'Diamond/build/diamond_*.deb') %}
 
 cp-artifacts-to-share {{ path }}:
