@@ -359,7 +359,13 @@ but those without static defaults will be set to null.
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
-Manage Ceph OSDs. Apply ceph commands with osd/commands/{scrub, repair, ...}
+Manage Ceph OSDs.
+
+Apply ceph commands to an OSD by doing a POST with no data to
+api/v2/cluster/<fsid>/osd/<osd_id>/command/<command>
+where <command> is one of ("scrub", "deep-scrub", "repair")
+
+e.g. Initiate a scrub on OSD 0 by POSTing {} to api/v2/cluster/<fsid>/osd/0/command/scrub
 
 Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
