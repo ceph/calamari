@@ -9,30 +9,19 @@ from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ER
 
 
 class ValidatingSerializer(serializers.Serializer):
-    class Meta:
-        create_allowed = ()
-        create_required = ()
-        modify_allowed = ()
-        modify_required = ()
-
-    def __init__(self, instance=None, data=None, **kwargs):
-        if data is not None:
-            data = JSONParser().parse(StringIO(data))
-
-        super(ValidatingSerializer, self).__init__(instance, data, **kwargs)
 
     def is_valid(self, http_method):
 
         self._errors = super(ValidatingSerializer, self).errors or {}
 
         if self.init_data is not None:
-            if http_method is 'PUT':
+            if http_method == 'POST':
                 self._errors.update(self.construct_errors(self.Meta.create_allowed,
                                                           self.Meta.create_required,
                                                           self.init_data.keys(),
                                                           http_method))
 
-            elif http_method in ('PATCH', 'POST'):
+            elif http_method in ('PATCH', 'PUT'):
                 self._errors.update(self.construct_errors(self.Meta.modify_allowed,
                                                           self.Meta.modify_required,
                                                           self.init_data.keys(),
@@ -81,16 +70,18 @@ class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
-        create_allowed = ()
-        create_required = ()
-        modify_allowed = ()
+        create_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+        create_required = ('name', 'pg_num')
+        modify_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
         modify_required = ()
 
     # Required in creation
-    name = serializers.CharField(source='pool_name',
+    name = serializers.CharField(required=False, source='pool_name',
                                  help_text="Human readable name of the pool, may"
                                  "change over the pools lifetime at user request.")
-    pg_num = serializers.IntegerField(
+    pg_num = serializers.IntegerField(required=False,
         help_text="Number of placement groups in this pool")
 
     # Not required in creation, immutable
@@ -134,9 +125,9 @@ class OsdSerializer(ValidatingSerializer):
 
     id = serializers.IntegerField(read_only=True, source='osd', help_text="ID of this OSD within this cluster")
     uuid = fields.UuidField(read_only=True, help_text="Globally unique ID for this OSD")
-    up = fields.BooleanField(help_text="Whether the OSD is running from the point of view of the rest of the cluster")
-    _in = fields.BooleanField(help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
-    reweight = serializers.FloatField(help_text="CRUSH weight factor")
+    up = fields.BooleanField(required=False, help_text="Whether the OSD is running from the point of view of the rest of the cluster")
+    _in = fields.BooleanField(required=False, help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
+    reweight = serializers.FloatField(required=False, help_text="CRUSH weight factor")
     server = serializers.CharField(read_only=True, help_text="FQDN of server this OSD was last running on")
     pools = serializers.Field(help_text="List of pool IDs which use this OSD for storage")
     valid_commands = serializers.CharField(read_only=True, help_text="List of commands that can be applied to this OSD")
@@ -154,7 +145,7 @@ class OsdConfigSerializer(ValidatingSerializer):
         fields = OSD_FLAGS
         create_allowed = ()
         create_required = ()
-        modify_allowed = ()
+        modify_allowed = OSD_FLAGS
         modify_required = ()
 
     pause = serializers.BooleanField(help_text="Disable IO requests to all OSDs in cluster", required=False)
