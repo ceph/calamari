@@ -44,10 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'password', 'email')
-        create_allowed = ()
-        create_required = ()
-        modify_allowed = ()
-        modify_required = ()
 
     def to_native(self, obj):
         # Before conversion, remove the password field. This prevents the hash
@@ -192,10 +188,6 @@ class InfoSerializer(serializers.Serializer):
     class Meta:
         fields = ('version', 'license', 'registered', 'hostname', 'fqdn', 'ipaddr', 'bootstrap_url', 'bootstrap_rhel',
                   'bootstrap_ubuntu')
-        create_allowed = ()
-        create_required = ()
-        modify_allowed = ()
-        modify_required = ()
 
     version = serializers.CharField(help_text="Calamari server version")
     license = serializers.CharField(help_text="Calamari license metadata")

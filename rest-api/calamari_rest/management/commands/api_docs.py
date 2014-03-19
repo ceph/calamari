@@ -10,6 +10,8 @@ import traceback
 from django.core.urlresolvers import RegexURLPattern, RegexURLResolver
 import sys
 
+from calamari_rest.serializers.v2 import ValidatingSerializer
+
 
 EXAMPLES_FILE = "api_examples.json"
 RESOURCES_FILE = "resources.rst"
@@ -218,11 +220,17 @@ class ApiIntrospector(object):
 
         if hasattr(view, 'serializer_class') and view.serializer_class:
             field_table = [["Name", "Type", "Readonly", "Create", "Modify", "Description"]]
-            allowed_during_create = view.serializer_class().Meta.create_allowed
-            required_during_create = view.serializer_class().Meta.create_required
-            allowed_during_modify = view.serializer_class().Meta.modify_allowed
-            required_during_modify = view.serializer_class().Meta.modify_required
-            fields = view.serializer_class().get_fields()
+
+            serializer = view.serializer_class()
+            if isinstance(serializer, ValidatingSerializer):
+                allowed_during_create = serializer.Meta.create_allowed
+                required_during_create = serializer.Meta.create_required
+                allowed_during_modify = serializer.Meta.modify_allowed
+                required_during_modify = serializer.Meta.modify_required
+            else:
+                allowed_during_create = required_during_create = allowed_during_modify = required_during_modify = ()
+
+            fields = serializer.get_fields()
             for field_name, field in fields.items():
                 create = modify = ''
                 if field_name in allowed_during_create:

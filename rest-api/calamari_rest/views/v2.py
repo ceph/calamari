@@ -124,11 +124,13 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(self.serializer_class(self.client.minion_status(None), many=True).data)
 
     def partial_update(self, request, minion_id):
-        self._partial_update(minion_id, request.DATA)
-
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            self._partial_update(minion_id, serializer.data)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         # TODO handle 404
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
@@ -351,9 +353,7 @@ but those without static defaults will be set to null.
 
     def update(self, request, fsid, pool_id):
         updates = request.DATA
-        # TODO: validation, but we don't want to check all fields are present (because
-        # this is a PATCH), just that those present are valid.  rest_framework serializer
-        # may or may not be able to do that out the box.
+
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid(request.method):
             return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
