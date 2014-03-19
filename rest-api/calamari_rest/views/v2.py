@@ -124,11 +124,13 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(self.serializer_class(self.client.minion_status(None), many=True).data)
 
     def partial_update(self, request, minion_id):
-        self._partial_update(minion_id, request.DATA)
-
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            self._partial_update(minion_id, serializer.data)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         # TODO handle 404
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
@@ -334,8 +336,8 @@ but those without static defaults will be set to null.
         return Response(PoolSerializer(pool).data)
 
     def create(self, request, fsid):
-        serializer = PoolSerializer(data=request.DATA)
-        if serializer.is_valid():
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
             create_response = self.client.create(fsid, POOL, request.DATA)
             # TODO: handle case where the creation is rejected for some reason (should
             # be passed an errors dict for a clean failure, or a zerorpc exception
@@ -351,10 +353,12 @@ but those without static defaults will be set to null.
 
     def update(self, request, fsid, pool_id):
         updates = request.DATA
-        # TODO: validation, but we don't want to check all fields are present (because
-        # this is a PATCH), just that those present are valid.  rest_framework serializer
-        # may or may not be able to do that out the box.
-        return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
+
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OsdViewSet(RPCViewSet, RequestReturner):
@@ -420,7 +424,11 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
         return Response(self.serializer_class(DataObject(osd)).data)
 
     def update(self, request, fsid, osd_id):
-        return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def apply(self, request, fsid, osd_id, command):
         if command in self.client.get_valid_commands(fsid, OSD, [int(osd_id)]).get(int(osd_id)).get('valid_commands'):
@@ -457,7 +465,14 @@ Manage flags in the OsdMap
         return Response(osd_map)
 
     def update(self, request, fsid):
-        return self._return_request(self.client.update(fsid, OSD_MAP, None, dict(request.DATA)))
+
+        serializer = self.serializer_class(data=request.DATA)
+        if not serializer.is_valid(request.method):
+            return Response(serializer.errors, status=403)
+
+        response = self.client.update(fsid, OSD_MAP, None, serializer.object)
+
+        return self._return_request(response)
 
 
 class SyncObject(RPCViewSet):

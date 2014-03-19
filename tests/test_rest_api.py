@@ -194,7 +194,7 @@ class TestApi(ServerTestCase):
                 response = self.api.patch(url[len(prefix):], data={'status': 'accepted'})
 
                 # We are mostly interested that these are not 500
-                if response.status_code not in (404, 405, 503):
+                if response.status_code not in (400, 404, 405, 503):
                     fails.append((url, response.status_code, response.reason))
 
 

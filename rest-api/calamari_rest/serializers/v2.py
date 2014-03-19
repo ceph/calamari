@@ -1,9 +1,43 @@
 from rest_framework import serializers
-
 from calamari_common.db.event import severity_str
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
     USER_REQUEST_SUBMITTED, OSD_FLAGS
+
+
+class ValidatingSerializer(serializers.Serializer):
+
+    def is_valid(self, http_method):
+
+        self._errors = super(ValidatingSerializer, self).errors or {}
+
+        if self.init_data is not None:
+            if http_method == 'POST':
+                self._errors.update(self.construct_errors(self.Meta.create_allowed,
+                                                          self.Meta.create_required,
+                                                          self.init_data.keys(),
+                                                          http_method))
+
+            elif http_method in ('PATCH', 'PUT'):
+                self._errors.update(self.construct_errors(self.Meta.modify_allowed,
+                                                          self.Meta.modify_required,
+                                                          self.init_data.keys(),
+                                                          http_method))
+            else:
+                self._errors.update([[http_method, 'Not a valid method']])
+
+        return not self._errors
+
+    def construct_errors(self, allowed, required, init_data, action):
+        errors = {}
+
+        not_allowed = set(init_data) - set(allowed)
+        errors.update(dict([x, 'Not allowed during %s' % action] for x in not_allowed))
+
+        required = set(required) - set(init_data)
+        errors.update(dict([x, 'Required during %s' % action] for x in required))
+
+        return errors
 
 
 class ClusterSerializer(serializers.Serializer):
@@ -21,17 +55,23 @@ class ClusterSerializer(serializers.Serializer):
     )
 
 
-class PoolSerializer(serializers.Serializer):
+class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
+        create_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+        create_required = ('name', 'pg_num')
+        modify_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+        modify_required = ()
 
     # Required in creation
-    name = serializers.CharField(source='pool_name',
+    name = serializers.CharField(required=False, source='pool_name',
                                  help_text="Human readable name of the pool, may"
                                  "change over the pools lifetime at user request.")
-    pg_num = serializers.IntegerField(
-        help_text="Number of placement groups in this pool")
+    pg_num = serializers.IntegerField(required=False,
+                                      help_text="Number of placement groups in this pool")
 
     # Not required in creation, immutable
     id = serializers.CharField(source='pool', required=False, help_text="Unique numeric ID")
@@ -64,30 +104,51 @@ class PoolSerializer(serializers.Serializer):
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
 
-class OsdSerializer(serializers.Serializer):
+class OsdSerializer(ValidatingSerializer):
     class Meta:
         fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ('up', 'in', 'reweight')
+        modify_required = ()
 
-    id = serializers.IntegerField(source='osd', help_text="ID of this OSD within this cluster")
-    uuid = fields.UuidField(help_text="Globally unique ID for this OSD")
-    up = fields.BooleanField(help_text="Whether the OSD is running from the point of view of the rest of the cluster")
-    _in = fields.BooleanField(help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
-    reweight = serializers.FloatField(help_text="CRUSH weight factor")
-    server = serializers.CharField(help_text="FQDN of server this OSD was last running on")
+    id = serializers.IntegerField(read_only=True, source='osd', help_text="ID of this OSD within this cluster")
+    uuid = fields.UuidField(read_only=True, help_text="Globally unique ID for this OSD")
+    up = fields.BooleanField(required=False, help_text="Whether the OSD is running from the point of view of the rest of the cluster")
+    _in = fields.BooleanField(required=False, help_text="Whether the OSD is 'in' the set of OSDs which will be used to store data")
+    reweight = serializers.FloatField(required=False, help_text="CRUSH weight factor")
+    server = serializers.CharField(read_only=True, help_text="FQDN of server this OSD was last running on")
     pools = serializers.Field(help_text="List of pool IDs which use this OSD for storage")
-    valid_commands = serializers.CharField(help_text="List of commands that can be applied to this OSD")
+    valid_commands = serializers.CharField(read_only=True, help_text="List of commands that can be applied to this OSD")
 
-    public_addr = serializers.CharField(help_text="Public/frontend IP address")
-    cluster_addr = serializers.CharField(help_text="Cluster/backend IP address")
+    public_addr = serializers.CharField(read_only=True, help_text="Public/frontend IP address")
+    cluster_addr = serializers.CharField(read_only=True, help_text="Cluster/backend IP address")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
 OsdSerializer.base_fields['in'] = OsdSerializer.base_fields['_in']
 
 
-class OsdConfigSerializer(serializers.Serializer):
+class OsdConfigSerializer(ValidatingSerializer):
     class Meta:
         fields = OSD_FLAGS
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = OSD_FLAGS
+        modify_required = ()
+
+    pause = serializers.BooleanField(help_text="Disable IO requests to all OSDs in cluster", required=False)
+    noup = serializers.BooleanField(help_text="Prevent OSDs from automatically getting marked as Up by the monitors. This setting is useful for troubleshooting", required=False)
+    nodown = serializers.BooleanField(help_text="Prevent OSDs from automatically getting marked as Down by the monitors. This setting is useful for troubleshooting", required=False)
+    noout = serializers.BooleanField(help_text="Prevent Down OSDs from being marked as out", required=False)
+    noin = serializers.BooleanField(help_text="Prevent OSDs from booting OSDs from being marked as IN. Will cause cluster health to be set to WARNING", required=False)
+    nobackfill = serializers.BooleanField(help_text="Disable backfill operations on cluster", required=False)
+    norecover = serializers.BooleanField(help_text="Disable replication of Placement Groups", required=False)
+    noscrub = serializers.BooleanField(help_text="Disables automatic periodic scrub operations on OSDs. May still be initiated on demand", required=False)
+    nodeepscrub = serializers.BooleanField(help_text="Disables automatic periodic deep scrub operations on OSDs. May still be initiated on demand", required=False)
+
+
+OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
 
 
 class CrushRuleSerializer(serializers.Serializer):
@@ -130,11 +191,15 @@ class RequestSerializer(serializers.Serializer):
     completed_at = serializers.DateTimeField(help_text="Time at which the request completed, may be null.")
 
 
-class SaltKeySerializer(serializers.Serializer):
+class SaltKeySerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'status')
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ('status',)
+        modify_required = ()
 
-    id = serializers.CharField(help_text="The minion ID, usually equal to a host's FQDN")
+    id = serializers.CharField(required=False, help_text="The minion ID, usually equal to a host's FQDN")
     status = serializers.CharField(help_text="One of 'accepted', 'rejected' or 'pre'")
 
 
