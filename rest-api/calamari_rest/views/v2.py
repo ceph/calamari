@@ -360,6 +360,7 @@ but those without static defaults will be set to null.
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph OSDs.

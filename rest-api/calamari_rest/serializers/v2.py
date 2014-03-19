@@ -1,7 +1,4 @@
-from cStringIO import StringIO
-
 from rest_framework import serializers
-from rest_framework.parsers import JSONParser
 from calamari_common.db.event import severity_str
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
@@ -42,10 +39,6 @@ class ValidatingSerializer(serializers.Serializer):
 
         return errors
 
-        '''
-        readonly = [x for x,y in self.fields.items() if y.read_only]
-        readonly_fields = dict([(x, 'This field is read_only') for x in set(self.init_data.keys()) & set(readonly)])
-        '''
 
 class ClusterSerializer(ValidatingSerializer):
     class Meta:
@@ -82,7 +75,7 @@ class PoolSerializer(ValidatingSerializer):
                                  help_text="Human readable name of the pool, may"
                                  "change over the pools lifetime at user request.")
     pg_num = serializers.IntegerField(required=False,
-        help_text="Number of placement groups in this pool")
+                                      help_text="Number of placement groups in this pool")
 
     # Not required in creation, immutable
     id = serializers.CharField(source='pool', required=False, help_text="Unique numeric ID")
