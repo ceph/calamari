@@ -244,7 +244,12 @@ unit-tests: dev/calamari.conf
 
 lint:
 	@echo "target: $@"
-	echo "Checking code style:" && flake8 cthulhu/ --ignore=E501 && echo "OK"
+	echo "Checking code style:" && \
+		flake8 cthulhu/ --ignore=E501 &&\
+		flake8 rest-api/ --ignore=E501 &&\
+		flake8 calamari-common/ --ignore=E501 &&\
+		flake8 calamari-web/ --ignore=E501 &&\
+		echo "OK"
 
 check: unit-tests lint
 
