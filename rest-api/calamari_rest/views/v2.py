@@ -608,9 +608,12 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
 
         # Resolve FSID to list of mon FQDNs
         servers = self.client.server_list_cluster(fsid)
-        # Sort to get most recently contact server first
+        # Sort to get most recently contacted server first; drop any
+        # for whom last_contact is None
+        servers = [s for s in servers if s['last_contact']]
         servers = sorted(servers,
-                         lambda a, b: cmp(dateutil_parse(b['last_contact']), dateutil_parse(a['last_contact'])))
+                         key=lambda t: dateutil_parse(t['last_contact']),
+                         reverse=True)
         mon_fqdns = []
         for server in servers:
             for service in server['services']:
