@@ -306,6 +306,12 @@ def _get_local_grains():
     """
     # Stash grains as an attribute of this function
     if not hasattr(_get_local_grains, 'grains'):
+
+        # >> work around salt issue #11402
+        import __main__ as main
+        main.__file__ = 'workaround'
+        # <<
+
         # Use salt to get an interesting subset of the salt grains (getting
         # everything is a bit slow)
         grains = {}
