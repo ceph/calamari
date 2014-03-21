@@ -392,7 +392,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
 
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
         for o in osds:
-            o.update({'reweight': crush_nodes[o['osd']]['reweight']})
+            o.update({'reweight': float(crush_nodes[o['osd']]['reweight'])})
 
         server_info = self.client.server_by_service([ServiceId(fsid, OSD, str(osd['osd'])) for osd in osds])
         for o, (service_id, fqdn) in zip(osds, server_info):
@@ -412,7 +412,7 @@ Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
     def retrieve(self, request, fsid, osd_id):
         osd = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id', int(osd_id)])
         crush_node = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id', int(osd_id)])
-        osd['reweight'] = crush_node['reweight']
+        osd['reweight'] = float(crush_node['reweight'])
         osd['server'] = self.client.server_by_service([ServiceId(fsid, OSD, osd_id)])[0][1]
 
         pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
@@ -623,9 +623,12 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
 
         # Resolve FSID to list of mon FQDNs
         servers = self.client.server_list_cluster(fsid)
-        # Sort to get most recently contact server first
+        # Sort to get most recently contacted server first; drop any
+        # for whom last_contact is None
+        servers = [s for s in servers if s['last_contact']]
         servers = sorted(servers,
-                         lambda a, b: cmp(dateutil_parse(b['last_contact']), dateutil_parse(a['last_contact'])))
+                         key=lambda t: dateutil_parse(t['last_contact']),
+                         reverse=True)
         mon_fqdns = []
         for server in servers:
             for service in server['services']:
