@@ -87,7 +87,7 @@ fixup-venv: build-venv-carbon build-venv-reqs
 	@echo "target: $@"
 	set -x; \
 	cd venv; \
-	fixfiles=$$(find . -type f -print0 | xargs -0 grep -l '\#!.*'$(SRC)) ; \
+	fixfiles=$$(find . -type f -print0 | grep -v 'py[cox]$$' |xargs -0 grep -l '\#!.*'$(SRC)) ; \
 	echo "fixfiles: $$fixfiles" ; \
 	fixfiles="$$fixfiles bin/activate*" ; \
 	echo "fixfiles: $$fixfiles" ; \
