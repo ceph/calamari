@@ -23,6 +23,7 @@ from calamari_common.db.base import Base
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
 from cthulhu.persistence.servers import Server, Service  # noqa
 from calamari_common.db.event import Event  # noqa
+from cthulhu.log import FORMAT
 
 log = logging.getLogger('calamari_ctl')
 log.setLevel(logging.INFO)
@@ -33,7 +34,7 @@ log.addHandler(handler)
 log_buffer = StringIO()
 log_tmp = tempfile.NamedTemporaryFile()
 buffer_handler = logging.FileHandler(log_tmp.name)
-buffer_handler.setFormatter(logging.Formatter("[%(asctime)s %(levelname)s] %(message)s"))
+buffer_handler.setFormatter(logging.Formatter(FORMAT))
 log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
