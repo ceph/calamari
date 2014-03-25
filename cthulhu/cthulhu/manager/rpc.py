@@ -377,6 +377,11 @@ class RpcThread(gevent.greenlet.Greenlet):
     Present a ZeroRPC API for users
     to request state changes.
     """
+
+    # In case server.run throws an exception, prevent
+    # really aggressive spinning
+    EXCEPTION_BACKOFF = 5
+
     def __init__(self, manager):
         super(RpcThread, self).__init__()
         self._manager = manager
@@ -399,11 +404,12 @@ class RpcThread(gevent.greenlet.Greenlet):
     def _run(self):
         assert self._bound
 
-        try:
-            log.info("%s run..." % self.__class__.__name__)
-            self._server.run()
-        except:
-            log.error(traceback.format_exc())
-            raise
+        while not self._complete.is_set():
+            try:
+                log.info("%s run..." % self.__class__.__name__)
+                self._server.run()
+            except:
+                log.error(traceback.format_exc())
+                self._complete.wait(self.EXCEPTION_BACKOFF)
 
         log.info("%s complete..." % self.__class__.__name__)
