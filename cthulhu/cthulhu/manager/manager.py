@@ -2,11 +2,15 @@ import argparse
 import hashlib
 import logging
 import os
+import gc
 import gevent.event
 import signal
+import traceback
+import greenlet
 from dateutil.tz import tzutc
 
 import gevent.greenlet
+import manhole
 import msgpack
 import salt.utils.event
 import sys
@@ -239,6 +243,18 @@ class Manager(object):
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
 
 
+def dump_stacks():
+    """
+    This is for use in debugging, especially using manhole
+    """
+    for ob in gc.get_objects():
+        if not isinstance(ob, greenlet.greenlet):
+            continue
+        if not ob:
+            continue
+        log.error(''.join(traceback.format_stack(ob.gr_frame)))
+
+
 def main():
     parser = argparse.ArgumentParser(description='Calamari management service')
     parser.add_argument('--debug', dest='debug', action='store_true',
@@ -258,6 +274,11 @@ def main():
     # Set up gevent compatibility in psycopg2
     import psycogreen.gevent
     psycogreen.gevent.patch_psycopg()
+
+    # Enable manhole for debugging.  Use oneshot mode
+    # for gevent compatibility
+    manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
+    manhole.install(oneshot_on=signal.SIGUSR1)
 
     m = Manager()
     m.start()
