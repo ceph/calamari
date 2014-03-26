@@ -139,13 +139,13 @@ class RpcInterface(object):
         if object_type == OSD:
             # Run a resolve to throw exception if it's unknown
             self._osd_resolve(cluster, object_id)
-            if not 'id' in attributes:
+            if 'id' not in attributes:
                 attributes['id'] = object_id
 
             return cluster.request_update('update', OSD, object_id, attributes)
         elif object_type == POOL:
             self._pool_resolve(cluster, object_id)
-            if not 'id' in attributes:
+            if 'id' not in attributes:
                 attributes['id'] = object_id
 
             return cluster.request_update('update', POOL, object_id, attributes)

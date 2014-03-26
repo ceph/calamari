@@ -504,7 +504,7 @@ class ServerMonitor(greenlet.Greenlet):
         self._persister.delete_server(fqdn)
 
     def delete_cluster(self, fsid):
-        if not fsid in self.fsid_services:
+        if fsid not in self.fsid_services:
             log.info("delete_cluster: No services for FSID %s" % fsid)
             return
 
