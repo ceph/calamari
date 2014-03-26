@@ -23,17 +23,15 @@ Summary of log file contents
 Troubleshooting
 ---------------
 
-calamari.log and cthulhu.log operate in production at a level of low verbosity.
-This behaviour can be changed by editing:
+Increase the log level of services in ``/etc/calamari/calamari.conf`` with the ``cthulhu.log_level``
+and ``calamari_web.log_level`` settings.  You can see the log paths in the same config file.  You usually
+want 'debug' level, but don't forget to turn it back to 'warn' when you're done.
 
-.. code-block:: bash
+After changing the level, restart the services:
 
-    /etc/calamari/calamari.conf
+::
 
-to set
+    sudo supervisorctl restart cthulhu
+    sudo service apache2 restart
 
-.. code-block:: python
-
-    log_level = DEBUG
-
-Then restart the services that the config has been modified for.
+For ultra-mega SQL verbosity you can also set cthulhu.db_log_level

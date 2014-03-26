@@ -19,6 +19,7 @@ Contents
    :maxdepth: 2
 
    logging
+   debugging.rst
    testing
    coding_style
    coverage
