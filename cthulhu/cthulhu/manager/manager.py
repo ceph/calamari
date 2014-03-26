@@ -96,14 +96,16 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
 
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
-        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        event.subscribe("ceph/cluster/")
 
+        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
         while not self._complete.is_set():
-            data = event.get_event(tag="ceph/cluster/")
-            if data is not None:
+            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
+            ev = event.get_event(full=True)
+            if ev is not None:
+                tag = ev['tag']
+                data = ev['data']
                 try:
-                    if 'tag' in data and data['tag'].startswith("ceph/cluster/"):
+                    if tag.startswith("ceph/cluster/"):
                         cluster_data = data['data']
                         if not cluster_data['fsid'] in self._manager.clusters:
                             self._manager.on_discovery(data['id'], cluster_data)

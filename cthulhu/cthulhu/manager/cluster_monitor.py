@@ -236,14 +236,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     def _run(self):
         self._plugin_monitor.start()
-        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        event.subscribe('')
+
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
 
         self._request_ticker.start()
+        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
 
         while not self._complete.is_set():
+            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
             ev = event.get_event(full=True)
 
             if ev is not None:
