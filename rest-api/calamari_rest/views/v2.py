@@ -532,8 +532,13 @@ server then the FQDN will be modified to its correct value.
                                                          use_cached_grains=True,
                                                          grains_fallback=False,
                                                          opts=salt_config)
+
         try:
-            return Response(pillar_util.get_minion_grains()[fqdn])
+            # We (ab)use an internal interface to get at the cache by minion ID
+            # instead of by glob, because the process of resolving the glob
+            # relies on access to the root only PKI folder.
+            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            return Response(cache_grains[fqdn])
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
