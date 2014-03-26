@@ -154,6 +154,9 @@ install-conf: $(CONFFILES)
 		$(DESTDIR)/etc/calamari/calamari.conf
 	@$(INSTALL) -D conf/alembic.ini \
 		$(DESTDIR)/etc/calamari/alembic.ini
+	@$(INSTALL) -d $(DESTDIR)/etc/logrotate.d
+	@$(INSTALL) -D conf/logrotate.d/calamari \
+	    $(DESTDIR)/etc/logrotate.d/calamari
 
 install-salt:
 	@echo "target: $@"
