@@ -114,7 +114,6 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
                                 self.__class__.__name__, cluster_data['fsid']))
                     else:
                         # This does not concern us, ignore it
-                        #log.debug("DiscoveryThread ignoring: %s" % data)
                         pass
                 except:
                     log.debug("Message content: %s" % data)
