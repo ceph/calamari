@@ -4,6 +4,7 @@ import logging
 import os
 import gc
 import gevent.event
+import gevent.socket as socket
 import signal
 import traceback
 import greenlet
@@ -12,11 +13,13 @@ from dateutil.tz import tzutc
 import gevent.greenlet
 import manhole
 import msgpack
+import resource
 import salt.utils.event
 import sys
 
 import sqlalchemy.exc
 from sqlalchemy import create_engine
+import time
 
 from cthulhu.log import log
 import cthulhu.log
@@ -30,6 +33,55 @@ from cthulhu.persistence.servers import Server, Service
 
 from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.persister import Persister, Session
+
+
+class ProcessMonitorThread(gevent.greenlet.Greenlet):
+    CARBON_HOST = "localhost"
+    CARBON_PORT = 2003
+    MONITOR_PERIOD = 30
+
+    def __init__(self):
+        super(ProcessMonitorThread, self).__init__()
+        self._complete = gevent.event.Event()
+
+        self._socket = None
+
+    def stop(self):
+        self._complete.set()
+
+    def _close(self):
+        if self._socket and not self._socket.closed:
+            self._socket.close()
+            self._socket = None
+
+    def _emit_stats(self):
+        try:
+            if not self._socket:
+                log.info("Opening carbon socket {0}:{1}".format(self.CARBON_HOST, self.CARBON_PORT))
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.connect((self.CARBON_HOST, self.CARBON_PORT))
+
+            carbon_data = ""
+            t = int(time.time())
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            for usage_field in ("utime", "stime", "maxrss", "ixrss", "idrss", "isrss", "minflt", "majflt",
+                                "nswap", "inblock", "oublock", "msgsnd", "msgrcv", "nsignals", "nvcsw", "nivcsw"):
+                val = getattr(usage, "ru_{0}".format(usage_field))
+                log.debug("{0}: {1}".format(usage_field, val))
+                carbon_data += "calamari.cthulhu.ru_{0} {1} {2}\n".format(usage_field, val, t)
+
+            self._socket.sendall(carbon_data)
+        except socket.gaierror, resource.error:
+            log.exception("Failed to send debugging statistics")
+            self._close()
+
+    def _run(self):
+        log.info("Running {0}".format(self.__class__.__name__))
+        while not self._complete.is_set():
+            self._emit_stats()
+            self._complete.wait(self.MONITOR_PERIOD)
+
+        self._close()
 
 
 class DiscoveryThread(gevent.greenlet.Greenlet):
@@ -82,6 +134,7 @@ class Manager(object):
 
         self._rpc_thread = RpcThread(self)
         self._discovery_thread = DiscoveryThread(self)
+        self._process_monitor = ProcessMonitorThread()
 
         self.notifier = NotificationThread()
         try:
@@ -121,6 +174,7 @@ class Manager(object):
             monitor.stop()
         self._rpc_thread.stop()
         self._discovery_thread.stop()
+        self._process_monitor.stop()
         self.notifier.stop()
         self.eventer.stop()
 
@@ -210,6 +264,7 @@ class Manager(object):
         self._rpc_thread.bind()
         self._rpc_thread.start()
         self._discovery_thread.start()
+        self._process_monitor.start()
         self.notifier.start()
         self.persister.start()
         self.eventer.start()
@@ -220,6 +275,7 @@ class Manager(object):
         log.info("%s joining" % self.__class__.__name__)
         self._rpc_thread.join()
         self._discovery_thread.join()
+        self._process_monitor.join()
         self.notifier.join()
         self.persister.join()
         self.eventer.join()
