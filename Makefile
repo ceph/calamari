@@ -162,6 +162,8 @@ install-salt:
 	@echo "target: $@"
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
 	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/
+	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt-local
+	cp -rp salt/local/*.sls $(DESTDIR)/opt/calamari/salt-local
 
 install-alembic:
 	@echo "target: $@"

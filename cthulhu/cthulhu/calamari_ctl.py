@@ -25,12 +25,17 @@ from cthulhu.persistence.servers import Server, Service  # noqa
 from calamari_common.db.event import Event  # noqa
 from cthulhu.log import FORMAT
 
+# The log is very verbose by default, filtered at handler level
 log = logging.getLogger('calamari_ctl')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
+
+# The stream handler is what the user sees: don't be too verbose here
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+handler.setLevel(logging.INFO)
 log.addHandler(handler)
 
+# The buffer handler is what we dump to a file on failures, be very verbose here
 log_buffer = StringIO()
 log_tmp = tempfile.NamedTemporaryFile()
 buffer_handler = logging.FileHandler(log_tmp.name)
@@ -38,6 +43,7 @@ buffer_handler.setFormatter(logging.Formatter(FORMAT))
 log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
+POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
 
 
 @contextmanager
@@ -73,6 +79,20 @@ def initialize(args):
     if not os.path.exists(config.get('calamari_web', 'secret_key_path')):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
+
+    # Configure postgres database
+    if os.path.exists(POSTGRES_SLS):
+        p = subprocess.Popen(["salt-call", "--local", "state.template",
+                              POSTGRES_SLS],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        log.debug("Postgres salt stdout: %s" % out)
+        log.debug("Postgres salt stderr: %s" % out)
+        if p.returncode != 0:
+            raise RuntimeError("salt-call for postgres failed with rc={0}".format(p.returncode))
+    else:
+        # This is the path you take if you're running in a development environment
+        log.debug("Skipping postgres configuration, SLS not found")
 
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')

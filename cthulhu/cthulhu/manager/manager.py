@@ -255,6 +255,10 @@ def main():
     import salt.utils.event
     salt.utils.event.zmq = zmq.green
 
+    # Set up gevent compatibility in psycopg2
+    import psycogreen.gevent
+    psycogreen.gevent.patch_psycopg()
+
     m = Manager()
     m.start()
 

@@ -15,7 +15,7 @@ script_location = {{calamari_root}}/alembic
 # the 'revision' command, regardless of autogenerate
 # revision_environment = false
 
-sqlalchemy.url = sqlite:///{{calamari_root}}/dev/cthulhu.db
+sqlalchemy.url = postgresql://calamari:27HbZwr*g@localhost/calamari
 
 
 # Logging configuration
