@@ -84,7 +84,7 @@ class Space(RPCView):
             else:
                 return None
 
-        #df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
+        # df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
         # TODO: Change names to FSIDs for #6883
         df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(self.client.get_cluster(fsid)['name'], stat_name)
         space = {
@@ -161,7 +161,7 @@ class OSDList(RPCView):
             osds = self._filter_by_pg_state(osds, pg_states, osds_by_pg_state)
 
         osd_list = DataObject({
-            #'osds': [DataObject({'osd': o}) for o in osds],
+            # 'osds': [DataObject({'osd': o}) for o in osds],
             'osds': osds,
             'osds_by_pg_state': osds_by_pg_state
         })

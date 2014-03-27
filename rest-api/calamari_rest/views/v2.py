@@ -137,7 +137,7 @@ Calamari accepts messages from a server, the server's key must be accepted.
 
     def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
-        if not 'status' in data:
+        if 'status' not in data:
             raise ParseError({'status': "This field is mandatory"})
         elif data['status'] not in valid_status:
             raise ParseError({'status': "Must be one of %s" % ",".join(valid_status)})
@@ -155,7 +155,7 @@ Calamari accepts messages from a server, the server's key must be accepted.
         if not isinstance(keys, list):
             return Response("Bulk PATCH must send a list", status=status.HTTP_400_BAD_REQUEST)
         for key in keys:
-            if not 'id' in key:
+            if 'id' not in key:
                 return Response("Items in bulk PATCH must have 'id' attribute", status=status.HTTP_400_BAD_REQUEST)
 
     def list_partial_update(self, request):
