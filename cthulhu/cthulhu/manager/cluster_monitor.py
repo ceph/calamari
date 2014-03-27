@@ -267,7 +267,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # Instead we enforce a convention that all calamari jobs must include
                         # fsid in their return value.
                         if (not isinstance(data, dict)) or not isinstance(data['return'], dict):
-                            log.warning("Bad job return: %s" % data)
+                            log.info("Ignoring job return, not a cthulhu job")
                             continue
 
                         if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
