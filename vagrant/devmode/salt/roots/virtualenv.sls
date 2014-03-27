@@ -8,6 +8,19 @@ virtualenv:
       - git: git_clone
       - pkg: build_deps
 
+# Explicit installation for pyzmq so we can pass --zmq=bundled
+pyzmq:
+  pip.installed:
+    - name: pyzmq == 14.1.1
+    - user: vagrant
+    - bin_env: /home/vagrant/calamari/env
+    - activate: true
+    - download_cache: /vagrant/pip_cache
+    - install_options:
+      - "--zmq=bundled"
+    - require:
+      - virtualenv: virtualenv
+
 pip_pkgs:
   pip:
     - installed
@@ -18,6 +31,7 @@ pip_pkgs:
     - download_cache: /vagrant/pip_cache
     - require:
       - virtualenv: virtualenv
+      - pip: pyzmq
 
 carbon:
   pip:
@@ -25,6 +39,7 @@ carbon:
     - user: vagrant
     - bin_env: /home/vagrant/calamari/env
     - activate: true
+    - download_cache: /vagrant/pip_cache
     - install_options:
       - "--prefix=/home/vagrant/calamari/env"
       - "--install-lib=/home/vagrant/calamari/env/lib/python2.7/site-packages"
