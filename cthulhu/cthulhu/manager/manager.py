@@ -188,7 +188,7 @@ class Manager(object):
         session = Session()
         for server in session.query(Server).all():
             log.debug("Recovered server %s" % server.fqdn)
-            assert server.boot_time.tzinfo is not None  # expect timezone-aware DB backend
+            assert server.boot_time is None or server.boot_time.tzinfo is not None  # expect timezone-aware DB backend
             self.servers.inject_server(ServerState(
                 fqdn=server.fqdn,
                 hostname=server.hostname,
