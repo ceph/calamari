@@ -8,6 +8,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
+import salt.client
+import salt.config
+import salt.utils.master
+import gevent.pool
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
@@ -20,7 +24,6 @@ from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
-import salt.client
 
 from django.views.decorators.csrf import csrf_exempt
 config = CalamariConfig()
@@ -503,12 +506,65 @@ all record of it from any/all clusters).
         m['name'] = "Server (within cluster)"
         return m
 
+    def _addr_to_iface(self, addr, ip_interfaces):
+        """
+        Resolve an IP address to a network interface.
+
+        :param addr: An address string like "1.2.3.4"
+        :param ip_interfaces: The 'ip_interfaces' salt grain
+        """
+        for iface_name, iface_addrs in ip_interfaces.items():
+            if addr in iface_addrs:
+                return iface_name
+
+        return None
+
+    def _lookup_ifaces(self, servers):
+        """
+        Resolve the frontend/backend addresses (known
+        by cthulhu via Ceph) to network interfaces (known by salt from its
+        grains).
+        """
+        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
+        pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
+                                                         use_cached_grains=True,
+                                                         grains_fallback=False,
+                                                         opts=salt_config)
+
+        def _lookup_one(server):
+            log.debug(">> resolving grains for server {0}".format(server['fqdn']))
+            fqdn = server['fqdn']
+            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            server['frontend_iface'] = None
+            server['backend_iface'] = None
+            try:
+                grains = cache_grains[fqdn]
+                if server['frontend_addr']:
+                    server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
+                if server['backend_addr']:
+                    server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
+            except KeyError:
+                pass
+            log.debug("<< resolving grains for server {0}".format(server['fqdn']))
+
+        # Issue up to this many disk I/Os to load grains at once
+        CONCURRENT_GRAIN_LOADS = 16
+        p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
+        for s in servers:
+            p.apply_async(_lookup_one(s))
+        while p.greenlets:
+            p.join()
+
     def list(self, request, fsid):
+        servers = self.client.server_list_cluster(fsid)
+        self._lookup_ifaces(servers)
         return Response(self.serializer_class(
-            [DataObject(s) for s in self.client.server_list_cluster(fsid)], many=True).data)
+            [DataObject(s) for s in servers], many=True).data)
 
     def retrieve(self, request, fsid, fqdn):
-        return Response(self.serializer_class(DataObject(self.client.server_get_cluster(fqdn, fsid))).data)
+        server = self.client.server_get_cluster(fqdn, fsid)
+        self._lookup_ifaces([server])
+        return Response(self.serializer_class(DataObject(server)).data)
 
 
 class ServerViewSet(RPCViewSet):
@@ -524,9 +580,6 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        import salt.config
-        import salt.utils.master
-
         salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
         pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
                                                          use_cached_grains=True,

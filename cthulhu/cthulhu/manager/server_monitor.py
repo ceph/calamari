@@ -536,19 +536,6 @@ class ServerMonitor(greenlet.Greenlet):
             'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
         }
 
-    def _addr_to_iface(self, addr, ip_interfaces):
-        """
-        Resolve an IP address to a network interface.
-
-        :param addr: An address string like "1.2.3.4"
-        :param ip_interfaces: The 'ip_interfaces' salt grain
-        """
-        for iface_name, iface_addrs in ip_interfaces.items():
-            if addr in iface_addrs:
-                return iface_name
-
-        return None
-
     def dump_cluster(self, server_state, cluster):
         """
         Convert a ServerState into a serializable format, including contextual
@@ -579,19 +566,6 @@ class ServerMonitor(greenlet.Greenlet):
                     frontend_addr = osd['public_addr'].split(":")[0]
                     backend_addr = osd['cluster_addr'].split(":")[0]
 
-        frontend_iface = None
-        backend_iface = None
-        try:
-            grains = self._get_grains(server_state.fqdn)
-        except GrainsNotFound:
-            pass
-        else:
-            if grains:
-                if frontend_addr:
-                    frontend_iface = self._addr_to_iface(frontend_addr, grains['ip_interfaces'])
-                if backend_addr:
-                    backend_iface = self._addr_to_iface(backend_addr, grains['ip_interfaces'])
-
         return {
             'fqdn': server_state.fqdn,
             'hostname': server_state.hostname,
@@ -601,7 +575,5 @@ class ServerMonitor(greenlet.Greenlet):
             'ceph_version': server_state.ceph_version,
             'services': [{'id': tuple(s.id), 'running': s.running} for s in services],
             'frontend_addr': frontend_addr,
-            'backend_addr': backend_addr,
-            'frontend_iface': frontend_iface,
-            'backend_iface': backend_iface
+            'backend_addr': backend_addr
         }
