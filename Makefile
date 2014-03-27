@@ -64,7 +64,7 @@ build-venv-reqs: venv
 	cd venv; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
-	  'pyzmq>=14.0'; \
+	  'pyzmq==14.1.1'; \
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e; \
 	./bin/python ./bin/pip install -r \
