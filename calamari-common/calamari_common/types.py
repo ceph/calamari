@@ -75,13 +75,27 @@ class OsdMap(VersionedSyncObject):
     def _get_crush_rule_osds(self, rule):
         nodes_by_id = self.get_tree_nodes_by_id()
 
-        def _gather_leaves(node):
+        def _gather_leaf_ids(node):
+            if node['id'] >= 0:
+                return set([node['id']])
+
             result = set()
             for child_id in node['children']:
                 if child_id >= 0:
                     result.add(child_id)
                 else:
-                    result |= _gather_leaves(nodes_by_id[child_id])
+                    result |= _gather_leaf_ids(nodes_by_id[child_id])
+
+            return result
+
+        def _gather_descendent_ids(node, typ):
+            result = set()
+            for child_id in node['children']:
+                child_node = nodes_by_id[child_id]
+                if child_node['type'] == typ:
+                    result.add(child_node['id'])
+                elif 'children' in child_node:
+                    result |= _gather_descendent_ids(child_node, typ)
 
             return result
 
@@ -90,18 +104,23 @@ class OsdMap(VersionedSyncObject):
                 return set([root['id']])
 
             osds = set()
-            for step in steps:
-                if step['op'] == 'choose_firstn':
-                    # Choose all children of the current node of type 'type'
-                    for child_node in [nodes_by_id[i] for i in root['children']]:
-                        if child_node['type'] == step['type']:
-                            osds |= _gather_osds(child_node, steps[1:])
-                elif step['op'] == 'chooseleaf_firstn':
-                    for child_node in [nodes_by_id[i] for i in root['children']]:
-                        if child_node['type'] == step['type']:
-                            osds |= _gather_leaves(root)
-                elif step['op'] == 'emit':
-                    break
+            step = steps[0]
+            if step['op'] == 'choose_firstn':
+                # Choose all descendents of the current node of type 'type'
+                d = _gather_descendent_ids(root, step['type'])
+                for desc_node in [nodes_by_id[i] for i in d]:
+                    osds |= _gather_osds(desc_node, steps[1:])
+            elif step['op'] == 'chooseleaf_firstn':
+                # Choose all descendents of the current node of type 'type',
+                # and select all leaves beneath those
+                for desc_node in [nodes_by_id[i] for i in _gather_descendent_ids(root, step['type'])]:
+                    # Short circuit another iteration to find the emit
+                    # and assume anything we've done a chooseleaf on
+                    # is going to be part of the selected set of osds
+                    osds |= _gather_leaf_ids(desc_node)
+            elif step['op'] == 'emit':
+                if root['id'] >= 0:
+                    osds |= root['id']
 
             return osds
 
