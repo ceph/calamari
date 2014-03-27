@@ -1,9 +1,4 @@
 
-diamond:
-  pkg:
-    - installed
-    - skip_verify: true
-
 diamond-config:
   file:
     - managed
@@ -11,7 +6,7 @@ diamond-config:
     - source: salt://base/diamond.conf
     - template: jinja
   require:
-    - pip: diamond-install
+    - pkg: diamond
 
 {% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
 diamond-init-config:
@@ -21,7 +16,7 @@ diamond-init-config:
     - pattern: DIAMOND_USER=".*"
     - repl: DIAMOND_USER="root"
   require:
-    - pip: diamond-install
+    - pkg: diamond
 {% endif %}
 
 diamond-ceph-config:
@@ -30,7 +25,7 @@ diamond-ceph-config:
     - name: /etc/diamond/collectors/CephCollector.conf
     - source: salt://base/CephCollector.conf
   require:
-    - pip: diamond-install
+    - pkg: diamond
 
 diamond-network-config:
   file:
@@ -38,21 +33,19 @@ diamond-network-config:
     - name: /etc/diamond/collectors/NetworkCollector.conf
     - source: salt://base/NetworkCollector.conf
   require:
-    - pip: diamond-install
-
-diamond-service:
-  require:
     - pkg: diamond
-    - file: diamond-network-config
-    - file: diamond-ceph-config
-    - file: diamond-config
-    - file: diamond-init-config
-  watch:
-    - file: diamond-network-config
-    - file: diamond-ceph-config
-    - file: diamond-config
-    - file: diamond-init-config
+
+diamond:
+  pkg:
+    - installed
+    - skip_verify: true
   service:
     - name: diamond
     - running
     - enable: True
+    - watch:
+      - pkg: diamond
+      - file: diamond-network-config
+      - file: diamond-ceph-config
+      - file: diamond-config
+      - file: diamond-init-config
