@@ -87,7 +87,7 @@ class Eventer(gevent.greenlet.Greenlet):
             self._emit(WARNING, "Failed: {headline} ({error})".format(
                 headline=request.headline, error=request.error_message), **request.associations)
         else:
-            self._emit(INFO, "Succeeded: %s" % request.headline, **request.assocations)
+            self._emit(INFO, "Succeeded: %s" % request.headline, **request.associations)
         self._flush()
 
     def _flush(self):
