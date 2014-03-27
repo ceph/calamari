@@ -2,17 +2,24 @@ import argparse
 import hashlib
 import logging
 import os
+import gc
 import gevent.event
+import gevent.socket as socket
 import signal
+import traceback
+import greenlet
 from dateutil.tz import tzutc
 
 import gevent.greenlet
+import manhole
 import msgpack
+import resource
 import salt.utils.event
 import sys
 
 import sqlalchemy.exc
 from sqlalchemy import create_engine
+import time
 
 from cthulhu.log import log
 import cthulhu.log
@@ -28,6 +35,55 @@ from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.persister import Persister, Session
 
 
+class ProcessMonitorThread(gevent.greenlet.Greenlet):
+    CARBON_HOST = "localhost"
+    CARBON_PORT = 2003
+    MONITOR_PERIOD = 30
+
+    def __init__(self):
+        super(ProcessMonitorThread, self).__init__()
+        self._complete = gevent.event.Event()
+
+        self._socket = None
+
+    def stop(self):
+        self._complete.set()
+
+    def _close(self):
+        if self._socket and not self._socket.closed:
+            self._socket.close()
+            self._socket = None
+
+    def _emit_stats(self):
+        try:
+            if not self._socket:
+                log.info("Opening carbon socket {0}:{1}".format(self.CARBON_HOST, self.CARBON_PORT))
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.connect((self.CARBON_HOST, self.CARBON_PORT))
+
+            carbon_data = ""
+            t = int(time.time())
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            for usage_field in ("utime", "stime", "maxrss", "ixrss", "idrss", "isrss", "minflt", "majflt",
+                                "nswap", "inblock", "oublock", "msgsnd", "msgrcv", "nsignals", "nvcsw", "nivcsw"):
+                val = getattr(usage, "ru_{0}".format(usage_field))
+                log.debug("{0}: {1}".format(usage_field, val))
+                carbon_data += "calamari.cthulhu.ru_{0} {1} {2}\n".format(usage_field, val, t)
+
+            self._socket.sendall(carbon_data)
+        except socket.gaierror, resource.error:
+            log.exception("Failed to send debugging statistics")
+            self._close()
+
+    def _run(self):
+        log.info("Running {0}".format(self.__class__.__name__))
+        while not self._complete.is_set():
+            self._emit_stats()
+            self._complete.wait(self.MONITOR_PERIOD)
+
+        self._close()
+
+
 class DiscoveryThread(gevent.greenlet.Greenlet):
     def __init__(self, manager):
         super(DiscoveryThread, self).__init__()
@@ -40,14 +96,16 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
 
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
-        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        event.subscribe("ceph/cluster/")
 
+        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
         while not self._complete.is_set():
-            data = event.get_event(tag="ceph/cluster/")
-            if data is not None:
+            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
+            ev = event.get_event(full=True)
+            if ev is not None:
+                tag = ev['tag']
+                data = ev['data']
                 try:
-                    if 'tag' in data and data['tag'].startswith("ceph/cluster/"):
+                    if tag.startswith("ceph/cluster/"):
                         cluster_data = data['data']
                         if not cluster_data['fsid'] in self._manager.clusters:
                             self._manager.on_discovery(data['id'], cluster_data)
@@ -56,7 +114,6 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
                                 self.__class__.__name__, cluster_data['fsid']))
                     else:
                         # This does not concern us, ignore it
-                        #log.debug("DiscoveryThread ignoring: %s" % data)
                         pass
                 except:
                     log.debug("Message content: %s" % data)
@@ -78,6 +135,7 @@ class Manager(object):
 
         self._rpc_thread = RpcThread(self)
         self._discovery_thread = DiscoveryThread(self)
+        self._process_monitor = ProcessMonitorThread()
 
         self.notifier = NotificationThread()
         try:
@@ -117,6 +175,7 @@ class Manager(object):
             monitor.stop()
         self._rpc_thread.stop()
         self._discovery_thread.stop()
+        self._process_monitor.stop()
         self.notifier.stop()
         self.eventer.stop()
 
@@ -129,16 +188,13 @@ class Manager(object):
         session = Session()
         for server in session.query(Server).all():
             log.debug("Recovered server %s" % server.fqdn)
-            # postgres stores dates in UTC, just set the timezone to tzutc() to get
-            # a valid tz aware datetime out.
-            last_contact = server.last_contact.replace(tzinfo=tzutc()) if server.last_contact else None
-            boot_time = server.boot_time.replace(tzinfo=tzutc()) if server.boot_time else None
+            assert server.boot_time.tzinfo is not None  # expect timezone-aware DB backend
             self.servers.inject_server(ServerState(
                 fqdn=server.fqdn,
                 hostname=server.hostname,
                 managed=server.managed,
-                last_contact=last_contact,
-                boot_time=boot_time,
+                last_contact=server.last_contact,
+                boot_time=server.boot_time,
                 ceph_version=server.ceph_version
             ))
 
@@ -206,6 +262,7 @@ class Manager(object):
         self._rpc_thread.bind()
         self._rpc_thread.start()
         self._discovery_thread.start()
+        self._process_monitor.start()
         self.notifier.start()
         self.persister.start()
         self.eventer.start()
@@ -216,6 +273,7 @@ class Manager(object):
         log.info("%s joining" % self.__class__.__name__)
         self._rpc_thread.join()
         self._discovery_thread.join()
+        self._process_monitor.join()
         self.notifier.join()
         self.persister.join()
         self.eventer.join()
@@ -239,6 +297,18 @@ class Manager(object):
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
 
 
+def dump_stacks():
+    """
+    This is for use in debugging, especially using manhole
+    """
+    for ob in gc.get_objects():
+        if not isinstance(ob, greenlet.greenlet):
+            continue
+        if not ob:
+            continue
+        log.error(''.join(traceback.format_stack(ob.gr_frame)))
+
+
 def main():
     parser = argparse.ArgumentParser(description='Calamari management service')
     parser.add_argument('--debug', dest='debug', action='store_true',
@@ -254,6 +324,15 @@ def main():
     import zmq.green
     import salt.utils.event
     salt.utils.event.zmq = zmq.green
+
+    # Set up gevent compatibility in psycopg2
+    import psycogreen.gevent
+    psycogreen.gevent.patch_psycopg()
+
+    # Enable manhole for debugging.  Use oneshot mode
+    # for gevent compatibility
+    manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
+    manhole.install(oneshot_on=signal.SIGUSR1)
 
     m = Manager()
     m.start()

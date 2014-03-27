@@ -113,7 +113,7 @@ class HealthCounters(object):
             if rank in quorum:
                 ok += 1
             # TODO: use 'have we had a salt heartbeat recently' here instead
-            #elif self.try_mon_connect(mon):
+            # elif self.try_mon_connect(mon):
             #    warn += 1
             else:
                 crit += 1
@@ -172,21 +172,6 @@ class HealthCounters(object):
                 'states': dict(crit[1]),
             },
         }
-    #
-    #
-    #def _calculate_pool_counters():
-    #    fields = ['num_objects_unfound', 'num_objects_missing_on_primary',
-    #              'num_deep_scrub_errors', 'num_shallow_scrub_errors',
-    #              'num_scrub_errors', 'num_objects_degraded']
-    #    counts = defaultdict(lambda: 0)
-    #    pools = self.client.get_pg_pools()
-    #    for pool in imap(lambda p: p['stat_sum'], pools):
-    #        for key, value in pool.items():
-    #            counts[key] += min(value, 1)
-    #    for delkey in set(counts.keys()) - set(fields):
-    #        del counts[delkey]
-    #    counts['total'] = len(pools)
-    #    return counts
 
     @classmethod
     def _calculate_osd_counters(cls, osd_map):

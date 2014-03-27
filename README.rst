@@ -33,7 +33,7 @@ will be needed by the pip packages:
 
 ::
 
-    sudo apt-get install python-virtualenv git python-dev swig libzmq-dev g++
+    sudo apt-get install python-virtualenv git python-dev swig libzmq-dev g++ postgresql-9.1 postgresql-server-dev-9.1
 
 If you're on ubuntu, there are a couple packages that are easier to install with apt
 than with pip (and because of `m2crypto weirdness`_)
@@ -94,6 +94,17 @@ a fresh checkout, there's a script for this:
     Complete.  Now run:
      1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize`
      2. supervisord -c dev/supervisord.conf -n
+
+
+Set up postgres, the easiest way to do this is by using salt:
+
+::
+
+    ~/calamari$ sudo salt-call --local state.template salt/local/postgres.sls
+
+If you want to create your database another way, examine the .sls file to see
+the settings that are expected.  If you want to use another database like SQLite,
+you can edit the paths in calamari.conf.
 
 Create the cthulhu service's database:
 

@@ -442,7 +442,7 @@ def cluster_status(cluster_handle, cluster_name):
     # Get digest of health
     ret, outbuf, outs = json_command(cluster_handle, prefix='health', argdict={
         'format': 'json',
-        'detail': 'detail'
+        'detail': ''
     })
     assert ret == 0
     # FIXME: because we're including the part with time skew data, this changes

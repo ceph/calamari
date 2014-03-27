@@ -133,21 +133,22 @@ class ServerMonitor(greenlet.Greenlet):
 
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
+
         subscription = salt.utils.event.MasterEvent(salt_config['sock_dir'])
-        subscription.subscribe("ceph/server")
-
         while not self._complete.is_set():
-            ev = subscription.get_event(tag="ceph/server")
+            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
+            ev = subscription.get_event(full=True)
 
-            if ev is not None:
-                log.debug("ServerMonitor got ceph/server message from %s" % ev['id'])
+            if ev is not None and ev['tag'].startswith("ceph/server"):
+                data = ev['data']
+                log.debug("ServerMonitor got ceph/server message from %s" % data['id'])
                 try:
                     # NB assumption that FQDN==minion_id is true unless
                     # someone has modded their salt minion config.
-                    self.on_server_heartbeat(ev['id'], ev['data'])
+                    self.on_server_heartbeat(data['id'], data['data'])
                 except:
                     log.debug("Message detail: %s" % json.dumps(ev))
-                    log.exception("Error handling ceph/server message from %s" % ev['id'])
+                    log.exception("Error handling ceph/server message from %s" % data['id'])
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -503,7 +504,7 @@ class ServerMonitor(greenlet.Greenlet):
         self._persister.delete_server(fqdn)
 
     def delete_cluster(self, fsid):
-        if not fsid in self.fsid_services:
+        if fsid not in self.fsid_services:
             log.info("delete_cluster: No services for FSID %s" % fsid)
             return
 
