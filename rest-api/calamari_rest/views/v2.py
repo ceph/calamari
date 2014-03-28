@@ -550,10 +550,7 @@ all record of it from any/all clusters).
         # Issue up to this many disk I/Os to load grains at once
         CONCURRENT_GRAIN_LOADS = 16
         p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
-        for s in servers:
-            p.apply_async(_lookup_one(s))
-        while p.greenlets:
-            p.join()
+        p.map(_lookup_one, servers)
 
     def list(self, request, fsid):
         servers = self.client.server_list_cluster(fsid)
