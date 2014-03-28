@@ -16,7 +16,7 @@ build-repo:
       - cmd: build-diamond
 
 {% for path in ('calamari/repobuild/calamari-repo-el6.tar.gz',
-                'Diamond/build/diamond_*.deb') %}
+                'Diamond/dist/diamond-*.noarch.rpm') %}
 
 cp-artifacts-to-share {{ path }}:
   cmd.run:

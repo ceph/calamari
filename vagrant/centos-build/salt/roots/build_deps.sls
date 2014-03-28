@@ -3,5 +3,5 @@ build_deps:
     - pkgs:
       - git
       - createrepo
-      - rpmbuild
+      - rpm-build
 
