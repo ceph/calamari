@@ -64,23 +64,23 @@ build-venv-reqs: venv
 	cd venv; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
-	  'pyzmq==14.1.1'; \
+	  'pyzmq==14.1.1' && \
 	./bin/python ./bin/pip install \
-	  https://github.com/graphite-project/whisper/tarball/a6e2176e; \
+	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements.production.txt; \
+	  $(SRC)/requirements.production.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
-	  https://github.com/inktankstorage/graphite-web/tarball/calamari; \
+	  https://github.com/inktankstorage/graphite-web/tarball/calamari && \
 	cd ../calamari-common ; \
-	../venv/bin/python ./setup.py install ; \
+	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
-	../venv/bin/python ./setup.py install ; \
+	../venv/bin/python ./setup.py install && \
 	cd ../calamari-web ; \
-	../venv/bin/python ./setup.py install ; \
+	../venv/bin/python ./setup.py install && \
 	cd ../cthulhu ; \
-	../venv/bin/python ./setup.py install ; \
+	../venv/bin/python ./setup.py install && \
 	cd ../venv ; )
 
 fixup-venv: build-venv-carbon build-venv-reqs
