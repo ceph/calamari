@@ -23,8 +23,8 @@ GRACE_PERIOD = 30
 
 # How long must a [server|cluster] be out of contact before
 # we generate an event?
-CONTACT_THRESHOLD = int(config.get('cthulhu', 'server_contact_threshold'))
-CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))
+CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
+CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
 
 class Eventer(gevent.greenlet.Greenlet):
@@ -191,7 +191,8 @@ class Eventer(gevent.greenlet.Greenlet):
             else:
                 fsid = None
 
-            if now_utc - server_state.last_contact > datetime.timedelta(seconds=CONTACT_THRESHOLD):
+            contact_threshold = CONTACT_THRESHOLD_FACTOR * self._manager.servers.get_contact_period(fqdn)
+            if now_utc - server_state.last_contact > datetime.timedelta(seconds=contact_threshold):
                 if fqdn not in self._servers_complained:
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
