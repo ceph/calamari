@@ -8,6 +8,7 @@ import subprocess
 import xmlrpclib
 import signal
 import errno
+import psutil
 from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
@@ -197,6 +198,11 @@ class EmbeddedCalamariControl(CalamariControl):
                         shutil.rmtree(f)
                     else:
                         os.unlink(f)
+
+            lingering_salt = [p for p in psutil.get_process_list() if p.name() == 'salt-master']
+            for p in lingering_salt:
+                log.warn("Killing a salt-master which failed to die: %s" % p.pid)
+                p.kill()
 
         config_path = os.path.join(TREE_ROOT, "dev/supervisord.conf")
         assert os.path.exists(config_path)

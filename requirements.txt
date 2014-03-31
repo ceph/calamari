@@ -21,6 +21,7 @@ manhole==0.6.0
 https://bitbucket.org/megies/flake8-1/get/422dc5e.tar.gz
 nose==1.3.0
 mock==1.0.1
+psutil==2.0.0
 
 # Gevent 1.0.x requires cython but doesn't do a good job of depending on it
 cython==0.19.2
