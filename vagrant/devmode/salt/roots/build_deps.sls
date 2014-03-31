@@ -12,3 +12,7 @@ build_deps:
       - make
       - postgresql-9.1
       - postgresql-server-dev-9.1
+      - python-pip
+      - libevent-dev
+      - libmysqlclient-dev
+      - python-libvirt

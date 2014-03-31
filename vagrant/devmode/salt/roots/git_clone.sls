@@ -6,3 +6,12 @@ git_clone:
     - name: /calamari.git
     - require:
       - pkg: build_deps
+
+git_clone_teuthology:
+  git:
+    - latest
+    - user: vagrant
+    - target: /home/vagrant/teuthology
+    - name: git@github.com:ceph/teuthology.git
+    -require:
+      - pkg: build_deps
