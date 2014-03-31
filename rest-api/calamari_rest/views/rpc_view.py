@@ -47,10 +47,10 @@ class ProfiledRpcClient(zerorpc.Client):
     def report(self, log):
         total = 0.0
         for method_name, times in self.method_times.items():
-            for time in times:
-                if time > self.SLOW_THRESHOLD:
-                    log.warn("Slow RPC '%s' (%sms)" % (method_name, time * 1000))
-                total += time
+            for t in times:
+                if t > self.SLOW_THRESHOLD:
+                    log.warn("Slow RPC '%s' (%sms)" % (method_name, t * 1000))
+                total += t
             log.debug("RPC timing for '%s': %s/%s/%s avg/min/max ms" % (
                 method_name, sum(times) * 1000.0 / len(times), min(times) * 1000.0, max(times) * 1000.0
             ))
