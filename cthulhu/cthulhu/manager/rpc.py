@@ -216,7 +216,7 @@ class RpcInterface(object):
         else:
             raise NotImplementedError(object_type)
 
-    def list(self, fs_id, object_type):
+    def list(self, fs_id, object_type, list_filter):
         """
         Get many objects
         """
@@ -226,7 +226,18 @@ class RpcInterface(object):
         if osd_map is None:
             return []
         if object_type == OSD:
-            return osd_map['osds']
+            result = osd_map['osds']
+            if 'id__in' in list_filter:
+                result = [o for o in result if o['osd'] in list_filter['id__in']]
+            if 'pool' in list_filter:
+                try:
+                    osds_in_pool = cluster.get_sync_object(OsdMap).osds_by_pool[list_filter['pool']]
+                except KeyError:
+                    raise NotFound("Pool {0} does not exist".format(list_filter['pool']))
+                else:
+                    result = [o for o in result if o['osd'] in osds_in_pool]
+
+            return result
         elif object_type == POOL:
             return osd_map['pools']
         elif object_type == CRUSH_RULE:

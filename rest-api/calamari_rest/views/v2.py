@@ -87,7 +87,7 @@ together to a pool.
     serializer_class = CrushRuleSerializer
 
     def list(self, request, fsid):
-        rules = self.client.list(fsid, CRUSH_RULE)
+        rules = self.client.list(fsid, CRUSH_RULE, {})
         osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
         for rule in rules:
             rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
@@ -101,7 +101,7 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
     serializer_class = CrushRuleSetSerializer
 
     def list(self, request, fsid):
-        rules = self.client.list(fsid, CRUSH_RULE)
+        rules = self.client.list(fsid, CRUSH_RULE, {})
         osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
         rulesets_data = defaultdict(list)
         for rule in rules:
@@ -331,7 +331,7 @@ but those without static defaults will be set to null.
         if 'defaults' in request.GET:
             return self._defaults(fsid)
 
-        pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL)]
+        pools = [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]
         return Response(PoolSerializer(pools, many=True).data)
 
     def retrieve(self, request, fsid, pool_id):
@@ -374,38 +374,64 @@ where <command> is one of ("scrub", "deep-scrub", "repair")
 
 e.g. Initiate a scrub on OSD 0 by POSTing {} to api/v2/cluster/<fsid>/osd/0/command/scrub
 
-Pass a ``pool`` URL parameter set to a pool ID to filter by pool.
+Filtering is available on this resource:
+
+::
+
+    # Pass a ``pool`` URL parameter set to a pool ID to filter by pool, like this:
+    /api/v2/cluster/<fsid>/osd?pool=1
+
+    # Pass a series of ``id__in[]`` parameters to specify a list of OSD IDs
+    # that you wish to receive.
+    /api/v2/cluster/<fsid>/osd?id__in[]=2&id__in[]=3
 
     """
     serializer_class = OsdSerializer
 
     def list(self, request, fsid):
-        osds = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_id']).values()
+        # Get data needed for filtering
+        list_filter = {}
 
         if 'pool' in request.GET:
             try:
                 pool_id = int(request.GET['pool'])
             except ValueError:
                 return Response("Pool ID must be an integer", status=status.HTTP_400_BAD_REQUEST)
-            osds_in_pool = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_pool', pool_id])
-            if osds_in_pool is None:
-                return Response("Unknown pool ID", status=status.HTTP_400_BAD_REQUEST)
+            list_filter['pool'] = pool_id
 
-            osds = [o for o in osds if o['osd'] in osds_in_pool]
+        if 'id__in[]' in request.GET:
+            try:
+                ids = request.GET.getlist("id__in[]")
+                list_filter['id__in'] = [int(i) for i in ids]
+            except ValueError:
+                return Response("Invalid OSD ID in list", status=status.HTTP_400_BAD_REQUEST)
 
-        crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'])
+        # Get data
+        osds = self.client.list(fsid, OSD, list_filter, async=True)
+        osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'], async=True)
+        crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'], async=True)
+        osds = osds.get()
+
+        # Get data depending on OSD list
+        server_info = self.client.server_by_service([ServiceId(fsid, OSD, str(osd['osd'])) for osd in osds], async=True)
+        osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds], async=True)
+
+        # Preparation complete, await all data to serialize result
+        osd_to_pools = osd_to_pools.get()
+        crush_nodes = crush_nodes.get()
+        server_info = server_info.get()
+        osd_commands = osd_commands.get()
+
+        # Build OSD data objects
         for o in osds:
             o.update({'reweight': float(crush_nodes[o['osd']]['reweight'])})
 
-        server_info = self.client.server_by_service([ServiceId(fsid, OSD, str(osd['osd'])) for osd in osds])
         for o, (service_id, fqdn) in zip(osds, server_info):
             o['server'] = fqdn
 
-        osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'])
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
 
-        osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds])
         for o in osds:
             o.update(osd_commands[o['osd']])
 
