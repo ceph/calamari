@@ -226,13 +226,13 @@ REMOTE_STORE_FIND_TIMEOUT = 2.5
 REMOTE_STORE_RETRY_DELAY = 60
 REMOTE_FIND_CACHE_DURATION = 300
 
-#Remote rendering settings
+# Remote rendering settings
 REMOTE_RENDERING = False  # if True, rendering is delegated to RENDERING_HOSTS
 RENDERING_HOSTS = []
 REMOTE_RENDER_CONNECT_TIMEOUT = 1.0
 LOG_RENDERING_PERFORMANCE = False
 
-#Miscellaneous settings
+# Miscellaneous settings
 CARBONLINK_HOSTS = ["127.0.0.1:7002"]
 CARBONLINK_TIMEOUT = 1.0
 SMTP_SERVER = "localhost"
@@ -241,7 +241,7 @@ ALLOW_ANONYMOUS_CLI = True
 LOG_METRIC_ACCESS = False
 LEGEND_MAX_ITEMS = 10
 
-#Authentication settings
+# Authentication settings
 USE_LDAP_AUTH = False
 LDAP_SERVER = ""  # "ldapserver.mydomain.com"
 LDAP_PORT = 389
@@ -268,7 +268,7 @@ GRAPHITE_ROOT = config.get('graphite', 'root')
 os.environ['GRAPHITE_STORAGE_DIR'] = STORAGE_DIR
 
 
-## Set config dependent on flags set in local_settings
+# Set config dependent on flags set in local_settings
 # Path configuration
 if not CONTENT_DIR:
     CONTENT_DIR = join(WEBAPP_DIR, 'content')
