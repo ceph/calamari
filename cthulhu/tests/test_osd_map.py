@@ -41,3 +41,23 @@ class TestOsdMap(TestCase):
             6: first_osds,
             7: first_server_osds
         })
+
+    def test_7883(self):
+        """
+        Bug in which pools were not found for OSDs
+        """
+        osd_map = OsdMap(None, load_fixture("osd_map-7883.json"))
+        all_osds = osd_map.osds_by_id.keys()
+        self.assertEqual(len(all_osds), 168)
+
+        self.assertDictEqual(osd_map.osds_by_rule_id, {
+            0: all_osds,
+            1: all_osds,
+            2: all_osds
+        })
+
+        self.assertDictEqual(osd_map.osds_by_pool, {
+            0: all_osds,
+            1: all_osds,
+            2: all_osds
+        })
