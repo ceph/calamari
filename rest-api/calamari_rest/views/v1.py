@@ -416,7 +416,7 @@ class PoolViewSet(RPCViewSet):
 
     def list(self, request, fsid):
         cluster = self.client.get_cluster(fsid)
-        pools = [self.pool_object(p, cluster) for p in self.client.list(fsid, POOL)]
+        pools = [self.pool_object(p, cluster) for p in self.client.list(fsid, POOL, {})]
 
         return Response(PoolSerializer(pools, many=True).data)
 
