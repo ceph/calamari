@@ -1,13 +1,23 @@
 #!/bin/bash
 
 case "$1" in
-	remove|purge|upgrade|disappear|failed-upgrade|abort-install|abort-upgrade)
-		# clean up .pyc, whisper db entries, and other detritus
-		rm -rf /opt/graphite	
+	remove)
+		# clean up .pyc and other detritus
+		rm -rf /opt/calamari
+		;;
+
+	purge)
+		# as above, plus logs and whisper data
 		rm -rf /opt/calamari
 		rm -rf /var/log/graphite
 		rm -rf /var/log/calamari
+		rm -rf /var/lib/graphite
 		;;
+
+	upgrade|disappear|abort-install|abort-upgrade|disappear|failed-upgrade|abort-install|abort-upgrade)
+		# just...no.
+		;;
+
 	*)
 		echo "postrm called with unknown argument $1" >&2
 		exit 1
