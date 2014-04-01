@@ -4,19 +4,17 @@
 plugin_path = {{calamari_root}}/cthulhu/tests/plugins
 salt_config_path = {{calamari_root}}/dev/etc/salt/master
 alembic_config_path = {{calamari_root}}/dev/alembic.ini
-# FIXME: this should be a function of the ceph.heartbeat schedule period which
-# we should query from the salt pillar
-favorite_timeout_s = 60
 db_path = postgresql://calamari:27HbZwr*g@localhost/calamari
 log_path = {{calamari_root}}/dev/cthulhu.log
 log_level = DEBUG
 rpc_url = tcp://127.0.0.1:5050
 crush_host_type = host
 crush_osd_type = osd
-server_contact_threshold = 120
-cluster_contact_threshold = 60
 cluster_map_retention = 3600
 db_log_level = WARN
+favorite_timeout_factor = 3
+server_timeout_factor = 3
+cluster_contact_threshold = 60
 
 [calamari_web]
 

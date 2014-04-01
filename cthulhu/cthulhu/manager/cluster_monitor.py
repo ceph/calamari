@@ -9,7 +9,11 @@ import gevent.event
 import salt
 import salt.utils.event
 import salt.client
-from salt.client import condition_kwarg
+try:
+    from salt.client import condition_kwarg
+except ImportError:
+    # Salt moved this in 382dd5e
+    from salt.utils.args import condition_input as condition_kwarg
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
@@ -24,7 +28,7 @@ from cthulhu.manager import config, salt_config
 from cthulhu.util import now, Ticker
 
 
-FAVORITE_TIMEOUT_S = int(config.get('cthulhu', 'favorite_timeout_s'))
+FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
 
 
 class ClusterUnavailable(Exception):
@@ -327,7 +331,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             # Consider whether this minion should become my new favourite: has it been
             # too long since my current favourite reported in?
             time_since = now - self._last_heartbeat[self._favorite_mon]
-            if time_since > datetime.timedelta(seconds=FAVORITE_TIMEOUT_S):
+            favorite_timeout_s = self._servers.get_contact_period(self._favorite_mon) * FAVORITE_TIMEOUT_FACTOR
+            if time_since > datetime.timedelta(seconds=favorite_timeout_s):
                 log.debug("My old favourite, %s, has not sent a heartbeat for %s: %s is my new favourite" % (
                     self._favorite_mon, time_since, minion_id
                 ))

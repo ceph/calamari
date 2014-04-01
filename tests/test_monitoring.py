@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 # This equals the period in schedules.sls
-HEARTBEAT_PERIOD = 30
+HEARTBEAT_PERIOD = 10
 
 
 # This is how long after mon going dark the cluster monitor
