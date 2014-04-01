@@ -2,6 +2,8 @@
 Testing
 =======
 
+.. _calamari-server-tests:
+
 Calamari server tests
 ---------------------
 
@@ -29,33 +31,99 @@ incur walltime waits to exercise certain paths.
 Testing against a real live ceph cluster
 ----------------------------------------
 
-In Calamari server tests we saw the test suite executing against a cluster simulator,
+In :ref:`calamari-server-tests` we saw the test suite executing against a cluster simulator,
 
 In this section we'll configure those same tests to run against a real cluster built
 on teuthology.
 
-Step 0: get your ssh credentials into this environment
+Theory of operation
+^^^^^^^^^^^^^^^^^^^
 
-Step 0.5 lock some nodes?
+We will build a ceph cluster using the ceph-deploy task on teuthology. Teuthology is a framework that allocates
+and provisions hardware for testing. ceph-deploy is a piece of software that simplifies setup
+of ceph clusters. Once the cluster is up and reports healthy we will use our devmode instance of calamari to
+execute the :ref:`calamari-server-tests`. Finally we will teardown the cluster.
 
-Step 1: building the cluster
+Teuthology is typically used in a fashion that trades speed for isolation. Tasks that install packages are expected to
+remove everything it installs. This can leave lab machines in an inconsistent state.
+See :ref:`troubleshooting` below for a process to reimage machines.
+
+Step 0: Setup SSH credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+get your ssh credentials into this environment and setup VPN
+There are many ways to accomplish this and it is beyond the scope of this document
+
+Test that you have a working step 0:
+
+.. code-block:: bash
+
+    ssh ubuntu@teuthology.front.sepia.ceph.com "echo 'it works'"
+
+Step 1: Building the cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
-    teuthology $ teuthology --archive ~/gmeno/archive10 --owner vagrant@ubuntu --machine-type mira --description "Gregory.Meno@inktank.com ceph-deploy interactive" ~/gmeno/ceph-deploy2.yaml
+    rm -rf archive; teuthology --archive archive \
+                    --lock \
+                    --owner calamari@inktank.com \
+                    --machine-type mira \
+                    --description "calamari devmode test target" \
+                    ~/calamari/dev/teuthology.yaml
 
-If successfull this will leave you in an interactive state.
-Check by ssh and running ceph -w
+If successful this will leave you in an interactive state.
 
-Step 2: kickoff tests
-nosetests something
-TBD
+Test that you have a working step 1:
 
-Teardown: Hit Ctrl-D in the teuthology session
+.. code-block:: bash
 
-Troubleshooting:
+    cd /home/vagrant/teuthology
+    source virtualenv/bin/activate
+    grep -o "^.*\.front\.sepia\.ceph\.com" archive/config.yaml |\
+        xargs -I'{}' ssh '{}' "if [ -e /etc/ceph/ceph.client.0.keyring ]; then ceph health; fi"
+
+
+Step 2: Kickoff tests
+^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    # TODO this will be connected up in http://tracker.ceph.com/issues/7812
+    cd calamari
+    source env/bin/activate
+    nosetests tests/
+
+
+.. _teardown:
+
+Step 3: Teardown
+^^^^^^^^^^^^^^^^
+
+Hit Ctrl-D in the teuthology session
+
+.. code-block:: bash
+
+    cd /home/vagrant/teuthology
+    source virtualenv/bin/activate
+    teuthology-nuke -t archive/config.yaml -ru --owner calamari@inktank.com
+
+.. _troubleshooting:
+
+Troubleshooting
+^^^^^^^^^^^^^^^
+
+If you see something like this try running the code in :ref:`teardown`
+
+.. code-block:: bash
+
+    INFO:teuthology.run:Summary data:
+    {description: calamari devmode test target, failure_reason: 'Stale jobs detected,
+        aborting.', owner: calamari@inktank.com, success: false}
+
+WARNING: This should only be performed on machines you have locked previously.
 
 .. code-block:: bash
 
@@ -66,7 +134,7 @@ Troubleshooting:
   5
   6 for host in $@
   7 do
-  8     ssh plana01 "sudo cobbler system edit --name=${host} --netboot on"
+  8     ssh ubuntu@plana01.front.sepia.ceph.com "sudo cobbler system edit --name=${host} --netboot on"
   9     /usr/local/bin/ipmitool -H ${host}.ipmi.sepia.ceph.com -I lanplus -U inktank -P ApGNXcA7 power reset
  10 done;
 

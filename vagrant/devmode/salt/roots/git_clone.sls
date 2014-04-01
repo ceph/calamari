@@ -12,6 +12,6 @@ git_clone_teuthology:
     - latest
     - user: vagrant
     - target: /home/vagrant/teuthology
-    - name: git@github.com:ceph/teuthology.git
-    -require:
+    - name: https://github.com/ceph/teuthology.git
+    - require:
       - pkg: build_deps
