@@ -38,3 +38,9 @@ calamari_common_mod:
     - cwd: /home/vagrant/calamari/calamari-common
     - require:
       - sls: virtualenv
+
+teuthology_bootstrap:
+  cmd.run:
+    - user: vagrant
+    - name: "./bootstrap"
+    - cwd: /home/vagrant/teuthology
