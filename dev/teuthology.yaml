@@ -4,6 +4,8 @@ roles:
 - [mon.2, osd.3]
 
 tasks:
+- install:
+    extras: yes
 - ssh_keys:
 - ceph-deploy:
     branch:
