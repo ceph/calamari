@@ -116,7 +116,8 @@ Hit Ctrl-D in the teuthology session
     # Please replace calamari@inktank.com with your email address
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
-    teuthology-nuke -t /dev/stdin -ru --owner=calamari@inktank.com
+    teuthology-lock --list-targets --owner calamari@inktank.com |\
+     teuthology-nuke -t /dev/stdin -ru --owner=calamari@inktank.com
 
 .. _troubleshooting:
 
