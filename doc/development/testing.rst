@@ -65,6 +65,7 @@ Step 1: Building the cluster
 
 .. code-block:: bash
 
+    # Please replace calamari@inktank.com with your email address
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
     rm -rf archive; teuthology --archive archive \
@@ -74,7 +75,13 @@ Step 1: Building the cluster
                     --description "calamari devmode test target" \
                     ~/calamari/dev/teuthology.yaml
 
-If successful this will leave you in an interactive state.
+If successful this will leave you in an interactive state. Which looks like this:
+
+.. code-block:: python
+
+    Ceph test interactive mode, use ctx to interact with the cluster, press control-D to exit...
+    >>>
+
 
 Test that you have a working step 1:
 
@@ -106,9 +113,10 @@ Hit Ctrl-D in the teuthology session
 
 .. code-block:: bash
 
+    # Please replace calamari@inktank.com with your email address
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
-    teuthology-nuke -t archive/config.yaml -ru --owner calamari@inktank.com
+    teuthology-nuke -t /dev/stdin -ru --owner=calamari@inktank.com
 
 .. _troubleshooting:
 
@@ -122,6 +130,10 @@ If you see something like this try running the code in :ref:`teardown`
     INFO:teuthology.run:Summary data:
     {description: calamari devmode test target, failure_reason: 'Stale jobs detected,
         aborting.', owner: calamari@inktank.com, success: false}
+
+
+{description: calamari devmode test target, failure_reason: not enough machines are
+    available, owner: calamari@inktank.com, success: false}
 
 WARNING: This should only be performed on machines you have locked previously.
 
