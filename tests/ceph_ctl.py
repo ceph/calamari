@@ -6,6 +6,8 @@ import time
 import psutil
 from itertools import chain
 import yaml
+from subprocess import Popen, PIPE
+
 
 from minion_sim.sim import MinionSim
 
@@ -144,6 +146,7 @@ class EmbeddedCephControl(CephControl):
 class ExternalCephControl(CephControl):
 
     def __init__(self):
+        # TODO parse the real config
         self.config = yaml.load("""
 roles:
 - - mon.0
@@ -218,7 +221,15 @@ tasks:
         pass
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
-        pass
+
+        command = 'in'
+        if not osd_in:
+            command = 'out'
+
+        # TODO figure out what server to target
+        proc = Popen('ssh ubuntu@mira002.front.sepia.ceph.com "ceph osd {command} {id}"'.format(command=command, id=int(osd_id)), shell=True, stderr=PIPE, stdout=PIPE)
+
+        proc.communicate()
 
 
 if __name__ == "__main__":
