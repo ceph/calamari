@@ -84,9 +84,7 @@ class Space(RPCView):
             else:
                 return None
 
-        # df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
-        # TODO: Change names to FSIDs for #6883
-        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(self.client.get_cluster(fsid)['name'], stat_name)
+        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
         space = {
             'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
             'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
@@ -409,9 +407,8 @@ class PoolViewSet(RPCViewSet):
             'name': pool_data['pool_name'],
             'quota_max_objects': pool_data['quota_max_objects'],
             'quota_max_bytes': pool_data['quota_max_bytes'],
-            # TODO: change names to FSIDs for #6883
-            'used_objects': get_latest_graphite("ceph.cluster.%s.pool.%s.num_objects" % (cluster['name'], pool_data['pool'])),
-            'used_bytes': get_latest_graphite("ceph.cluster.%s.pool.%s.num_bytes" % (cluster['name'], pool_data['pool']))
+            'used_objects': get_latest_graphite("ceph.cluster.%s.pool.%s.num_objects" % (cluster['fsid'], pool_data['pool'])),
+            'used_bytes': get_latest_graphite("ceph.cluster.%s.pool.%s.num_bytes" % (cluster['fsid'], pool_data['pool']))
         })
 
     def list(self, request, fsid):
