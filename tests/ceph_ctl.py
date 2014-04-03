@@ -4,8 +4,10 @@ import shutil
 import tempfile
 import time
 import psutil
-from minion_sim.sim import MinionSim
 from itertools import chain
+import yaml
+
+from minion_sim.sim import MinionSim
 
 
 log = logging.getLogger(__name__)
@@ -77,7 +79,6 @@ class EmbeddedCephControl(CephControl):
     def __init__(self):
         self._config_dirs = {}
         self._sims = {}
-        self.fsid = None
 
     def configure(self, server_count, cluster_count=1):
         osds_per_host = 4
@@ -86,9 +87,9 @@ class EmbeddedCephControl(CephControl):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
             sim = MinionSim(config_dir, server_count, osds_per_host, port=8761 + i, domain=domain)
-            self.fsid = sim.cluster.fsid
-            self._config_dirs[self.fsid] = config_dir
-            self._sims[self.fsid] = sim
+            fsid = sim.cluster.fsid
+            self._config_dirs[fsid] = config_dir
+            self._sims[fsid] = sim
             sim.start()
 
     def shutdown(self):
@@ -108,9 +109,6 @@ class EmbeddedCephControl(CephControl):
 
         for config_dir in self._config_dirs.values():
             shutil.rmtree(config_dir)
-
-    def get_fsid(self):
-        return self.fsid
 
     def get_server_fqdns(self):
         return list(chain(*[s.get_minion_fqdns() for s in self._sims.values()]))
@@ -144,23 +142,86 @@ class EmbeddedCephControl(CephControl):
 
 
 class ExternalCephControl(CephControl):
+
+    def __init__(self):
+        self.config = yaml.load("""
+roles:
+- - mon.0
+  - osd.0
+  - client.0
+- - mon.1
+  - osd.1
+- - mon.2
+  - osd.3
+targets:
+  ubuntu@mira068.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3trHqdv6rH+c81Cd2k35xKqjsnOZVUrwbbwsdBn4bAgYRqJR3MZ1D4uKzDkek86n+Q6jp7k4iZw/p3zdbPgaaFvfYVULFXnx/9QVj2VlFiJ1ly+MdF6B9qVBkgm7rm1qDRnbASUF5RXG6eSIYo6DgmVWklMtanwhhJidOWuu8RdmG/+L4d36somECVjR169Mi/m2q5T+keFIOY9d2uECVGsOjKrPB7eIkHTaNsNljhv9rb/TIAsSQB/+hxQeMl1Lko9idj4MFw6Tpy9FX+84GhpG4x99HGHRc0Xq98PqpCI3zZTW2hg58fSj2fPdk1XFXMCdrXvyQm4txJiWJba1b
+  ubuntu@mira074.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDkSvRvsY0kOqz6VQHsuxO3PiGfu+p2oIjkokTymVQQhc6w/GuSUqP+73+NTQkVCaIAs3dKASpW2mcN4JlNYQadY3uzQ97hOr5GsIjpMTqKsbw9//VinLU+v2AY3vSpoKXlQ3EYMMcm/Ga4av5X2YjfyeOjMpJ7Tz2tPtTHslzXcPaY71CZc7/unsBtLXz00A/D4M87A+W70W8iNbe/ZQwZYK3PBo8EeQjhz8vyZ4mzBHbvgc1BBjuphNZSxGUqnRlU4cvm8fTgja7mAsonnYJOsw6TVr68B92Olpm7AhkRP1IFUBV9vMEqifepkSW33Gw0At+iGLAw/6yE62o3bSBx
+  ubuntu@mira080.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDr6YpR1nLa5+vYU6efXaAj40U7KPAZf57z0Su2IIwVl0nR3o6nbatmkvqznAj6QuKsjgkdeWmkI/8+EnmjwJyREW6QVKk5Mrl02Lo3soS1cIrUta/ap89rWkLyd27hcYOP+DroqA9j+UbP0kKmgalsKXPOwhGlCYZJcaX7pw/m0MsiBYZ6gKtyMbyIJxu/V4TNK95zlmTr2kxy1j8GXsitNlQEGTAMy0fTnXUJpa9S1jgHVwl4DHF0loeqIpXiapE4Q4lXfrRvIxc2raPv5XYSjmVN070bmFfnQYfr8Ao4XbcPJHlNERkaGoBQ0GVCvnzV21NKc11/rp3NzC3ct1Sv
+tasks:
+- internal.lock_machines:
+  - 3
+  - mira
+- internal.save_config: null
+- internal.check_lock: null
+- internal.connect: null
+- internal.check_conflict: null
+- internal.check_ceph_data: null
+- internal.vm_setup: null
+- internal.base: null
+- internal.archive: null
+- internal.coredump: null
+- internal.sudo: null
+- internal.syslog: null
+- internal.timer: null
+- ssh_keys: null
+- ceph-deploy:
+    branch:
+      stable: dumpling
+- interactive: null
+""")
+        # Here we will want to parse the config.yaml(s)
+
+
     def configure(self, server_count, cluster_count=1):
         # I hope you only wanted three, because I ain't buying
         # any more servers...
         assert server_count == 3
         assert cluster_count == 1
 
-        # Ensure all OSDs are initially up
+        # Ensure all OSDs are initially up: assertion per #7813
 
-        # Ensure there are initially no pools but the default ones.
+        # Ensure there are initially no pools but the default ones. assertion per #7813
+
+        # wait till all PGs are active and clean assertion per #7813
+
+        # bootstrap salt minions on cluster
+        # TODO is the right place for it
+
+        # set config dirs
+        # set sims
 
     def get_server_fqdns(self):
-        # FIXME: hardcoded for jcsp's net, should come from a config file
-        return ["gravel%s.rockery" % n for n in range(1, 4)]
+        return [target.split('@')[1] for target in self.config['targets'].iterkeys()]
 
-    def get_service_fqdns(self, service_type):
+    def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
         return self.get_server_fqdns()
 
     def shutdown(self):
         pass
+
+    def get_fqdns(self, fsid):
+        # TODO when we support multiple cluster change this
+        return self.get_server_fqdns()
+
+    def go_dark(self, fsid, dark=True, minion_id=None):
+        pass
+
+    def mark_osd_in(self, fsid, osd_id, osd_in=True):
+        pass
+
+
+if __name__ == "__main__":
+    externalctl = ExternalCephControl()
+    assert isinstance(externalctl.config, dict)
+    import pdb; pdb.set_trace()
