@@ -7,7 +7,7 @@ calamariuser:
         - name: calamari
         - password: 27HbZwr*g
         - createdb: true
-        - runas: postgres
+        - user: postgres
         - require:
             - service: postgresql
 
@@ -19,6 +19,6 @@ calamaridb:
         - lc_collate: en_US.UTF8
         - template: template0
         - owner: calamari
-        - runas: postgres
+        - user: postgres
         - require:
           - postgres_user: calamariuser
