@@ -407,8 +407,8 @@ class PoolViewSet(RPCViewSet):
             'name': pool_data['pool_name'],
             'quota_max_objects': pool_data['quota_max_objects'],
             'quota_max_bytes': pool_data['quota_max_bytes'],
-            'used_objects': get_latest_graphite("ceph.cluster.%s.pool.%s.num_objects" % (cluster['fsid'], pool_data['pool'])),
-            'used_bytes': get_latest_graphite("ceph.cluster.%s.pool.%s.num_bytes" % (cluster['fsid'], pool_data['pool']))
+            'used_objects': get_latest_graphite("ceph.cluster.%s.pool.%s.num_objects" % (cluster['id'], pool_data['pool'])),
+            'used_bytes': get_latest_graphite("ceph.cluster.%s.pool.%s.num_bytes" % (cluster['id'], pool_data['pool']))
         })
 
     def list(self, request, fsid):
