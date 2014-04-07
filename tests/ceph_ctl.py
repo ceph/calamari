@@ -177,19 +177,16 @@ ubuntu@mira043.front.sepia.ceph.com:
         # any more servers...
         assert server_count == 3
         assert cluster_count == 1
+        fsid = 12345
 
         # Ensure all OSDs are initially up: assertion per #7813
-        osd_check = 'ssh {node} "ceph osd stat"'.format(node=self._get_admin_node(fsid=1234))
-        stat_output = Popen(osd_check, shell=True, stdout=PIPE).communicate()[0]
-        wait_until_true(lambda: self._check_osd_up_and_in(stat_output))
+        self._wait_for_state(fsid, "ceph osd stat", self._check_osd_up_and_in)
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
+        self._wait_for_state(fsid, "ceph osd lspools", self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
-        pg_check = 'ssh {node} "ceph pg stat"'.format(node=self._get_admin_node(fsid=1234))
-        stat_output = Popen(pg_check, shell=True, stdout=PIPE).communicate()[0]
-        wait_until_true(lambda: self._check_pgs_active_and_clean(stat_output))
-
+        self._wait_for_state(fsid, "ceph pg stat", self._check_pgs_active_and_clean)
 
         # bootstrap salt minions on cluster
         # TODO is the right place for it
@@ -214,6 +211,17 @@ ubuntu@mira043.front.sepia.ceph.com:
     def go_dark(self, fsid, dark=True, minion_id=None):
         pass
 
+    def _check_default_pools_only(self, output):
+        if output:
+            return output.strip() == '0 data,1 metadata,2 rbd,'
+        return False
+
+    def _wait_for_state(self, fsid, command, state):
+        log.info('Waiting for {state} on cluster {fsid}'.format(state=state, fsid=fsid))
+        check = 'ssh {node} "{command}"'.format(node=self._get_admin_node(fsid=fsid), command=command)
+        output = Popen(check, shell=True, stdout=PIPE).communicate()[0]
+        wait_until_true(lambda: state(output))
+
     def _check_pgs_active_and_clean(self, output):
         if output:
             try:
@@ -225,15 +233,10 @@ ubuntu@mira043.front.sepia.ceph.com:
         return False
 
     def _check_osd_up_and_in(self, output):
-
         if output:
-            output = output.replace(',', ':')
-
             try:
-                _, total, osd_up, osd_in = [x.split()[0] for x in output.split(':')]
-                if total == osd_in == osd_up:
-                    return True
-
+                _, total, osd_up, osd_in = [x.split()[0] for x in output.replace(',', ':').split(':')]
+                return total == osd_in == osd_up
             except ValueError:
                 log.warning('ceph osd stat format may have changed')
 
@@ -259,4 +262,4 @@ ubuntu@mira043.front.sepia.ceph.com:
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    import pdb; pdb.set_trace()
+    externalctl.configure(3)
