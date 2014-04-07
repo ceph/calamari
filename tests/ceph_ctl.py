@@ -242,6 +242,12 @@ ubuntu@mira043.front.sepia.ceph.com:
 
         return False
 
+    def _bootstrap(self, target, fqdn):
+        command = '''ssh {target} "wget -O - https://raw.github.com/saltstack/salt-bootstrap/develop/bootstrap-salt.sh |\
+         sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(target=target, fqdn=fqdn)
+        output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
+        log.info(output)
+
     def _get_admin_node(self, fsid):
         for target, roles in self.config.iteritems():
             if 'client.0' in roles:
@@ -262,4 +268,5 @@ ubuntu@mira043.front.sepia.ceph.com:
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    externalctl.configure(3)
+    #externalctl.configure(3)
+    externalctl._bootstrap("ubuntu@mira002.front.sepia.ceph.com", '10.99.118.150')
