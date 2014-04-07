@@ -7,7 +7,7 @@ import psutil
 from itertools import chain
 import yaml
 from subprocess import Popen, PIPE
-
+from utils import wait_until_true
 
 from minion_sim.sim import MinionSim
 
@@ -144,54 +144,44 @@ class EmbeddedCephControl(CephControl):
 
 
 class ExternalCephControl(CephControl):
+    """
+    This is the code that talks to a cluster. It is currently dependent on teuthology
+    """
 
     def __init__(self):
         # TODO parse the real config
         self.config = yaml.load("""
-roles:
-- - mon.0
-  - osd.0
-  - client.0
-- - mon.1
-  - osd.1
-- - mon.2
-  - osd.3
-targets:
-  ubuntu@mira068.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3trHqdv6rH+c81Cd2k35xKqjsnOZVUrwbbwsdBn4bAgYRqJR3MZ1D4uKzDkek86n+Q6jp7k4iZw/p3zdbPgaaFvfYVULFXnx/9QVj2VlFiJ1ly+MdF6B9qVBkgm7rm1qDRnbASUF5RXG6eSIYo6DgmVWklMtanwhhJidOWuu8RdmG/+L4d36somECVjR169Mi/m2q5T+keFIOY9d2uECVGsOjKrPB7eIkHTaNsNljhv9rb/TIAsSQB/+hxQeMl1Lko9idj4MFw6Tpy9FX+84GhpG4x99HGHRc0Xq98PqpCI3zZTW2hg58fSj2fPdk1XFXMCdrXvyQm4txJiWJba1b
-  ubuntu@mira074.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDkSvRvsY0kOqz6VQHsuxO3PiGfu+p2oIjkokTymVQQhc6w/GuSUqP+73+NTQkVCaIAs3dKASpW2mcN4JlNYQadY3uzQ97hOr5GsIjpMTqKsbw9//VinLU+v2AY3vSpoKXlQ3EYMMcm/Ga4av5X2YjfyeOjMpJ7Tz2tPtTHslzXcPaY71CZc7/unsBtLXz00A/D4M87A+W70W8iNbe/ZQwZYK3PBo8EeQjhz8vyZ4mzBHbvgc1BBjuphNZSxGUqnRlU4cvm8fTgja7mAsonnYJOsw6TVr68B92Olpm7AhkRP1IFUBV9vMEqifepkSW33Gw0At+iGLAw/6yE62o3bSBx
-  ubuntu@mira080.front.sepia.ceph.com: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDr6YpR1nLa5+vYU6efXaAj40U7KPAZf57z0Su2IIwVl0nR3o6nbatmkvqznAj6QuKsjgkdeWmkI/8+EnmjwJyREW6QVKk5Mrl02Lo3soS1cIrUta/ap89rWkLyd27hcYOP+DroqA9j+UbP0kKmgalsKXPOwhGlCYZJcaX7pw/m0MsiBYZ6gKtyMbyIJxu/V4TNK95zlmTr2kxy1j8GXsitNlQEGTAMy0fTnXUJpa9S1jgHVwl4DHF0loeqIpXiapE4Q4lXfrRvIxc2raPv5XYSjmVN070bmFfnQYfr8Ao4XbcPJHlNERkaGoBQ0GVCvnzV21NKc11/rp3NzC3ct1Sv
-tasks:
-- internal.lock_machines:
-  - 3
-  - mira
-- internal.save_config: null
-- internal.check_lock: null
-- internal.connect: null
-- internal.check_conflict: null
-- internal.check_ceph_data: null
-- internal.vm_setup: null
-- internal.base: null
-- internal.archive: null
-- internal.coredump: null
-- internal.sudo: null
-- internal.syslog: null
-- internal.timer: null
-- ssh_keys: null
-- ceph-deploy:
-    branch:
-      stable: dumpling
-- interactive: null
+ubuntu@mira002.front.sepia.ceph.com:
+- mon.0
+- osd.0
+- client.0
+ubuntu@mira028.front.sepia.ceph.com:
+- mon.1
+- osd.1
+ubuntu@mira043.front.sepia.ceph.com:
+- mon.2
+- osd.3
 """)
         # Here we will want to parse the config.yaml(s)
 
 
     def configure(self, server_count, cluster_count=1):
+
+        # GRUMBLE: Teuthology doesn't seem to provide any correlation between role and target, even in the
+        # YAML it produces with --archive
+
+        # GRUMBLE: All of the example YAMLs have roles: sections that name things like [client|mon|osd].[0-9]+
+        # this is misleading because those aren't ids
+
         # I hope you only wanted three, because I ain't buying
         # any more servers...
         assert server_count == 3
         assert cluster_count == 1
 
         # Ensure all OSDs are initially up: assertion per #7813
+        osd_check = 'ssh {node} "ceph osd stat"'.format(node=self._get_admin_node(fsid=1234))
+        stat_output = Popen(osd_check, shell=True, stdout=PIPE).communicate()[0]
+        wait_until_true(lambda: self._check_osd_up_and_in(stat_output))
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
 
@@ -204,7 +194,7 @@ tasks:
         # set sims
 
     def get_server_fqdns(self):
-        return [target.split('@')[1] for target in self.config['targets'].iterkeys()]
+        return [target.split('@')[1] for target in self.config.iterkeys()]
 
     def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
@@ -220,6 +210,26 @@ tasks:
     def go_dark(self, fsid, dark=True, minion_id=None):
         pass
 
+    def _check_osd_up_and_in(self, output):
+
+        if output:
+            output = output.replace(',', ':')
+
+            try:
+                _, total, osd_up, osd_in = [x.split()[0] for x in output.split(':')]
+                if total == osd_in == osd_up:
+                    return True
+
+            except ValueError:
+                log.warning('ceph osd stat format may have changed')
+
+        return False
+
+    def _get_admin_node(self, fsid):
+        for target, roles in self.config.iteritems():
+            if 'client.0' in roles:
+                return target
+
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
 
         command = 'in'
@@ -227,9 +237,9 @@ tasks:
             command = 'out'
 
         # TODO figure out what server to target
-        proc = Popen('ssh ubuntu@mira002.front.sepia.ceph.com "ceph osd {command} {id}"'.format(command=command, id=int(osd_id)), shell=True, stderr=PIPE, stdout=PIPE)
+        proc = Popen('ssh {admin_node} "ceph osd {command} {id}"'.format(admin_node=self._get_admin_node(fsid), command=command, id=int(osd_id)), shell=True, stderr=PIPE, stdout=PIPE)
 
-        proc.communicate()
+        print proc.communicate()
 
 
 if __name__ == "__main__":
