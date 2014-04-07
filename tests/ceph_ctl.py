@@ -186,6 +186,10 @@ ubuntu@mira043.front.sepia.ceph.com:
         # Ensure there are initially no pools but the default ones. assertion per #7813
 
         # wait till all PGs are active and clean assertion per #7813
+        pg_check = 'ssh {node} "ceph pg stat"'.format(node=self._get_admin_node(fsid=1234))
+        stat_output = Popen(pg_check, shell=True, stdout=PIPE).communicate()[0]
+        wait_until_true(lambda: self._check_pgs_active_and_clean(stat_output))
+
 
         # bootstrap salt minions on cluster
         # TODO is the right place for it
@@ -209,6 +213,16 @@ ubuntu@mira043.front.sepia.ceph.com:
 
     def go_dark(self, fsid, dark=True, minion_id=None):
         pass
+
+    def _check_pgs_active_and_clean(self, output):
+        if output:
+            try:
+                _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
+                return 'active+clean' == pg_stat.split()[1] and total_stat.split()[0] == pg_stat.split()[0]
+            except ValueError:
+                log.warning('ceph pg stat format may have changed')
+
+        return False
 
     def _check_osd_up_and_in(self, output):
 
