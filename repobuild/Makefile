@@ -9,7 +9,7 @@ ubuntu:
 
 el6:
 	mkdir el6 || true
-	yumdownloader --destdir=el6 salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack python-yaml python-zmq salt sshpass zeromq3
+	yumdownloader --destdir=el6 salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
 	cp ../../Diamond/dist/*.noarch.rpm el6/
 	createrepo el6
 	tar czf calamari-repo-el6.tar.gz el6/
