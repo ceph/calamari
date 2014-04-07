@@ -8,11 +8,12 @@ OSD_FIELDS = ['uuid', 'up', 'in', 'up_from', 'public_addr',
               'cluster_addr', 'heartbeat_back_addr', 'heartbeat_front_addr']
 
 
-CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete'])
+CRIT_STATES = set(['stale', 'down', 'peering', 'inconsistent', 'incomplete', 'inactive'])
 WARN_STATES = set(['creating', 'recovery_wait', 'recovering', 'replay',
                    'splitting', 'degraded', 'remapped', 'scrubbing', 'repair',
                    'wait_backfill', 'backfilling', 'backfill_toofull'])
 OKAY_STATES = set(['active', 'clean'])
+ALL_STATES = CRIT_STATES | WARN_STATES | OKAY_STATES
 
 
 class DerivedObjects(dict):
@@ -158,6 +159,14 @@ class HealthCounters(object):
                 pass
             elif cls._pg_counter_helper(states, OKAY_STATES, count, ok):
                 pass
+            else:
+                # Uncategorised state, assume it's critical.  This shouldn't usually
+                # happen, but want to avoid breaking if ceph adds a state.
+                crit[0] += count
+                for state in states:
+                    if state not in ALL_STATES or state in CRIT_STATES:
+                        crit[1][state] += count
+
         return {
             'ok': {
                 'count': ok[0],
