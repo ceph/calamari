@@ -15,7 +15,16 @@ build-repo:
       - git: /git/calamari
       - cmd: build-diamond
 
+build-calamari-server:
+  cmd.run:
+    - user: vagrant
+    - name: ./build-rpm.sh
+    - cwd: /home/vagrant/calamari
+    - require:
+      - git: /git/calamari
+
 {% for path in ('calamari/repobuild/calamari-repo-el6.tar.gz',
+                'rpmbuild/RPMS/x86_64/calamari-server-*.rpm',
                 'Diamond/dist/diamond-*.noarch.rpm') %}
 
 cp-artifacts-to-share {{ path }}:
