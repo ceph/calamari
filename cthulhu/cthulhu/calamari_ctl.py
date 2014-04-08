@@ -87,7 +87,7 @@ def initialize(args):
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         log.debug("Postgres salt stdout: %s" % out)
-        log.debug("Postgres salt stderr: %s" % out)
+        log.debug("Postgres salt stderr: %s" % err)
         if p.returncode != 0:
             raise RuntimeError("salt-call for postgres failed with rc={0}".format(p.returncode))
     else:
