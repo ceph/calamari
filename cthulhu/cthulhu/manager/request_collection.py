@@ -146,10 +146,18 @@ class RequestCollection(object):
             requests = self.get_all(state=UserRequest.SUBMITTED)
             for request in requests:
                 try:
-                    with self._update_index(request):
-                        request.on_map(sync_type, sync_objects)
+                    # If this is one of the types that this request
+                    # is waiting for, invoke on_map.
+                    for awaited_type in request.awaiting_versions.keys():
+                        if awaited_type == sync_type:
+                            with self._update_index(request):
+                                request.on_map(sync_type, sync_objects)
                 except Exception as e:
                     log.exception("Request %s threw exception in on_map", request.id)
+                    if request.jid:
+                        log.error("Abandoning job {0}".format(request.jid))
+                        request.jid = None
+
                     request.set_error("Internal error %s" % e)
                     request.complete()
 
@@ -209,14 +217,15 @@ class RequestCollection(object):
                         # behalf of the request.
                         if request.awaiting_versions:
                             for sync_type, version in request.awaiting_versions.items():
-                                log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
-                                self._sync_objects.on_version(data['id'], sync_type, version)
+                                if version is not None:
+                                    log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
+                                    self._sync_objects.on_version(data['id'], sync_type, version)
 
                             # The request may be waiting for an epoch that we already have, if so
                             # give it to the request right away
                             for sync_type, want_version in request.awaiting_versions.items():
                                 got_version = self._sync_objects.get_version(sync_type)
-                                if sync_type.cmp(got_version, want_version) >= 0:
+                                if want_version and sync_type.cmp(got_version, want_version) >= 0:
                                     log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
                                     request.on_map(sync_type, self._sync_objects)
 
