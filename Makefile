@@ -51,13 +51,14 @@ build-venv-carbon: venv
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
+	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
 		./bin/python ./bin/pip install --no-install carbon; \
 		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 			build/carbon/setup.py; \
 		./bin/python ./bin/pip install --no-download \
 		  --install-option="--prefix=$(SRC)/venv" \
-		  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon; \
 	fi \
 	)
 
@@ -66,6 +67,7 @@ build-venv-reqs: venv
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
+	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
 	  'pyzmq==14.1.1' && \
@@ -75,7 +77,7 @@ build-venv-reqs: venv
 	  $(SRC)/requirements.production.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
+	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
 	  https://github.com/inktankstorage/graphite-web/tarball/calamari && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
