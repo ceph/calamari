@@ -1,6 +1,34 @@
+
+{% if grains['os_family'] == 'RedHat' %}
+
+postgresql_initdb:
+    cmd:
+        - run
+        - name: service postgresql initdb
+
+# change 'host' auth to 'md5' for local hashed-password authorization
+/var/lib/pgsql/data/pg_hba.conf:
+    file.replace:
+        - pattern: ^host(.*)ident
+        - repl: host\1md5
+        - require:
+            - cmd: postgresql_initdb
+
+# start the service after editing pg_hba.conf
 postgresql:
     service.running:
         - enable: True
+    require:
+        - file: /var/lib/pgsql/data/pg_hba.conf
+
+{% else %}
+
+# none of the above appears to be necessary with Debian
+postgresql:
+    service.running:
+        - enable: True
+
+{% endif %}
 
 calamariuser:
     postgres_user.present:
