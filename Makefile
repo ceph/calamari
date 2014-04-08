@@ -7,14 +7,18 @@ DEBEMAIL ?= dan.mick@inktank.com
 # debian upstream tarballs: {name}_{version}.orig.tar.gz
 # rpm tarball names: apparently whatever you name in Source0, but
 # {name}_{version}.tar.gz will work
-DISTNAMEVER=calamari_$(VERSION)
-PKGDIR=calamari-$(VERSION)
+DISTNAMEVER=calamari-server_$(VERSION)
+# PKGDIR is the directory the tarball is made from/unpacks to, and needs
+# - before version
+PKGDIR=calamari-server-$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
 SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
 
-build: set_deb_version version build-venv
+all: build
+
+build: version build-venv
 
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
@@ -112,11 +116,11 @@ dpkg: set_deb_version
 install-common: install-conf install-venv install-salt install-alembic install-scripts
 	@echo "target: $@"
 
-install-rpm: install-common install-rh-conf
+install-rpm: build install-common install-rh-conf
 	@echo "target: $@"
 
 # for deb
-install:
+install: build
 	@echo "target: $@"
 	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
 		else $(MAKE) install_real ; fi
@@ -198,11 +202,17 @@ clean:
 	@echo "target: $@"
 	rm -rf venv $(VERSION_PY)
 
+# Strategy for building dist tarball: find what we know is source
+# want in sources.
+
+FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc repobuild rest-api salt tests webapp -print0"
+
 dist:
 	@echo "target: $@"
 	@echo "making dist tarball in $(TARNAME)"
 	@rm -rf $(PKGDIR)
-	@$(FINDCMD) | cpio --null -p -d $(PKGDIR)
+	@eval "$(FIND_TOPLEVEL); $(FIND_RECURSE)" | cpio --null -p -d $(PKGDIR)
 	@tar -zcf $(TARNAME) $(PKGDIR)
 	@rm -rf $(PKGDIR)
 	@echo "tar file made in $(TARNAME)"
