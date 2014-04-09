@@ -27,7 +27,8 @@ pip_pkgs:
     - user: vagrant
     - bin_env: /home/vagrant/calamari/env
     - activate: true
-    - requirements: /home/vagrant/calamari/requirements.txt
+    # rh requirements are the more-stringent; just use them
+    - requirements: /home/vagrant/calamari/requirements/rh/requirements.txt
     - download_cache: /vagrant/pip_cache
     - require:
       - virtualenv: virtualenv

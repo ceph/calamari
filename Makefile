@@ -3,6 +3,7 @@ REVISION ?= $(shell ./get-versions.sh REVISION)
 DIST ?= unstable
 BPTAG ?= ""
 DEBEMAIL ?= dan.mick@inktank.com
+FLAVOR ?= $(shell ./get-flavor.sh)
 
 # debian upstream tarballs: {name}_{version}.orig.tar.gz
 # rpm tarball names: apparently whatever you name in Source0, but
@@ -74,7 +75,7 @@ build-venv-reqs: venv
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements.production.txt && \
+	  $(SRC)/requirements/$(FLAVOR)/requirements.production.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
@@ -208,7 +209,7 @@ clean:
 # want in sources.
 
 FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
-FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc repobuild rest-api salt tests webapp -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp -print0"
 
 dist:
 	@echo "target: $@"
