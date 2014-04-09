@@ -30,3 +30,4 @@ build_deps:
       - cairo-devel
       - m2crypto
       - python-crypto
+      - redhat-lsb-core
