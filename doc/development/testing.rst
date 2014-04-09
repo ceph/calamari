@@ -93,6 +93,22 @@ Test that you have a working step 1:
         xargs -I'{}' ssh '{}' "if [ -e /etc/ceph/ceph.client.0.keyring ]; then ceph health; fi"
 
 
+Step 2: Testing setup
+^^^^^^^^^^^^^^^^^^^^^
+
+There are a few manual changes you'll need to make to test against this cluster:
+- Add a master_fqdn dict to teuthology/archive/cluster.yaml like:
+.. code-block:: yaml
+    master_fqdn:
+        <FQDN of the machine where you are running a calmari devmode instance>
+
+- Edit dev/calamari.conf changing ceph_control under testing to 'external'
+.. code-block:: yaml
+    [testing]
+        ceph_control = external
+
+- Make sure you have the repositories setup so that bootstrap can succeed TODO
+
 Step 2: Kickoff tests
 ^^^^^^^^^^^^^^^^^^^^^
 
