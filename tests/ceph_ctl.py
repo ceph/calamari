@@ -8,6 +8,7 @@ from itertools import chain
 import yaml
 from subprocess import Popen, PIPE
 from utils import wait_until_true
+import simplejson as json
 
 from minion_sim.sim import MinionSim
 from calamari_common.config import CalamariConfig
@@ -154,6 +155,11 @@ class ExternalCephControl(CephControl):
         with open(config.get('testing', 'external_cluster_path')) as f:
             self.config = yaml.load(f)
 
+    def _run_command(self, target, command):
+        ssh_command = 'ssh {target} {command}'.format(target=target, command=command)
+        proc = Popen(ssh_command, shell=True, stdout=PIPE)
+        return proc.communicate()[0]
+
     def configure(self, server_count, cluster_count=1):
 
         # I hope you only wanted three, because I ain't buying
@@ -162,14 +168,16 @@ class ExternalCephControl(CephControl):
         assert cluster_count == 1
         fsid = 12345
 
+        target = self._get_admin_node(fsid=fsid)
         # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(fsid, "ceph osd stat", self._check_osd_up_and_in)
+        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph osd stat -f json-pretty"), self._check_osd_up_and_in)
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
-        self._wait_for_state(fsid, "ceph osd lspools", self._check_default_pools_only)
+        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph osd lspools -f json-pretty"), self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
-        self._wait_for_state(fsid, "ceph pg stat", self._check_pgs_active_and_clean)
+        # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
+        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph pg stat"), self._check_pgs_active_and_clean)
 
         # bootstrap salt minions on cluster
         self._bootstrap(fsid, self.config['master_fqdn'])
@@ -193,24 +201,22 @@ class ExternalCephControl(CephControl):
         for target in self.get_fqdns(fsid):
             if minion_id and minion_id not in target:
                 continue
-            command = 'ssh {target} "sudo service salt-minion {action}"'.format(target=target, action=action)
-            output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
+            output = self._run_command(target, "sudo service salt-minion {action}".format(action=action))
 
     def _check_default_pools_only(self, output):
-        # TODO default pools can be deleted, and when recreated can have different ids
-        if output:
-            return output.strip() == '0 data,1 metadata,2 rbd,'
+        try:
+            pools = json.loads(output)
+            return {'data', 'metadata', 'rbd'} == set([x['poolname'] for x in pools])
+        except ValueError:
+            log.warning('Failed to parse osd lspools output')
+
         return False
 
     def _wait_for_state(self, fsid, command, state):
-        # TODO wait_until_true is not waiting on the correct thing
         log.info('Waiting for {state} on cluster {fsid}'.format(state=state, fsid=fsid))
-        check = 'ssh {node} "{command}"'.format(node=self._get_admin_node(fsid=fsid), command=command)
-        output = Popen(check, shell=True, stdout=PIPE).communicate()[0]
-        wait_until_true(lambda: state(output))
+        wait_until_true(lambda: state(command()))
 
     def _check_pgs_active_and_clean(self, output):
-        # TODO use the json output option to ceph so we can stop scraping
         if output:
             try:
                 _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
@@ -221,13 +227,12 @@ class ExternalCephControl(CephControl):
         return False
 
     def _check_osd_up_and_in(self, output):
-        # TODO use the json output option to ceph so we can stop scraping
-        if output:
-            try:
-                _, total, osd_up, osd_in = [x.split()[0] for x in output.replace(',', ':').split(':')]
-                return total == osd_in == osd_up
-            except ValueError:
-                log.warning('ceph osd stat format may have changed')
+        try:
+            osd_stat = json.loads(output)
+            # osd_stat['num_in_osds'] is a string fixed in http://tracker.ceph.com/issues/7159
+            return osd_stat['num_osds'] == osd_stat['num_up_osds'] == int(osd_stat['num_in_osds'])
+        except ValueError:
+            log.warning('Failed to parse osd stat output')
 
         return False
 
@@ -235,9 +240,8 @@ class ExternalCephControl(CephControl):
         for target in self.get_fqdns(fsid):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
             print '\n\n\nBootstrapping salt-minion on {target}'.format(target=target)
-            command = '''ssh ubuntu@{target} "wget -O - https://raw.github.com/saltstack/salt-bootstrap/develop/bootstrap-salt.sh |\
-             sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(target=target, fqdn=master_fqdn)
-            output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
+            output = self._run_command(target, '''"wget -O - https://{fqdn}/bootstrap |\
+             sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
@@ -246,15 +250,9 @@ class ExternalCephControl(CephControl):
                 return target
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
-
-        command = 'in'
-        if not osd_in:
-            command = 'out'
-
-        # TODO figure out what server to target
-        proc = Popen('ssh {admin_node} "ceph osd {command} {id}"'.format(admin_node=self._get_admin_node(fsid), command=command, id=int(osd_id)), shell=True, stderr=PIPE, stdout=PIPE)
-
-        print proc.communicate()
+        command = osd_in and 'in' or 'out'
+        output = self._run_command(self._get_admin_node(fsid), "ceph osd {command} {id}".format(command=command, id=int(osd_id)))
+        log.info(output)
 
 
 if __name__ == "__main__":
@@ -263,5 +261,3 @@ if __name__ == "__main__":
     import pdb; pdb.set_trace()
     externalctl.get_server_fqdns()
     externalctl.configure(3)
-
-    externalctl._bootstrap("ubuntu@mira002.front.sepia.ceph.com", '10.99.118.150')
