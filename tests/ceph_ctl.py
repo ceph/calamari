@@ -10,10 +10,12 @@ from subprocess import Popen, PIPE
 from utils import wait_until_true
 
 from minion_sim.sim import MinionSim
+from calamari_common.config import CalamariConfig
 
+config = CalamariConfig()
+logging.basicConfig()
 
 log = logging.getLogger(__name__)
-
 
 class CephControl(object):
     """
@@ -149,29 +151,10 @@ class ExternalCephControl(CephControl):
     """
 
     def __init__(self):
-        # TODO parse the real config
-        self.config = yaml.load("""
-ubuntu@mira002.front.sepia.ceph.com:
-- mon.0
-- osd.0
-- client.0
-ubuntu@mira028.front.sepia.ceph.com:
-- mon.1
-- osd.1
-ubuntu@mira043.front.sepia.ceph.com:
-- mon.2
-- osd.3
-""")
-        # Here we will want to parse the config.yaml(s)
-
+        with open(config.get('testing', 'external_cluster_path')) as f:
+            self.config = yaml.load(f)
 
     def configure(self, server_count, cluster_count=1):
-
-        # GRUMBLE: Teuthology doesn't seem to provide any correlation between role and target, even in the
-        # YAML it produces with --archive
-
-        # GRUMBLE: All of the example YAMLs have roles: sections that name things like [client|mon|osd].[0-9]+
-        # this is misleading because those aren't ids
 
         # I hope you only wanted three, because I ain't buying
         # any more servers...
@@ -189,13 +172,10 @@ ubuntu@mira043.front.sepia.ceph.com:
         self._wait_for_state(fsid, "ceph pg stat", self._check_pgs_active_and_clean)
 
         # bootstrap salt minions on cluster
-        # TODO is the right place for it
-
-        # set config dirs
-        # set sims
+        self._bootstrap(fsid, self.config['master_fqdn'])
 
     def get_server_fqdns(self):
-        return [target.split('@')[1] for target in self.config.iterkeys()]
+        return [target.split('@')[1] for target in self.config['targets'].iterkeys()]
 
     def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
@@ -209,20 +189,28 @@ ubuntu@mira043.front.sepia.ceph.com:
         return self.get_server_fqdns()
 
     def go_dark(self, fsid, dark=True, minion_id=None):
-        pass
+        action = dark and 'stop' or 'start'
+        for target in self.get_fqdns(fsid):
+            if minion_id and minion_id not in target:
+                continue
+            command = 'ssh {target} "sudo service salt-minion {action}"'.format(target=target, action=action)
+            output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
 
     def _check_default_pools_only(self, output):
+        # TODO default pools can be deleted, and when recreated can have different ids
         if output:
             return output.strip() == '0 data,1 metadata,2 rbd,'
         return False
 
     def _wait_for_state(self, fsid, command, state):
+        # TODO wait_until_true is not waiting on the correct thing
         log.info('Waiting for {state} on cluster {fsid}'.format(state=state, fsid=fsid))
         check = 'ssh {node} "{command}"'.format(node=self._get_admin_node(fsid=fsid), command=command)
         output = Popen(check, shell=True, stdout=PIPE).communicate()[0]
         wait_until_true(lambda: state(output))
 
     def _check_pgs_active_and_clean(self, output):
+        # TODO use the json output option to ceph so we can stop scraping
         if output:
             try:
                 _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
@@ -233,6 +221,7 @@ ubuntu@mira043.front.sepia.ceph.com:
         return False
 
     def _check_osd_up_and_in(self, output):
+        # TODO use the json output option to ceph so we can stop scraping
         if output:
             try:
                 _, total, osd_up, osd_in = [x.split()[0] for x in output.replace(',', ':').split(':')]
@@ -242,14 +231,17 @@ ubuntu@mira043.front.sepia.ceph.com:
 
         return False
 
-    def _bootstrap(self, target, fqdn):
-        command = '''ssh {target} "wget -O - https://raw.github.com/saltstack/salt-bootstrap/develop/bootstrap-salt.sh |\
-         sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(target=target, fqdn=fqdn)
-        output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
-        log.info(output)
+    def _bootstrap(self, fsid, master_fqdn):
+        for target in self.get_fqdns(fsid):
+            log.info('Bootstrapping salt-minion on {target}'.format(target=target))
+            print '\n\n\nBootstrapping salt-minion on {target}'.format(target=target)
+            command = '''ssh ubuntu@{target} "wget -O - https://raw.github.com/saltstack/salt-bootstrap/develop/bootstrap-salt.sh |\
+             sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(target=target, fqdn=master_fqdn)
+            output = Popen(command, shell=True, stdout=PIPE).communicate()[0]
+            log.info(output)
 
     def _get_admin_node(self, fsid):
-        for target, roles in self.config.iteritems():
+        for target, roles in self.config['targets'].iteritems():
             if 'client.0' in roles:
                 return target
 
@@ -268,5 +260,8 @@ ubuntu@mira043.front.sepia.ceph.com:
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    #externalctl.configure(3)
+    import pdb; pdb.set_trace()
+    externalctl.get_server_fqdns()
+    externalctl.configure(3)
+
     externalctl._bootstrap("ubuntu@mira002.front.sepia.ceph.com", '10.99.118.150')
