@@ -157,7 +157,7 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
-	@$(INSTALL) -D conf/calamari.conf \
+	@$(INSTALL) -D conf/calamari/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/calamari/calamari.conf
 	@$(INSTALL) -D conf/alembic.ini \
 		$(DESTDIR)/etc/calamari/alembic.ini
