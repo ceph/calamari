@@ -253,7 +253,7 @@ class ExternalCephControl(CephControl):
 
             # TODO abstract out the port number
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
-             sudo python ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/;s/^[#]*open:.*$/open: True/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
