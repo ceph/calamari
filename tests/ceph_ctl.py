@@ -156,7 +156,7 @@ class ExternalCephControl(CephControl):
             self.config = yaml.load(f)
 
     def _run_command(self, target, command):
-        ssh_command = 'ssh {target} {command}'.format(target=target, command=command)
+        ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
         return proc.communicate()[0]
 
@@ -167,23 +167,26 @@ class ExternalCephControl(CephControl):
         assert server_count == 3
         assert cluster_count == 1
         fsid = 12345
-
+        cluster_name = 'ceph'
         target = self._get_admin_node(fsid=fsid)
         # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph osd stat -f json-pretty"), self._check_osd_up_and_in)
+        self._wait_for_state(fsid,
+                             lambda: self._run_command(target, "ceph -c {cluster} osd stat -f json-pretty".format(cluster=cluster_name)),
+                             self._check_osd_up_and_in)
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
-        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph osd lspools -f json-pretty"), self._check_default_pools_only)
+        self._wait_for_state(fsid,
+                             lambda: self._run_command(target, "ceph -c {cluster} osd lspools -f json-pretty".format(cluster=cluster_name)),
+                             self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
-        self._wait_for_state(fsid, lambda: self._run_command(target, "ceph pg stat"), self._check_pgs_active_and_clean)
-
-        # bootstrap salt minions on cluster
-        self._bootstrap(fsid, self.config['master_fqdn'])
+        self._wait_for_state(fsid,
+                             lambda: self._run_command(target, "ceph -c {cluster} pg stat".format(cluster=cluster_name)),
+                             self._check_pgs_active_and_clean)
 
     def get_server_fqdns(self):
-        return [target.split('@')[1] for target in self.config['targets'].iterkeys()]
+        return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
 
     def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
@@ -240,14 +243,14 @@ class ExternalCephControl(CephControl):
         for target in self.get_fqdns(fsid):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
             print '\n\n\nBootstrapping salt-minion on {target}'.format(target=target)
-            output = self._run_command(target, '''"wget -O - https://{fqdn}/bootstrap |\
-             sudo sh ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+            output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
+             sudo python ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
-        for target, roles in self.config['targets'].iteritems():
+        for target, roles in self.config['cluster'].iteritems():
             if 'client.0' in roles:
-                return target
+                return target.split('@')[1]
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = osd_in and 'in' or 'out'
@@ -258,6 +261,8 @@ class ExternalCephControl(CephControl):
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    import pdb; pdb.set_trace()
-    externalctl.get_server_fqdns()
     externalctl.configure(3)
+    # bootstrap salt minions on cluster
+    externalctl_bootstrap(12345, externalctl.config['master_fqdn'])
+
+
