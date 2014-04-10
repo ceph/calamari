@@ -154,6 +154,8 @@ class ExternalCephControl(CephControl):
     def __init__(self):
         with open(config.get('testing', 'external_cluster_path')) as f:
             self.config = yaml.load(f)
+
+        # TODO parse this out of the cluster.yaml
         self.cluster_name = 'ceph'
 
     def _run_command(self, target, command):
@@ -165,8 +167,11 @@ class ExternalCephControl(CephControl):
 
         # I hope you only wanted three, because I ain't buying
         # any more servers...
+        # TODO raise skip tests if these are different
         assert server_count == 3
         assert cluster_count == 1
+
+        # TODO parse fsid out of cluster.yaml
         fsid = 12345
         target = self._get_admin_node(fsid=fsid)
         # Ensure all OSDs are initially up: assertion per #7813
@@ -245,7 +250,8 @@ class ExternalCephControl(CephControl):
     def _bootstrap(self, fsid, master_fqdn):
         for target in self.get_fqdns(fsid):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
-            print '\n\n\nBootstrapping salt-minion on {target}'.format(target=target)
+
+            # TODO abstract out the port number
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
              sudo python ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/;s/^[#]*open:.*$/open: True/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
