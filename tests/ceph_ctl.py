@@ -7,7 +7,7 @@ import psutil
 from itertools import chain
 import yaml
 from subprocess import Popen, PIPE
-from utils import wait_until_true
+from utils import wait_until_true, run_once
 import simplejson as json
 
 from minion_sim.sim import MinionSim
@@ -154,6 +154,7 @@ class ExternalCephControl(CephControl):
     def __init__(self):
         with open(config.get('testing', 'external_cluster_path')) as f:
             self.config = yaml.load(f)
+        self.cluster_name = 'ceph'
 
     def _run_command(self, target, command):
         ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
@@ -167,23 +168,24 @@ class ExternalCephControl(CephControl):
         assert server_count == 3
         assert cluster_count == 1
         fsid = 12345
-        cluster_name = 'ceph'
         target = self._get_admin_node(fsid=fsid)
         # Ensure all OSDs are initially up: assertion per #7813
         self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph -c {cluster} osd stat -f json-pretty".format(cluster=cluster_name)),
+                             lambda: self._run_command(target, "ceph --cluster {cluster} osd stat -f json-pretty".format(cluster=self.cluster_name)),
                              self._check_osd_up_and_in)
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
         self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph -c {cluster} osd lspools -f json-pretty".format(cluster=cluster_name)),
+                             lambda: self._run_command(target, "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
                              self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
         self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph -c {cluster} pg stat".format(cluster=cluster_name)),
+                             lambda: self._run_command(target, "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
+
+        self._bootstrap(12345, self.config['master_fqdn'])
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -239,12 +241,13 @@ class ExternalCephControl(CephControl):
 
         return False
 
+    @run_once
     def _bootstrap(self, fsid, master_fqdn):
         for target in self.get_fqdns(fsid):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
             print '\n\n\nBootstrapping salt-minion on {target}'.format(target=target)
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
-             sudo python ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+             sudo python ; sudo sed -i 's/^[#]*master:.*$/master: {fqdn}/;s/^[#]*open:.*$/open: True/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
@@ -254,7 +257,7 @@ class ExternalCephControl(CephControl):
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = osd_in and 'in' or 'out'
-        output = self._run_command(self._get_admin_node(fsid), "ceph osd {command} {id}".format(command=command, id=int(osd_id)))
+        output = self._run_command(self._get_admin_node(fsid), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
         log.info(output)
 
 
@@ -263,6 +266,6 @@ if __name__ == "__main__":
     assert isinstance(externalctl.config, dict)
     externalctl.configure(3)
     # bootstrap salt minions on cluster
-    externalctl_bootstrap(12345, externalctl.config['master_fqdn'])
+    externalctl._bootstrap(12345, externalctl.config['master_fqdn'])
 
 
