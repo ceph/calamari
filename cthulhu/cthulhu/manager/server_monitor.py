@@ -430,11 +430,18 @@ class ServerMonitor(greenlet.Greenlet):
                 self._eventer.on_reboot(server_state, False)
 
         if server_state.ceph_version != server_heartbeat['ceph_version']:
-            old_ceph_version = server_state.ceph_version
-            server_state.ceph_version = server_heartbeat['ceph_version']
-            self._persister.update_server(server_state.fqdn, ceph_version=server_state.ceph_version)
-            if old_ceph_version is not None:
-                self._eventer.on_new_version(server_state)
+            # Interpret "no package installed but some services running" as meaning we're
+            # in the process of upgrading.
+            upgrading = server_heartbeat['ceph_version'] is None and server_heartbeat['services']
+            if server_heartbeat['ceph_version'] is None and upgrading:
+                # Ignore version=None while upgrading to avoid generating spurious
+                # "ceph uninstalled" events
+                pass
+            else:
+                server_state.ceph_version = server_heartbeat['ceph_version']
+                self._persister.update_server(server_state.fqdn, ceph_version=server_state.ceph_version)
+                if not (new_server or newly_managed_server):
+                    self._eventer.on_new_version(server_state)
 
         seen_id_tuples = set()
         for service_name, service in server_heartbeat['services'].items():
