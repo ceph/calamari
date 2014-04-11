@@ -25,7 +25,6 @@ class TestApi(ServerTestCase):
         os.environ.setdefault("CALAMARI_CONFIG", "dev/calamari.conf")
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
         from calamari_common.types import SYNC_OBJECT_TYPES
-        from cthulhu.manager import derived
         from calamari_rest.management.commands.api_docs import ApiIntrospector
 
         url_patterns = ApiIntrospector("calamari_rest.urls.v2").get_url_list()
@@ -61,7 +60,6 @@ class TestApi(ServerTestCase):
             "<fsid>": [fsid],
             "<fqdn>": [self.ceph_ctl.get_server_fqdns()[0]],
             "<sync_type>": [s.str for s in SYNC_OBJECT_TYPES],
-            "<derived_type>": [p for d in derived.generators for p in d.provides],
             "<osd_id>": ["0"],
             "<pool_id>": ["0"],
             "server/<pk>": ["server/%s" % self.ceph_ctl.get_server_fqdns()[0]],
@@ -131,7 +129,7 @@ class TestApi(ServerTestCase):
         only_urls_with_parameters = []
         for url in url_patterns:
             url = url.replace('<fsid>', fsid)
-            if '<sync_type>' in url or '<derived_type' in url or 'config/<key>' in url:
+            if '<sync_type>' in url or 'config/<key>' in url:
                 continue
 
             if url.find('<') != -1:
