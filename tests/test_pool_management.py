@@ -136,8 +136,8 @@ class TestPoolManagement(RequestTestCase):
             'crash_replay_interval': 120,
             # Leave out pg_num stuff because it's a bit special and
             # tested separately
-            #'pg_num': 256,
-            #'pgp_num': 256,
+            # 'pg_num': 256,
+            # 'pgp_num': 256,
             'crush_ruleset': 1,
             'hashpspool': True,
             'quota_max_objects': 42,

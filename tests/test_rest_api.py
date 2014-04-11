@@ -117,11 +117,7 @@ class TestApi(ServerTestCase):
         # import errors are test errors rather than world-breakers.
         os.environ.setdefault("CALAMARI_CONFIG", "dev/calamari.conf")
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
-        from calamari_common.types import SYNC_OBJECT_TYPES
-        from cthulhu.manager import derived
         from calamari_rest.management.commands.api_docs import ApiIntrospector
-
-
 
         # Spin up a running Calamari+Ceph environment
         self.ceph_ctl.configure(3)
@@ -178,7 +174,6 @@ class TestApi(ServerTestCase):
 
         # Dict of pattern to dict of concrete urls to response text
         prefix = "api/v2/"
-        results = defaultdict(dict)
         fails = []
         for pattern, urls in concrete_urls.items():
             for url in urls:
@@ -196,8 +191,6 @@ class TestApi(ServerTestCase):
                 # We are mostly interested that these are not 500
                 if response.status_code not in (400, 404, 405, 503):
                     fails.append((url, response.status_code, response.reason))
-
-
 
         from pprint import pprint
         pprint(fails)

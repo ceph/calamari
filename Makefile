@@ -254,6 +254,7 @@ lint:
 		flake8 rest-api/ --ignore=E501 &&\
 		flake8 calamari-common/ --ignore=E501 &&\
 		flake8 calamari-web/ --ignore=E501 &&\
+		flake8 tests/ --ignore=E501 &&\
 		echo "OK"
 
 check: unit-tests lint

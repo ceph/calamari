@@ -4,7 +4,7 @@ import os
 from mock import Mock
 
 if os.environ.get('CALAMARI_CONFIG'):
-   from cthulhu.manager import plugin_monitor
+    from cthulhu.manager import plugin_monitor
 
 
 class StatusProcessor(object):
@@ -26,12 +26,11 @@ class StatusProcessor(object):
         return {'SMART Health Status': state}
 
 
-
 class TestStatusChecksIntegration(TestCase):
 
     def setUp(self):
         # FIXME depends on magic defined in minion-sim
-        fqdn_mocks = [Mock(fqdn='figment00%s.imagination.com' %str(x)) for x in range(3)]
+        fqdn_mocks = [Mock(fqdn='figment00%s.imagination.com' % str(x)) for x in range(3)]
         servers_mock = Mock(get_all=Mock())
         servers_mock.get_all.return_value = fqdn_mocks
         self.plugin_monitor = plugin_monitor.PluginMonitor(servers_mock)
