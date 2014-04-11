@@ -59,7 +59,7 @@ def admin_socket(asok_path, cmd, format=''):
         cmd_json = do_sockio(asok_path,
                              json.dumps({"prefix": "get_command_descriptions"}))
     except Exception as e:
-        #raise RuntimeError('exception getting command descriptions: ' + str(e))
+        # raise RuntimeError('exception getting command descriptions: ' + str(e))
         return None
 
     if cmd == 'get_command_descriptions':
@@ -495,7 +495,7 @@ def selftest_exception():
     raise RuntimeError("This is a self-test exception")
 
 
-def heartbeat():
+def _heartbeat():
     """
     Send an event to the master with the terse status
     """
@@ -507,3 +507,15 @@ def heartbeat():
 
     # Return the emitted data because it's useful if debugging with salt-call
     return service_heartbeat, cluster_heartbeat
+
+
+def heartbeat():
+    try:
+        _heartbeat()
+    except:
+        # Swallow exceptions to work around saltstack issue #11919 in
+        # salt 2014.1.1.  If we emitted exceptions then it could cause
+        # our scheduled task to stop execution.  Remove this behaviour
+        # once the issue is fixed upstream and we are using a more
+        # recent salt in calamari.
+        pass
