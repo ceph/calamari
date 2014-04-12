@@ -191,6 +191,7 @@ class ExternalCephControl(CephControl):
                              self._check_pgs_active_and_clean)
 
         self._bootstrap(12345, self.config['master_fqdn'])
+        self.restart_minions(123435)
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -246,6 +247,10 @@ class ExternalCephControl(CephControl):
 
         return False
 
+    def restart_minions(self, fsid):
+        for target in self.get_fqdns(fsid):
+            self._run_command(target, 'sudo service salt-minion restart')
+
     @run_once
     def _bootstrap(self, fsid, master_fqdn):
         for target in self.get_fqdns(fsid):
@@ -253,7 +258,7 @@ class ExternalCephControl(CephControl):
 
             # TODO abstract out the port number
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
-             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
