@@ -33,6 +33,12 @@ class TestPoolManagement(RequestTestCase):
             'pg_num': pg_num
         }
         args.update(optionals)
+
+        # TODO fix this default value
+        if 'hashpspool' in args:
+            args['hashpspool'] = int(args['hashpspool'])
+
+        print "TPM._create {argh}".format(argh=str(args))
         r = self.api.post("cluster/%s/pool" % cluster_id, args)
         self._wait_for_completion(cluster_id, r)
 
