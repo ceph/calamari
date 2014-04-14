@@ -251,7 +251,7 @@ class ExternalCephControl(CephControl):
             self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd['osd']))
             self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
 
-        for flag in ['pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub']:
+        for flag in ['pause']:
             self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
 
     def reset_all_pools(self, output):
