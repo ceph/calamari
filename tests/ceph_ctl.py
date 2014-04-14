@@ -174,17 +174,13 @@ class ExternalCephControl(CephControl):
         if server_count != 3 or cluster_count != 1:
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
-        # TODO parse fsid out of cluster.yaml
-        fsid = 12345
-        target = self._get_admin_node(fsid=fsid)
         # Ensure all OSDs are initially up: assertion per #7813
         self._wait_for_state(fsid,
                              lambda: self._run_command(target, "ceph --cluster {cluster} osd stat -f json-pretty".format(cluster=self.cluster_name)),
                              self._check_osd_up_and_in)
         # TODO what about tests that create OSDs we should remove them
-        target = self._get_admin_node(fsid=fsid)
 
-        self.reset_all_osds(self._run_command(target,
+        self.reset_all_osds(self._run_command(self._get_admin_node(),
                               "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
 
         self.reset_all_pools(self._run_command(self._get_admin_node(),
@@ -201,8 +197,8 @@ class ExternalCephControl(CephControl):
                              lambda: self._run_command(target, "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
 
-        self._bootstrap(12345, self.config['master_fqdn'])
-        self.restart_minions(123435)
+        self._bootstrap(self.config['master_fqdn'])
+        self.restart_minions()
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -248,7 +244,7 @@ class ExternalCephControl(CephControl):
         return None
 
     def reset_all_osds(self, output):
-        target = self._get_admin_node(fsid=12345)
+        target = self._get_admin_node()
         osd_stat = json.loads(output)
         # TODO this iteration should happen on the remote side
         for osd in osd_stat['osds']:
@@ -266,38 +262,35 @@ class ExternalCephControl(CephControl):
                 continue
             self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(pool=pool['poolname']))
 
-    def restart_minions(self, fsid):
-        for target in self.get_fqdns(fsid):
+    def restart_minions(self):
+        for target in self.get_fqdns(None):
             self._run_command(target, 'sudo service salt-minion restart')
 
     @run_once
-    def _bootstrap(self, fsid, master_fqdn):
-        for target in self.get_fqdns(fsid):
+    def _bootstrap(self, master_fqdn):
+        for target in self.get_fqdns(None):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
 
             # TODO abstract out the port number
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
-             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && sudo service salt-minion stop; sudo service salt-minion start"'''.format(fqdn=master_fqdn))
+             sudo python ;\
+             sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
+             sudo killall salt-minion; sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
             log.info(output)
 
-    def _get_admin_node(self, fsid):
+    def _get_admin_node(self):
         for target, roles in self.config['cluster'].iteritems():
             if 'client.0' in roles:
                 return target.split('@')[1]
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = 'in' if osd_in else 'out'
-        output = self._run_command(self._get_admin_node(fsid), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
+        output = self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
         log.info(output)
 
 
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    #externalctl.configure(3)
-    # bootstrap salt minions on cluster
-    #externalctl._bootstrap(12345, externalctl.config['master_fqdn'])
-    target = externalctl._get_admin_node(fsid=12345)
-    #externalctl._run_command(target, 'echo """noup\nnodown\nnoout\nnoin nobackfill norecover noscrub nodeep-scrub"""| while read $flag; do ceph health; done')
 
 
