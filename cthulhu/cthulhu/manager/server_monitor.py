@@ -31,6 +31,10 @@ CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
 TICK_PERIOD = 10
 
+# Ignore changes in boot time below this threshold, to avoid mistaking clock
+# adjustments for reboots.
+REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
+
 
 class GrainsNotFound(Exception):
     pass
@@ -420,14 +424,22 @@ class ServerMonitor(greenlet.Greenlet):
         self._persister.update_server(server_state.fqdn, last_contact=server_state.last_contact)
 
         if server_state.boot_time != boot_time:
+            log.warn("{0} boot time changed, old {1} new {2}".format(
+                server_state.fqdn, server_state.boot_time, boot_time
+            ))
             old_boot_time = server_state.boot_time
             server_state.boot_time = boot_time
             self._persister.update_server(server_state.fqdn, boot_time=server_state.boot_time)
             if old_boot_time is not None:  # i.e. a reboot, not an unmanaged->managed transition
-                log.warn("Server reboot %s at %s (last boot was %s)" % (
-                    fqdn, server_state.boot_time, old_boot_time
-                ))
-                self._eventer.on_reboot(server_state, False)
+                if server_state.boot_time < old_boot_time:
+                    log.warn("Server boot time went backwards")
+                elif server_state.boot_time - old_boot_time < REBOOT_THRESHOLD:
+                    log.warn("Server boot time changed, but only a little")
+                else:
+                    # A substantial forward change in boot time, that's a reboot: emit
+                    # a user visible event
+                    log.warn("{0} rebooted!".format(fqdn))
+                    self._eventer.on_reboot(server_state, False)
 
         if server_state.ceph_version != server_heartbeat['ceph_version']:
             old_ceph_version = server_state.ceph_version
