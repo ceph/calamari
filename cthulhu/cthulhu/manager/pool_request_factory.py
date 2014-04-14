@@ -20,8 +20,11 @@ class PoolRequestFactory(RequestFactory):
         for var in POOL_PROPERTIES:
             if var in attributes:
                 val = attributes[var]
+
+                # Special case for hashpspool, accepts 'true' from firefly onwards
+                # but requires 0 or 1 for dumpling, so just use the old style.
                 if isinstance(val, bool):
-                    val = "true" if val else "false"
+                    val = 1 if val else 0
 
                 commands.append(('osd pool set', {
                     'pool': pool_name,
