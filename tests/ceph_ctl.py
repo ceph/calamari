@@ -187,6 +187,9 @@ class ExternalCephControl(CephControl):
         self.reset_all_osds(self._run_command(target,
                               "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
 
+        self.reset_all_pools(self._run_command(self._get_admin_node(),
+                                               "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)))
+
         # Ensure there are initially no pools but the default ones. assertion per #7813
         self._wait_for_state(fsid,
                              lambda: self._run_command(target, "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
@@ -254,6 +257,14 @@ class ExternalCephControl(CephControl):
 
         for flag in ['pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub']:
             self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
+
+    def reset_all_pools(self, output):
+        target = self._get_admin_node()
+        pools = json.loads(output)
+        for pool in pools:
+            if pool['poolname'] in {'data', 'metadata', 'rbd'}:
+                continue
+            self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(pool=pool['poolname']))
 
     def restart_minions(self, fsid):
         for target in self.get_fqdns(fsid):
