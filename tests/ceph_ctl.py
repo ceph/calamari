@@ -12,6 +12,7 @@ import simplejson as json
 
 from minion_sim.sim import MinionSim
 from calamari_common.config import CalamariConfig
+from django.utils.unittest.case import SkipTest
 
 config = CalamariConfig()
 logging.basicConfig()
@@ -170,9 +171,8 @@ class ExternalCephControl(CephControl):
 
         # I hope you only wanted three, because I ain't buying
         # any more servers...
-        # TODO raise skip tests if these are different
-        assert server_count == 3
-        assert cluster_count == 1
+        if server_count != 3 or cluster_count != 1:
+            raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
         # TODO parse fsid out of cluster.yaml
         fsid = 12345
