@@ -43,13 +43,17 @@ REQUEST_TIMEOUT = 20
 
 if config.get('testing', 'calamari_control') == 'embedded':
     CALAMARI_CTL = EmbeddedCalamariControl
-else:
+elif config.get('testing', 'calamari_control') == 'external':
     CALAMARI_CTL = ExternalCalamariControl
+else:
+    raise NotImplementedError
 
 if config.get('testing', 'ceph_control') == 'embedded':
     CEPH_CTL = EmbeddedCephControl
-else:
+elif config.get('testing', 'ceph_control') == 'external':
     CEPH_CTL = ExternalCephControl
+else:
+    raise NotImplementedError
 
 
 class ServerTestCase(TestCase):
