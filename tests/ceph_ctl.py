@@ -247,9 +247,13 @@ class ExternalCephControl(CephControl):
     def reset_all_osds(self, output):
         target = self._get_admin_node(fsid=12345)
         osd_stat = json.loads(output)
+        # TODO this iteration should happen on the remote side
         for osd in osd_stat['osds']:
             self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd['osd']))
             self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
+
+        for flag in ['pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub']:
+            self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
 
     def restart_minions(self, fsid):
         for target in self.get_fqdns(fsid):
