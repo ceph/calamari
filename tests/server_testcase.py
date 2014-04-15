@@ -6,6 +6,10 @@ from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 from tests.utils import wait_until_true
 
+from calamari_common.config import CalamariConfig
+
+config = CalamariConfig()
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
@@ -23,13 +27,19 @@ OSD_RECOVERY_PERIOD = 600
 REQUEST_TIMEOUT = 20
 
 
-if True:
+if config.get('testing', 'calamari_control') == 'embedded':
     CALAMARI_CTL = EmbeddedCalamariControl
-    CEPH_CTL = EmbeddedCephControl
-else:
-    # TODO: config file or something to allow selecting mode
+elif config.get('testing', 'calamari_control') == 'external':
     CALAMARI_CTL = ExternalCalamariControl
+else:
+    raise NotImplementedError
+
+if config.get('testing', 'ceph_control') == 'embedded':
+    CEPH_CTL = EmbeddedCephControl
+elif config.get('testing', 'ceph_control') == 'external':
     CEPH_CTL = ExternalCephControl
+else:
+    raise NotImplementedError
 
 
 class ServerTestCase(TestCase):

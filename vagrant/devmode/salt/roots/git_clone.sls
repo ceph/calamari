@@ -10,6 +10,7 @@ git_clone:
 git_clone_teuthology:
   git:
     - latest
+    - rev: wip-8050
     - user: vagrant
     - target: /home/vagrant/teuthology
     - name: https://github.com/ceph/teuthology.git

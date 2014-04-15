@@ -3,8 +3,12 @@ roles:
 - [mon.1, osd.1]
 - [mon.2, osd.3]
 
+interactive-on-error: true
+
 tasks:
 - install:
+    branch:
+        dumpling
     extras: yes
 - ssh_keys:
 - ceph-deploy:
