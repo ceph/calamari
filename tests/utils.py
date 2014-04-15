@@ -5,8 +5,8 @@ import datetime
 class WaitTimeout(Exception):
     pass
 
-
-def wait_until_true(condition, timeout=10):
+# TODO we may want different time here when runnning against and external controller
+def wait_until_true(condition, timeout=20):
     elapsed = 0
     period = 1
     while not condition():
