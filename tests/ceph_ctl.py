@@ -208,7 +208,7 @@ class ExternalCephControl(CephControl):
         return self.get_server_fqdns()
 
     def go_dark(self, fsid, dark=True, minion_id=None):
-        action = dark and 'stop' or 'start'
+        action = 'stop' if dark else 'start'
         for target in self.get_fqdns(fsid):
             if minion_id and minion_id not in target:
                 continue
@@ -267,7 +267,7 @@ class ExternalCephControl(CephControl):
                 return target.split('@')[1]
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
-        command = osd_in and 'in' or 'out'
+        command = 'in' if osd_in else 'out'
         output = self._run_command(self._get_admin_node(fsid), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
         log.info(output)
 
