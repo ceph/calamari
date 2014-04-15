@@ -88,7 +88,7 @@ class TestExternalCephControl(TestCase):
                 "up"]}
         ]}
         '''
-        self.assertEqual(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), None)
+        self.assertEqual(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), {'down': [], 'out': []})
 
     def test_default_pools_only(self):
         lspools_output = '\n[\n    { "poolnum": 0,\n      "poolname": "data"},\n    { "poolnum": 1,\n      "poolname": "metadata"},\n    { "poolnum": 2,\n      "poolname": "rbd"}]\n'

@@ -174,27 +174,24 @@ class ExternalCephControl(CephControl):
         if server_count != 3 or cluster_count != 1:
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
-        # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph --cluster {cluster} osd stat -f json-pretty".format(cluster=self.cluster_name)),
-                             self._check_osd_up_and_in)
-        # TODO what about tests that create OSDs we should remove them
-
         self.reset_all_osds(self._run_command(self._get_admin_node(),
                               "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
+
+        # Ensure all OSDs are initially up: assertion per #7813
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)),
+                             self._check_osds_in_and_up)
+        # TODO what about tests that create OSDs we should remove them
 
         self.reset_all_pools(self._run_command(self._get_admin_node(),
                                                "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)))
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
-        self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
                              self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
-        self._wait_for_state(fsid,
-                             lambda: self._run_command(target, "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
 
         self._bootstrap(self.config['master_fqdn'])
@@ -221,8 +218,8 @@ class ExternalCephControl(CephControl):
                 continue
             output = self._run_command(target, "sudo service salt-minion {action}".format(action=action))
 
-    def _wait_for_state(self, fsid, command, state):
-        log.info('Waiting for {state} on cluster {fsid}'.format(state=state, fsid=fsid))
+    def _wait_for_state(self, command, state):
+        log.info('Waiting for {state} on cluster'.format(state=state))
         wait_until_true(lambda: state(command()))
 
     def _check_default_pools_only(self, output):
@@ -238,10 +235,11 @@ class ExternalCephControl(CephControl):
         osd_down = [osd['osd'] for osd in osd_stat['osds'] if not osd['up']]
         osd_out = [osd['osd'] for osd in osd_stat['osds'] if not osd['in']]
 
-        if osd_down or osd_out:
-            return {'down': osd_down, 'out': osd_out}
+        return {'down': osd_down, 'out': osd_out}
 
-        return None
+    def _check_osds_in_and_up(self, output):
+        osd_state = self._get_osds_down_or_out(output)
+        return not osd_state['down'] + osd_state['out']
 
     def reset_all_osds(self, output):
         target = self._get_admin_node()
