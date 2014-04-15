@@ -161,9 +161,13 @@ class Eventer(gevent.greenlet.Greenlet):
         """
         Tell me that the version of ceph changed
         """
-        self._emit(INFO,
-                   "Server {fqdn} Ceph version {version} installed".format(
-                       fqdn=server_state.fqdn, version=server_state.ceph_version),
+        if server_state.ceph_version is not None:
+            msg = "Ceph {version} installed on {fqdn}".format(
+                fqdn=server_state.fqdn, version=server_state.ceph_version)
+        else:
+            msg = "Ceph uninstalled from {fqdn}".format(fqdn=server_state.fqdn)
+
+        self._emit(INFO, msg,
                    fqdn=server_state.fqdn,
                    fsid=self._server_fsid(server_state))
 
