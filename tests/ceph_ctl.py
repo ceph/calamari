@@ -162,8 +162,8 @@ class ExternalCephControl(CephControl):
     def _run_command(self, target, command):
         ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
-        #assert proc.returncode == 0
         out, err = proc.communicate()
+        assert proc.returncode == 0
         log.info(err)
         return out
 
@@ -254,9 +254,13 @@ class ExternalCephControl(CephControl):
 
     def reset_all_pools(self, output):
         target = self._get_admin_node()
+        default_pools = {'data', 'metadata', 'rbd'}
+        for pool in default_pools:
+            self._run_command(target, 'ceph osd pool create {pool} 64'.format(pool=pool))
+
         pools = json.loads(output)
         for pool in pools:
-            if pool['poolname'] in {'data', 'metadata', 'rbd'}:
+            if pool['poolname'] in default_pools:
                 continue
             self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(pool=pool['poolname']))
 
