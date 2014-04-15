@@ -4,7 +4,6 @@ from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
 
 
 class OsdRequestFactory(RequestFactory):
-
     def update(self, osd_id, attributes):
         commands = []
 
@@ -25,7 +24,7 @@ class OsdRequestFactory(RequestFactory):
                 raise RuntimeError("It is not valid to set a down OSD to be up")
 
         if 'reweight' in attributes:
-            if attributes['reweight'] != osd_map.osd_tree_node_by_id[osd_id]['reweight']:
+            if attributes['reweight'] != float(osd_map.osd_tree_node_by_id[osd_id]['reweight']):
                 commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
 
         if not commands:
