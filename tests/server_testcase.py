@@ -6,21 +6,7 @@ from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 from tests.utils import wait_until_true
 
-import ConfigParser
-
-DEFAULT_CONFIG_PATH = "test.conf"
-
-
-class TestConfig(ConfigParser.SafeConfigParser):
-    def __init__(self):
-        ConfigParser.SafeConfigParser.__init__(self)
-
-        self.path = DEFAULT_CONFIG_PATH
-
-        if not os.path.exists(self.path):
-            raise ConfigNotFound("Configuration not found at %s" % str(__file__))
-
-        self.read(self.path)
+from tests.config import TestConfig
 
 config = TestConfig()
 
@@ -113,7 +99,7 @@ class ServerTestCase(TestCase):
         Wait for all the expected servers to appear in the REST API
         """
         expected_servers = self.ceph_ctl.get_server_fqdns()
-        wait_until_true(lambda: set([s['fqdn'] for s in self.api.get("server").json()]) == set(expected_servers))
+        wait_until_true(lambda: set([s['fqdn'] for s in self.api.get("server").json()]) == set(expected_servers), timeout=30)
 
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")
