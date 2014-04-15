@@ -266,7 +266,7 @@ class ExternalCephControl(CephControl):
 
             # TODO abstract out the port number
             output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
-             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+             sudo python ; sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && sudo service salt-minion stop; sudo service salt-minion start"'''.format(fqdn=master_fqdn))
             log.info(output)
 
     def _get_admin_node(self, fsid):
@@ -283,8 +283,10 @@ class ExternalCephControl(CephControl):
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-    externalctl.configure(3)
+    #externalctl.configure(3)
     # bootstrap salt minions on cluster
-    externalctl._bootstrap(12345, externalctl.config['master_fqdn'])
+    #externalctl._bootstrap(12345, externalctl.config['master_fqdn'])
+    target = externalctl._get_admin_node(fsid=12345)
+    #externalctl._run_command(target, 'echo """noup\nnodown\nnoout\nnoin nobackfill norecover noscrub nodeep-scrub"""| while read $flag; do ceph health; done')
 
 
