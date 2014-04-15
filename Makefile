@@ -216,9 +216,9 @@ dev/calamari.conf:
 rest-api-integration: dev/calamari.conf
 	@echo "target: $@"
 	if [ -n "$$VIRTUAL_ENV" ] && [ -x $$VIRTUAL_ENV/bin/nosetests ] ; then \
-		nosetests tests/test_rest_api.py; \
+		CALAMARI_CONFIG=dev/calamari.conf nosetests tests/test_rest_api.py; \
 	else \
-		python $$(which nosetests) tests/test_rest_api.py ; \
+		CALAMARI_CONFIG=dev/calamari.conf python $$(which nosetests) tests/test_rest_api.py ; \
 	fi
 
 doc/rest-api/api_examples.json: rest-api-integration

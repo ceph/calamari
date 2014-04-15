@@ -33,6 +33,12 @@ class TestPoolManagement(RequestTestCase):
             'pg_num': pg_num
         }
         args.update(optionals)
+
+        # TODO fix this default value
+        if 'hashpspool' in args:
+            args['hashpspool'] = int(args['hashpspool'])
+
+        print "TPM._create {argh}".format(argh=str(args))
         r = self.api.post("cluster/%s/pool" % cluster_id, args)
         self._wait_for_completion(cluster_id, r)
 
@@ -83,6 +89,10 @@ class TestPoolManagement(RequestTestCase):
         # TODO: check on the cluster that it's really present (with the correct parameters), not just
         # on the calamari server
 
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
+
         self._update(cluster_id, pool_id, {'pg_num': 128})
         self._assert_attribute(cluster_id, pool_id, pg_num=128)
 
@@ -112,6 +122,11 @@ class TestPoolManagement(RequestTestCase):
         pool_name = 'test1'
         self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(20)
+
         pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
         for var, val in optionals.items():
             self.assertEqual(pool[var], val, "pool[%s]!=%s (actually %s)" % (
@@ -128,6 +143,10 @@ class TestPoolManagement(RequestTestCase):
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
         pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
 
         # Some non-default values
         mods = {
@@ -148,6 +167,7 @@ class TestPoolManagement(RequestTestCase):
             self.assertNotEqual(pool[var], val)
             try:
                 self._update(cluster_id, pool_id, {var: val})
+                time.sleep(1)
                 pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
                 self.assertEqual(pool[var], val)
                 # TODO: call out to the ceph cluster to check the
@@ -168,6 +188,10 @@ class TestPoolManagement(RequestTestCase):
         pool_name = 'test1'
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
 
         new_name = 'test1_changed'
         self._update(cluster_id, pool_id, {'name': new_name})
@@ -206,6 +230,11 @@ class TestPoolManagement(RequestTestCase):
         pool_name = 'test_pg_creation'
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
+
         updates = {
             'pg_num': 96,
             'pgp_num': 96
@@ -220,6 +249,7 @@ class TestPoolManagement(RequestTestCase):
         Test that when creating a number of PGs that exceeds mon_osd_max_split_count
         calamari is breaking up the operation so that it succeeds.
         """
+
         cluster_id = self._wait_for_cluster()
         pool_name = 'test_big_pg_creation'
         self._create(cluster_id, pool_name, pg_num=64)

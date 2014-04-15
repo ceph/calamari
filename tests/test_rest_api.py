@@ -39,8 +39,13 @@ class TestApi(ServerTestCase):
         # the one we're checking for isn't.
         self._wait_for_servers()
 
+        # Pick a pool ID
+        response = self.api.get("cluster/{0}/pool".format(fsid))
+        response.raise_for_status()
+        pool_id = response.json()[0]['id']
+
         # Make sure there is at least one request
-        response = self.api.patch("cluster/%s/pool/0" % fsid, {'name': 'newname'})
+        response = self.api.patch("cluster/%s/pool/%s" % (fsid, pool_id), {'name': 'newname'})
         self.assertEqual(response.status_code, 202)
         request_id = response.json()['request_id']
 
@@ -61,7 +66,7 @@ class TestApi(ServerTestCase):
             "<fqdn>": [self.ceph_ctl.get_server_fqdns()[0]],
             "<sync_type>": [s.str for s in SYNC_OBJECT_TYPES],
             "<osd_id>": ["0"],
-            "<pool_id>": ["0"],
+            "<pool_id>": [str(pool_id)],
             "server/<pk>": ["server/%s" % self.ceph_ctl.get_server_fqdns()[0]],
             "<minion_id>": [self.ceph_ctl.get_server_fqdns()[0]],
             "cluster/<pk>": ["cluster/%s" % fsid],

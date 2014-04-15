@@ -4,12 +4,20 @@ import shutil
 import tempfile
 import time
 import psutil
-from minion_sim.sim import MinionSim
 from itertools import chain
+import yaml
+from subprocess import Popen, PIPE
+from utils import wait_until_true, run_once
+import simplejson as json
 
+from minion_sim.sim import MinionSim
+from calamari_common.config import CalamariConfig
+from django.utils.unittest.case import SkipTest
+
+config = CalamariConfig()
+logging.basicConfig()
 
 log = logging.getLogger(__name__)
-
 
 class CephControl(object):
     """
@@ -77,7 +85,6 @@ class EmbeddedCephControl(CephControl):
     def __init__(self):
         self._config_dirs = {}
         self._sims = {}
-        self.fsid = None
 
     def configure(self, server_count, cluster_count=1):
         osds_per_host = 4
@@ -86,9 +93,9 @@ class EmbeddedCephControl(CephControl):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
             sim = MinionSim(config_dir, server_count, osds_per_host, port=8761 + i, domain=domain)
-            self.fsid = sim.cluster.fsid
-            self._config_dirs[self.fsid] = config_dir
-            self._sims[self.fsid] = sim
+            fsid = sim.cluster.fsid
+            self._config_dirs[fsid] = config_dir
+            self._sims[fsid] = sim
             sim.start()
 
     def shutdown(self):
@@ -108,9 +115,6 @@ class EmbeddedCephControl(CephControl):
 
         for config_dir in self._config_dirs.values():
             shutil.rmtree(config_dir)
-
-    def get_fsid(self):
-        return self.fsid
 
     def get_server_fqdns(self):
         return list(chain(*[s.get_minion_fqdns() for s in self._sims.values()]))
@@ -144,23 +148,151 @@ class EmbeddedCephControl(CephControl):
 
 
 class ExternalCephControl(CephControl):
+    """
+    This is the code that talks to a cluster. It is currently dependent on teuthology
+    """
+
+    def __init__(self):
+        with open(config.get('testing', 'external_cluster_path')) as f:
+            self.config = yaml.load(f)
+
+        # TODO parse this out of the cluster.yaml
+        self.cluster_name = 'ceph'
+
+    def _run_command(self, target, command):
+        ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
+        proc = Popen(ssh_command, shell=True, stdout=PIPE)
+        out, err = proc.communicate()
+        assert proc.returncode == 0
+        log.info(err)
+        return out
+
     def configure(self, server_count, cluster_count=1):
+
         # I hope you only wanted three, because I ain't buying
         # any more servers...
-        assert server_count == 3
-        assert cluster_count == 1
+        if server_count != 3 or cluster_count != 1:
+            raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
-        # Ensure all OSDs are initially up
+        self.reset_all_osds(self._run_command(self._get_admin_node(),
+                              "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
 
-        # Ensure there are initially no pools but the default ones.
+        # Ensure all OSDs are initially up: assertion per #7813
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)),
+                             self._check_osds_in_and_up)
+        # TODO what about tests that create OSDs we should remove them
+
+        self.reset_all_pools(self._run_command(self._get_admin_node(),
+                                               "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)))
+
+        # Ensure there are initially no pools but the default ones. assertion per #7813
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
+                             self._check_default_pools_only)
+
+        # wait till all PGs are active and clean assertion per #7813
+        # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
+                             self._check_pgs_active_and_clean)
+
+        self._bootstrap(self.config['master_fqdn'])
+        self.restart_minions()
 
     def get_server_fqdns(self):
-        # FIXME: hardcoded for jcsp's net, should come from a config file
-        return ["gravel%s.rockery" % n for n in range(1, 4)]
+        return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
 
-    def get_service_fqdns(self, service_type):
+    def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
         return self.get_server_fqdns()
 
     def shutdown(self):
         pass
+
+    def get_fqdns(self, fsid):
+        # TODO when we support multiple cluster change this
+        return self.get_server_fqdns()
+
+    def go_dark(self, fsid, dark=True, minion_id=None):
+        action = 'stop' if dark else 'start'
+        for target in self.get_fqdns(fsid):
+            if minion_id and minion_id not in target:
+                continue
+            output = self._run_command(target, "sudo service salt-minion {action}".format(action=action))
+
+    def _wait_for_state(self, command, state):
+        log.info('Waiting for {state} on cluster'.format(state=state))
+        wait_until_true(lambda: state(command()))
+
+    def _check_default_pools_only(self, output):
+        pools = json.loads(output)
+        return {'data', 'metadata', 'rbd'} == set([x['poolname'] for x in pools])
+
+    def _check_pgs_active_and_clean(self, output):
+        _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
+        return 'active+clean' == pg_stat.split()[1] and total_stat.split()[0] == pg_stat.split()[0]
+
+    def _get_osds_down_or_out(self, output):
+        osd_stat = json.loads(output)
+        osd_down = [osd['osd'] for osd in osd_stat['osds'] if not osd['up']]
+        osd_out = [osd['osd'] for osd in osd_stat['osds'] if not osd['in']]
+
+        return {'down': osd_down, 'out': osd_out}
+
+    def _check_osds_in_and_up(self, output):
+        osd_state = self._get_osds_down_or_out(output)
+        return not osd_state['down'] + osd_state['out']
+
+    def reset_all_osds(self, output):
+        target = self._get_admin_node()
+        osd_stat = json.loads(output)
+        # TODO this iteration should happen on the remote side
+        for osd in osd_stat['osds']:
+            self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd['osd']))
+            self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
+
+        for flag in ['pause']:
+            self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
+
+    def reset_all_pools(self, output):
+        target = self._get_admin_node()
+        default_pools = {'data', 'metadata', 'rbd'}
+        for pool in default_pools:
+            self._run_command(target, 'ceph osd pool create {pool} 64'.format(pool=pool))
+
+        pools = json.loads(output)
+        for pool in pools:
+            if pool['poolname'] in default_pools:
+                continue
+            self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(pool=pool['poolname']))
+
+    def restart_minions(self):
+        for target in self.get_fqdns(None):
+            self._run_command(target, 'sudo service salt-minion restart')
+
+    @run_once
+    def _bootstrap(self, master_fqdn):
+        for target in self.get_fqdns(None):
+            log.info('Bootstrapping salt-minion on {target}'.format(target=target))
+
+            # TODO abstract out the port number
+            output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
+             sudo python ;\
+             sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
+             sudo killall salt-minion; sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+            log.info(output)
+
+    def _get_admin_node(self):
+        for target, roles in self.config['cluster'].iteritems():
+            if 'client.0' in roles:
+                return target.split('@')[1]
+
+    def mark_osd_in(self, fsid, osd_id, osd_in=True):
+        command = 'in' if osd_in else 'out'
+        output = self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
+        log.info(output)
+
+
+if __name__ == "__main__":
+    externalctl = ExternalCephControl()
+    assert isinstance(externalctl.config, dict)
+
+
