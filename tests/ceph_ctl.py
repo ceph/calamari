@@ -181,6 +181,11 @@ class ExternalCephControl(CephControl):
         self._wait_for_state(fsid,
                              lambda: self._run_command(target, "ceph --cluster {cluster} osd stat -f json-pretty".format(cluster=self.cluster_name)),
                              self._check_osd_up_and_in)
+        # TODO what about tests that create OSDs we should remove them
+        target = self._get_admin_node(fsid=fsid)
+
+        self.reset_all_osds(self._run_command(target,
+                              "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
         self._wait_for_state(fsid,
@@ -239,7 +244,12 @@ class ExternalCephControl(CephControl):
 
         return None
 
-        return False
+    def reset_all_osds(self, output):
+        target = self._get_admin_node(fsid=12345)
+        osd_stat = json.loads(output)
+        for osd in osd_stat['osds']:
+            self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd['osd']))
+            self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
 
     def restart_minions(self, fsid):
         for target in self.get_fqdns(fsid):
