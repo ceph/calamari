@@ -122,6 +122,11 @@ class TestPoolManagement(RequestTestCase):
         pool_name = 'test1'
         self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(20)
+
         pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
         for var, val in optionals.items():
             self.assertEqual(pool[var], val, "pool[%s]!=%s (actually %s)" % (
@@ -138,6 +143,10 @@ class TestPoolManagement(RequestTestCase):
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
         pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
 
         # Some non-default values
         mods = {
@@ -158,6 +167,7 @@ class TestPoolManagement(RequestTestCase):
             self.assertNotEqual(pool[var], val)
             try:
                 self._update(cluster_id, pool_id, {var: val})
+                time.sleep(1)
                 pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
                 self.assertEqual(pool[var], val)
                 # TODO: call out to the ceph cluster to check the
@@ -178,6 +188,10 @@ class TestPoolManagement(RequestTestCase):
         pool_name = 'test1'
         self._create(cluster_id, pool_name, pg_num=64)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
+
+        # TODO remove this sleep to reproduce http://tracker.ceph.com/issues/8107
+        import time
+        time.sleep(10)
 
         new_name = 'test1_changed'
         self._update(cluster_id, pool_id, {'name': new_name})
