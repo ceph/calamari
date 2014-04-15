@@ -217,36 +217,27 @@ class ExternalCephControl(CephControl):
                 continue
             output = self._run_command(target, "sudo service salt-minion {action}".format(action=action))
 
-    def _check_default_pools_only(self, output):
-        try:
-            pools = json.loads(output)
-            return {'data', 'metadata', 'rbd'} == set([x['poolname'] for x in pools])
-        except ValueError:
-            log.warning('Failed to parse osd lspools output')
-
-        return False
-
     def _wait_for_state(self, fsid, command, state):
         log.info('Waiting for {state} on cluster {fsid}'.format(state=state, fsid=fsid))
         wait_until_true(lambda: state(command()))
 
+    def _check_default_pools_only(self, output):
+        pools = json.loads(output)
+        return {'data', 'metadata', 'rbd'} == set([x['poolname'] for x in pools])
+
     def _check_pgs_active_and_clean(self, output):
-        if output:
-            try:
-                _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
-                return 'active+clean' == pg_stat.split()[1] and total_stat.split()[0] == pg_stat.split()[0]
-            except ValueError:
-                log.warning('ceph pg stat format may have changed')
+        _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
+        return 'active+clean' == pg_stat.split()[1] and total_stat.split()[0] == pg_stat.split()[0]
 
-        return False
+    def _get_osds_down_or_out(self, output):
+        osd_stat = json.loads(output)
+        osd_down = [osd['osd'] for osd in osd_stat['osds'] if not osd['up']]
+        osd_out = [osd['osd'] for osd in osd_stat['osds'] if not osd['in']]
 
-    def _check_osd_up_and_in(self, output):
-        try:
-            osd_stat = json.loads(output)
-            # osd_stat['num_in_osds'] is a string fixed in http://tracker.ceph.com/issues/7159
-            return osd_stat['num_osds'] == osd_stat['num_up_osds'] == int(osd_stat['num_in_osds'])
-        except ValueError:
-            log.warning('Failed to parse osd stat output')
+        if osd_down or osd_out:
+            return {'down': osd_down, 'out': osd_out}
+
+        return None
 
         return False
 
