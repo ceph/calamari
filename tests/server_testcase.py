@@ -6,9 +6,23 @@ from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 from tests.utils import wait_until_true
 
-from calamari_common.config import CalamariConfig
+import ConfigParser
 
-config = CalamariConfig()
+DEFAULT_CONFIG_PATH = "test.conf"
+
+
+class TestConfig(ConfigParser.SafeConfigParser):
+    def __init__(self):
+        ConfigParser.SafeConfigParser.__init__(self)
+
+        self.path = DEFAULT_CONFIG_PATH
+
+        if not os.path.exists(self.path):
+            raise ConfigNotFound("Configuration not found at %s" % str(__file__))
+
+        self.read(self.path)
+
+config = TestConfig()
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
