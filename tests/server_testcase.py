@@ -6,6 +6,24 @@ from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 from tests.utils import wait_until_true
 
+import ConfigParser
+
+DEFAULT_CONFIG_PATH = "test.conf"
+
+
+class TestConfig(ConfigParser.SafeConfigParser):
+    def __init__(self):
+        ConfigParser.SafeConfigParser.__init__(self)
+
+        self.path = DEFAULT_CONFIG_PATH
+
+        if not os.path.exists(self.path):
+            raise ConfigNotFound("Configuration not found at %s" % str(__file__))
+
+        self.read(self.path)
+
+config = TestConfig()
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
@@ -23,12 +41,14 @@ OSD_RECOVERY_PERIOD = 600
 REQUEST_TIMEOUT = 20
 
 
-if True:
+if config.get('testing', 'calamari_control') == 'embedded':
     CALAMARI_CTL = EmbeddedCalamariControl
+else:
+    CALAMARI_CTL = ExternalCalamariControl
+
+if config.get('testing', 'ceph_control') == 'embedded':
     CEPH_CTL = EmbeddedCephControl
 else:
-    # TODO: config file or something to allow selecting mode
-    CALAMARI_CTL = ExternalCalamariControl
     CEPH_CTL = ExternalCephControl
 
 
