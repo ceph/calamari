@@ -1,14 +1,20 @@
 #!/bin/bash
 
+CLEANUP_SUBDIRS="alembic conf salt salt-local venv"
+
 case "$1" in
 	remove)
 		# clean up .pyc and other detritus
-		rm -rf /opt/calamari
+		for subdir in $CLEANUP_SUBDIRS ; do
+			rm -rf /opt/calamari/$subdir
+		done
 		;;
 
 	purge)
 		# as above, plus logs and whisper data
-		rm -rf /opt/calamari
+		for subdir in $CLEANUP_SUBDIRS ; do
+			rm -rf /opt/calamari/$subdir
+		done
 		rm -rf /var/log/graphite
 		rm -rf /var/log/calamari
 		rm -rf /var/lib/graphite
