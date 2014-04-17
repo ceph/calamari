@@ -152,7 +152,6 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/log/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/log/webapp
 	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/whisper
-	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari_web
 	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 

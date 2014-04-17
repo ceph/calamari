@@ -15,7 +15,6 @@ calamari_httpd()
 	a2ensite calamari.conf > /dev/null
 	a2enmod wsgi > /dev/null
 	chown -R www-data:www-data /var/log/calamari
-	chown -R www-data:www-data /var/lib/calamari_web
 	cd $d
 
     # Load our salt config
