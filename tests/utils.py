@@ -1,13 +1,15 @@
 import time
 import datetime
+from tests.config import TestConfig
+
+config = TestConfig()
 
 
 class WaitTimeout(Exception):
     pass
 
 
-# TODO we may want different time here when runnning against and external controller
-def wait_until_true(condition, timeout=20):
+def wait_until_true(condition, timeout=config.get('testing', 'wait_timeout')):
     elapsed = 0
     period = 1
     while not condition():

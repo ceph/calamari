@@ -12,7 +12,9 @@ import json
 
 from minion_sim.sim import MinionSim
 from django.utils.unittest.case import SkipTest
+from tests.config import TestConfig
 
+config = TestConfig()
 logging.basicConfig()
 
 log = logging.getLogger(__name__)
@@ -153,7 +155,7 @@ class ExternalCephControl(CephControl):
     """
 
     def __init__(self):
-        with open(config.get('testing', 'external_cluster_path')) as self.config_path:
+        with open(config.get('testing', 'external_cluster_path')) as f:
             self.config = yaml.load(f)
 
         # TODO parse this out of the cluster.yaml
