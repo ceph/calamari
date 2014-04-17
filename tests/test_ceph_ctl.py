@@ -2,9 +2,15 @@ from django.utils.unittest import TestCase
 from ceph_ctl import ExternalCephControl
 
 
+class TestableExternalCephControl(ExternalCephControl):
+    def __init__(self):
+        # Override the __init__ in the base-class to avoid config parsing
+        pass
+    
+
 class TestExternalCephControl(TestCase):
     def setUp(self):
-        self.ext_ceph_ctl = ExternalCephControl()
+        self.ext_ceph_ctl = TestableExternalCephControl()
 
     def test_osd_stat_down_and_out(self):
         stat_output = '''
