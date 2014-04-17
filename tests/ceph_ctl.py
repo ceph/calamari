@@ -11,10 +11,8 @@ from utils import wait_until_true, run_once
 import json
 
 from minion_sim.sim import MinionSim
-from calamari_common.config import CalamariConfig
 from django.utils.unittest.case import SkipTest
 
-config = CalamariConfig()
 logging.basicConfig()
 
 log = logging.getLogger(__name__)
