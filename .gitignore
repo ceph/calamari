@@ -23,3 +23,7 @@ pip_cache
 build/
 dev/var/
 figment*/
+repobuild/lists
+repobuild/dists
+repobuild/pool
+repobuild/db
