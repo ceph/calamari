@@ -1,0 +1,19 @@
+Origin: Saltstack
+Label: Saltstack Wheezy
+Suite: stable
+Codename: wheezy-saltstack
+Version: 7.2
+Architectures: amd64 i386
+Components: main
+Description: Saltstack wheezy repo
+Update: salt
+
+Origin: Debian
+Label: Debian Wheezy
+Suite: stable
+Codename: wheezy
+Version: 7.2
+Architectures: amd64 i386
+Components: main
+Description: Debian wheezy repo
+update: upstream
