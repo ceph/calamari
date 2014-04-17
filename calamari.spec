@@ -266,11 +266,16 @@ exit 0
 
 %postun -n calamari-webapp
 # Remove anything left behind in the calamari and graphite
-# virtual environment  directories.
-rm -rf /opt/calamari
-rm -rf /opt/graphite
-exit 0
-
+# virtual environment  directories, if this is a "last-instance" call
+CLEANUP_SUBDIRS="alembic conf salt salt-local venv"
+if [ $1 == 0 ] ; then
+	for subdir in $CLEANUP_SUBDIRS ; do
+		rm -rf /opt/calamari/$subdir
+	done
+	rm -rf /var/log/graphite
+	rm -rf /var/log/calamari
+	rm -rf /var/lib/graphite/whisper
+fi
 exit 0
 
 %changelog
