@@ -1,0 +1,6 @@
+Name: salt
+Method: http://debian.saltstack.com/debian
+
+Name: upstream
+Method: http://ftp.debian.org/debian
+FilterList: purge upstream.packages
