@@ -8,7 +8,10 @@ import getpass
 import os
 from jinja2 import Template
 
-TEMPLATES = ["dev/etc/salt/master.template", "dev/calamari.conf.template", "dev/alembic.ini.template"]
+TEMPLATES = ["dev/etc/salt/master.template",
+             "dev/calamari.conf.template",
+             "dev/alembic.ini.template",
+             "tests/test.conf.template"]
 
 calamari_root = "/" + os.path.join(*(os.path.abspath(__file__).split(os.sep)[0:-2]))
 calamari_user = getpass.getuser()
