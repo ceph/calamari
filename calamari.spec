@@ -60,7 +60,6 @@ browser.
 %dir /var/log/calamari
 %dir /var/log/graphite
 %dir /var/lib/calamari
-%dir /var/lib/calamari_web
 %dir /var/lib/cthulhu
 %dir /var/lib/graphite
 %dir /var/lib/graphite/log
@@ -84,7 +83,6 @@ calamari_httpd()
 	# centos64
 	mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.orig
         chown -R apache:apache /var/log/calamari
-        chown -R apache:apache /var/lib/calamari_web
 	cd $d
 
 	# Load our salt config
