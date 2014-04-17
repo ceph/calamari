@@ -155,7 +155,7 @@ class ExternalCephControl(CephControl):
     """
 
     def __init__(self):
-        with open(config.get('testing', 'external_cluster_path')) as f:
+        with open(config.get('testing', 'external_cluster_path')) as self.config_path:
             self.config = yaml.load(f)
 
         # TODO parse this out of the cluster.yaml

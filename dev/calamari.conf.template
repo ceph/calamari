@@ -33,9 +33,3 @@ static_root = {{calamari_root}}/webapp/content/
 
 root = {{venv}}
 storage_path = {{venv}}/storage
-
-[testing]
-
-calamari_control = embedded
-ceph_control = embedded
-external_cluster_path = {{calamari_root}}/../teuthology/archive/cluster.yaml
