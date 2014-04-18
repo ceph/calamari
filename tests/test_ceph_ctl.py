@@ -1,8 +1,8 @@
 from django.utils.unittest import TestCase
 from ceph_ctl import ExternalCephControl
 
-class TestExternalCephControl(TestCase):
 
+class TestExternalCephControl(TestCase):
     def setUp(self):
         self.ext_ceph_ctl = ExternalCephControl()
 
@@ -107,11 +107,13 @@ class TestExternalCephControl(TestCase):
         self.assertTrue(self.ext_ceph_ctl._check_default_pools_only(lspools_output))
 
     def test_pg_stat_less_active_and_clean(self):
-        self.assertFalse(self.ext_ceph_ctl._check_pgs_active_and_clean('v233: 192 pgs: 1 active+clean; 0 bytes data, 34836 KB used, 926 GB / 926 GB avail'))
+        self.assertFalse(self.ext_ceph_ctl._check_pgs_active_and_clean(
+            'v233: 192 pgs: 1 active+clean; 0 bytes data, 34836 KB used, 926 GB / 926 GB avail'))
 
     def test_pg_stat_active_and_clean(self):
-        self.assertTrue(self.ext_ceph_ctl._check_pgs_active_and_clean('v228: 192 pgs: 192 active+clean; 0 bytes data, 108 MB used, 2778 GB / 2778 GB avail'))
+        self.assertTrue(self.ext_ceph_ctl._check_pgs_active_and_clean(
+            'v228: 192 pgs: 192 active+clean; 0 bytes data, 108 MB used, 2778 GB / 2778 GB avail'))
 
     def test_pg_stat_active_remapped(self):
-        self.assertFalse(self.ext_ceph_ctl._check_pgs_active_and_clean('v238: 192 pgs: 192 active+remapped; 0 bytes data, 76072 KB used, 1852 GB / 1852 GB avail'))
-
+        self.assertFalse(self.ext_ceph_ctl._check_pgs_active_and_clean(
+            'v238: 192 pgs: 192 active+remapped; 0 bytes data, 76072 KB used, 1852 GB / 1852 GB avail'))
