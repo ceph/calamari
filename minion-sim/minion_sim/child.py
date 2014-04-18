@@ -63,7 +63,7 @@ def main():
 
         server_heartbeat = {
             'services': services,
-            'ceph_version': 'cluster_simulator-0.314159',
+            'ceph_version': '0.67.8-simulator',
             'boot_time': 123456
         }
 

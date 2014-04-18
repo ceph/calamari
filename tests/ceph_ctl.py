@@ -8,7 +8,7 @@ from itertools import chain
 import yaml
 from subprocess import Popen, PIPE
 from utils import wait_until_true, run_once
-import simplejson as json
+import json
 
 from minion_sim.sim import MinionSim
 from calamari_common.config import CalamariConfig
@@ -18,6 +18,7 @@ config = CalamariConfig()
 logging.basicConfig()
 
 log = logging.getLogger(__name__)
+
 
 class CephControl(object):
     """
@@ -82,6 +83,7 @@ class EmbeddedCephControl(CephControl):
     """
     One or more simulated ceph clusters
     """
+
     def __init__(self):
         self._config_dirs = {}
         self._sims = {}
@@ -175,23 +177,31 @@ class ExternalCephControl(CephControl):
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
         self.reset_all_osds(self._run_command(self._get_admin_node(),
-                              "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)))
+                                              "ceph --cluster {cluster} osd dump -f json-pretty".format(
+                                                  cluster=self.cluster_name)))
 
         # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd dump -f json-pretty".format(cluster=self.cluster_name)),
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
+                                                       "ceph --cluster {cluster} osd dump -f json-pretty".format(
+                                                           cluster=self.cluster_name)),
                              self._check_osds_in_and_up)
         # TODO what about tests that create OSDs we should remove them
 
         self.reset_all_pools(self._run_command(self._get_admin_node(),
-                                               "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)))
+                                               "ceph --cluster {cluster} osd lspools -f json-pretty".format(
+                                                   cluster=self.cluster_name)))
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd lspools -f json-pretty".format(cluster=self.cluster_name)),
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
+                                                       "ceph --cluster {cluster} osd lspools -f json-pretty".format(
+                                                           cluster=self.cluster_name)),
                              self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(), "ceph --cluster {cluster} pg stat".format(cluster=self.cluster_name)),
+        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
+                                                       "ceph --cluster {cluster} pg stat".format(
+                                                           cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
 
         self._bootstrap(self.config['master_fqdn'])
@@ -216,7 +226,7 @@ class ExternalCephControl(CephControl):
         for target in self.get_fqdns(fsid):
             if minion_id and minion_id not in target:
                 continue
-            output = self._run_command(target, "sudo service salt-minion {action}".format(action=action))
+            self._run_command(target, "sudo service salt-minion {action}".format(action=action))
 
     def _wait_for_state(self, command, state):
         log.info('Waiting for {state} on cluster'.format(state=state))
@@ -262,7 +272,8 @@ class ExternalCephControl(CephControl):
         for pool in pools:
             if pool['poolname'] in default_pools:
                 continue
-            self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(pool=pool['poolname']))
+            self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
+                pool=pool['poolname']))
 
     def restart_minions(self):
         for target in self.get_fqdns(None):
@@ -287,12 +298,13 @@ class ExternalCephControl(CephControl):
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = 'in' if osd_in else 'out'
-        output = self._run_command(self._get_admin_node(), "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name, command=command, id=int(osd_id)))
+        output = self._run_command(self._get_admin_node(),
+                                   "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name,
+                                                                                        command=command,
+                                                                                        id=int(osd_id)))
         log.info(output)
 
 
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
     assert isinstance(externalctl.config, dict)
-
-

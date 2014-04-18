@@ -98,8 +98,19 @@ class ServerTestCase(TestCase):
         """
         Wait for all the expected servers to appear in the REST API
         """
-        expected_servers = self.ceph_ctl.get_server_fqdns()
-        wait_until_true(lambda: set([s['fqdn'] for s in self.api.get("server").json()]) == set(expected_servers), timeout=30)
+        expected_servers = set(self.ceph_ctl.get_server_fqdns())
+
+        def servers_available():
+            servers = self.api.get("server").json()
+            managed_servers = [s for s in servers if s['managed']]
+            ready = set([s['fqdn'] for s in managed_servers]) == expected_servers
+            if not ready:
+                log.debug("_wait_for_servers: {0} ({1} managed) servers visible vs. {2} expected".format(
+                    len(servers), len(managed_servers), len(expected_servers)
+                ))
+            return ready
+
+        wait_until_true(servers_available, timeout=30)
 
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")

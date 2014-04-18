@@ -101,24 +101,55 @@ class TestPoolManagement(RequestTestCase):
 
         # TODO: check on the cluster that it's really gone, not just on calamari server
 
+    def _get_version(self):
+        self._wait_for_servers()
+
+        fqdns = self.ceph_ctl.get_server_fqdns()
+
+        # Pick any server, assume tests aren't mixed version
+        version = self.api.get("server/{0}".format(fqdns[0])).json()['ceph_version']
+        log.debug("version = %s" % version)
+
+        return version.split(".")
+
+    def _non_default_args(self, fsid):
+        """
+        Get some pool arguments that are different to the defaults.  Because the
+        defaults depend on the Ceph version, this is conditional on that too.
+        """
+
+        args = {
+            'size': 3,
+            'min_size': 2,
+            'crash_replay_interval': 120,
+            'crush_ruleset': 1,
+            'quota_max_objects': 42,
+            'quota_max_bytes': 42000000
+        }
+
+        if self._get_version() > (0, 67, 7):
+            log.debug("Including hashpspool in non_default_args")
+            config = self.api.get("cluster/{0}/config".format(fsid)).json()
+            config = dict([(i['key'], i['value']) for i in config])
+            default_hashpspool = config['osd_pool_default_flag_hashpspool'] == 'true'
+
+            args['hashpspool'] = False if default_hashpspool else True
+        else:
+            log.debug("Old ceph: excluding hashpspool from non_default_args")
+
+        return args
+
     def test_create_args(self):
         """
         Test that when non-default attributes are passed to create, they are
         accepted and reflected on the created pool.
         """
 
-        # Some non-default values
-        optionals = {
-            'size': 3,
-            'min_size': 2,
-            'crash_replay_interval': 120,
-            'crush_ruleset': 1,
-            'hashpspool': True,
-            'quota_max_objects': 42,
-            'quota_max_bytes': 42000000
-        }
-
         cluster_id = self._wait_for_cluster()
+
+        # Some non-default values
+        optionals = self._non_default_args(cluster_id)
+
         pool_name = 'test1'
         self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
@@ -149,19 +180,7 @@ class TestPoolManagement(RequestTestCase):
         time.sleep(10)
 
         # Some non-default values
-        mods = {
-            'size': 3,
-            'min_size': 2,
-            'crash_replay_interval': 120,
-            # Leave out pg_num stuff because it's a bit special and
-            # tested separately
-            # 'pg_num': 256,
-            # 'pgp_num': 256,
-            'crush_ruleset': 1,
-            'hashpspool': True,
-            'quota_max_objects': 42,
-            'quota_max_bytes': 42000000
-        }
+        mods = self._non_default_args(cluster_id)
         for var, val in mods.items():
             # Sanity check we really are changing something, that the new val is diff
             self.assertNotEqual(pool[var], val)
