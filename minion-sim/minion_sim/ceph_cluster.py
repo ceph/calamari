@@ -1258,6 +1258,14 @@ class CephCluster(CephClusterState):
         log.info("pool_update %s %s %s" % (pool_name, var, val))
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool_name'] == pool_name][0]
 
+        if var in ['pg_num', 'pgp_num']:
+            pgs = [p for p in self._objects['pg_brief'] if p['pgid'].startswith("{0}.".format(pool['pool']))]
+            states = set()
+            for p in pgs:
+                states |= set(p['state'].split("+"))
+            if 'creating' in states:
+                raise RuntimeError("Cannot modify pg_num while PGs are creating")
+
         if var == 'pg_num':
             log.debug("pool_update creating pgs %s->%s" % (
                 pool['pg_num'], val
@@ -1316,7 +1324,7 @@ class CephCluster(CephClusterState):
                 pg['acting'] = osd_ids
 
             # Call a PG clean if its not remapped and all its OSDs are in
-            if all([osds[i]['in'] == 1 for i in pg['acting']]) and not 'remapped' in states:
+            if all([osds[i]['in'] == 1 for i in pg['acting']]) and 'remapped' not in states:
                 states.add('clean')
             else:
                 states.discard('clean')

@@ -254,6 +254,64 @@ class OsdMapModifyingRequest(UserRequestBase):
             self.log.debug("check pending (%s < %s)" % (osd_map.version, self._await_version))
 
 
+class PoolCreatingRequest(OsdMapModifyingRequest):
+    """
+    Like an OsdMapModifyingRequest, but additionally wait for all PGs in the resulting pool
+    to leave state 'creating' before completing.
+    """
+
+    def __init__(self, headline, fsid, cluster_name, pool_name, commands):
+        super(PoolCreatingRequest, self).__init__(headline, fsid, cluster_name, commands)
+        self._awaiting_pgs = False
+        self._pool_name = pool_name
+
+        self._pool_id = None
+        self._pg_count = None
+
+    @property
+    def awaiting_versions(self):
+        if self._awaiting_pgs:
+            return {PgSummary: None}
+        elif self._await_version:
+            return {OsdMap: self._await_version}
+        else:
+            return {}
+
+    def on_map(self, sync_type, sync_objects):
+        if self._awaiting_pgs:
+            assert sync_type == PgSummary
+            pg_summary = sync_objects.get(PgSummary)
+            pgs_not_creating = 0
+            for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
+                states = state_tuple.split("+")
+                if 'creating' not in states:
+                    pgs_not_creating += count
+
+            if pgs_not_creating >= self._pg_count:
+                self.complete()
+
+        elif self._await_version:
+            assert sync_type == OsdMap
+            osd_map = sync_objects.get(OsdMap)
+            if osd_map.version >= self._await_version:
+                for pool_id, pool in osd_map.pools_by_id.items():
+                    if pool['pool_name'] == self._pool_name:
+                        self._pool_id = pool_id
+                        self._pg_count = pool['pg_num']
+                        break
+
+                if self._pool_id is None:
+                    log.error("'{0}' not found, pools are {1}".format(
+                        self._pool_name, [p['pool_name'] for p in osd_map.pools_by_id.values()]
+                    ))
+                    self.set_error("Expected pool '{0}' not found".format(self._pool_name))
+                    self.complete()
+
+                self._awaiting_pgs = True
+        else:
+            raise NotImplementedError("Unexpected map {0}".format(sync_type))
+
+
 class PgProgress(object):
     """
     Encapsulate the state that PgCreatingRequest uses for splitting up
@@ -288,8 +346,23 @@ class PgProgress(object):
         else:
             return "Waiting for PG creation (%s/%s)" % (created, total_creating)
 
+    def expected_count(self):
+        """
+        After a successful 'osd pool set' operation, what should pg_num be?
+        """
+        return self._intermediate_goal
+
     def is_final_block(self):
+        """
+        Is the current expansion under way the final one?
+        """
         return self._intermediate_goal == self.final
+
+    def is_complete(self):
+        """
+        Have all expected PGs been created?
+        """
+        return self._still_to_create == 0
 
     @property
     def goal(self):
@@ -306,14 +379,14 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     the number of new PGs requested is greater than mon_osd_max_split_count,
     caller is responsible for telling us how many we may create at once.
     """
-    PRE_CREATE = 'pre_create'
-    CREATING = 'creating'
-    POST_CREATE = 'post_create'
 
-    # I need to know:
-    # - starting number of PGs
-    # - goal number of PGs
-    # - how many PGs I may create in one go.
+    # Simple state machine for phases:
+    #  - have send a job, waiting for JID to complete
+    #  - a jid completed, waiting for corresponding OSD map update
+    #  - OSD map has updated, waiting for created PGs to leave state 'creating'
+    JID_WAIT = 'jid_wait'
+    OSD_MAP_WAIT = 'osd_map_wait'
+    PG_MAP_WAIT = 'pg_map_wait'
 
     def __init__(self, headline, fsid, cluster_name, commands,
                  pool_id, pool_name, pgp_num,
@@ -325,7 +398,6 @@ class PgCreatingRequest(OsdMapModifyingRequest):
         :param block_size: How many PGs we may create in one "osd pool set" command
         """
 
-        self._phase = self.PRE_CREATE
         self._await_osd_version = None
 
         self._pool_id = pool_id
@@ -333,86 +405,121 @@ class PgCreatingRequest(OsdMapModifyingRequest):
         self._headline = headline
 
         self._pg_progress = PgProgress(initial_pg_count, final_pg_count, block_size)
-        commands.append(('osd pool set', {
-            'pool': self._pool_name,
-            'var': 'pg_num',
-            'val': self._pg_progress.goal
-        }))
-
-        self._post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
+        if initial_pg_count != final_pg_count:
+            commands.append(('osd pool set', {
+                'pool': self._pool_name,
+                'var': 'pg_num',
+                'val': self._pg_progress.goal
+            }))
+            self._post_create_commands = [("osd pool set", {'pool': pool_name, 'var': 'pgp_num', 'val': pgp_num})]
 
         super(PgCreatingRequest, self).__init__(headline, fsid, cluster_name, commands)
+        self._phase = self.JID_WAIT
 
     @property
     def status(self):
-        if not self.state == self.COMPLETE and self._phase == self.CREATING:
+        if not self.state == self.COMPLETE and not self._pg_progress.is_complete():
             return self._pg_progress.get_status()
         else:
             return super(PgCreatingRequest, self).status
 
     def complete_jid(self, result):
-        if self._phase == self.PRE_CREATE:
-            self.log.debug("PgCreatingRequest.complete_jid PRE_CREATE->CREATING")
-            # The initial tranche of jobs has completed, start waiting
-            # for PG creation to complete
-            self.jid = None
-            self._await_osd_version = result['versions']['osd_map']
-            self._phase = self.CREATING
-        elif self._phase == self.POST_CREATE:
-            self.log.debug("PgCreatingRequest.complete_jid POST_CREATE->complete")
-            # Act just like an OSD map modification
-            super(PgCreatingRequest, self).complete_jid(result)
-        elif self._phase == self.CREATING:
-            self.jid = None
-            self.log.debug(
-                "PgCreatingRequest.complete_jid: successfully issued request for %s" % self._pg_progress.goal)
+        # No matter at what stage, the next thing to do after completing
+        # a JID is to wait for the resulting change to the OSD map
+        assert self._phase == self.JID_WAIT
+        self.jid = None
+        self.result = result
+        self._await_version = result['versions']['osd_map']
+        self._phase = self.OSD_MAP_WAIT
 
     @property
     def awaiting_versions(self):
-        if self._phase == self.CREATING:
-            # Waiting for PGs to create, I watch the PG stats until none are in 'creating'
-            return {
-                PgSummary: None
-            }
-        elif self._phase == self.PRE_CREATE:
-            # I haven't finished issuing a pool create, nothing to wait for
+        if self._phase == self.JID_WAIT:
             return {}
-        elif self._phase == self.POST_CREATE:
-            # Final phase, I have started issuing my _post_create_commands and will
-            # wait for the OSD map to reflect those commands.
-            return super(PgCreatingRequest, self).awaiting_versions
+        elif self._phase == self.OSD_MAP_WAIT:
+            return {
+                OsdMap: self._await_version
+            }
+        elif self._phase == self.PG_MAP_WAIT:
+            return {
+                PgSummary: None,
+                OsdMap: None
+            }
 
     def on_map(self, sync_type, sync_objects):
         self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
-        if self._phase == self.CREATING:
-            assert sync_type == PgSummary
-            # Count the PGs in this pool which are not in state 'creating'
-            pg_summary = sync_objects.get(PgSummary)
-            pgs_not_creating = 0
-            for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
-                states = state_tuple.split("+")
-                if 'creating' not in states:
-                    pgs_not_creating += count
+        if self._phase == self.PG_MAP_WAIT:
+            if sync_type == PgSummary:
+                # Count the PGs in this pool which are not in state 'creating'
+                pg_summary = sync_objects.get(PgSummary)
+                pgs_not_creating = 0
+                for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
+                    states = state_tuple.split("+")
+                    if 'creating' not in states:
+                        pgs_not_creating += count
 
-            self._pg_progress.set_created_pg_count(pgs_not_creating)
-            self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s (final %s)" % (
-                pgs_not_creating, self._pg_progress.goal, self._pg_progress.final))
-            if pgs_not_creating >= self._pg_progress.goal:
-                if self._pg_progress.is_final_block():
-                    self._phase = self.POST_CREATE
-                    self.log.debug("PgCreatingRequest.on_map CREATING->POST_CREATE")
-                    self._submit(self._post_create_commands)
+                self._pg_progress.set_created_pg_count(pgs_not_creating)
+                self.log.debug("PgCreatingRequest.on_map: pg_counter=%s/%s (final %s)" % (
+                    pgs_not_creating, self._pg_progress.goal, self._pg_progress.final))
+                if pgs_not_creating >= self._pg_progress.goal:
+                    if self._pg_progress.is_final_block():
+                        self.log.debug("PgCreatingRequest.on_map Creations complete")
+                        if self._post_create_commands:
+                            self.log.debug("PgCreatingRequest.on_map Issuing post-create commands")
+                            self._submit(self._post_create_commands)
+                            self._phase = self.JID_WAIT
+                        else:
+                            self.log.debug("PgCreatingRequest.on_map All done")
+                            self.complete()
+                    else:
+                        self.log.debug("PgCreatingREQUEST.on_map Issuing more creates")
+                        self._pg_progress.advance_goal()
+                        # Request another tranche of PGs up to _block_size
+                        self._submit([('osd pool set', {
+                            'pool': self._pool_name,
+                            'var': 'pg_num',
+                            'val': self._pg_progress.goal
+                        })])
+                        self._phase = self.JID_WAIT
+            elif sync_type == OsdMap:
+                # Keep an eye on the OsdMap to check that pg_num is what we expect: otherwise
+                # if forces of darkness changed pg_num then our PG creation check could
+                # get confused and fail to complete.
+                osd_map = sync_objects.get(OsdMap)
+                pool = osd_map.pools_by_id[self._pool_id]
+                if pool['pg_num'] != self._pg_progress.expected_count():
+                    self.set_error("PG creation interrupted (unexpected change to pg_num)")
+                    self.complete()
+                    return
+            else:
+                raise NotImplementedError("Unexpected map {1} in state {2}".format(
+                    sync_type, self._phase
+                ))
+
+        elif self._phase == self.OSD_MAP_WAIT:
+            # Read back the pg_num for my pool from the OSD map
+            osd_map = sync_objects.get(OsdMap)
+            pool = osd_map.pools_by_id[self._pool_id]
+
+            # In Ceph <= 0.67.7, "osd pool set pg_num" will return success even if it hasn't
+            # really increased pg_num, so we must examine the OSD map to see if it really succeded
+            if pool['pg_num'] != self._pg_progress.expected_count():
+                self.set_error("PG creation failed (check that there aren't already PGs in 'creating' state)")
+                self.complete()
+                return
+
+            assert self._await_version
+            ready = osd_map.version >= self._await_version
+            if ready:
+                # OSD map advancement either means a PG creation round completed, or that
+                # the post_create_commands completed.  Distinguish by looking at pg_progress.
+                if self._pg_progress.is_complete():
+                    # This was the OSD map update from the post_create_commands, we we're all done!
+                    self.complete()
                 else:
-                    self.log.debug("PgCreatingREQUEST.on_map CREATING->CREATING")
-                    self._pg_progress.advance_goal()
-                    # Request another tranche of PGs up to _block_size
-                    self._submit([('osd pool set', {
-                        'pool': self._pool_name,
-                        'var': 'pg_num',
-                        'val': self._pg_progress.goal
-                    })])
+                    # This was the OSD map update from a PG creation command, so start waiting
+                    # for the pgs
+                    self._phase = self.PG_MAP_WAIT
 
-        elif self._phase == self.POST_CREATE:
-            super(PgCreatingRequest, self).on_map(sync_type, sync_objects)
         else:
             raise NotImplementedError("Unexpected {0} in phase {1}".format(sync_type, self._phase))

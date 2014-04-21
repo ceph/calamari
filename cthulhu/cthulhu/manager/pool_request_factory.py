@@ -1,7 +1,7 @@
 from cthulhu.log import log
 from cthulhu.manager.request_factory import RequestFactory
 from calamari_common.types import OsdMap, Config
-from cthulhu.manager.user_request import OsdMapModifyingRequest, PgCreatingRequest
+from cthulhu.manager.user_request import OsdMapModifyingRequest, PgCreatingRequest, PoolCreatingRequest
 
 # Valid values for the 'var' argument to 'ceph osd pool set'
 POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval", "pg_num", "pgp_num", "crush_ruleset", "hashpspool"]
@@ -123,9 +123,6 @@ class PoolRequestFactory(RequestFactory):
                 ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def create(self, attributes):
-        # TODO: handle errors in a way that caller can show to a user, e.g.
-        # if the name is wrong we should be sending a structured errors dict
-        # that they can use to associate the complaint with the 'name' field.
         commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
 
         # Which attributes must we set after the initial create?
@@ -143,6 +140,7 @@ class PoolRequestFactory(RequestFactory):
         log.debug("Post-create attributes: %s" % post_create_attrs)
         log.debug("Commands: %s" % post_create_attrs)
 
-        return OsdMapModifyingRequest(
+        return PoolCreatingRequest(
             "Creating pool '{name}'".format(name=attributes['name']),
-            self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+            self._cluster_monitor.fsid, self._cluster_monitor.name,
+            attributes['name'], commands)
