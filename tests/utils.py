@@ -1,13 +1,23 @@
 import time
 import datetime
+from tests.config import TestConfig
+
+config = TestConfig()
+
+
+def get_timeout():
+    timeout = config.get('testing', 'embedded_wait_timeout')
+    if config.get('testing', 'ceph_control') == 'external':
+        timeout = config.get('testing', 'external_wait_timeout')
+
+    return timeout
 
 
 class WaitTimeout(Exception):
     pass
 
 
-# TODO we may want different time here when runnning against and external controller
-def wait_until_true(condition, timeout=20):
+def wait_until_true(condition, timeout=get_timeout()):
     elapsed = 0
     period = 1
     while not condition():

@@ -8,11 +8,14 @@ import getpass
 import os
 from jinja2 import Template
 
-TEMPLATES = ["dev/etc/salt/master.template", "dev/calamari.conf.template", "dev/alembic.ini.template"]
+TEMPLATES = ["dev/etc/salt/master.template",
+             "dev/calamari.conf.template",
+             "dev/alembic.ini.template",
+             "tests/test.conf.template"]
 
 calamari_root = "/" + os.path.join(*(os.path.abspath(__file__).split(os.sep)[0:-2]))
 calamari_user = getpass.getuser()
-venv = os.environ.get('VIRTUAL_ENV', calamari_root + 'env')
+venv = os.environ.get('VIRTUAL_ENV', os.path.join(calamari_root, 'env'))
 
 print "Calamari repo is at: %s, user is %s, venv %s" % \
     (calamari_root, calamari_user, venv)
