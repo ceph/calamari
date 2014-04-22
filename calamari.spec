@@ -30,14 +30,9 @@ Release: 	%{?revision}%{?dist}
 License: 	Inktank
 URL:     	http://ceph.com/
 Source0: 	%{name}_%{version}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-%description
 
 %prep
 %setup -q -n %{name}-%{version}
-
-%build
-#python setup.py build
 
 %install
 make DESTDIR=${RPM_BUILD_ROOT} install-rpm
@@ -56,7 +51,6 @@ browser.
 %{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/calamari/
 /usr/bin/calamari-ctl
-/usr/lib/debug/
 %dir /var/log/calamari
 %dir /var/log/graphite
 %dir /var/lib/calamari
