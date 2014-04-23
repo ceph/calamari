@@ -32,14 +32,14 @@ if config.get('testing', 'calamari_control') == 'embedded':
 elif config.get('testing', 'calamari_control') == 'external':
     CALAMARI_CTL = ExternalCalamariControl
 else:
-    raise NotImplementedError
+    raise NotImplementedError()
 
 if config.get('testing', 'ceph_control') == 'embedded':
     CEPH_CTL = EmbeddedCephControl
 elif config.get('testing', 'ceph_control') == 'external':
     CEPH_CTL = ExternalCephControl
 else:
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
 class ServerTestCase(TestCase):
@@ -136,6 +136,7 @@ class ServerTestCase(TestCase):
             if response.status_code != 200 or not len(response.json()):
                 any_absent = True
                 break
+
         return not any_absent
 
 

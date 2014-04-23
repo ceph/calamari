@@ -165,8 +165,15 @@ class ExternalCephControl(CephControl):
         ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
         out, err = proc.communicate()
-        assert proc.returncode == 0
-        log.info(err)
+        if proc.returncode != 0:
+            log.error("stdout: %s" % out)
+            log.error("stderr: %s" % err)
+            raise RuntimeError("Error {0} running {1}:'{2}'".format(
+                proc.returncode, target, command
+            ))
+        else:
+            log.info(err)
+
         return out
 
     def configure(self, server_count, cluster_count=1):
@@ -260,7 +267,7 @@ class ExternalCephControl(CephControl):
             self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
 
         for flag in ['pause']:
-            self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
+            self._run_command(target, "ceph --cluster ceph osd unset {flag}".format(flag=flag))
 
     def reset_all_pools(self, output):
         target = self._get_admin_node()
