@@ -165,8 +165,15 @@ class ExternalCephControl(CephControl):
         ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
         out, err = proc.communicate()
-        assert proc.returncode == 0
-        log.info(err)
+        if proc.returncode != 0:
+            log.error("stdout: %s" % out)
+            log.error("stderr: %s" % err)
+            raise RuntimeError("Error {0} running {1}:'{2}'".format(
+                proc.returncode, target, command
+            ))
+        else:
+            log.info(err)
+
         return out
 
     def configure(self, server_count, cluster_count=1):
