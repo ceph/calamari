@@ -187,7 +187,37 @@ class EmbeddedCalamariControl(CalamariControl):
         wait_until_true(self._services_up)
 
     def start(self):
+
+        def _is_stale(ps):
+            names = ["bin/salt-master",
+                     "bin/supervisord",
+                     "bin/cthulhu-manager",
+                     "calamari/manage.py",
+                     "bin/carbon-cache.py"]
+
+            try:
+                cmdline = ps.cmdline()
+            except psutil.AccessDenied:
+                return False
+
+            if not cmdline:
+                return False
+
+            if "bin/python" not in cmdline[0]:
+                return False
+
+            for c in cmdline:
+                for name in names:
+                    if c.endswith(name):
+                        log.error("Stale {0} process: {1}".format(
+                            name, ps.pid
+                        ))
+                        return True
+
+            return False
+
         if self._first:
+            log.info("EmbeddedCalamariControl.start: clearing down salt")
             self._first = False
             # Clean out the salt master's caches to mitigate any confusion from continually removing
             # and adding servers with the same FQDNs.
@@ -199,9 +229,9 @@ class EmbeddedCalamariControl(CalamariControl):
                     else:
                         os.unlink(f)
 
-            lingering_salt = [p for p in psutil.get_process_list() if p.name() == 'salt-master']
+            lingering_salt = [p for p in psutil.get_process_list() if _is_stale(p)]
             for p in lingering_salt:
-                log.warn("Killing a salt-master which failed to die: %s" % p.pid)
+                log.warn("Killing stale process: %s" % p.pid)
                 p.kill()
 
         config_path = os.path.join(TREE_ROOT, "dev/supervisord.conf")
