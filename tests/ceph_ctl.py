@@ -267,7 +267,7 @@ class ExternalCephControl(CephControl):
             self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
 
         for flag in ['pause']:
-            self._run_command(target, "ceph --cluster ceph osd unset {flag}; done".format(flag=flag))
+            self._run_command(target, "ceph --cluster ceph osd unset {flag}".format(flag=flag))
 
     def reset_all_pools(self, output):
         target = self._get_admin_node()
