@@ -4,7 +4,7 @@
 calamari_control = embedded
 ceph_control = embedded
 
-embedded_wait_timeout = 10
-external_wait_timeout = 60
+embedded_timeout_factor = 1
+external_timeout_factor = 6
 
 external_cluster_path = {{calamari_root}}/../teuthology/archive/cluster.yaml
