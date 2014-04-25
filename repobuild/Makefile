@@ -1,11 +1,19 @@
 
 ubuntu:
-	reprepro --confdir=./conf --noskipold -b ./ubuntu/ update
+	reprepro --confdir=./conf/ubuntu --noskipold -b ./ubuntu/ update
 	# Using plain salt-minion for the moment (#6855)
 	#       reprepro -b ubuntu/ includedeb precise ../../calamari-salt-minion_*.deb
-	reprepro --confdir=./conf -b ./ubuntu/ remove precise diamond
-	reprepro --confdir=./conf --noskipold -b ./ubuntu/ includedeb precise ../../Diamond/build/*.deb
+	reprepro --confdir=./conf/ubuntu -b ./ubuntu/ remove precise diamond
+	reprepro --confdir=./conf/ubuntu --noskipold -b ./ubuntu/ includedeb precise ../../Diamond/build/*.deb
 	tar czf calamari-repo-ubuntu.tar.gz ubuntu/
+
+wheezy:
+	reprepro --confdir=./conf/wheezy --noskipold -b ./wheezy/ update
+	# Using plain salt-minion for the moment (#6855)
+	#       reprepro -b ubuntu/ includedeb precise ../../calamari-salt-minion_*.deb
+	reprepro --confdir=./conf/wheezy -b ./wheezy/ remove wheezy diamond
+	reprepro --confdir=./conf/wheezy --noskipold -b ./wheezy/ includedeb wheezy ../../Diamond/build/*.deb
+	tar czf calamari-repo-wheezy.tar.gz wheezy/
 
 el6:
 	mkdir el6 || true
@@ -15,6 +23,6 @@ el6:
 	tar czf calamari-repo-el6.tar.gz el6/
 
 clean:
-	rm -rf el6 ubuntu/db ubuntu/dists ubuntu/pool ubuntu/lists
+	rm -rf el6 ubuntu wheezy
 
 .PHONY: ubuntu el6 clean

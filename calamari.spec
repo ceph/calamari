@@ -10,268 +10,119 @@
 #################################################################################
 # common
 #################################################################################
-Name:		calamari
-Version: 	1.0.0
-Release: 	0%{?dist}
-Summary: 	Ceph monitoring tool
-License: 	Inktank
+Name:		calamari-server
+Summary:        Inktank package containing the Calamari management webapp
 Group:   	System/Filesystems
+BuildRequires:  postgresql-libs
+Requires:       httpd
+Requires:	mod_wsgi
+Requires:       cairo
+Requires:	logrotate
+Requires:       supervisor
+Requires:       salt-master
+Requires:       salt-minion
+Requires:       redhat-lsb-core
+Requires:	postgresql
+Requires:	postgresql-libs
+Requires:	postgresql-server
+Version: 	%{version}
+Release: 	%{?revision}%{?dist}
+License: 	Inktank
 URL:     	http://ceph.com/
 Source0: 	%{name}_%{version}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-%description
-Meta package for calamari-agent and calamari-restapi packages.
 
 %prep
 %setup -q -n %{name}-%{version}
 
-%build
-#python setup.py build
-
 %install
 make DESTDIR=${RPM_BUILD_ROOT} install-rpm
 
-## calamari restapi
-#echo "installing calamari-restapi"
-#install -m 0755 -D restapi/cephrestapi.conf \
-#                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/conf.d/cephrestapi.conf
-#install -m 0755 -D restapi/cephrestwsgi.py \
-#                   $RPM_BUILD_ROOT/%{_sysconfdir}/nginx/cephrestwsgi.py
-
-%clean
-## [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf "$RPM_BUILD_ROOT"
-
-#################################################################################
-# packages
-#################################################################################
-
-%package -n calamari-agent
-Summary:	Inktank metapackage to install/configure Diamond collection agent.
-Group:   	System/Filesystems
-Requires:       diamond
-%description -n calamari-agent
-This package installs, configures, and starts the Diamond statistics
-collection daemon and collector agents for Ceph clusters.  The data
-will be sent to the administration host named 'calamari', which is
-running the Inktank Ceph Enterprise Manager.  Install this package on
-all hosts in the cluster running ceph daemons of any kind.
-
-%files -n calamari-agent
-%{_sysconfdir}/diamond/collectors/CephCollector.conf
-%{_sysconfdir}/diamond/collectors/NetworkCollector.conf
-
-%post -n calamari-agent
-# we need only change the first instance, [[GraphiteHandler]],
-# because that's the only collector we're using, but this will
-# also change [[GraphitePickleHandler]], which should be ok;
-# that will handle the case where someone later goes to enable
-# the Pickle handler.  Another option would be to add a 
-# host= .conf fragment in /etc/diamond/handlers/GraphiteHandler.conf,   
-# since that would override the options in /etc/diamond/diamond.conf
-
-sed 's/host = graphite/host = calamari/' \
-                < /etc/diamond/diamond.conf.example \
-                > /etc/diamond/diamond.conf
-# increase diamond polling interval for all collectors
-echo "interval = 30" >> /etc/diamond/diamond.conf
-cp /etc/default/diamond /etc/default/diamond.orig
-#sed -i 's/ENABLE_DIAMOND=".*"/ENABLE_DIAMOND="yes"/' \
-#                /etc/default/diamond
-#sed -i 's/DIAMOND_USER=".*"/DIAMOND_USER="root"/' \
-#                /etc/default/diamond
-chkconfig --add diamond
-service diamond start
-exit 0
-
-%preun -n calamari-agent
-service diamond stop || true
-chkconfig diamond off || true
-rm -f /etc/diamond/diamond.conf
-[ -e /etc/default/diamond.orig ] && \
-    mv /etc/default/diamond.orig /etc/default/diamond
-exit 0
-
-%package -n calamari-restapi
-Summary:        Inktank package to configure ceph-rest-api under nginx
-Group:   	System/Filesystems
-Requires:       ceph
-Requires:       nginx
-Requires:       uwsgi
-%description -n calamari-restapi
-Inktank package to configure ceph-rest-api under nginx.
-This package assumes ceph, nginx and uwsgi exist (with dependencies),
-and configures all of them to start and run ceph-rest-api in order to
-support Inktank Ceph Enterprise Manager.  Install this package on one
-of your monitor machines.
-
-%files -n calamari-restapi
-%{_sysconfdir}/nginx/conf.d/cephrestapi.conf
-%{_sysconfdir}/nginx/cephrestwsgi.py
-%{_sysconfdir}/nginx/cephrestwsgi.pyc
-%{_sysconfdir}/nginx/cephrestwsgi.pyo
-%{_sysconfdir}/init.d/cephrestapi
-
-%post -n calamari-restapi
-KEYRING=/etc/ceph/ceph.client.restapi.keyring
-if [ ! -f $KEYRING ] ; then
-    # update the cluster and the keyring file
-    ceph auth get-or-create client.restapi \
-        mds allow mon 'allow *' osd 'allow *' > $KEYRING
-    if [ $? -ne 0 ] ; then
-        echo "ceph cluster is not configured"
-        rm -f $KEYRING
-        exit 1
-    fi
-fi
-service cephrestapi start
-service nginx restart
-exit 0
-
-%preun -n calamari-restapi
-service cephrestapi stop
-KEYRING=/etc/ceph/ceph.client.restapi.keyring
-if [ -f $KEYRING ] ; then
-    ceph auth del client.restapi
-    rm $KEYRING
-fi      
-exit 0
-
-%postun -n calamari-restapi
-service nginx restart
-exit 0
-
-%package -n calamari-webapp
-Summary:        Inktank package containing the Calamari management webapp
-Group:   	System/Filesystems
-Requires:       httpd
-Requires:	mod_wsgi
-Requires:       cairo
-%description -n calamari-webapp
+%description -n calamari-server
 Inktank package containing the Calamari management webapp
 Calamari is a webapp to monitor and control a Ceph cluster via a web
-browser.  It depends on having calamari-agent and calamari-restapi deployed
-on the cluster.
+browser. 
 
-%files -n calamari-webapp
-/opt/calamari
-/opt/graphite
+%files -n calamari-server
+/opt/calamari/
+%{_sysconfdir}/salt/master.d/calamari.conf
+%{_sysconfdir}/graphite/
+%{_sysconfdir}/supervisor/conf.d/calamari.conf
+%{_sysconfdir}/logrotate.d/calamari
 %{_sysconfdir}/httpd/conf.d/calamari.conf
-%{_sysconfdir}/httpd/conf.d/graphite.conf
-%{_sysconfdir}/init.d/carbon-cache
-%{_sysconfdir}/init/kraken.conf
+%{_sysconfdir}/calamari/
+/usr/bin/calamari-ctl
 %dir /var/log/calamari
 %dir /var/log/graphite
+%dir /var/lib/calamari
+%dir /var/lib/cthulhu
+%dir /var/lib/graphite
+%dir /var/lib/graphite/log
+%dir /var/lib/graphite/log/webapp
+%dir /var/lib/graphite/whisper
 %attr (755, apache, apache) /var/log/calamari
 %attr (755, apache, apache) /var/log/graphite
 
-%post -n calamari-webapp
-calamari()
+%post -n calamari-server
+calamari_httpd()
 {
 	d=$(pwd)
-	# initialize database
-	cd /opt/calamari/webapp/calamari
-	../../venv/bin/python manage.py syncdb --noinput
-
-	# set up calamari admin user
-	../../venv/bin/python addadmin.py
 
 	# allow apache access to all
-	chown -R apache.apache .
-	chown -R apache.apache /var/log/calamari
+	chown -R apache.apache /opt/calamari/webapp/calamari
+
+	# apache shouldn't need to write, but it does because
+	# graphite creates index on read
+	chown -R apache.apache /var/lib/graphite
+
+	# centos64
+	mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.orig
+        chown -R apache:apache /var/log/calamari
 	cd $d
+
+	# Load our salt config
+	service salt-master restart
+
+	# concatenate our config chunk with supervisord.conf
+	echo "### START calamari-server ###" >> /etc/supervisord.conf
+	cat /etc/supervisor/conf.d/calamari.conf >> /etc/supervisord.conf
+	echo "### END calamari-server ###" >> /etc/supervisord.conf
+
+	# Load our supervisor config
+	service supervisord stop
+	sleep 3
+	service supervisord start
 }
 
-graphite_seed()
-{
-	# prerm
-	# make a random 'SECRET_KEY' (really a crypto seed) for graphite
-	APP_SETTINGS=/opt/graphite/webapp/graphite/app_settings.py
-	# avoid if already there
-	grep -s -q SECRET_KEY $APP_SETTINGS && return
+calamari_httpd
+service httpd stop || true
+service httpd start
 
-	KEY=$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c50)
-	echo "# key added by $0" >>$APP_SETTINGS
-	echo "SECRET_KEY = \"$KEY\"" >>$APP_SETTINGS
-}
-
-graphite()
-{
-	d=$(pwd)
-	cd /opt/graphite/webapp/graphite
-	../../bin/python manage.py syncdb --noinput
-	chown -R apache.apache /opt/graphite/storage
-	chown -R apache.apache /var/log/graphite
-	cd $d
-}
-
-
-carbon()
-{
-	d=$(pwd)
-	cd /opt/graphite/conf
-	if ! grep -q -s 'MAX_CREATES_PER_MINUTE = 10000' carbon.conf; then
-		sed 's/MAX_CREATES_PER_MINUTE = 50/MAX_CREATES_PER_MINUTE = 10000/' <carbon.conf.example >carbon.conf
-	fi
-
-	# XXX are these necessary?
-	cp storage-schemas.conf.example storage-schemas.conf
-	cp storage-aggregation.conf.example storage-aggregation.conf
-	cp relay-rules.conf.example relay-rules.conf
-	cp aggregation-rules.conf.example aggregation-rules.conf
-
-	cat >graphite.wsgi <<EOF
-import os
-import sys
-import site
-
-prev_sys_path = list(sys.path)
-sitedir = '/opt/graphite/lib/python{maj}.{min}/site-packages'.format(
-	maj=sys.version_info[0], min=sys.version_info[1])
-site.addsitedir(sitedir)
-
-# Reorder sys.path so new directories at the front.
-new_sys_path = []
-for item in list(sys.path):
-    if item not in prev_sys_path:
-        new_sys_path.append(item)
-        sys.path.remove(item)
-sys.path[:0] = new_sys_path
-
-EOF
-	cat graphite.wsgi.example >> graphite.wsgi
-	# init.d/carbon-cache handled in make install
-	[ -d /var/log/carbon ] || mkdir /var/log/carbon
-	service carbon-cache stop
-	service carbon-cache start
-	chkconfig carbon-cache on
-	cd $d
-}
-
-kraken()
-{
-	stop kraken || true
-	start kraken
-}
-
-graphite_seed
-graphite
-carbon
-kraken
-calamari
-chkconfig httpd on
-service httpd restart
+# Prompt the user to proceed with the final script-driven
+# part of the installation process
+echo "Thank you for installing Calamari."
+echo ""
+echo "Please run 'sudo calamari-ctl initialize' to complete the installation."
 exit 0
 
-%preun -n calamari-webapp
+%preun -n calamari-server
+if [ $1 == 0 ] ; then 
+	rm /etc/httpd/conf.d/calamari.conf
+	rm /etc/httpd/conf.d/wsgi.conf
+	mv /etc/httpd/conf.d/welcome.conf.orig /etc/httpd/conf.d/welcome.conf
+	service httpd stop || true
+	service httpd start || true
+	service supervisord stop
+	sed -i '/^### START calamari-server/,/^### END calamari-server/d' /etc/supervisord.conf
+	service supervisord start
+fi
+exit 0
 
-%postun -n calamari-webapp
+%postun -n calamari-server
 # Remove anything left behind in the calamari and graphite
 # virtual environment  directories, if this is a "last-instance" call
-CLEANUP_SUBDIRS="alembic conf salt salt-local venv"
 if [ $1 == 0 ] ; then
-	for subdir in $CLEANUP_SUBDIRS ; do
-		rm -rf /opt/calamari/$subdir
-	done
+	rm -rf /opt/graphite
+	rm -rf /opt/calamari
 	rm -rf /var/log/graphite
 	rm -rf /var/log/calamari
 	rm -rf /var/lib/graphite/whisper

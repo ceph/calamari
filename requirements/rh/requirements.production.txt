@@ -1,0 +1,28 @@
+
+
+# This is the production requirements.txt.  It excludes
+# anything we will be installing an upstream package,
+# and anything that is only used for development/build.
+
+Django==1.5.1
+argparse==1.2.1
+django-filter==0.6
+djangorestframework==2.3.12
+wsgiref==0.1.2
+sqlalchemy==0.8.3
+alembic==0.6.3
+cython==0.19.2
+gevent>=1.0
+psycogreen==1.0
+psycopg2==2.5.2
+manhole==0.6.0
+importlib==1.0.1
+
+Twisted==11.1.0
+django-tagging==0.3.1
+pytz==2013.8
+
+# Cthulhu
+pyzmq==14.1.1
+python-dateutil==2.2
+zerorpc==0.4.4

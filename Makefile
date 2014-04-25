@@ -3,18 +3,23 @@ REVISION ?= $(shell ./get-versions.sh REVISION)
 DIST ?= unstable
 BPTAG ?= ""
 DEBEMAIL ?= dan.mick@inktank.com
+FLAVOR ?= $(shell ./get-flavor.sh)
 
 # debian upstream tarballs: {name}_{version}.orig.tar.gz
 # rpm tarball names: apparently whatever you name in Source0, but
 # {name}_{version}.tar.gz will work
-DISTNAMEVER=calamari_$(VERSION)
-PKGDIR=calamari-$(VERSION)
+DISTNAMEVER=calamari-server_$(VERSION)
+# PKGDIR is the directory the tarball is made from/unpacks to, and needs
+# - before version
+PKGDIR=calamari-server-$(VERSION)
 TARNAME = ../$(DISTNAMEVER).tar.gz
 SRC := $(shell pwd)
 
 INSTALL=/usr/bin/install
 
-build: set_deb_version version build-venv
+all: build
+
+build: version build-venv
 
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
@@ -47,13 +52,14 @@ build-venv-carbon: venv
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
+	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
 		./bin/python ./bin/pip install --no-install carbon; \
 		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 			build/carbon/setup.py; \
 		./bin/python ./bin/pip install --no-download \
 		  --install-option="--prefix=$(SRC)/venv" \
-		  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" carbon; \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon; \
 	fi \
 	)
 
@@ -62,16 +68,17 @@ build-venv-reqs: venv
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
+	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
 	  'pyzmq==14.1.1' && \
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements.production.txt && \
+	  $(SRC)/requirements/$(FLAVOR)/requirements.production.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python2.7/site-packages" \
+	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
 	  https://github.com/inktankstorage/graphite-web/tarball/calamari && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
@@ -112,11 +119,11 @@ dpkg: set_deb_version
 install-common: install-conf install-venv install-salt install-alembic install-scripts
 	@echo "target: $@"
 
-install-rpm: install-common install-rh-conf
+install-rpm: build install-common install-rh-conf
 	@echo "target: $@"
 
 # for deb
-install:
+install: build
 	@echo "target: $@"
 	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
 		else $(MAKE) install_real ; fi
@@ -145,12 +152,11 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/log/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/log/webapp
 	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/whisper
-	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari_web
 	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
-	@$(INSTALL) -D conf/calamari.conf \
+	@$(INSTALL) -D conf/calamari/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/calamari/calamari.conf
 	@$(INSTALL) -D conf/alembic.ini \
 		$(DESTDIR)/etc/calamari/alembic.ini
@@ -198,11 +204,17 @@ clean:
 	@echo "target: $@"
 	rm -rf venv $(VERSION_PY)
 
+# Strategy for building dist tarball: find what we know is source
+# want in sources.
+
+FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp -print0"
+
 dist:
 	@echo "target: $@"
 	@echo "making dist tarball in $(TARNAME)"
 	@rm -rf $(PKGDIR)
-	@$(FINDCMD) | cpio --null -p -d $(PKGDIR)
+	@eval "$(FIND_TOPLEVEL); $(FIND_RECURSE)" | cpio --null -p -d $(PKGDIR)
 	@tar -zcf $(TARNAME) $(PKGDIR)
 	@rm -rf $(PKGDIR)
 	@echo "tar file made in $(TARNAME)"

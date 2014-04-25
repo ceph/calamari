@@ -48,8 +48,8 @@ Apache Setup
 * yum install httpd
 * yum install mod_wsgi
 
-Copy `calamari/conf/calamari.conf` into `/etc/httpd/conf.d/`. There are
-hard-coded paths in `calamari/conf/calamari.conf` and
+Copy `calamari/conf/calamari/{rh,debian}/calamari.conf` into `/etc/httpd/conf.d/`. There are
+hard-coded paths in `calamari.conf` and
 `calamari/conf/calamari.wsgi` that need to be updated based on where the
 Calamari source tree is installed to.
 
