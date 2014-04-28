@@ -307,6 +307,8 @@ but those without static defaults will be set to null.
     serializer_class = PoolSerializer
 
     def _filter_serializer_defaults(self, serializer):
+        # TODO this would probably be better at the serializer level
+        # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
         filtered_data = {}
         for field, value in serializer.init_data.iteritems():
             filtered_data[field] = value
@@ -350,7 +352,6 @@ but those without static defaults will be set to null.
         if serializer.is_valid(request.method):
 
             if request.DATA['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
-                # TODO valid status message
                 return Response('Pool with name {name} already exists'.format(name=request.DATA['name']),
                                 status=status.HTTP_409_CONFLICT)
 
