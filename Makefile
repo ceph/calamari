@@ -71,7 +71,7 @@ build-venv-reqs: venv
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	./bin/python ./bin/pip install \
 	  --install-option="--zmq=bundled" \
-	  'pyzmq==14.1.1' && \
+	  'pyzmq==14.2.0' && \
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
