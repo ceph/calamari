@@ -25,7 +25,7 @@ from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager import config, salt_config
-from cthulhu.util import now, Ticker
+from cthulhu.util import now, Ticker, SaltEventSource
 
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
@@ -245,7 +245,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         log.debug("ClusterMonitor._run: ready")
 
         self._request_ticker.start()
-        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
+        event = SaltEventSource(salt_config)
 
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582

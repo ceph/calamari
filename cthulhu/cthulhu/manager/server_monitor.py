@@ -24,7 +24,7 @@ from cthulhu.manager import salt_config, config
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from calamari_common.types import OsdMap, MonMap, ServiceId
 from cthulhu.persistence.servers import Server, Service
-from cthulhu.util import now
+from cthulhu.util import now, SaltEventSource
 
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
@@ -144,7 +144,7 @@ class ServerMonitor(greenlet.Greenlet):
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        subscription = salt.utils.event.MasterEvent(salt_config['sock_dir'])
+        subscription = SaltEventSource(salt_config)
 
         last_tick = time.time()
 

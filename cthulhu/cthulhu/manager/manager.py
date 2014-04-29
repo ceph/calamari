@@ -14,7 +14,6 @@ import gevent.greenlet
 import manhole
 import msgpack
 import resource
-import salt.utils.event
 import sys
 
 import sqlalchemy.exc
@@ -33,6 +32,7 @@ from cthulhu.persistence.servers import Server, Service
 
 from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.persister import Persister, Session
+from cthulhu.util import SaltEventSource
 
 
 class ProcessMonitorThread(gevent.greenlet.Greenlet):
@@ -97,7 +97,7 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
 
-        event = salt.utils.event.MasterEvent(salt_config['sock_dir'])
+        event = SaltEventSource(salt_config)
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
             ev = event.get_event(full=True)
