@@ -36,6 +36,8 @@ class TestPoolValidation(TestCase):
         response = self.pvs.create(request, 12345)
         self.assertEqual(response.status_code, 202)
 
+        self.pvs.client.create.assert_called_with(12345, POOL, {'name': 'not_data', 'pg_num': 64})
+
     def test_create_passes_validation(self):
         request = mock.Mock()
         request.method = 'PUT'

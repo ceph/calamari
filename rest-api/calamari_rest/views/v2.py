@@ -311,7 +311,7 @@ but those without static defaults will be set to null.
         # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
         filtered_data = {}
         for field, value in serializer.init_data.iteritems():
-            filtered_data[field] = value
+            filtered_data[field] = serializer.data[field]
 
         return filtered_data
 
