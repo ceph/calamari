@@ -306,6 +306,15 @@ but those without static defaults will be set to null.
     """
     serializer_class = PoolSerializer
 
+    def _filter_serializer_defaults(self, serializer):
+        # TODO this would probably be better at the serializer level
+        # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
+        filtered_data = {}
+        for field, value in serializer.init_data.iteritems():
+            filtered_data[field] = serializer.data[field]
+
+        return filtered_data
+
     def _defaults(self, fsid):
 
         ceph_config = self.client.get_sync_object(fsid, 'config')
@@ -341,7 +350,14 @@ but those without static defaults will be set to null.
     def create(self, request, fsid):
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid(request.method):
-            create_response = self.client.create(fsid, POOL, request.DATA)
+
+            if request.DATA['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
+                return Response('Pool with name {name} already exists'.format(name=request.DATA['name']),
+                                status=status.HTTP_409_CONFLICT)
+
+            data = self._filter_serializer_defaults(serializer)
+            create_response = self.client.create(fsid, POOL, data)
+
             # TODO: handle case where the creation is rejected for some reason (should
             # be passed an errors dict for a clean failure, or a zerorpc exception
             # for a dirty failure)
