@@ -89,7 +89,7 @@ Test that you have a working step 1:
 
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
-    grep -o "^.*\.front\.sepia\.ceph\.com" archive/config.yaml |\
+    grep -o "^.*\.front\.sepia\.ceph\.com" archive/info.yaml |\
         xargs -I'{}' ssh '{}' "if [ -e /etc/ceph/ceph.client.0.keyring ]; then ceph health; fi"
 
 
@@ -97,12 +97,12 @@ Step 2: Testing setup
 ^^^^^^^^^^^^^^^^^^^^^
 
 There are a few manual changes you'll need to make to test against this cluster:
-- Add a master_fqdn dict to teuthology/archive/cluster.yaml like:
+- Add a master_fqdn dict to teuthology/archive/info.yaml like:
 .. code-block:: yaml
     master_fqdn:
         <FQDN of the machine where you are running a calmari devmode instance>
 
-- Edit dev/calamari.conf changing ceph_control under testing to 'external'
+- Edit tests/tests.conf changing ceph_control under testing to 'external'
 .. code-block:: yaml
     [testing]
         ceph_control = external
@@ -133,7 +133,7 @@ Hit Ctrl-D in the teuthology session
     cd /home/vagrant/teuthology
     source virtualenv/bin/activate
     teuthology-lock --list-targets --owner calamari@inktank.com |\
-     teuthology-nuke -t /dev/stdin -ru --owner=calamari@inktank.com
+     teuthology-nuke -t /dev/stdin -u --owner=calamari@inktank.com
 
 .. _troubleshooting:
 

@@ -300,7 +300,7 @@ class ExternalCephControl(CephControl):
 
     def _get_admin_node(self):
         for target, roles in self.config['cluster'].iteritems():
-            if 'client.0' in roles:
+            if 'client.0' in roles['roles']:
                 return target.split('@')[1]
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
