@@ -406,6 +406,7 @@ but those without static defaults will be set to null.
         if 'name' in data and data['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
             errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
+
 class OsdViewSet(RPCViewSet, RequestReturner):
     """
 Manage Ceph OSDs.
