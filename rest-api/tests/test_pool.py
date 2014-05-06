@@ -33,34 +33,35 @@ class TestPoolValidation(TestCase):
 
     def test_create_duplicate_names_fails_validation(self):
         self.request.DATA = {'name': 'data', 'pg_num': 64}
-
         response = self.pvs.create(self.request, 12345)
         self.assertEqual(response.status_code, 409)
 
     def test_create_with_pg_num_as_string(self):
         self.request.DATA = {'name': 'not_data', 'pg_num': '64'}
-
         response = self.pvs.create(self.request, 12345)
         self.assertEqual(response.status_code, 202)
-
         self.pvs.client.create.assert_called_with(12345, POOL, {'name': 'not_data', 'pg_num': 64})
 
     def test_create_passes_validation(self):
         self.request.DATA = {'name': 'not_data', 'pg_num': 64}
-
         response = self.pvs.create(self.request, 12345)
         self.assertEqual(response.status_code, 202)
-
-    def test_filter_serializer_defaults(self):
-        self.request.DATA = {'name': 'not_data', 'pg_num': 64}
-
-        response = self.pvs.create(self.request, 12345)
-        self.assertEqual(response.data, ['request_id'])
         self.pvs.client.create.assert_called_with(12345, POOL, {'name': 'not_data', 'pg_num': 64})
 
     def test_create_pgp_num_less_than_pg_num(self):
         self.request.DATA = {'name': 'not_data', 'pg_num': 64, 'pgp_num': 100}
         response = self.pvs.create(self.request, 12345)
+        self.assertEqual(response.status_code, 400)
+
+    def test_create_with_no_data(self):
+        self.request.DATA = {}
+        response = self.pvs.create(self.request, 12345)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data, {'pg_num': 'Required during POST', 'name': 'Required during POST'})
+
+    def test_create_pool_with_pg_num_greater_than_limit_setting_fails(self):
+        self.request.DATA = {'name': 'not_data', 'pg_num': 65540}
+        response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 400)
 
     def test_update_pool_to_reduce_pg_num_fails(self):
@@ -75,24 +76,14 @@ class TestPoolValidation(TestCase):
         response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 400)
 
-    def test_create_pool_with_pg_num_greater_than_limit_setting_fails(self):
-        self.request.DATA = {'name': 'not_data', 'pg_num': 65540}
-        response = self.pvs.update(self.request, 12345, 0)
-        self.assertEqual(response.status_code, 400)
-        self.pvs.client.create.assert_called_with(12345, POOL, {'name': 'not_data', 'pg_num': 64})
-
     def test_update_name_duplication_fails(self):
-        request = mock.Mock()
-        request.method = 'PUT'
-        request.DATA = {'name': 'data', 'pg_num': 64}
-
-        response = self.pvs.update(request, 12345, 0)
+        self.request.method = 'PATCH'
+        self.request.DATA = {'name': 'data', 'pg_num': 64}
+        response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 409)
 
     def test_update_without_name_works(self):
-        request = mock.Mock()
-        request.method = 'PUT'
-        request.DATA = {'pg_num': 65}
-
-        response = self.pvs.update(request, 12345, 0)
+        self.request.method = 'PATCH'
+        self.request.DATA = {'pg_num': 65}
+        response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 202)
