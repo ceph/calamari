@@ -39,6 +39,14 @@ class ValidatingSerializer(serializers.Serializer):
 
         return errors
 
+    def get_data(self):
+        # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
+        filtered_data = {}
+        for field, value in self.init_data.iteritems():
+            filtered_data[field] = self.data[field]
+
+        return filtered_data
+
 
 class ClusterSerializer(serializers.Serializer):
     class Meta:

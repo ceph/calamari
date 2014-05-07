@@ -129,7 +129,7 @@ Calamari accepts messages from a server, the server's key must be accepted.
     def partial_update(self, request, minion_id):
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid(request.method):
-            self._partial_update(minion_id, serializer.data)
+            self._partial_update(minion_id, serializer.get_data())
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -306,15 +306,6 @@ but those without static defaults will be set to null.
     """
     serializer_class = PoolSerializer
 
-    def _filter_serializer_defaults(self, serializer):
-        # TODO this would probably be better at the serializer level
-        # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
-        filtered_data = {}
-        for field, value in serializer.init_data.iteritems():
-            filtered_data[field] = serializer.data[field]
-
-        return filtered_data
-
     def _defaults(self, fsid):
 
         ceph_config = self.client.get_sync_object(fsid, 'config')
@@ -350,13 +341,11 @@ but those without static defaults will be set to null.
     def create(self, request, fsid):
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid(request.method):
+            response = self._validate_semantics(fsid, None, serializer.get_data())
+            if response is not None:
+                return response
 
-            if request.DATA['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
-                return Response('Pool with name {name} already exists'.format(name=request.DATA['name']),
-                                status=status.HTTP_409_CONFLICT)
-
-            data = self._filter_serializer_defaults(serializer)
-            create_response = self.client.create(fsid, POOL, data)
+            create_response = self.client.create(fsid, POOL, serializer.get_data())
 
             # TODO: handle case where the creation is rejected for some reason (should
             # be passed an errors dict for a clean failure, or a zerorpc exception
@@ -366,18 +355,56 @@ but those without static defaults will be set to null.
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def update(self, request, fsid, pool_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            response = self._validate_semantics(fsid, pool_id, serializer.get_data())
+            if response is not None:
+                return response
+
+            return self._return_request(self.client.update(fsid, POOL, int(pool_id), serializer.get_data()))
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def destroy(self, request, fsid, pool_id):
         delete_response = self.client.delete(fsid, POOL, int(pool_id), status=status.HTTP_202_ACCEPTED)
         return Response(delete_response, status=status.HTTP_202_ACCEPTED)
 
-    def update(self, request, fsid, pool_id):
-        updates = request.DATA
+    def _validate_semantics(self, fsid, pool_id, data):
+        errors = defaultdict(list)
+        self._check_name_unique(fsid, data, errors)
+        self._check_pgp_less_than_pg_num(data, errors)
+        self._check_pg_nums_dont_decrease(fsid, pool_id, data, errors)
+        self._check_pg_num_inside_config_bounds(fsid, data, errors)
 
-        serializer = self.serializer_class(data=request.DATA)
-        if serializer.is_valid(request.method):
-            return self._return_request(self.client.update(fsid, POOL, int(pool_id), updates))
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if errors.items():
+            if 'name' in errors:
+                return Response(errors, status=status.HTTP_409_CONFLICT)
+            else:
+                return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _check_pg_nums_dont_decrease(self, fsid, pool_id, data, errors):
+        if pool_id is not None:
+            detail = self.client.get(fsid, POOL, int(pool_id))
+            for field in ['pg_num', 'pgp_num']:
+                expanded_field = 'pg_placement_num' if field == 'pgp_num' else 'pg_num'
+                if field in data and data[field] < detail[expanded_field]:
+                    errors[field].append('must be >= than current {field}'.format(field=field))
+
+    def _check_pg_num_inside_config_bounds(self, fsid, data, errors):
+        ceph_config = self.client.get_sync_object(fsid, 'config')
+        if not ceph_config:
+            return Response("Cluster configuration unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        if 'pg_num' in data and data['pg_num'] > int(ceph_config['mon_max_pool_pg_num']):
+            errors['pg_num'].append('requested pg_num must be <= than current limit of {max}'.format(max=ceph_config['mon_max_pool_pg_num']))
+
+    def _check_pgp_less_than_pg_num(self, data, errors):
+        if 'pgp_num' in data and 'pg_num' in data and data['pg_num'] < data['pgp_num']:
+            errors['pgp_num'].append('must be >= to pg_num')
+
+    def _check_name_unique(self, fsid, data, errors):
+        if 'name' in data and data['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
+            errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
 
 class OsdViewSet(RPCViewSet, RequestReturner):
@@ -471,7 +498,7 @@ Filtering is available on this resource:
     def update(self, request, fsid, osd_id):
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid(request.method):
-            return self._return_request(self.client.update(fsid, OSD, int(osd_id), dict(request.DATA)))
+            return self._return_request(self.client.update(fsid, OSD, int(osd_id), serializer.get_data()))
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -515,7 +542,7 @@ Manage flags in the OsdMap
         if not serializer.is_valid(request.method):
             return Response(serializer.errors, status=403)
 
-        response = self.client.update(fsid, OSD_MAP, None, serializer.object)
+        response = self.client.update(fsid, OSD_MAP, None, serializer.get_data())
 
         return self._return_request(response)
 
