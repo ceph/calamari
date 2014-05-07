@@ -5,7 +5,12 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box_url = "file:/home/dmick/src/ceph/calamari/rhel64.box"
+  if ENV['RHEL64_BOX_PATH'] == nil
+    box_url = "file:/home/jenkins-build/rhel64.box"
+  else
+    box_url = ENV['RHEL64_BOX_PATH']
+  end
+  config.vm.box_url = box_url
   config.vm.box = "rhel64"
 
   config.vm.provider "virtualbox" do |v|
