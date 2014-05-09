@@ -153,10 +153,10 @@ Calamari accepts messages from a server, the server's key must be accepted.
     def _validate_list(self, request):
         keys = request.DATA
         if not isinstance(keys, list):
-            return Response("Bulk PATCH must send a list", status=status.HTTP_400_BAD_REQUEST)
+            raise ParseError("Bulk PATCH must send a list")
         for key in keys:
             if 'id' not in key:
-                return Response("Items in bulk PATCH must have 'id' attribute", status=status.HTTP_400_BAD_REQUEST)
+                raise ParseError("Items in bulk PATCH must have 'id' attribute")
 
     def list_partial_update(self, request):
         self._validate_list(request)
