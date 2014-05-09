@@ -13,6 +13,7 @@ sqlalchemy==0.8.3
 alembic==0.6.3
 cython==0.19.2
 gevent>=1.0
+greenlet>=0.3.2
 psycogreen==1.0
 psycopg2==2.5.2
 manhole==0.6.0
