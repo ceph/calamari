@@ -11,6 +11,7 @@ from utils import wait_until_true, run_once
 import json
 
 from minion_sim.sim import MinionSim
+from minion_sim.log import log as minion_sim_log
 from django.utils.unittest.case import SkipTest
 from tests.config import TestConfig
 
@@ -18,6 +19,10 @@ config = TestConfig()
 logging.basicConfig()
 
 log = logging.getLogger(__name__)
+
+handler = logging.FileHandler("minion_sim.log")
+handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
+minion_sim_log.addHandler(handler)
 
 
 class CephControl(object):

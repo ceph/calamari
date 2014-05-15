@@ -1,5 +1,6 @@
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 import argparse
+import logging
 import os
 import threading
 import time
@@ -111,8 +112,15 @@ def main():
     parser.add_argument('--osds-per-host', dest='osds_per_host', type=int, default=4,
                         help='Number of OSDs on each simulated server')
     args = parser.parse_args()
-
     config_path = os.getcwd()
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
+    log.addHandler(handler)
+
+    handler = logging.FileHandler("minion_sim.log")
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
+    log.addHandler(handler)
 
     sim = MinionSim(config_path, args.count, args.osds_per_host)
 
