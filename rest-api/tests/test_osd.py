@@ -1,19 +1,12 @@
 
 import urllib
-from gevent.event import AsyncResult
 import mock
 import logging
 
 from calamari_common.types import OSD
-from tests.rest_api_unit_test import RestApiUnitTest
+from tests.rest_api_unit_test import RestApiUnitTest, fake_async
 
 log = logging.getLogger(__name__)
-
-
-def fake_async(obj):
-    asr = AsyncResult()
-    asr.set(obj)
-    return asr
 
 
 class TestOsd(RestApiUnitTest):

@@ -307,14 +307,37 @@ but those without static defaults will be set to null.
     serializer_class = PoolSerializer
 
     def _defaults(self, fsid):
+        # Issue overlapped RPCs first
+        ceph_config = self.client.get_sync_object(fsid, 'config', async=True)
+        rules = self.client.list(fsid, CRUSH_RULE, {}, async=True)
+        ceph_config = ceph_config.get()
+        rules = rules.get()
 
-        ceph_config = self.client.get_sync_object(fsid, 'config')
         if not ceph_config:
             return Response("Cluster configuration unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+        if not rules:
+            return Response("No CRUSH rules exist, pool creation is impossible",
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        # Ceph does not reliably inform us of a default ruleset that exists, so we check
+        # what it tells us against the rulesets we know about.
+        ruleset_ids = sorted(list(set([r['ruleset'] for r in rules])))
+        if int(ceph_config['osd_pool_default_crush_rule']) in ruleset_ids:
+            # This is the ceph<0.80 setting
+            default_ruleset = ceph_config['osd_pool_default_crush_rule']
+        elif int(ceph_config.get('osd_pool_default_crush_replicated_ruleset', -1)) in ruleset_ids:
+            # This is the ceph>=0.80
+            default_ruleset = ceph_config['osd_pool_default_crush_replicated_ruleset']
+        else:
+            # Ceph may have an invalid default set which
+            # would cause undefined behaviour in pool creation (#8373)
+            # In this case, pick lowest numbered ruleset as default
+            default_ruleset = ruleset_ids[0]
+
         defaults = NullableDataObject({
             'size': int(ceph_config['osd_pool_default_size']),
-            'crush_ruleset': int(ceph_config['osd_pool_default_crush_rule']),
+            'crush_ruleset': int(default_ruleset),
             'min_size': int(ceph_config['osd_pool_default_min_size']),
             'hashpspool': _config_to_bool(ceph_config['osd_pool_default_flag_hashpspool']),
             # Crash replay interval is zero by default when you create a pool, but when ceph creates
