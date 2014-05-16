@@ -396,6 +396,7 @@ but those without static defaults will be set to null.
     def _validate_semantics(self, fsid, pool_id, data):
         errors = defaultdict(list)
         self._check_name_unique(fsid, data, errors)
+        self._check_crush_ruleset(fsid, data, errors)
         self._check_pgp_less_than_pg_num(data, errors)
         self._check_pg_nums_dont_decrease(fsid, pool_id, data, errors)
         self._check_pg_num_inside_config_bounds(fsid, data, errors)
@@ -413,6 +414,13 @@ but those without static defaults will be set to null.
                 expanded_field = 'pg_placement_num' if field == 'pgp_num' else 'pg_num'
                 if field in data and data[field] < detail[expanded_field]:
                     errors[field].append('must be >= than current {field}'.format(field=field))
+
+    def _check_crush_ruleset(self, fsid, data, errors):
+        if 'crush_ruleset' in data:
+            rules = self.client.list(fsid, CRUSH_RULE, {})
+            rulesets = set(r['ruleset'] for r in rules)
+            if data['crush_ruleset'] not in rulesets:
+                errors['crush_ruleset'].append("CRUSH ruleset {0} not found".format(data['crush_ruleset']))
 
     def _check_pg_num_inside_config_bounds(self, fsid, data, errors):
         ceph_config = self.client.get_sync_object(fsid, 'config')

@@ -2,20 +2,28 @@ import mock
 import logging
 
 from django.utils.unittest import TestCase
+from calamari_common.types import CRUSH_RULE
 from calamari_rest.views.v2 import PoolViewSet, POOL
 from tests.rest_api_unit_test import RestApiUnitTest, fake_async
 
 log = logging.getLogger(__name__)
 
 
-def fake_list(*args, **kwargs):
-    return [{'pool_name': 'data',
-             'pg_placement_num': 64,
-             'pg_num': 64,
-             'type': 1,
-             'pool': 0,
-             'size': 2}
-            ]
+def fake_list(fsid, type, filter, **kwargs):
+    if type == POOL:
+        return [{'pool_name': 'data',
+                 'pg_placement_num': 64,
+                 'pg_num': 64,
+                 'type': 1,
+                 'pool': 0,
+                 'size': 2}
+                ]
+    elif type == CRUSH_RULE:
+        return [{
+            'ruleset': 0
+        }]
+    else:
+        raise NotImplementedError()
 
 
 class TestPoolValidation(TestCase):
@@ -29,7 +37,7 @@ class TestPoolValidation(TestCase):
             self.pvs.client = mock.MagicMock()
             self.pvs.client.list = fake_list
             self.pvs.client.create.return_value = ['request_id']
-            self.pvs.client.get.return_value = fake_list()[0]
+            self.pvs.client.get.return_value = fake_list("abc", POOL, {})[0]
             self.pvs.client.get_sync_object.return_value = {'mon_max_pool_pg_num': 65535}
 
     def test_create_duplicate_names_fails_validation(self):
@@ -64,6 +72,14 @@ class TestPoolValidation(TestCase):
         self.request.DATA = {'name': 'not_data', 'pg_num': 65540}
         response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 400)
+
+    def test_create_invalid_ruleset(self):
+        self.request.DATA = {'name': 'not_data', 'pg_num': 1024, 'crush_ruleset': 666}
+        response = self.pvs.create(self.request, "abc123")
+        self.assertEqual(response.status_code, 400)
+        self.assertDictEqual(response.data, {
+            'crush_ruleset': ["CRUSH ruleset 666 not found"]
+        })
 
     def test_update_pool_to_reduce_pg_num_fails(self):
         self.request.method = 'PATCH'
