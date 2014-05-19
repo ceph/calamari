@@ -266,6 +266,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # A ceph.heartbeat beacon
                         self.on_heartbeat(data['id'], data['data'])
                     elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
+                        if data['fun'] == "saltutil.running":
+                            # Update on what jobs are running
+                            # It would be nice to filter these down to those which really are for
+                            # this cluster, but as long as N_clusters and N_jobs are reasonably small
+                            # it's not an efficiency problem.
+                            self._requests.on_tick_response(data['id'], data['return'])
+
                         # It would be much nicer to put the FSID at the start of
                         # the tag, if salt would only let us add custom tags to our jobs.
                         # Instead we enforce a convention that all calamari jobs must include
@@ -288,12 +295,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         elif data['fun'] == 'ceph.rados_commands':
                             # A ceph.rados_commands response
                             self.on_completion(data)
-                        elif data['fun'] == "saltutil.running":
-                            # Update on what jobs are running
-                            # It would be nice to filter these down to those which really are for
-                            # this cluster, but as long as N_clusters and N_jobs are reasonably small
-                            # it's not an efficiency problem.
-                            self._requests.on_tick_response(data['id'], data['return'])
+
                     else:
                         # This does not concern us, ignore it
                         pass

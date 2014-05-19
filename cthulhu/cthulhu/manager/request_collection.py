@@ -1,12 +1,13 @@
 from contextlib import contextmanager
 from gevent.lock import RLock
 import datetime
+from salt.client import LocalClient
+
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
 from cthulhu.log import log
 from cthulhu.util import now
 from cthulhu.manager import config
-import salt.client
 
 TICK_PERIOD = 20
 
@@ -52,13 +53,13 @@ class RequestCollection(object):
         are still happening.
         """
 
-        # If there are any jobs running, then send a request to the favorite
-        # minion to check the status of the jobs.
         if not self._by_jid:
             return
         else:
             log.debug("RequestCollection.tick: %s JIDs underway" % len(self._by_jid))
 
+        # Identify JIDs who haven't had a saltutil.running reponse for too long.
+        # Kill requests in a separate phase because request:JID is not 1:1
         stale_jobs = set()
         _now = now()
         for request in self._by_jid.values():
@@ -68,11 +69,26 @@ class RequestCollection(object):
                 ))
                 stale_jobs.add(request)
 
+        # Any identified stale jobs are errored out.
         for request in stale_jobs:
             with self._update_index(request):
                 request.set_error("Lost contact")
                 request.jid = None
                 request.complete()
+
+        # Identify minions associated with JIDs in flight
+        query_minions = set()
+        for jid, request in self._by_jid.items():
+            query_minions.add(request.minion_id)
+
+        # Attempt to emit a saltutil.running to ping jobs, next tick we
+        # will see if we got updates to the alive_at attribute to indicate non-staleness
+        if query_minions:
+            log.info("RequestCollection.tick: sending saltutil.running to {0}".format(query_minions))
+            client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+            pub_data = client.run_job(list(query_minions), 'saltutil.running', [], expr_form="list")
+            if not pub_data:
+                log.warning("Failed to publish saltutil.running to {0}".format(query_minions))
 
     def on_tick_response(self, minion_id, jobs):
         """
@@ -102,7 +118,7 @@ class RequestCollection(object):
             request.complete()
 
             if request.jid:
-                client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+                client = LocalClient(config.get('cthulhu', 'salt_config_path'))
                 client.run_job(request.minion_id, 'saltutil.kill_job',
                                [request.jid])
                 # We don't check for completion or errors from kill_job, it's a best-effort thing.  If we're
@@ -175,8 +191,12 @@ class RequestCollection(object):
             result = data['return']
             log.debug("on_completion: jid=%s data=%s" % (jid, data))
 
-            request = self.get_by_jid(jid)
-            log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
+            try:
+                request = self.get_by_jid(jid)
+                log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
+            except KeyError:
+                log.warning("on_completion: unknown jid {0}".format(jid))
+                return
 
             if not data['success']:
                 # This indicates a failure at the salt level, i.e. job threw an exception
