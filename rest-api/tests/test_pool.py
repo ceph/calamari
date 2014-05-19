@@ -2,19 +2,28 @@ import mock
 import logging
 
 from django.utils.unittest import TestCase
+from calamari_common.types import CRUSH_RULE
 from calamari_rest.views.v2 import PoolViewSet, POOL
+from tests.rest_api_unit_test import RestApiUnitTest, fake_async
 
 log = logging.getLogger(__name__)
 
 
-def fake_list(*args, **kwargs):
-    return [{'pool_name': 'data',
-             'pg_placement_num': 64,
-             'pg_num': 64,
-             'type': 1,
-             'pool': 0,
-             'size': 2}
-            ]
+def fake_list(fsid, type, filter, **kwargs):
+    if type == POOL:
+        return [{'pool_name': 'data',
+                 'pg_placement_num': 64,
+                 'pg_num': 64,
+                 'type': 1,
+                 'pool': 0,
+                 'size': 2}
+                ]
+    elif type == CRUSH_RULE:
+        return [{
+            'ruleset': 0
+        }]
+    else:
+        raise NotImplementedError()
 
 
 class TestPoolValidation(TestCase):
@@ -28,7 +37,7 @@ class TestPoolValidation(TestCase):
             self.pvs.client = mock.MagicMock()
             self.pvs.client.list = fake_list
             self.pvs.client.create.return_value = ['request_id']
-            self.pvs.client.get.return_value = fake_list()[0]
+            self.pvs.client.get.return_value = fake_list("abc", POOL, {})[0]
             self.pvs.client.get_sync_object.return_value = {'mon_max_pool_pg_num': 65535}
 
     def test_create_duplicate_names_fails_validation(self):
@@ -64,6 +73,14 @@ class TestPoolValidation(TestCase):
         response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 400)
 
+    def test_create_invalid_ruleset(self):
+        self.request.DATA = {'name': 'not_data', 'pg_num': 1024, 'crush_ruleset': 666}
+        response = self.pvs.create(self.request, "abc123")
+        self.assertEqual(response.status_code, 400)
+        self.assertDictEqual(response.data, {
+            'crush_ruleset': ["CRUSH ruleset 666 not found"]
+        })
+
     def test_update_pool_to_reduce_pg_num_fails(self):
         self.request.method = 'PATCH'
         self.request.DATA = {'pg_num': 16}
@@ -87,3 +104,92 @@ class TestPoolValidation(TestCase):
         self.request.DATA = {'pg_num': 65}
         response = self.pvs.update(self.request, 12345, 0)
         self.assertEqual(response.status_code, 202)
+
+
+class TestPoolDefaults(RestApiUnitTest):
+    FIREFLY_CONFIG = {
+        'osd_pool_default_size': "3",
+        'osd_pool_default_min_size': "2",
+        'osd_pool_default_flag_hashpspool': "true",
+        'osd_pool_default_crush_rule': "-1",
+        'osd_pool_default_crush_replicated_ruleset': "0"
+    }
+
+    DUMPLING_CONFIG = {
+        'osd_pool_default_size': "2",
+        'osd_pool_default_min_size': "1",
+        'osd_pool_default_flag_hashpspool': "false",
+        'osd_pool_default_crush_rule': "0"
+    }
+
+    DUMPLING_DEFAULTS = {
+        'name': None, 'id': None, 'size': 2, 'pg_num': None, 'crush_ruleset': 0,
+        'min_size': 1, 'crash_replay_interval': 0, 'pgp_num': None, 'hashpspool': False,
+        'full': None, 'quota_max_objects': 0, 'quota_max_bytes': 0
+    }
+
+    FIREFLY_DEFAULTS = {
+        'name': None, 'id': None, 'size': 3, 'pg_num': None, 'crush_ruleset': 0,
+        'min_size': 2, 'crash_replay_interval': 0, 'pgp_num': None, 'hashpspool': True,
+        'full': None, 'quota_max_objects': 0, 'quota_max_bytes': 0
+    }
+
+    def setUp(self):
+        super(TestPoolDefaults, self).setUp()
+
+    def test_no_rules(self):
+        self.rpc.get_sync_object = mock.Mock(return_value=fake_async({}))
+        self.rpc.list = mock.Mock(return_value=fake_async([]))
+
+        response = self.client.get("/api/v2/cluster/abc/pool?defaults")
+        self.assertStatus(response, 503)
+
+    def assert_defaults(self, expected):
+        response = self.client.get("/api/v2/cluster/abc/pool?defaults")
+        self.assertStatus(response, 200)
+        self.assertDictEqual(response.data, expected)
+
+    def test_dumpling(self):
+        config = self.DUMPLING_CONFIG.copy()
+        rules = [{'ruleset': 0}, {'ruleset': 1}, {'ruleset': 2}]
+
+        self.rpc.get_sync_object = mock.Mock(return_value=fake_async(config))
+        self.rpc.list = mock.Mock(return_value=fake_async(rules))
+
+        self.assert_defaults(self.DUMPLING_DEFAULTS)
+
+    def test_firefly(self):
+        config = self.FIREFLY_CONFIG.copy()
+        rules = [{'ruleset': 0}]
+
+        self.rpc.get_sync_object = mock.Mock(return_value=fake_async(config))
+        self.rpc.list = mock.Mock(return_value=fake_async(rules))
+
+        self.assert_defaults(self.FIREFLY_DEFAULTS)
+
+    def test_dumpling_bad_default(self):
+        config = self.DUMPLING_CONFIG.copy()
+        config['osd_pool_default_crush_rule'] = 0
+        rules = [{'ruleset': 24}, {'ruleset': 23}]
+
+        self.rpc.get_sync_object = mock.Mock(return_value=fake_async(config))
+        self.rpc.list = mock.Mock(return_value=fake_async(rules))
+
+        # Should pick the lowest numbered valid crush rule
+        expected = self.DUMPLING_DEFAULTS.copy()
+        expected['crush_ruleset'] = 23
+        self.assert_defaults(expected)
+
+    def test_firefly_bad_default(self):
+        config = self.FIREFLY_CONFIG.copy()
+        # Let the config try to use '0' which may not exist
+        config['osd_pool_default_crush_replicated_ruleset'] = 0
+        rules = [{'ruleset': 24}, {'ruleset': 23}]
+
+        self.rpc.get_sync_object = mock.Mock(return_value=fake_async(config))
+        self.rpc.list = mock.Mock(return_value=fake_async(rules))
+
+        # Should pick the lowest numbered valid crush rule
+        expected = self.FIREFLY_DEFAULTS.copy()
+        expected['crush_ruleset'] = 23
+        self.assert_defaults(expected)

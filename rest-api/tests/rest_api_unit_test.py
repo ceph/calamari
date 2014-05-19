@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 from django.test import TestCase
 import mock
+from gevent.event import AsyncResult
 
 import calamari_rest.views.rpc_view
 
@@ -40,3 +41,12 @@ class RestApiUnitTest(TestCase):
         self.assertEqual(response.status_code, status_code, "Bad status %s, wanted %s (%s)" % (
             response.status_code, status_code, response.data
         ))
+
+
+def fake_async(obj):
+    """
+    For mocking RPC functions which will be called async
+    """
+    asr = AsyncResult()
+    asr.set(obj)
+    return asr

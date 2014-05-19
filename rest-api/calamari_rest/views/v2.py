@@ -307,14 +307,37 @@ but those without static defaults will be set to null.
     serializer_class = PoolSerializer
 
     def _defaults(self, fsid):
+        # Issue overlapped RPCs first
+        ceph_config = self.client.get_sync_object(fsid, 'config', async=True)
+        rules = self.client.list(fsid, CRUSH_RULE, {}, async=True)
+        ceph_config = ceph_config.get()
+        rules = rules.get()
 
-        ceph_config = self.client.get_sync_object(fsid, 'config')
         if not ceph_config:
             return Response("Cluster configuration unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+        if not rules:
+            return Response("No CRUSH rules exist, pool creation is impossible",
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        # Ceph does not reliably inform us of a default ruleset that exists, so we check
+        # what it tells us against the rulesets we know about.
+        ruleset_ids = sorted(list(set([r['ruleset'] for r in rules])))
+        if int(ceph_config['osd_pool_default_crush_rule']) in ruleset_ids:
+            # This is the ceph<0.80 setting
+            default_ruleset = ceph_config['osd_pool_default_crush_rule']
+        elif int(ceph_config.get('osd_pool_default_crush_replicated_ruleset', -1)) in ruleset_ids:
+            # This is the ceph>=0.80
+            default_ruleset = ceph_config['osd_pool_default_crush_replicated_ruleset']
+        else:
+            # Ceph may have an invalid default set which
+            # would cause undefined behaviour in pool creation (#8373)
+            # In this case, pick lowest numbered ruleset as default
+            default_ruleset = ruleset_ids[0]
+
         defaults = NullableDataObject({
             'size': int(ceph_config['osd_pool_default_size']),
-            'crush_ruleset': int(ceph_config['osd_pool_default_crush_rule']),
+            'crush_ruleset': int(default_ruleset),
             'min_size': int(ceph_config['osd_pool_default_min_size']),
             'hashpspool': _config_to_bool(ceph_config['osd_pool_default_flag_hashpspool']),
             # Crash replay interval is zero by default when you create a pool, but when ceph creates
@@ -373,6 +396,7 @@ but those without static defaults will be set to null.
     def _validate_semantics(self, fsid, pool_id, data):
         errors = defaultdict(list)
         self._check_name_unique(fsid, data, errors)
+        self._check_crush_ruleset(fsid, data, errors)
         self._check_pgp_less_than_pg_num(data, errors)
         self._check_pg_nums_dont_decrease(fsid, pool_id, data, errors)
         self._check_pg_num_inside_config_bounds(fsid, data, errors)
@@ -390,6 +414,13 @@ but those without static defaults will be set to null.
                 expanded_field = 'pg_placement_num' if field == 'pgp_num' else 'pg_num'
                 if field in data and data[field] < detail[expanded_field]:
                     errors[field].append('must be >= than current {field}'.format(field=field))
+
+    def _check_crush_ruleset(self, fsid, data, errors):
+        if 'crush_ruleset' in data:
+            rules = self.client.list(fsid, CRUSH_RULE, {})
+            rulesets = set(r['ruleset'] for r in rules)
+            if data['crush_ruleset'] not in rulesets:
+                errors['crush_ruleset'].append("CRUSH ruleset {0} not found".format(data['crush_ruleset']))
 
     def _check_pg_num_inside_config_bounds(self, fsid, data, errors):
         ceph_config = self.client.get_sync_object(fsid, 'config')
