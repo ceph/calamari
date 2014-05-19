@@ -22,7 +22,9 @@ def fire_event(data, tag):
     __salt__['event.fire_master'](data, tag)  # noqa
 
 
-# >>> XXX unclean borrowed from open source ceph code XXX
+# This function borrowed from /usr/bin/ceph: we should
+# get ceph's python code into site-packages so that we
+# can borrow things like this.
 def admin_socket(asok_path, cmd, format=''):
     """
     Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
@@ -79,7 +81,6 @@ def admin_socket(asok_path, cmd, format=''):
         raise RuntimeError('exception: ' + str(e))
 
     return ret
-# <<< XXX unclean XXX
 
 
 SYNC_TYPES = ['mon_status',
