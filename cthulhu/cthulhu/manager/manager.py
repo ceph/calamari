@@ -12,7 +12,7 @@ import greenlet
 from dateutil.tz import tzutc
 
 import gevent.greenlet
-import manhole
+
 import msgpack
 import resource
 import sys
@@ -35,6 +35,12 @@ from cthulhu.persistence.servers import Server, Service
 from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.persister import Persister, Session
 from cthulhu.util import SaltEventSource
+
+# Manhole module optional for debugging
+try:
+    import manhole
+except ImportError:
+    manhole = None
 
 
 class ProcessMonitorThread(gevent.greenlet.Greenlet):
@@ -343,10 +349,11 @@ def main():
     import psycogreen.gevent
     psycogreen.gevent.patch_psycopg()
 
-    # Enable manhole for debugging.  Use oneshot mode
-    # for gevent compatibility
-    manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
-    manhole.install(oneshot_on=signal.SIGUSR1)
+    if manhole is not None:
+        # Enable manhole for debugging.  Use oneshot mode
+        # for gevent compatibility
+        manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
+        manhole.install(oneshot_on=signal.SIGUSR1)
 
     m = Manager()
     m.start()
