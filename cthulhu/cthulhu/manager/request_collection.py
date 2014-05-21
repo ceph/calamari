@@ -24,15 +24,14 @@ class RequestCollection(object):
     wake up in a different world.
     """
 
-    def __init__(self, sync_objects, eventer):
+    def __init__(self, manager):
         super(RequestCollection, self).__init__()
-
-        self._sync_objects = sync_objects
-        self._eventer = eventer
 
         self._by_request_id = {}
         self._by_jid = {}
         self._lock = RLock()
+
+        self._manager = manager
 
     def get_by_id(self, request_id):
         return self._by_request_id[request_id]
@@ -150,9 +149,9 @@ class RequestCollection(object):
             request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request
-        self._eventer.on_user_request_begin(request)
+        self._manager.eventer.on_user_request_begin(request)
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, fsid, sync_type, sync_object):
         """
         Callback for when a new cluster map is available, in which
         we notify any interested ongoing UserRequests of the new map
@@ -161,13 +160,16 @@ class RequestCollection(object):
         with self._lock:
             requests = self.get_all(state=UserRequest.SUBMITTED)
             for request in requests:
+                if request.fsid != fsid:
+                    pass
+
                 try:
                     # If this is one of the types that this request
                     # is waiting for, invoke on_map.
                     for awaited_type in request.awaiting_versions.keys():
                         if awaited_type == sync_type:
                             with self._update_index(request):
-                                request.on_map(sync_type, sync_objects)
+                                request.on_map(sync_type, sync_object)
                 except Exception as e:
                     log.exception("Request %s threw exception in on_map", request.id)
                     if request.jid:
@@ -178,7 +180,7 @@ class RequestCollection(object):
                     request.complete()
 
                 if request.state == UserRequest.COMPLETE:
-                    self._eventer.on_user_request_complete(request)
+                    self._manager.eventer.on_user_request_complete(request)
 
     def on_completion(self, data):
         """
@@ -236,18 +238,21 @@ class RequestCollection(object):
                         # map updates, we ask ClusterMonitor to hurry up and get them on
                         # behalf of the request.
                         if request.awaiting_versions:
+                            assert request.fsid
+                            cluster_monitor = self._manager.clusters[request.fsid]
                             for sync_type, version in request.awaiting_versions.items():
+
                                 if version is not None:
-                                    log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
-                                    self._sync_objects.on_version(data['id'], sync_type, version)
+                                    log.debug("Notifying cluster of awaited version %s/%s" % (sync_type.str, version))
+                                    cluster_monitor.on_version(data['id'], sync_type, version)
 
                             # The request may be waiting for an epoch that we already have, if so
                             # give it to the request right away
                             for sync_type, want_version in request.awaiting_versions.items():
-                                got_version = self._sync_objects.get_version(sync_type)
-                                if want_version and sync_type.cmp(got_version, want_version) >= 0:
+                                sync_object = cluster_monitor.get_sync_object(sync_type)
+                                if want_version and sync_type.cmp(sync_object.version, want_version) >= 0:
                                     log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
-                                    request.on_map(sync_type, self._sync_objects)
+                                    request.on_map(sync_type, sync_object)
 
                 except Exception as e:
                     # Ensure that a misbehaving piece of code in a UserRequest subclass
@@ -258,7 +263,7 @@ class RequestCollection(object):
                     request.complete()
 
         if request.state == UserRequest.COMPLETE:
-            self._eventer.on_user_request_complete(request)
+            self._manager.eventer.on_user_request_complete(request)
 
     def _update_index(self, request):
         """

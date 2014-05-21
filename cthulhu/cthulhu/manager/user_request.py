@@ -63,7 +63,7 @@ class UserRequestBase(object):
         self.id = uuid.uuid4().__str__()
 
         self._minion_id = None
-        self._fsid = fsid
+        self.fsid = fsid
         self._cluster_name = cluster_name
         self._commands = commands
 
@@ -141,7 +141,7 @@ class UserRequestBase(object):
 
         client = LocalClient(config.get('cthulhu', 'salt_config_path'))
         pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
-                                  [self._fsid, self._cluster_name, commands])
+                                  [self.fsid, self._cluster_name, commands])
         if not pub_data:
             # FIXME: LocalClient uses 'print' to record the
             # details of what went wrong :-(
@@ -180,7 +180,7 @@ class UserRequestBase(object):
         self.state = self.COMPLETE
         self.completed_at = now()
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         """
         It is only valid to call this for sync_types which are currently in awaiting_versions
         """
@@ -224,7 +224,7 @@ class OsdMapModifyingRequest(UserRequestBase):
     @property
     def associations(self):
         return {
-            'fsid': self._fsid
+            'fsid': self.fsid
         }
 
     @property
@@ -243,11 +243,10 @@ class OsdMapModifyingRequest(UserRequestBase):
         self.result = result
         self._await_version = result['versions']['osd_map']
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, osd_map):
         assert sync_type == OsdMap
         assert self._await_version is not None
 
-        osd_map = sync_objects.get(OsdMap)
         ready = osd_map.version >= self._await_version
         if ready:
             self.log.debug("check passed (%s >= %s)" % (osd_map.version, self._await_version))
@@ -279,10 +278,10 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
         else:
             return {}
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         if self._awaiting_pgs:
             assert sync_type == PgSummary
-            pg_summary = sync_objects.get(PgSummary)
+            pg_summary = sync_object
             pgs_not_creating = 0
             for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
                 states = state_tuple.split("+")
@@ -294,7 +293,7 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
 
         elif self._await_version:
             assert sync_type == OsdMap
-            osd_map = sync_objects.get(OsdMap)
+            osd_map = sync_object
             if osd_map.version >= self._await_version:
                 for pool_id, pool in osd_map.pools_by_id.items():
                     if pool['pool_name'] == self._pool_name:
@@ -448,13 +447,14 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                 OsdMap: None
             }
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
         if self._phase == self.PG_MAP_WAIT:
             if sync_type == PgSummary:
                 # Count the PGs in this pool which are not in state 'creating'
-                pg_summary = sync_objects.get(PgSummary)
+                pg_summary = sync_object
                 pgs_not_creating = 0
+
                 for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
                     states = state_tuple.split("+")
                     if 'creating' not in states:
@@ -487,7 +487,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                 # Keep an eye on the OsdMap to check that pg_num is what we expect: otherwise
                 # if forces of darkness changed pg_num then our PG creation check could
                 # get confused and fail to complete.
-                osd_map = sync_objects.get(OsdMap)
+                osd_map = sync_object
                 pool = osd_map.pools_by_id[self._pool_id]
                 if pool['pg_num'] != self._pg_progress.expected_count():
                     self.set_error("PG creation interrupted (unexpected change to pg_num)")
@@ -500,7 +500,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
 
         elif self._phase == self.OSD_MAP_WAIT:
             # Read back the pg_num for my pool from the OSD map
-            osd_map = sync_objects.get(OsdMap)
+            osd_map = sync_object
             pool = osd_map.pools_by_id[self._pool_id]
 
             # In Ceph <= 0.67.7, "osd pool set pg_num" will return success even if it hasn't
@@ -522,6 +522,5 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                     # This was the OSD map update from a PG creation command, so start waiting
                     # for the pgs
                     self._phase = self.PG_MAP_WAIT
-
         else:
             raise NotImplementedError("Unexpected {0} in phase {1}".format(sync_type, self._phase))
