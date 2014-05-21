@@ -31,13 +31,23 @@ class OsdRequestFactory(RequestFactory):
             # Returning None indicates no-op
             return None
 
-        print_attrs = attributes.copy()
-        del print_attrs['id']
+        msg_attrs = attributes.copy()
+        del msg_attrs['id']
 
-        return OsdMapModifyingRequest(
-            "Modifying {cluster_name}-osd.{id} ({attrs})".format(
-                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
-            ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+        if msg_attrs.keys() == ['in']:
+            message = "Marking {cluster_name}-osd.{id} {state}".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, state=("in" if msg_attrs['in'] else "out"))
+        elif msg_attrs.keys() == ['up']:
+            message = "Marking {cluster_name}-osd.{id} down".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id)
+        elif msg_attrs.keys() == ['reweight']:
+            message = "Re-weighting {cluster_name}-osd.{id} to {pct}%".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, pct="{0:.1f}".format(msg_attrs['reweight'] * 100.0))
+        else:
+            message = "Modifying {cluster_name}-osd.{id} ({attrs})".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in msg_attrs.items()))
+
+        return OsdMapModifyingRequest(message, self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def scrub(self, osd_id):
         return UserRequest("Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
