@@ -21,13 +21,17 @@ class WaitTimeout(Exception):
 def wait_until_true(condition, timeout=10):
     elapsed = 0
     period = 1
-    timeout = timeout * get_timeout_scaling_factor()
     while not condition():
         if elapsed >= timeout:
             raise WaitTimeout("After %s seconds (at %s)" % (elapsed, datetime.datetime.utcnow().isoformat()))
         elapsed += period
         time.sleep(period)
     return elapsed
+
+
+def scalable_wait_until_true(condition, timeout=10):
+    timeout = timeout * get_timeout_scaling_factor()
+    return wait_until_true(condition, timeout)
 
 
 def run_once(f):

@@ -4,7 +4,7 @@ from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 
-from tests.utils import wait_until_true
+from tests.utils import wait_until_true, scalable_wait_until_true
 
 from tests.config import TestConfig
 
@@ -80,17 +80,17 @@ class ServerTestCase(TestCase):
         # will cause the cluster to get noticed.
         salt_auth_retry_interval = 10
 
-        wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=salt_auth_retry_interval * 2)
+        scalable_wait_until_true(lambda: self._cluster_detected(cluster_count), timeout=salt_auth_retry_interval * 2)
         log.debug("Detected cluster")
 
         if cluster_count == 1:
             cluster_id = self.api.get("cluster").json()[0]['id']
-            wait_until_true(lambda: self._maps_populated(cluster_id))
+            scalable_wait_until_true(lambda: self._maps_populated(cluster_id))
             return cluster_id
         else:
             result = []
             for cluster in self.api.get("cluster").json():
-                wait_until_true(lambda: self._maps_populated(cluster['id']))
+                scalable_wait_until_true(lambda: self._maps_populated(cluster['id']))
                 result.append(cluster['id'])
             return result
 
@@ -110,7 +110,7 @@ class ServerTestCase(TestCase):
                 ))
             return ready
 
-        wait_until_true(servers_available, timeout=30)
+        scalable_wait_until_true(servers_available, timeout=30)
 
     def _cluster_detected(self, expected=1):
         response = self.api.get("cluster")
@@ -165,4 +165,4 @@ class RequestTestCase(ServerTestCase):
             timeout = REQUEST_TIMEOUT
         self.assertEqual(response.status_code, 202)
         request_id = response.json()['request_id']
-        wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=timeout)
+        scalable_wait_until_true(lambda: self._request_complete(fsid, request_id), timeout=timeout)
