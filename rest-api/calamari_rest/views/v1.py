@@ -24,8 +24,14 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message="django.conf.urls.defaults is deprecated")
 
-from graphite.render.attime import parseATTime
-from graphite.render.datalib import fetchData
+try:
+    import graphite
+except ImportError:
+    graphite = None
+else:
+    from graphite.render.attime import parseATTime
+    from graphite.render.datalib import fetchData
+
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
 from calamari_rest.views.server_metadata import get_local_grains
@@ -48,7 +54,7 @@ config = CalamariConfig()
 log = logging.getLogger('django.request')
 
 
-def get_latest_graphite(metric):
+def _get_latest_graphite(metric):
     """
     Get the latest value of a named graphite metric
     """
@@ -78,6 +84,16 @@ def get_latest_graphite(metric):
             return val
 
     log.warn("No graphite data for %s" % metric)
+
+
+def get_latest_graphite(metric):
+    """
+    Wrapper to hide the case where graphite is unavailable
+    """
+    if graphite is not None:
+        return _get_latest_graphite(metric)
+    else:
+        return None
 
 
 class Space(RPCView):
