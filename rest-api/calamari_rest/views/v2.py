@@ -1,23 +1,25 @@
 from collections import defaultdict
 import logging
+import shlex
 
-from dateutil.parser import parse as dateutil_parse
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
-import salt.client
 import salt.config
 import salt.utils.master
 import gevent.pool
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer
+    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
+    CliSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
+from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
+from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
@@ -256,11 +258,6 @@ class NullableDataObject(DataObject):
             return self.__dict__.get(item, None)
         else:
             raise AttributeError
-
-
-class ServiceUnavailable(APIException):
-    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    default_detail = "Service unavailable"
 
 
 class ConfigViewSet(RPCViewSet):
@@ -761,7 +758,7 @@ in a GET, such as ``?severity=RECOVERY`` to show everything but INFO.
         return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fqdn=fqdn))))
 
 
-class LogTailViewSet(RPCViewSet):
+class LogTailViewSet(RemoteViewSet):
     """
 A primitive remote log viewer.
 
@@ -777,56 +774,23 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
         Retrieve the cluster log from one of a cluster's mons (expect it to be in /var/log/ceph/ceph.log)
         """
 
+        # Number of lines to get
         lines = request.GET.get('lines', 40)
 
         # Resolve FSID to name
         name = self.client.get_cluster(fsid)['name']
 
-        # Resolve FSID to list of mon FQDNs
-        servers = self.client.server_list_cluster(fsid)
-        # Sort to get most recently contacted server first; drop any
-        # for whom last_contact is None
-        servers = [s for s in servers if s['last_contact']]
-        servers = sorted(servers,
-                         key=lambda t: dateutil_parse(t['last_contact']),
-                         reverse=True)
-        mon_fqdns = []
-        for server in servers:
-            for service in server['services']:
-                service_id = ServiceId(*(service['id']))
-                if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
-                    mon_fqdns.append(server['fqdn'])
+        # Execute remote operation synchronously
+        result = self.run_mon_job(fsid, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
-        # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
-        # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
-        for mon_fqdn in mon_fqdns:
-            results = client.cmd(mon_fqdn, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
-            if results:
-                return Response({'lines': results[mon_fqdn]})
-            else:
-                log.info("Failed to get log from %s" % mon_fqdn)
-
-        # If none of the mons gave us what we wanted, return a 503 service unavailable
-        return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'lines': result})
 
     def list_server_logs(self, request, fqdn):
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
-        if not results:
-            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response(sorted(results[fqdn]))
+        return Response(sorted(self.run_job(fqdn, "log_tail.list_logs", ["."])))
 
     def get_server_log(self, request, fqdn, log_path):
         lines = request.GET.get('lines', 40)
-
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
-        if not results:
-            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        else:
-            return Response({'lines': results[fqdn]})
+        return Response({'lines': self.run_job(fqdn, "log_tail.tail", [log_path, lines])})
 
 
 class MonViewSet(RPCViewSet):
@@ -940,3 +904,54 @@ useful to show users data from the /status sub-url, which returns the
 
     def list(self, request, fsid):
         return Response(self.serializer_class([DataObject(m) for m in self._get_mons(fsid)], many=True).data)
+
+
+class CliViewSet(RemoteViewSet):
+    """
+Access the `ceph` CLI tool remotely.
+
+To achieve the same result as running "ceph osd dump" at a shell, an
+API consumer may POST an object in either of the following formats:
+
+::
+
+    {'command': ['osd', 'dump']}
+
+    {'command': 'osd dump'}
+
+
+The response will be a 200 status code if the command executed, regardless
+of whether it was successful, to check the result of the command itself
+read the ``status`` attribute of the returned data.
+
+The command will be executed on the first available mon server, retrying
+on subsequent mon servers if no response is received.  Due to this retry
+behaviour, it is possible for the command to be run more than once in
+rare cases; since most ceph commands are idempotent this is usually
+not a problem.
+    """
+    serializer_class = CliSerializer
+
+    def create(self, request, fsid):
+        # Validate
+        try:
+            command = request.DATA['command']
+        except KeyError:
+            raise ParseError("'command' field is required")
+        else:
+            if not (isinstance(command, basestring) or isinstance(command, list)):
+                raise ParseError("'command' must be a string or list")
+
+        # Parse string commands to list
+        if isinstance(command, basestring):
+            command = shlex.split(command)
+
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        log.debug("CliViewSet: result = '%s'" % result)
+
+        if not isinstance(result, dict):
+            # Errors from salt like "module not available" come back as strings
+            raise APIException("Remote error: %s" % str(result))
+
+        return Response(self.serializer_class(DataObject(result)).data)

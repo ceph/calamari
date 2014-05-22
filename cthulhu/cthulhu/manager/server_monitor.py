@@ -403,7 +403,6 @@ class ServerMonitor(greenlet.Greenlet):
                     new_server = False
                     log.info("Server %s went from unmanaged to managed" % fqdn)
                     newly_managed_server = True
-
                 else:
                     # We will go on to treat these as distinct servers even though
                     # they have the same hostname

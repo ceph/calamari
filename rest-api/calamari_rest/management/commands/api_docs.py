@@ -322,8 +322,10 @@ class ApiIntrospector(object):
         for example_pattern, example_results in examples.items():
             self._write_example(example_pattern, example_results)
 
-    def get_url_list(self):
-        return [_stripped_url(self.prefix, u) for u in self.all_url_patterns]
+    def get_url_list(self, method="GET"):
+        return [_stripped_url(self.prefix, u)
+                for u in self.all_url_patterns
+                if method in _url_pattern_methods(u)]
 
 
 class Command(NoArgsCommand):

@@ -313,3 +313,12 @@ class MonSerializer(serializers.Serializer):
     in_quorum = serializers.BooleanField(help_text="True if the mon is a member of current quorum")
     server = serializers.CharField(help_text="FQDN of server running the OSD")
     addr = serializers.CharField(help_text="IP address of monitor service")
+
+
+class CliSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('out', 'err', 'status')
+
+    out = serializers.CharField(help_text="Standard out")
+    err = serializers.CharField(help_text="Standard error")
+    status = serializers.IntegerField(help_text="Exit code")
