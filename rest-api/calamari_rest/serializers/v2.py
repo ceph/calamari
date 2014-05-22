@@ -1,5 +1,6 @@
+
 from rest_framework import serializers
-from calamari_common.db.event import severity_str
+from calamari_common.db.event import severity_str, SEVERITIES
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
     USER_REQUEST_SUBMITTED, OSD_FLAGS
@@ -275,12 +276,14 @@ class EventSerializer(serializers.Serializer):
 
     when = serializers.DateTimeField(help_text="Time at which event was generated")
     severity = serializers.SerializerMethodField('get_severity')
-    # FIXME: django_rest_framework doesn't let me put help_text on a methodfield
-    # help_text="Severity, one of %s" % ",".join(SEVERITIES.keys()))
     message = serializers.CharField(help_text="One line human readable description")
 
     def get_severity(self, obj):
         return severity_str(obj.severity)
+
+# django_rest_framework 2.3.12 doesn't let me put help_text on a methodfield
+# https://github.com/tomchristie/django-rest-framework/pull/1594
+EventSerializer.base_fields['severity'].help_text = "One of %s" % ",".join(SEVERITIES.values())
 
 
 class LogTailSerializer(serializers.Serializer):
