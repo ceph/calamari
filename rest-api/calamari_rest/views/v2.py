@@ -133,7 +133,6 @@ Calamari accepts messages from a server, the server's key must be accepted.
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # TODO handle 404
 
     def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
@@ -142,13 +141,16 @@ Calamari accepts messages from a server, the server's key must be accepted.
         elif data['status'] not in valid_status:
             raise ParseError({'status': "Must be one of %s" % ",".join(valid_status)})
         else:
-            # TODO validate transitions, cannot go from rejected to accepted.
-            if data['status'] == 'accepted':
+            key = self.client.minion_get(minion_id)
+            transition = [key['status'], data['status']]
+            if transition == ['pre', 'accepted']:
                 self.client.minion_accept(minion_id)
-            elif data['status'] == 'rejected':
+            elif transition == ['pre', 'rejected']:
                 self.client.minion_reject(minion_id)
             else:
-                raise NotImplementedError()
+                raise ParseError({'status': ["Transition {0}->{1} is invalid".format(
+                    transition[0], transition[1]
+                )]})
 
     def _validate_list(self, request):
         keys = request.DATA
@@ -169,7 +171,6 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def destroy(self, request, minion_id):
-        # TODO handle 404
         self.client.minion_delete(minion_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
