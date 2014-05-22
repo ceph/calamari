@@ -4,22 +4,19 @@ import logging
 import os
 import gc
 import re
-import gevent.event
-import gevent.socket as socket
+import time
 import signal
 import traceback
-import greenlet
-from dateutil.tz import tzutc
-
-import gevent.greenlet
-
-import msgpack
 import resource
 import sys
 
-import sqlalchemy.exc
-from sqlalchemy import create_engine
-import time
+import gevent.event
+import gevent.socket as socket
+import greenlet
+from dateutil.tz import tzutc
+import gevent.greenlet
+import msgpack
+
 
 from cthulhu.log import log
 import cthulhu.log
@@ -30,13 +27,26 @@ from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager.notifier import NotificationThread
 from cthulhu.manager import config, salt_config
 from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceState
-from cthulhu.persistence.servers import Server, Service
 
-from cthulhu.persistence.sync_objects import SyncObject
-from cthulhu.persistence.persister import Persister, Session
+
+# sqlalchemy is optional: without it, all database writes will
+# be silently dropped.
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy = None
+else:
+    import sqlalchemy.exc
+    from sqlalchemy import create_engine
+
+    from cthulhu.persistence.sync_objects import SyncObject
+    from cthulhu.persistence.persister import Persister, Session
+    from cthulhu.persistence.servers import Server, Service
+
+
 from cthulhu.util import SaltEventSource
 
-# Manhole module optional for debugging
+# Manhole module optional for debugging.
 try:
     import manhole
 except ImportError:
@@ -151,15 +161,39 @@ class Manager(object):
         self._process_monitor = ProcessMonitorThread()
 
         self.notifier = NotificationThread()
-        try:
-            # Prepare persistence
-            engine = create_engine(config.get('cthulhu', 'db_path'))
-            Session.configure(bind=engine)
+        if sqlalchemy is not None:
+            try:
+                # Prepare persistence
+                engine = create_engine(config.get('cthulhu', 'db_path'))
+                Session.configure(bind=engine)
 
-            self.persister = Persister()
-        except sqlalchemy.exc.ArgumentError as e:
-            log.error("Database error: %s" % e)
-            raise
+                self.persister = Persister()
+            except sqlalchemy.exc.ArgumentError as e:
+                log.error("Database error: %s" % e)
+                raise
+        else:
+            class NullPersister(object):
+                def start(self):
+                    pass
+
+                def stop(self):
+                    pass
+
+                def join(self):
+                    pass
+
+                def __getattribute__(self, item):
+                    if item.startswith('_'):
+                        return object.__getattribute__(self, item)
+                    else:
+                        try:
+                            return object.__getattribute__(self, item)
+                        except AttributeError:
+                            def blackhole(*args, **kwargs):
+                                pass
+                            return blackhole
+
+            self.persister = NullPersister()
 
         # Remote operations
         self.requests = RequestCollection(self)
@@ -201,6 +235,9 @@ class Manager(object):
         session.commit()
 
     def _recover(self):
+        if sqlalchemy is None:
+            return
+
         session = Session()
         for server in session.query(Server).all():
             log.debug("Recovered server %s" % server.fqdn)
