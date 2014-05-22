@@ -17,12 +17,11 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
-from salt.config import master_config
-from salt.loader import _create_loader
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from calamari_common.types import POOL
+from calamari_rest.views.server_metadata import get_local_grains
 
 try:
     from calamari_rest.version import VERSION
@@ -295,38 +294,6 @@ empty request.
     return Response({'message': 'Logged out'})
 
 
-def _get_local_grains():
-    """
-    Return the salt grains for this host that we are running
-    on.  If we support SELinux in the future this may need
-    to be moved into a cthulhu RPC as the apache worker may
-    not have the right capabilities to query all the grains.
-    """
-    # Stash grains as an attribute of this function
-    if not hasattr(_get_local_grains, 'grains'):
-
-        # >> work around salt issue #11402
-        import __main__ as main
-        main.__file__ = 'workaround'
-        # <<
-
-        # Use salt to get an interesting subset of the salt grains (getting
-        # everything is a bit slow)
-        grains = {}
-        c = master_config(config.get('cthulhu', 'salt_config_path'))
-        l = _create_loader(c, 'grains', 'grain')
-        funcs = l.gen_functions()
-        for key in [k for k in funcs.keys() if k.startswith('core.')]:
-            ret = funcs[key]()
-            if isinstance(ret, dict):
-                grains.update(ret)
-        _get_local_grains.grains = grains
-    else:
-        grains = _get_local_grains.grains
-
-    return grains
-
-
 class Info(APIView):
     """
 Provides metadata about the installation of Calamari server in use
@@ -335,7 +302,7 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = _get_local_grains()
+        grains = get_local_grains()
 
         try:
             ipaddr = socket.gethostbyname(grains['fqdn'])

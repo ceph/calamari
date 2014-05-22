@@ -8,9 +8,6 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
-import salt.config
-import salt.utils.master
-import gevent.pool
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
@@ -21,13 +18,14 @@ from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
-from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
+from calamari_rest.views.server_metadata import get_local_grains, get_remote_grains
+
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
@@ -49,7 +47,7 @@ from Saltstack that tell us useful properties of the host.
 The fields in this resource are passed through verbatim from SaltStack, see
 the examples for which fields are available.
     """
-    return Response(_get_local_grains())
+    return Response(get_local_grains())
 
 
 class RequestViewSet(RPCViewSet, PaginatedMixin):
@@ -628,32 +626,27 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
 
-        def _lookup_one(server):
-            log.debug(">> resolving grains for server {0}".format(server['fqdn']))
+        server_to_grains = get_remote_grains([s['fqdn'] for s in servers])
+
+        for server in servers:
             fqdn = server['fqdn']
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            grains = server_to_grains[fqdn]
             server['frontend_iface'] = None
             server['backend_iface'] = None
-            try:
-                grains = cache_grains[fqdn]
-                if server['frontend_addr']:
-                    server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
-                if server['backend_addr']:
-                    server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
-            except KeyError:
-                pass
-            log.debug("<< resolving grains for server {0}".format(server['fqdn']))
-
-        # Issue up to this many disk I/Os to load grains at once
-        CONCURRENT_GRAIN_LOADS = 16
-        p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
-        p.map(_lookup_one, servers)
+            if grains is None:
+                # No metadata available for this server
+                continue
+            else:
+                try:
+                    if server['frontend_addr']:
+                        server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
+                    if server['backend_addr']:
+                        server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
+                except KeyError:
+                    # Expected network metadata not available, we cannot infer
+                    # front/back interfaces so leave them null
+                    pass
 
     def list(self, request, fsid):
         servers = self.client.server_list_cluster(fsid)
@@ -680,20 +673,11 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
-
-        try:
-            # We (ab)use an internal interface to get at the cache by minion ID
-            # instead of by glob, because the process of resolving the glob
-            # relies on access to the root only PKI folder.
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
-            return Response(cache_grains[fqdn])
-        except KeyError:
+        grains = get_remote_grains([fqdn])[fqdn]
+        if not grains:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response(grains)
 
     def retrieve(self, request, fqdn):
         return Response(
