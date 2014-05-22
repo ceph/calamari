@@ -17,6 +17,12 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
+
+# Suppress warning from graphite's use of old django API
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning,
+                        message="django.conf.urls.defaults is deprecated")
+
 from graphite.render.attime import parseATTime
 from graphite.render.datalib import fetchData
 from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet

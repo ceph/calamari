@@ -75,6 +75,11 @@ def patch_views(mod):
         url_pattern._callback = csrf_exempt(login_required(cb))
 
 
+# Suppress warning from graphite's use of old django API
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning,
+                        message="django.conf.urls.defaults is deprecated")
+
 import graphite.metrics.urls
 import graphite.dashboard.urls
 patch_views(graphite.metrics.urls)

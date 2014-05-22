@@ -7,6 +7,13 @@ their data from cthulhu with zeroRPC
 from collections import defaultdict
 import logging
 
+# Suppress warning from ZeroRPC's use of old gevent API
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning,
+                        message=".*Queue\(0\) now equivalent to Queue\(None\);.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning,
+                        message=".*gevent.coros has been renamed to gevent.lock.*")
+
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 import time
