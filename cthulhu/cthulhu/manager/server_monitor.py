@@ -370,7 +370,11 @@ class ServerMonitor(greenlet.Greenlet):
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):
         """
-        Call back for when a ceph.service message is received from a salt minion
+        Call back for when a ceph.service message is received from a salt minion.
+
+        This is actually a fairly simple operation of updating the in memory ServerState
+        to reflect what is in the message, but it's convoluted because we may be seeing
+        a new server, a known server, or a server which was known but unmanaged.
         """
         log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
         new_server = True
@@ -404,6 +408,14 @@ class ServerMonitor(greenlet.Greenlet):
                     log.warn("Hostname clash: FQDNs '%s' and '%s' both have hostname %s" % (
                         fqdn, server_state.fqdn, hostname
                     ))
+        else:
+            # The case where hostname == FQDN, we may already have this FQDN in our
+            # map from an unmanaged server being reported by hostname.
+            if not server_state.managed:
+                newly_managed_server = True
+                server_state.managed = True
+                self._persister.update_server(server_state.fqdn, managed=True)
+                log.info("Server %s went from unmanaged to managed" % fqdn)
 
         boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
         if new_server:
