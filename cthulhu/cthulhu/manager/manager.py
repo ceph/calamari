@@ -390,9 +390,10 @@ def main():
     import salt.utils.event
     salt.utils.event.zmq = zmq.green
 
-    # Set up gevent compatibility in psycopg2
-    import psycogreen.gevent
-    psycogreen.gevent.patch_psycopg()
+    if sqlalchemy is not None:
+        # Set up gevent compatibility in psycopg2
+        import psycogreen.gevent
+        psycogreen.gevent.patch_psycopg()
 
     if manhole is not None:
         # Enable manhole for debugging.  Use oneshot mode
