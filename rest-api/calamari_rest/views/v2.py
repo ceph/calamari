@@ -24,16 +24,22 @@ from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
-from calamari_common.db.event import Event, severity_from_str, SEVERITIES
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, Event, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
 from calamari_rest.views.server_metadata import get_local_grains, get_remote_grains
 
+try:
+    from calamari_common.db.event import Event
+except ImportError:
+    # No database available
+    class Event(object):
+        pass
+
+
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
-
 
 if log.level <= logging.DEBUG:
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)

@@ -3,6 +3,7 @@
 from collections import namedtuple
 import logging
 import datetime
+from calamari_common.db.event import Event
 
 import gevent.greenlet
 import gevent.queue
@@ -119,7 +120,11 @@ class Persister(gevent.greenlet.Greenlet):
 
     def _save_events(self, events):
         for event in events:
-            self._session.add(event)
+            self._session.add(Event(
+                severity=event.severity,
+                message=event.message,
+                when=event.when,
+                **event.associations))
 
     def _run(self):
         log.info("Persister listening")
