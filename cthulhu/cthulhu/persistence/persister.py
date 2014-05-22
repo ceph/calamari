@@ -82,13 +82,14 @@ class Persister(gevent.greenlet.Greenlet):
             SyncObject.fsid == fsid,
             SyncObject.sync_type == sync_type).delete()
 
-    def _create_server(self, server):
-        self._session.add(server)
+    def _create_server(self, *args, **kwargs):
+        self._session.add(Server(*args, **kwargs))
 
     def _update_server(self, update_fqdn, **attrs):
         self._session.query(Server).filter_by(fqdn=update_fqdn).update(attrs)
 
-    def _create_service(self, service, associate_fqdn=None):
+    def _create_service(self, associate_fqdn, *args, **kwargs):
+        service = Service(*args, **kwargs)
         self._session.add(service)
         service.server = self._session.query(Server).filter_by(fqdn=associate_fqdn).one().id
 
