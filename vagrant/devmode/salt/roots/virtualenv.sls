@@ -33,6 +33,19 @@ pip_pkgs:
       - virtualenv: virtualenv
       - pip: pyzmq
 
+pip_force_pkgs:
+  pip:
+    - installed
+    - user: vagrant
+    - bin_env: /home/vagrant/calamari/env
+    - activate: true
+    - requirements: /home/vagrant/calamari/requirements/debian/requirements.force.txt
+    - ignore_installed: true
+    - download_cache: /vagrant/pip_cache
+    - require:
+      - virtualenv: virtualenv
+      - pip: pyzmq
+
 carbon:
   pip:
     - installed
@@ -47,6 +60,7 @@ carbon:
       # Carbon inserts its packages into twisted's folders so it only works
       # if installed after twisted (graphite packaging is wonky generally)
       - pip: pip_pkgs
+      - pip: pip_force_pkgs
 
 graphite-web:
   pip:
