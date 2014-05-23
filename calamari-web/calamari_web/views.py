@@ -7,6 +7,7 @@ from django.http import HttpResponseRedirect, HttpResponse, \
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import requires_csrf_token
+import settings
 
 import zerorpc
 
@@ -18,6 +19,12 @@ def home(request):
     return HttpResponseRedirect(reverse('dashboard', kwargs={'path': ''}))
 
 
+# No need for login_required behaviour if auth is switched off.
+if 'django.contrib.auth' not in settings.INSTALLED_APPS:
+    login_required = lambda x: x
+
+
+@login_required
 def serve_dir_or_index(request, path, document_root):
     if len(path) == 0:
         path = 'index.html'
