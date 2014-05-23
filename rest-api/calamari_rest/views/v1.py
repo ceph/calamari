@@ -21,6 +21,8 @@ from rest_framework.views import APIView
 
 # Suppress warning from graphite's use of old django API
 import warnings
+import zerorpc
+
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message="django.conf.urls.defaults is deprecated")
 
@@ -94,7 +96,14 @@ def get_latest_graphite(metric):
     if graphite is not None:
         return _get_latest_graphite(metric)
     else:
-        return None
+        # In the absence of graphite, talk to a ShallowCarbonCache instance
+        client = zerorpc.Client()
+        try:
+            client.connect("tcp://127.0.0.1:5051")
+
+            return client.get_latest([metric])[metric]
+        finally:
+            client.close()
 
 
 class Space(RPCViewSet):
