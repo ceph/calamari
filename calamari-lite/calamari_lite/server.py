@@ -12,6 +12,7 @@ from gevent.server import StreamServer
 import os
 from gevent.wsgi import WSGIServer
 from cthulhu.manager.manager import Manager
+import zerorpc
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
@@ -21,6 +22,38 @@ class ShallowCarbonCache(gevent.Greenlet):
         super(ShallowCarbonCache, self).__init__()
         self.complete = gevent.event.Event()
         self.latest = {}
+
+        self.rpc = zerorpc.Server({
+            'get_latest': self.get_latest
+        })
+
+        self.rpc_thread = None
+
+    def get_latest(self, paths):
+        result = {}
+        import json
+        print json.dumps(self.latest, indent=2)
+
+        for path in paths:
+            i = self.latest
+            for p in path.split("."):
+                try:
+                    i = i[p]
+                except KeyError:
+                    break
+
+            if isinstance(i, float):
+                result[path] = i
+            else:
+                result[path] = None
+
+        return result
+
+    def start(self):
+        super(ShallowCarbonCache, self).start()
+
+        self.rpc.bind("tcp://127.0.0.1:5051")  # TODO config setting
+        self.rpc_thread = gevent.spawn(lambda: self.rpc.run())
 
     def _run(self):
         def stream_handle(socket, address):
@@ -38,7 +71,7 @@ class ShallowCarbonCache(gevent.Greenlet):
                             i[p] = {}
                         i = i[p]
 
-                    i[stat_path[-1]] = val
+                    i[stat_path[-1]] = float(val)
 
         server = StreamServer(('0.0.0.0', 2003), stream_handle)
         server.start()
@@ -47,6 +80,8 @@ class ShallowCarbonCache(gevent.Greenlet):
 
     def stop(self):
         self.complete.set()
+        if self.rpc_thread:
+            self.rpc_thread.stop()
 
 
 def main():
