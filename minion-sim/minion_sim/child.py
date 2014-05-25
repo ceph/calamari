@@ -129,8 +129,7 @@ def main():
                 return {
                     'error': True,
                     'results': [],
-                    'err_outbuf': e.__str__(),
-                    'err_outs': e.__str__(),
+                    'error_status': e.__str__(),
                     'fsid': fsid,
                     'versions': status['versions']
                 }
@@ -139,8 +138,7 @@ def main():
         return {
             'error': False,
             'results': [None for n in commands],
-            'err_outbuf': '',
-            'err_outs': '',
+            'error_status': '',
             'fsid': fsid,
             'versions': status['versions']
         }
