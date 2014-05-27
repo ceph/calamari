@@ -5,6 +5,6 @@ calamari_control = embedded
 ceph_control = embedded
 
 embedded_timeout_factor = 1
-external_timeout_factor = 6
+external_timeout_factor = 3
 
 external_cluster_path = {{calamari_root}}/../teuthology/archive/info.yaml

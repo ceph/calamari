@@ -1,7 +1,7 @@
 import logging
 import time
 from tests.server_testcase import ServerTestCase, OSD_RECOVERY_PERIOD
-from tests.utils import wait_until_true, WaitTimeout
+from tests.utils import wait_until_true, WaitTimeout, scalable_wait_until_true
 
 log = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class TestMonitoring(ServerTestCase):
             # This will give a timeout exception if calamari did not
             # re establish monitoring after the mon server went offline.
             try:
-                wait_until_true(lambda: last_update_time != update_time(), timeout=NEW_FAVORITE_TIMEOUT)
+                scalable_wait_until_true(lambda: last_update_time != update_time(), timeout=NEW_FAVORITE_TIMEOUT)
             except WaitTimeout:
                 self.fail("Failed to recover from killing %s in %s seconds" % (
                     mon_fqdn, NEW_FAVORITE_TIMEOUT))
