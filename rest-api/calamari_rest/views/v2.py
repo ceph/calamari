@@ -498,7 +498,13 @@ Filtering is available on this resource:
 
         # Build OSD data objects
         for o in osds:
-            o.update({'reweight': float(crush_nodes[o['osd']]['reweight'])})
+            # An OSD being in the OSD map does not guarantee its presence in the CRUSH
+            # map, as "osd crush rm" and "osd rm" are separate operations.
+            try:
+                o.update({'reweight': float(crush_nodes[o['osd']]['reweight'])})
+            except KeyError:
+                log.warning("No CRUSH data available for OSD {0}".format(o['osd']))
+                o.update({'reweight': 0.0})
 
         for o, (service_id, fqdn) in zip(osds, server_info):
             o['server'] = fqdn
