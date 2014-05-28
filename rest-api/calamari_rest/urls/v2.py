@@ -27,6 +27,12 @@ urlpatterns = patterns(
     url(r'^', include(router.urls)),
 
     # About ongoing operations in cthulhu
+    url(r'^request/(?P<request_id>[a-zA-Z0-9-]+)/cancel$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'post': 'cancel'}), name='request-cancel'),
+    url(r'^request/(?P<request_id>[a-zA-Z0-9-]+)$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'get': 'retrieve'}), name='request-detail'),
+    url(r'^request$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'get': 'list'}), name='request-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
         calamari_rest.views.v2.RequestViewSet.as_view({'get': 'retrieve'}), name='cluster-request-detail'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request$',

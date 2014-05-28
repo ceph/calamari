@@ -62,20 +62,28 @@ state is one of 'complete', 'submitted'.
 
 The returned records are ordered by the 'requested_at' attribute, in descending order (i.e.
 the first page of results contains the most recent requests).
+
+To cancel a request while it is running, send an empty POST to ``request/<request id>/cancel``.
     """
     serializer_class = RequestSerializer
 
-    def retrieve(self, request, fsid, request_id):
-        user_request = DataObject(self.client.get_request(fsid, request_id))
-        return Response(RequestSerializer(user_request).data)
+    def cancel(self, request, request_id):
+        user_request = DataObject(self.client.cancel_request(request_id))
+        return Response(self.serializer_class(user_request).data)
 
-    def list(self, request, fsid):
+    def retrieve(self, request, **kwargs):
+        request_id = kwargs['request_id']
+        user_request = DataObject(self.client.get_request(request_id))
+        return Response(self.serializer_class(user_request).data)
+
+    def list(self, request, **kwargs):
+        fsid = kwargs.get('fsid', None)
         filter_state = request.GET.get('state', None)
         valid_states = [USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED]
         if filter_state is not None and filter_state not in valid_states:
             raise ParseError("State must be one of %s" % ", ".join(valid_states))
 
-        requests = self.client.list_requests(fsid, filter_state)
+        requests = self.client.list_requests({'state': filter_state, 'fsid': fsid})
         return Response(self._paginate(request, requests))
 
 

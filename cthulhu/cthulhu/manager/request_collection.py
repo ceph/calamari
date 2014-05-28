@@ -5,11 +5,14 @@ from salt.client import LocalClient
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
-from cthulhu.log import log
+from cthulhu.log import log as cthulhu_log
 from cthulhu.util import now
 from cthulhu.manager import config
 
 TICK_PERIOD = 20
+
+
+log = cthulhu_log.getChild("request_collection")
 
 
 class RequestCollection(object):
@@ -112,18 +115,28 @@ class RequestCollection(object):
         try and cancel any outstanding JID for it.
         """
         request = self._by_request_id[request_id]
+
+        # Idempotent behaviour: no-op if already cancelled
+        if request.state == request.COMPLETE:
+            return
+
         with self._update_index(request):
+            # I will take over cancelling the JID from the request
+            cancel_jid = request.jid
+            request.jid = None
+
+            # Request is now done, no further calls
             request.set_error("Cancelled")
             request.complete()
 
-            if request.jid:
+            # In the background, try to cancel the request's JID on a best-effort basis
+            if cancel_jid:
                 client = LocalClient(config.get('cthulhu', 'salt_config_path'))
                 client.run_job(request.minion_id, 'saltutil.kill_job',
-                               [request.jid])
+                               [cancel_jid])
                 # We don't check for completion or errors from kill_job, it's a best-effort thing.  If we're
                 # cancelling something we will do our best to kill any subprocess but can't
                 # any guarantees because running nodes may be out of touch with the calamari server.
-                request.jid = None
 
     @nosleep
     def fail_all(self, failed_minion):
@@ -197,7 +210,7 @@ class RequestCollection(object):
                 request = self.get_by_jid(jid)
                 log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
             except KeyError:
-                log.warning("on_completion: unknown jid {0}".format(jid))
+                log.warning("on_completion: unknown jid {0}, return: {1}".format(jid, result))
                 return
 
             if not data['success']:

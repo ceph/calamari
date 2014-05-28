@@ -209,14 +209,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._complete.set()
 
     @nosleep
-    def list_requests(self):
-        return self._requests.get_all()
-
-    @nosleep
-    def get_request(self, request_id):
-        return self._requests.get_by_id(request_id)
-
-    @nosleep
     def get_sync_object_data(self, object_type):
         """
         :param object_type: A SyncObject subclass

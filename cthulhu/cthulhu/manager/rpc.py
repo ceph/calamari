@@ -258,22 +258,29 @@ class RpcInterface(object):
             'completed_at': request.completed_at.isoformat() if request.completed_at else None
         }
 
-    def get_request(self, fs_id, request_id):
+    def get_request(self, request_id):
         """
         Get a JSON representation of a UserRequest
         """
-        cluster = self._fs_resolve(fs_id)
         try:
-            request = cluster.get_request(request_id)
+            return self._dump_request(self._manager.requests.get_by_id(request_id))
         except KeyError:
             raise NotFound('request', request_id)
 
-        return self._dump_request(request)
+    def cancel_request(self, request_id):
+        try:
+            self._manager.requests.cancel(request_id)
+            return self.get_request(request_id)
+        except KeyError:
+            raise NotFound('request', request_id)
 
-    def list_requests(self, fs_id, state):
-        cluster = self._fs_resolve(fs_id)
-        requests = cluster.list_requests()
-        return sorted([self._dump_request(r) for r in requests if (state is None or r.state == state)],
+    def list_requests(self, filter_args):
+        state = filter_args.get('state', None)
+        fsid = filter_args.get('fsid', None)
+        requests = self._manager.requests.get_all()
+        return sorted([self._dump_request(r)
+                       for r in requests
+                       if (state is None or r.state == state) and (fsid is None or r.fsid == fsid)],
                       lambda a, b: cmp(b['requested_at'], a['requested_at']))
 
     @property
