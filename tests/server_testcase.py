@@ -4,7 +4,7 @@ from tests.calamari_ctl import EmbeddedCalamariControl, ExternalCalamariControl
 from tests.ceph_ctl import EmbeddedCephControl, ExternalCephControl
 
 
-from tests.utils import wait_until_true, scalable_wait_until_true
+from tests.utils import scalable_wait_until_true
 
 from tests.config import TestConfig
 
