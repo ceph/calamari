@@ -3,7 +3,7 @@ Label: Ubuntu Precise
 Suite: stable
 Codename: precise
 Version: 12.04
-Architectures: amd64 i386
+Architectures: amd64
 Components: main
 Description: Ubuntu precise
 Update: upstream salt
