@@ -17,17 +17,18 @@ wheezy:
 
 el6:
 	mkdir el6 || true
-	yumdownloader --destdir=el6 salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
+	yumdownloader --destdir=el6 --archlist=x86_64 -x '*i686*' salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
 	cp ../../Diamond/dist/*.noarch.rpm el6/
 	createrepo el6
 	tar czf calamari-repo-el6.tar.gz el6/
 
 rhel6:
 	mkdir rhel6 || true
-	yumdownloader --destdir=rhel6 salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
+	yumdownloader --destdir=rhel6 --archlist=x86_64 -x '*i686*' salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
 	cp ../../Diamond/dist/*.noarch.rpm rhel6/
 	createrepo rhel6
 	tar czf calamari-repo-rhel6.tar.gz rhel6/
+
 clean:
 	rm -rf el6 rhel6 ubuntu wheezy
 
