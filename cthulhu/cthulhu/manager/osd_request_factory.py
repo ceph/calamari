@@ -1,6 +1,6 @@
 from cthulhu.manager.request_factory import RequestFactory
 from calamari_common.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
-from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
+from cthulhu.manager.user_request import OsdMapModifyingRequest, RadosRequest
 
 
 class OsdRequestFactory(RequestFactory):
@@ -50,22 +50,26 @@ class OsdRequestFactory(RequestFactory):
         return OsdMapModifyingRequest(message, self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def scrub(self, osd_id):
-        return UserRequest("Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd scrub', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd scrub', {'who': str(osd_id)})])
 
     def deep_scrub(self, osd_id):
-        return UserRequest("Initiating deep-scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd deep-scrub', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating deep-scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name,
+                                                                      id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd deep-scrub', {'who': str(osd_id)})])
 
     def repair(self, osd_id):
-        return UserRequest("Initiating repair on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd repair', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating repair on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd repair', {'who': str(osd_id)})])
 
     def get_valid_commands(self, osds):
         """

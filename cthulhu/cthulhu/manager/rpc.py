@@ -9,6 +9,7 @@ from cthulhu.manager import config
 from cthulhu.log import log
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId,\
     NotFound, SERVER
+from cthulhu.manager.user_request import SaltRequest
 
 
 class RpcInterface(object):
@@ -154,6 +155,16 @@ class RpcInterface(object):
 
         else:
             raise NotImplementedError(object_type)
+
+    def debug_job(self, minion_id, cmd, args):
+        """
+        Used in synthetic testing.
+        """
+        request = SaltRequest(cmd, args)
+        self._manager.requests.submit(request, minion_id)
+        return {
+            'request_id': request.id
+        }
 
     def apply(self, fs_id, object_type, object_id, command):
         """

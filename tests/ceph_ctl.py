@@ -185,7 +185,7 @@ class ExternalCephControl(CephControl):
 
         # I hope you only wanted three, because I ain't buying
         # any more servers...
-        if server_count != 3 or cluster_count != 1:
+        if server_count > 3 or cluster_count != 1:
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
         self.reset_all_osds(self._run_command(self._get_admin_node(),

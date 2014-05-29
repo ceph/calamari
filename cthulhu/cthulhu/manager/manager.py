@@ -115,12 +115,10 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
                             log.debug("%s: heartbeat from existing cluster %s" % (
                                 self.__class__.__name__, cluster_data['fsid']))
                     elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
-                        if data['fun'] == 'ceph.rados_commands':
-                            self._manager.requests.on_completion(data)
-                        elif data['fun'] == 'saltutil.running':
+                        if data['fun'] == 'saltutil.running':
                             self._manager.requests.on_tick_response(data['id'], data['return'])
                         else:
-                            pass
+                            self._manager.requests.on_completion(data)
                     else:
                         # This does not concern us, ignore it
                         log.debug("TopLevelEvents: ignoring %s" % tag)

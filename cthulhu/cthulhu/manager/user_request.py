@@ -45,7 +45,7 @@ class UserRequestBase(object):
     COMPLETE = USER_REQUEST_COMPLETE
     states = [NEW, SUBMITTED, COMPLETE]
 
-    def __init__(self, fsid, cluster_name, commands):
+    def __init__(self, fsid, cluster_name):
         """
         Requiring cluster_name and fsid is redundant (ideally everything would
         speak in terms of fsid) but convenient, because the librados interface
@@ -65,7 +65,6 @@ class UserRequestBase(object):
         self._minion_id = None
         self.fsid = fsid
         self._cluster_name = cluster_name
-        self._commands = commands
 
         self.jid = None
 
@@ -132,27 +131,12 @@ class UserRequestBase(object):
         assert self.state == self.NEW
 
         self._minion_id = minion_id
-        self._submit(self._commands)
+        self._submit()
 
         self.state = self.SUBMITTED
 
-    def _submit(self, commands):
-        self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
-
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
-                                  [self.fsid, self._cluster_name, commands])
-        if not pub_data:
-            # FIXME: LocalClient uses 'print' to record the
-            # details of what went wrong :-(
-            raise PublishError("Failed to publish job")
-
-        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
-
-        self.alive_at = now()
-        self.jid = pub_data['jid']
-
-        return self.jid
+    def _submit(self):
+        raise NotImplementedError()
 
     def complete_jid(self, result):
         """
@@ -189,8 +173,8 @@ class UserRequestBase(object):
 
 class UserRequest(UserRequestBase):
 
-    def __init__(self, headline, fsid, cluster_name, commands):
-        super(UserRequest, self).__init__(fsid, cluster_name, commands)
+    def __init__(self, headline, fsid, cluster_name):
+        super(UserRequest, self).__init__(fsid, cluster_name)
         self._await_version = None
         self._headline = headline
 
@@ -199,20 +183,72 @@ class UserRequest(UserRequestBase):
         return self._headline
 
 
-class OsdMapModifyingRequest(UserRequestBase):
+class RadosRequest(UserRequest):
+    """
+    A user request whose remote operations consist of librados mon commands
+    """
+    def __init__(self, headline, fsid, cluster_name, commands):
+        self._commands = commands
+        super(RadosRequest, self).__init__(headline, fsid, cluster_name)
+
+    def _submit(self, commands=None):
+        if commands is None:
+            commands = self._commands
+
+        self.log.debug("%s._submit: %s/%s/%s" % (self.__class__.__name__,
+                                                 self._minion_id, self._cluster_name, commands))
+
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
+                                  [self.fsid, self._cluster_name, commands])
+        if not pub_data:
+            # FIXME: LocalClient uses 'print' to record the
+            # details of what went wrong :-(
+            raise PublishError("Failed to publish job")
+
+        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
+
+        self.alive_at = now()
+        self.jid = pub_data['jid']
+
+        return self.jid
+
+
+class SaltRequest(UserRequest):
+    """
+    A request whose remote operations consist of direct salt fn calls, not
+    specific to ceph or a ceph cluster.
+    """
+    def __init__(self, cmd, args):
+        super(SaltRequest, self).__init__("salt: %s: %s" % (cmd, args), None, None)
+        self._cmd = cmd
+        self._args = args
+
+    def _submit(self):
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        pub_data = client.run_job(self._minion_id, self._cmd, self._args)
+        if not pub_data:
+            # FIXME: LocalClient uses 'print' to record the
+            # details of what went wrong :-(
+            raise PublishError("Failed to publish job")
+
+        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
+
+        self.alive_at = now()
+        self.jid = pub_data['jid']
+
+        return self.jid
+
+
+class OsdMapModifyingRequest(RadosRequest):
     """
     Specialization of UserRequest which waits for Calamari's copy of
     the OsdMap sync object to catch up after execution of RADOS commands.
     """
 
     def __init__(self, headline, fsid, cluster_name, commands):
-        super(OsdMapModifyingRequest, self).__init__(fsid, cluster_name, commands)
+        super(OsdMapModifyingRequest, self).__init__(headline, fsid, cluster_name, commands)
         self._await_version = None
-        self._headline = headline
-
-    @property
-    def headline(self):
-        return self._headline
 
     @property
     def status(self):

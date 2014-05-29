@@ -55,7 +55,7 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'retrieve', 'patch': 'update'}),
         name='cluster-osd-detail'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'get_implemented_commands'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd /command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'get_implemented_commands'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)/command$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'get_valid_commands'})),
 
@@ -75,6 +75,8 @@ urlpatterns = patterns(
         calamari_rest.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
         calamari_rest.views.v2.SyncObject.as_view({'get': 'retrieve'}), name='cluster-sync-object'),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/debug_job', calamari_rest.views.v2.DebugJob.as_view({'post': 'create'}),
+        name='server-debug-job'),
 
     # All about servers
     url(r'^key$', calamari_rest.views.v2.SaltKeyViewSet.as_view(

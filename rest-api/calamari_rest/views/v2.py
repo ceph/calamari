@@ -3,7 +3,7 @@ import logging
 import shlex
 
 from django.http import Http404
-from rest_framework.exceptions import ParseError, APIException
+from rest_framework.exceptions import ParseError, APIException, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -599,6 +599,21 @@ such as the cluster maps
 
     def describe(self, request, fsid):
         return Response([s.str for s in SYNC_OBJECT_TYPES])
+
+
+class DebugJob(RPCViewSet, RequestReturner):
+    """
+For debugging and automated testing only.
+    """
+    def create(self, request, fqdn):
+        cmd = request.DATA['cmd']
+        args = request.DATA['args']
+
+        # Avoid this debug interface being an arbitrary execution mechanism.
+        if not cmd.startswith("ceph.selftest"):
+            raise PermissionDenied("Command '%s' is not a self test command".format(cmd))
+
+        return self._return_request(self.client.debug_job(fqdn, cmd, args))
 
 
 class ServerClusterViewSet(RPCViewSet):

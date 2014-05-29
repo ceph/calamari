@@ -195,6 +195,63 @@ class RequestCollection(object):
                 if request.state == UserRequest.COMPLETE:
                     self._manager.eventer.on_user_request_complete(request)
 
+    def _on_rados_completion(self, minion_id, request, result):
+        """
+        Handle JID completion from a ceph.rados_commands operation
+        """
+        if request.state != UserRequest.SUBMITTED:
+            # Unexpected, ignore.
+            log.error("Received completion for request %s/%s in state %s" % (
+                request.id, request.jid, request.state
+            ))
+            return
+
+        if result['error']:
+            # This indicates a failure within ceph.rados_commands which was caught
+            # by our code, like one of our Ceph commands returned an error code.
+            # NB in future there may be UserRequest subclasses which want to receive
+            # and handle these errors themselves, so this branch would be refactored
+            # to allow that.
+            log.error("Request %s experienced an error: %s" % (request.id, result['error_status']))
+            request.jid = None
+            request.set_error(result['error_status'])
+            request.complete()
+            return
+
+        try:
+            with self._update_index(request):
+                old_jid = request.jid
+                request.complete_jid(result)
+                assert request.jid != old_jid
+
+                # After a jid completes, requests may start waiting for cluster
+                # map updates, we ask ClusterMonitor to hurry up and get them on
+                # behalf of the request.
+                if request.awaiting_versions:
+                    assert request.fsid
+                    cluster_monitor = self._manager.clusters[request.fsid]
+                    for sync_type, version in request.awaiting_versions.items():
+
+                        if version is not None:
+                            log.debug("Notifying cluster of awaited version %s/%s" % (sync_type.str, version))
+                            cluster_monitor.on_version(minion_id, sync_type, version)
+
+                    # The request may be waiting for an epoch that we already have, if so
+                    # give it to the request right away
+                    for sync_type, want_version in request.awaiting_versions.items():
+                        sync_object = cluster_monitor.get_sync_object(sync_type)
+                        if want_version and sync_type.cmp(sync_object.version, want_version) >= 0:
+                            log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
+                            request.on_map(sync_type, sync_object)
+
+        except Exception as e:
+            # Ensure that a misbehaving piece of code in a UserRequest subclass
+            # results in a terminated job, not a zombie job
+            log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+            request.jid = None
+            request.set_error("Internal error %s" % e)
+            request.complete()
+
     def on_completion(self, data):
         """
         Callback for when a salt/job/<jid>/ret event is received, in which
@@ -214,66 +271,24 @@ class RequestCollection(object):
                 return
 
             if not data['success']:
-                # This indicates a failure at the salt level, i.e. job threw an exception
-                log.error("Remote execution failed for request %s: %s" % (request.id, result))
-                if isinstance(result, dict):
-                    # Handler ran and recorded an error for us
-                    request.set_error(result['error_status'])
-                else:
-                    # An exception, probably, stringized by salt for us
-                    request.set_error(result)
-                request.complete()
-            elif result['error']:
-                # This indicates a failure within ceph.rados_commands which was caught
-                # by our code, like one of our Ceph commands returned an error code.
-                # NB in future there may be UserRequest subclasses which want to receive
-                # and handle these errors themselves, so this branch would be refactored
-                # to allow that.
-                log.error("Request %s experienced an error: %s" % (request.id, result['error_status']))
-                request.jid = None
-                request.set_error(result['error_status'])
-                request.complete()
-            else:
-                if request.state != UserRequest.SUBMITTED:
-                    # Unexpected, ignore.
-                    log.error("Received completion for request %s/%s in state %s" % (
-                        request.id, request.jid, request.state
-                    ))
-                    return
-
-                try:
-                    with self._update_index(request):
-                        old_jid = request.jid
-                        request.complete_jid(result)
-                        assert request.jid != old_jid
-
-                        # After a jid completes, requests may start waiting for cluster
-                        # map updates, we ask ClusterMonitor to hurry up and get them on
-                        # behalf of the request.
-                        if request.awaiting_versions:
-                            assert request.fsid
-                            cluster_monitor = self._manager.clusters[request.fsid]
-                            for sync_type, version in request.awaiting_versions.items():
-
-                                if version is not None:
-                                    log.debug("Notifying cluster of awaited version %s/%s" % (sync_type.str, version))
-                                    cluster_monitor.on_version(data['id'], sync_type, version)
-
-                            # The request may be waiting for an epoch that we already have, if so
-                            # give it to the request right away
-                            for sync_type, want_version in request.awaiting_versions.items():
-                                sync_object = cluster_monitor.get_sync_object(sync_type)
-                                if want_version and sync_type.cmp(sync_object.version, want_version) >= 0:
-                                    log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
-                                    request.on_map(sync_type, sync_object)
-
-                except Exception as e:
-                    # Ensure that a misbehaving piece of code in a UserRequest subclass
-                    # results in a terminated job, not a zombie job
-                    log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                with self._update_index(request):
                     request.jid = None
-                    request.set_error("Internal error %s" % e)
+
+                    # This indicates a failure at the salt level, i.e. job threw an exception
+                    log.error("Remote execution failed for request %s: %s" % (request.id, result))
+                    if isinstance(result, dict):
+                        # Handler ran and recorded an error for us
+                        request.set_error(result['error_status'])
+                    else:
+                        # An exception, probably, stringized by salt for us
+                        request.set_error(result)
                     request.complete()
+            elif data['fun'] == 'ceph.rados_commands':
+                self._on_rados_completion(data['id'], request, result)
+            else:
+                # General case successful JID other than rados_command
+                with self._update_index(request):
+                    request.complete_jid(result)
 
         if request.state == UserRequest.COMPLETE:
             self._manager.eventer.on_user_request_complete(request)
