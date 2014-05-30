@@ -9,8 +9,8 @@ Calamari Development
 Purpose
 -------
 
-This sphinx tree is for information about how to work with the Calamari
-codebase.  It is not for customer eyes.
+This sphinx tree is for developer information about how to work with the Calamari
+codebase.  It is not a user or API guide.
 
 Contents
 --------
