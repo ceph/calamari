@@ -171,7 +171,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         self.fsid = fsid
         self.name = cluster_name
-        self.update_time = None
+        self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
         self._notifier = notifier
         self._persister = persister

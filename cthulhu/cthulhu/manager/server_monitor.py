@@ -17,7 +17,7 @@ import salt.utils.master
 from salt.client import LocalClient
 
 from cthulhu.gevent_util import nosleep
-from cthulhu.log import log
+from cthulhu.log import log as cthulhu_log
 from cthulhu.manager import salt_config, config
 
 # The type name for hosts and osds in the CRUSH map (if users have their
@@ -34,6 +34,9 @@ TICK_PERIOD = 10
 # Ignore changes in boot time below this threshold, to avoid mistaking clock
 # adjustments for reboots.
 REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
+
+
+log = cthulhu_log.getChild("server_monitor")
 
 
 class GrainsNotFound(Exception):
@@ -222,6 +225,13 @@ class ServerMonitor(greenlet.Greenlet):
         return heartbeat_s
 
     def get_hostname_to_osds(self, osd_map):
+        """
+        Map 'hostname' to OSD: hostname in this context actually means
+        CRUSH node name where node is of type 'host'.
+
+        In a default Ceph deployment this will indeed be the hostname, but
+        a logical server can have multiple CRUSH nodes with arbitrary names.
+        """
         osd_tree = osd_map['tree']
         nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
 
@@ -301,6 +311,27 @@ class ServerMonitor(greenlet.Greenlet):
 
         osds_in_map = set()
         for hostname, osds in hostname_to_osds.items():
+            id_to_osd = dict([(ServiceId(osd_map['fsid'], 'osd', str(o['osd'])), o) for o in osds])
+            osds_in_map |= set(id_to_osd.keys())
+
+            # Identify if this is a CRUSH alias rather than a real hostname, by
+            # checking if any of the OSDs mentioned are already recorded as children
+            # of a managed host.
+            crush_alias_to = None
+            if hostname not in self.hostname_to_server:
+                for service_id, osd in id_to_osd.items():
+                    try:
+                        service_state = self.services[service_id]
+                        if service_state.server_state.managed:
+                            crush_alias_to = service_state.server_state
+                    except KeyError:
+                        pass
+
+            if crush_alias_to:
+                log.info("'{0}' is a CRUSH alias to {1}".format(hostname, crush_alias_to))
+                continue
+
+            # Look up or create ServerState for the server named in the CRUSH map
             try:
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
@@ -313,9 +344,8 @@ class ServerMonitor(greenlet.Greenlet):
                     hostname=server_state.hostname,
                     managed=server_state.managed))
 
-            for osd in osds:
-                service_id = ServiceId(osd_map['fsid'], 'osd', str(osd['osd']))
-                osds_in_map.add(service_id)
+            # Register all the OSDs reported under this hostname with the ServerState
+            for service_id, osd in id_to_osd.items():
                 if not server_state.managed:
                     # Only pay attention to these services for unmanaged servers,
                     # for managed servers rely on ceph/server salt messages
@@ -370,7 +400,11 @@ class ServerMonitor(greenlet.Greenlet):
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):
         """
-        Call back for when a ceph.service message is received from a salt minion
+        Call back for when a ceph.service message is received from a salt minion.
+
+        This is actually a fairly simple operation of updating the in memory ServerState
+        to reflect what is in the message, but it's convoluted because we may be seeing
+        a new server, a known server, or a server which was known but unmanaged.
         """
         log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
         new_server = True
@@ -404,6 +438,14 @@ class ServerMonitor(greenlet.Greenlet):
                     log.warn("Hostname clash: FQDNs '%s' and '%s' both have hostname %s" % (
                         fqdn, server_state.fqdn, hostname
                     ))
+        else:
+            # The case where hostname == FQDN, we may already have this FQDN in our
+            # map from an unmanaged server being reported by hostname.
+            if not server_state.managed:
+                newly_managed_server = True
+                server_state.managed = True
+                self._persister.update_server(server_state.fqdn, managed=True)
+                log.info("Server %s went from unmanaged to managed" % fqdn)
 
         boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
         if new_server:
@@ -515,6 +557,11 @@ class ServerMonitor(greenlet.Greenlet):
                 del old_server_state.services[service_id]
             server_state.services[service_id] = service_state
             self._persister.update_service_location(service_state.id, service_state.server_state.fqdn)
+
+            if old_server_state.managed is False and not old_server_state.services:
+                log.info("Expunging stale server record {0}".format(old_server_state.fqdn))
+                del self.servers[old_server_state.fqdn]
+                self._persister.delete_server(old_server_state.fqdn)
 
     def stop(self):
         self._complete.set()
