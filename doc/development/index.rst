@@ -18,6 +18,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   calamari_rest/index
    logging
    debugging.rst
    testing

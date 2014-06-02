@@ -20,7 +20,7 @@ To get started:
 
 - Learn how to perform :doc:`authentication` with the Calamari REST API and write a simple client
 - Learn about the :doc:`conventions` used
-- Refer to specific information about the available API :doc:`generated/resources`
+- Refer to specific information about the available API :doc:`resources/resources`
 
 Contents
 --------
@@ -30,7 +30,7 @@ Contents
 
    authentication
    conventions
-   generated/resources
+   resources/resources
 
 
 Indices and tables

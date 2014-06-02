@@ -15,7 +15,7 @@ import codecs
 from calamari_rest.serializers.v2 import ValidatingSerializer
 
 
-GENERATED_PREFIX = "resources/"
+GENERATED_PREFIX = "."
 
 
 EXAMPLES_FILE = os.path.join(GENERATED_PREFIX, "api_examples.json")
