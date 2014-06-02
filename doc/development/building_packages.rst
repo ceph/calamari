@@ -27,7 +27,7 @@ Calamari server and hosted packages
 
 .. code-block:: bash
   
-  git clone git@github.com:inktankstorage/calamari.git
+  git clone git@github.com:ceph/calamari.git
   git clone git@github.com:ceph/Diamond.git --branch=calamari
   cd calamari/vagrant/precise-build
   vagrant up
@@ -41,7 +41,7 @@ Calamari UI
 
 .. code-block:: bash
 
-  git clone git@github.com:inktankstorage/clients.git
+  git clone git@github.com:ceph/clients.git
   cd clients/vagrant/
   vagrant up
 

@@ -3,26 +3,36 @@
 Calamari server
 ===============
 
-Check out the `Architecture document`_ to get an idea of the overall
-structure this code is aiming towards.
+Calamari is a management and monitoring service for `Ceph <http://ceph.com>`_, exposing
+a high level REST API.
 
-.. _Architecture document: https://docs.google.com/document/d/11Sq5UW3ZzeTwPBk3hPbrPI002ScycZQOzXPev7ixJPU/edit?usp=sharing
+This repository contains the Calamari server-side code.  There is an accompanying
+user interface built on the Calamari REST API at https://github.com/ceph/calamari-clients
 
+Resources
+---------
+
+Calamari developer documentation
+    http://calamari.readthedocs.org
+
+Calamari mailing list
+    http://lists.ceph.com/listinfo.cgi/ceph-calamari-ceph.com
+
+Calamari issue tracker
+    http://tracker.ceph.com/projects/calamari
+
+Setting up a development environment
+====================================
 
 This code is meant to be runnable in two ways: in *production mode*
 where it is installed systemwide from packages, or in *development mode*
-where it us running out of a git repo somewhere in your home directory.
+where it is running out of a git repo somewhere in your home directory.  The
+rest of this readme will discuss setting up a git clone in development mode.
 
-*In a hurry?* you don't have to follow the detailed development mode
+In a hurry? you don't have to follow the detailed development mode
 installation instructions below if you use the vagrant setup in
-``vagrant/devmode``.  Note: you'll need a box named ``precise64`` and a
-Vagrant that supports the salt provisioner (1.2.7 does not, 1.3.5 and
-later do).
-
-Installing in production mode is not described here because the short
-version is "follow the same instructions we give to users".  Installing
-in development mode is intrinsically a bit custom, so here are some
-pointers:
+``vagrant/devmode``.  You'll need a box named ``precise64`` and a
+Vagrant that supports the salt provisioner (1.3.5 and later).
 
 
 Installing dependencies
@@ -50,10 +60,10 @@ than with pip (and because of `m2crypto weirdness`_)
 ::
 
     pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
-    pip install git+https://github.com/inktankstorage/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
+    pip install git+https://github.com/ceph/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
 
 
-4. Grab the `GUI code <https://github.com/inktankstorage/clients>`_, build it and
+4. Grab the `GUI code <https://github.com/ceph/calamari-clients>`_, build it and
    place the build products in ``webapp/content`` so that when it's installed you
    have a ``webapp/content`` directory containing ``admin``, ``dashboard`` and ``login``.
 
@@ -145,8 +155,8 @@ find out why something is broken, or run processes individually by hand to debug
 At this point you should have a server up and running at ``http://localhost:8000/`` and
 be able to log in to the UI.
 
-Ceph servers
-------------
+Connecting Ceph servers to Calamari
+-----------------------------------
 
 Simulated minions
 _________________
@@ -181,16 +191,10 @@ Authorize the simulated salt minions to connect to the calamari server:
     salt-key -c dev/etc/salt -L
     salt-key -c dev/etc/salt -A
 
-You should see some debug logging in cthulhu.log, and if you visit /api/v1/cluster in your browser
-a Ceph cluster should be appear.
+You should see some debug logging in cthulhu.log, and if you visit /api/v2/cluster in your browser
+a Ceph cluster should appear.
 
+Further reading
+===============
 
-Further reading (including running tests)
------------------------------------------
-
-Build the docs:
-
-::
-
-    make docs
-    open doc/{rest-api,development}/_build/html/index.html
+Calamari developer documentation: http://calamari.readthedocs.org

@@ -81,7 +81,7 @@ build-venv-reqs: venv
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
-	  https://github.com/inktankstorage/graphite-web/tarball/calamari && \
+	  https://github.com/ceph/graphite-web/tarball/calamari && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
