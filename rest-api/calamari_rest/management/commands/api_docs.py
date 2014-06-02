@@ -15,9 +15,13 @@ import codecs
 from calamari_rest.serializers.v2 import ValidatingSerializer
 
 
-EXAMPLES_FILE = "api_examples.json"
-RESOURCES_FILE = "resources.rst"
+GENERATED_PREFIX = "resources/"
+
+
+EXAMPLES_FILE = os.path.join(GENERATED_PREFIX, "api_examples.json")
+RESOURCES_FILE = os.path.join("resources.rst")
 EXAMPLES_PREFIX = "api_example_"
+
 
 old_as_view = rest_framework.viewsets.ViewSetMixin.as_view
 
@@ -288,7 +292,7 @@ class ApiIntrospector(object):
                 )
 
                 example_doc_name = self._example_document_name(_stripped_url(self.prefix, url_pattern))
-                if os.path.exists("{0}.rst".format(example_doc_name)):
+                if os.path.exists("{0}/{1}.rst".format(GENERATED_PREFIX, example_doc_name)):
                     print "It exists: {0}".format(example_doc_name)
                     row.append(":doc:`%s <%s>`" % ("Example", example_doc_name))
                 else:
@@ -326,7 +330,8 @@ class ApiIntrospector(object):
             data_dump = "\n".join(["   %s" % l for l in data_dump.split("\n")])
             rst += data_dump
             rst += "\n\n"
-        open(self._example_document_name(example_pattern) + ".rst", 'w').write(rst)
+        codecs.open("{0}/{1}.rst".format(GENERATED_PREFIX, self._example_document_name(example_pattern)), 'w',
+                    encoding="UTF-8").write(rst)
 
     def write_docs(self, examples):
         resources_rst = ""
