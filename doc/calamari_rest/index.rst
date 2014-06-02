@@ -1,10 +1,13 @@
-.. Calamari REST API documentation master file, created by
-   sphinx-quickstart on Tue Jan 14 15:44:55 2014.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
-Welcome to the Calamari REST API documentation
-==============================================
+Calamari REST API documentation
+===============================
+
+Purpose
+-------
+
+This section explains the Calamari REST API, for developers building
+software on top of it.  This might include user interfaces, scripts, or
+plugins for third party management platforms.
 
 Introduction
 ------------
@@ -31,11 +34,3 @@ Contents
    authentication
    conventions
    resources/resources
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

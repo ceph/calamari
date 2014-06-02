@@ -24,12 +24,12 @@
 
 # These paths required for imported calamari modules to generate autodoc text
 import os
-os.environ['CALAMARI_CONFIG'] = os.path.join(os.path.dirname(__file__), "../calamari.conf")
+os.environ['CALAMARI_CONFIG'] = os.path.join(os.path.dirname(__file__), "calamari.conf")
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../cthulhu"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../rest-api"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../calamari-common"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../calamari-web"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../cthulhu"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../rest-api"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../calamari-common"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../calamari-web"))
 
 
 # Add any Sphinx extension module names here, as strings. They can be extensions

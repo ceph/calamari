@@ -3,14 +3,14 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Calamari Development
-====================
+Calamari for Developers
+=======================
 
 Purpose
 -------
 
-This sphinx tree is for developer information about how to work with the Calamari
-codebase.  It is not a user or API guide.
+The information in this section is for people doing development on
+Calamari itself.
 
 Contents
 --------
@@ -31,12 +31,3 @@ Contents
    cthulhu_locking
    persistence
    requests
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
