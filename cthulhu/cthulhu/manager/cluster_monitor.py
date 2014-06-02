@@ -5,14 +5,8 @@ import datetime
 from pytz import utc
 import gevent.greenlet
 import gevent.event
-import salt
-import salt.utils.event
-import salt.client
-try:
-    from salt.client import condition_kwarg
-except ImportError:
-    # Salt moved this in 382dd5e
-    from salt.utils.args import condition_input as condition_kwarg
+
+from calamari_common.salt_wrapper import condition_kwarg, LocalClient, SaltEventSource
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
@@ -22,7 +16,7 @@ from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager import config, salt_config
-from cthulhu.util import now, Ticker, SaltEventSource
+from cthulhu.util import now, Ticker
 
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
@@ -111,7 +105,7 @@ class SyncObjects(object):
             return
 
         self._fetching_at[sync_type] = now()
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
         # TODO clean up unused 'since' argument
         pub_data = client.run_job(minion_id, 'ceph.get_cluster_object',
                                   condition_kwarg([], {'cluster_name': self._cluster_name,
@@ -229,7 +223,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         log.debug("ClusterMonitor._run: ready")
 
         self._request_ticker.start()
-        event = SaltEventSource(salt_config)
+        event = SaltEventSource(log, salt_config)
 
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582

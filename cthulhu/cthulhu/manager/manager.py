@@ -44,7 +44,7 @@ else:
     from cthulhu.persistence.servers import Server, Service
 
 
-from cthulhu.util import SaltEventSource
+from calamari_common.salt_wrapper import SaltEventSource
 
 # Manhole module optional for debugging.
 try:
@@ -115,7 +115,7 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
 
-        event = SaltEventSource(salt_config)
+        event = SaltEventSource(log, salt_config)
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
             ev = event.get_event(full=True)

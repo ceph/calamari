@@ -650,7 +650,6 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-
         server_to_grains = get_remote_grains([s['fqdn'] for s in servers])
 
         for server in servers:

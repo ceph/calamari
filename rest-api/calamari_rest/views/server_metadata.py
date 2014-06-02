@@ -7,11 +7,8 @@ This is a wrapper around the Salt interfaces we use to get this data.
 import logging
 
 import gevent.pool
-from salt.config import master_config
-from salt.loader import _create_loader
-import salt.config
-import salt.utils.master
 
+from calamari_common.salt_wrapper import master_config, _create_loader, client_config, MasterPillarUtil
 from calamari_common.config import CalamariConfig
 
 
@@ -62,11 +59,11 @@ def get_remote_grains(fqdns):
     Any servers for which grains are not found will appear in the result
     with an empty grains dictionary
     """
-    salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-    pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
-                                                     use_cached_grains=True,
-                                                     grains_fallback=False,
-                                                     opts=salt_config)
+    salt_config = client_config(config.get('cthulhu', 'salt_config_path'))
+    pillar_util = MasterPillarUtil('', 'glob',
+                                   use_cached_grains=True,
+                                   grains_fallback=False,
+                                   opts=salt_config)
 
     fqdn_to_grains = {}
 

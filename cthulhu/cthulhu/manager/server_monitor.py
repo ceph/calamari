@@ -12,8 +12,6 @@ import logging
 
 from gevent import greenlet
 from gevent import event
-import salt.utils.event
-import salt.utils.master
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log as cthulhu_log
@@ -22,8 +20,9 @@ from cthulhu.manager import salt_config, config
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from calamari_common.types import OsdMap, MonMap, ServiceId
+from calamari_common.salt_wrapper import SaltEventSource, MasterPillarUtil
 from cthulhu.persistence.servers import Server, Service
-from cthulhu.util import now, SaltEventSource
+from cthulhu.util import now
 
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
@@ -145,7 +144,7 @@ class ServerMonitor(greenlet.Greenlet):
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        subscription = SaltEventSource(salt_config)
+        subscription = SaltEventSource(log, salt_config)
 
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
@@ -180,10 +179,10 @@ class ServerMonitor(greenlet.Greenlet):
             return result
 
     def _get_contact_period(self, fqdn):
-        pillar_util = salt.utils.master.MasterPillarUtil([fqdn], 'list',
-                                                         grains_fallback=False,
-                                                         pillar_fallback=False,
-                                                         opts=salt_config)
+        pillar_util = MasterPillarUtil([fqdn], 'list',
+                                       grains_fallback=False,
+                                       pillar_fallback=False,
+                                       opts=salt_config)
 
         try:
             heartbeat_s = pillar_util.get_minion_pillar()[fqdn]['schedule']['ceph.heartbeat']['seconds']
@@ -360,10 +359,10 @@ class ServerMonitor(greenlet.Greenlet):
             self.forget_service(self.services[stale_mon_id])
 
     def _get_grains(self, fqdn):
-        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
+        pillar_util = MasterPillarUtil(fqdn, 'glob',
+                                       use_cached_grains=True,
+                                       grains_fallback=False,
+                                       opts=salt_config)
         try:
             return pillar_util.get_minion_grains()[fqdn]
         except KeyError:

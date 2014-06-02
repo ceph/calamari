@@ -1,8 +1,8 @@
 from contextlib import contextmanager
 from gevent.lock import RLock
 import datetime
-from salt.client import LocalClient
 
+from calamari_common.salt_wrapper import LocalClient
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
 from cthulhu.log import log as cthulhu_log
