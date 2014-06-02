@@ -15,7 +15,11 @@ import gevent.socket as socket
 import greenlet
 from dateutil.tz import tzutc
 import gevent.greenlet
-import msgpack
+
+try:
+    import msgpack
+except ImportError:
+    msgpack = None
 
 
 from cthulhu.log import log

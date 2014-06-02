@@ -7,7 +7,11 @@ import datetime
 import gevent.greenlet
 import gevent.queue
 import gevent.event
-import msgpack
+
+try:
+    import msgpack
+except ImportError:
+    msgpack = None
 
 from sqlalchemy.orm import sessionmaker
 from cthulhu.manager import config
