@@ -17,9 +17,14 @@ warnings.filterwarnings("ignore", category=DeprecationWarning,
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 import time
-from zerorpc import LostRemote, RemoteError
+
 from rest_framework.response import Response
-import zerorpc
+
+try:
+    from zerorpc import LostRemote, RemoteError
+    import zerorpc
+except ImportError:
+    zerorpc = None
 
 from calamari_common.config import CalamariConfig
 from calamari_common.types import NotFound
@@ -35,33 +40,37 @@ class DataObject(object):
         self.__dict__.update(data)
 
 
-class ProfiledRpcClient(zerorpc.Client):
-    # Finger in the air, over 100ms is too long
-    SLOW_THRESHOLD = 0.2
+if zerorpc is not None:
+    class ProfiledRpcClient(zerorpc.Client):
+        # Finger in the air, over 100ms is too long
+        SLOW_THRESHOLD = 0.2
 
-    def __init__(self, *args, **kwargs):
-        super(ProfiledRpcClient, self).__init__(*args, **kwargs)
+        def __init__(self, *args, **kwargs):
+            super(ProfiledRpcClient, self).__init__(*args, **kwargs)
 
-        self.method_times = defaultdict(list)
+            self.method_times = defaultdict(list)
 
-    def _process_response(self, request_event, bufchan, timeout):
-        a = time.time()
-        result = super(ProfiledRpcClient, self)._process_response(request_event, bufchan, timeout)
-        b = time.time()
-        self.method_times[request_event.name].append(b - a)
-        return result
+        def _process_response(self, request_event, bufchan, timeout):
+            a = time.time()
+            result = super(ProfiledRpcClient, self)._process_response(request_event, bufchan, timeout)
+            b = time.time()
+            self.method_times[request_event.name].append(b - a)
+            return result
 
-    def report(self, log):
-        total = 0.0
-        for method_name, times in self.method_times.items():
-            for t in times:
-                if t > self.SLOW_THRESHOLD:
-                    log.warn("Slow RPC '%s' (%sms)" % (method_name, t * 1000))
-                total += t
-            log.debug("RPC timing for '%s': %s/%s/%s avg/min/max ms" % (
-                method_name, sum(times) * 1000.0 / len(times), min(times) * 1000.0, max(times) * 1000.0
-            ))
-        log.debug("Total time in RPC: %sms" % (total * 1000))
+        def report(self, log):
+            total = 0.0
+            for method_name, times in self.method_times.items():
+                for t in times:
+                    if t > self.SLOW_THRESHOLD:
+                        log.warn("Slow RPC '%s' (%sms)" % (method_name, t * 1000))
+                    total += t
+                log.debug("RPC timing for '%s': %s/%s/%s avg/min/max ms" % (
+                    method_name, sum(times) * 1000.0 / len(times), min(times) * 1000.0, max(times) * 1000.0
+                ))
+            log.debug("Total time in RPC: %sms" % (total * 1000))
+else:
+    class ProfiledRpcClient(object):
+        pass
 
 
 class RPCView(APIView):
@@ -69,6 +78,9 @@ class RPCView(APIView):
     log = logging.getLogger('django.request.profile')
 
     def __init__(self, *args, **kwargs):
+        if zerorpc is None:
+            raise RuntimeError("Cannot run without zerorpc")
+
         super(RPCView, self).__init__(*args, **kwargs)
         self.client = ProfiledRpcClient()
 
