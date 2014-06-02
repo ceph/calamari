@@ -1,6 +1,7 @@
 from collections import defaultdict
 import json
 from optparse import make_option
+import os
 from django.core.management.base import NoArgsCommand
 import importlib
 from jinja2 import Environment
@@ -9,6 +10,7 @@ import rest_framework.viewsets
 import traceback
 from django.core.urlresolvers import RegexURLPattern, RegexURLResolver
 import sys
+import codecs
 
 from calamari_rest.serializers.v2 import ValidatingSerializer
 
@@ -68,6 +70,9 @@ def normalize_row(row, max_cols):
 
 
 PAGE_TEMPLATE = """
+
+:tocdepth: 3
+
 API resources
 =============
 
@@ -96,6 +101,9 @@ Examples
 
 
 RESOURCE_TEMPLATE = """
+
+.. _{{class_name}}:
+
 {{name}}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -260,23 +268,37 @@ class ApiIntrospector(object):
 
         return Environment().from_string(RESOURCE_TEMPLATE).render(
             name=name,
+            class_name=view.__name__,
             help_text=view_help_text,
             field_table=field_table_rst,
             url_table=url_table_rst
         )
 
     def _url_table(self, url_patterns):
-        url_table = [["URL"] + VERBS]
-        for url_pattern in url_patterns:
-            methods = _url_pattern_methods(url_pattern)
-            row = [":doc:`%s <%s>`" % (_pretty_url(self.prefix, url_pattern),
-                                       self._example_document_name(_stripped_url(self.prefix, url_pattern)))]
-            for v in VERBS:
-                if v in methods:
-                    row.append("Yes")
+        url_table = [["URL", "View", "Examples"] + VERBS]
+        for view, url_patterns in self.view_to_url_patterns:
+            for url_pattern in url_patterns:
+                methods = _url_pattern_methods(url_pattern)
+
+                row = [_pretty_url(self.prefix, url_pattern)]
+
+                view_name = view().metadata(None)['name']
+                row.append(
+                    u":ref:`{0} <{1}>`".format(view_name.replace(" ", unichr(0x00a0)), view.__name__)
+                )
+
+                example_doc_name = self._example_document_name(_stripped_url(self.prefix, url_pattern))
+                if os.path.exists("{0}.rst".format(example_doc_name)):
+                    print "It exists: {0}".format(example_doc_name)
+                    row.append(":doc:`%s <%s>`" % ("Example", example_doc_name))
                 else:
                     row.append("")
-            url_table.append(row)
+                for v in VERBS:
+                    if v in methods:
+                        row.append("Yes")
+                    else:
+                        row.append("")
+                url_table.append(row)
 
         return make_table(url_table)
 
@@ -317,7 +339,7 @@ class ApiIntrospector(object):
 
         resources_rst = Environment().from_string(PAGE_TEMPLATE).render(
             resources_rst=resources_rst, url_summary_rst=url_table_rst, example_docs=example_docs)
-        open(RESOURCES_FILE, 'w').write(resources_rst)
+        codecs.open(RESOURCES_FILE, 'w', encoding="UTF-8").write(resources_rst)
 
         for example_pattern, example_results in examples.items():
             self._write_example(example_pattern, example_results)

@@ -129,10 +129,11 @@ class RPCView(APIView):
         # pgp_num is optional during create or update
         # nothing is required during update
         if hasattr(self, 'update'):
-            print self.__class__
-            actions['PATCH'] = self.serializer_class().metadata()
+            if self.serializer_class:
+                actions['PATCH'] = self.serializer_class().metadata()
         if hasattr(self, 'create'):
-            actions['POST'] = self.serializer_class().metadata()
+            if self.serializer_class:
+                actions['POST'] = self.serializer_class().metadata()
         ret['actions'] = actions
 
         return ret
