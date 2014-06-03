@@ -41,8 +41,8 @@ Calamari UI
 
 .. code-block:: bash
 
-  git clone git@github.com:ceph/clients.git
-  cd clients/vagrant/
+  git clone git@github.com:ceph/calamari-clients.git
+  cd calamari-clients/vagrant/
   vagrant up
 
 
