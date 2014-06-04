@@ -8,6 +8,7 @@ from collections import defaultdict
 import json
 import datetime
 from dateutil import tz
+import logging
 import time
 
 from gevent import greenlet
@@ -36,8 +37,8 @@ TICK_PERIOD = 10
 REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 
 
-log = cthulhu_log.getChild("server_monitor")
-
+# getChild isn't in 2.6
+log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
 
 class GrainsNotFound(Exception):
     pass
