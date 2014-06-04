@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from salt.client import LocalClient
@@ -51,8 +52,9 @@ class UserRequestBase(object):
         wants a cluster name when you create a client, and otherwise we would
         have to look up via ceph.conf.
         """
-        self.log = log.getChild(self.__class__.__name__)
-
+        # getChild isn't in 2.6
+        logname = '.'.join((log.name, self.__class__.__name__)))
+        self.log = logging.getLogger(logname)
         self.requested_at = now()
         self.completed_at = None
 
