@@ -7,7 +7,13 @@ Theory of operation
 
 We use Vagrant to setup our build environment for a repeatable build of the artifacts that make up the calamari system.
 The pattern is to clone calamari and then launch Vagrant boxes from specific directories within.
-Vagrant will setup a filesystem share between host and guest which the build can exploit.
+Vagrant will setup a filesystem share between host and guest which the build can exploit.  Then, a call to
+
+.. code-block:: bash
+
+  vagrant ssh -c 'sudo salt-call --local state.highstate'
+
+will cause build dependencies to be installed, clone the git workspace, execute a build, and copy the build products out to the shared folders.
 When things go according to plan all the artifacts end up on the host contained in the working copy of calamari.
 
 Build environment setup
@@ -19,8 +25,7 @@ check for errors like this:
 
 .. code-block:: bash
 
-  vagrant ssh
-  sudo salt-call state.highstate
+  vagrant ssh -c 'sudo salt-call --local state.highstate'
 
 Calamari server and hosted packages
 -----------------------------------
@@ -31,10 +36,10 @@ Calamari server and hosted packages
   git clone git@github.com:ceph/Diamond.git --branch=calamari
   cd calamari/vagrant/precise-build
   vagrant up
+  vagrant ssh -c 'sudo salt-call --local state.highstate'
 
 
-During the vagrant provisioning, the build is invokved by a salt state so that you will end
-up with built artifacts automatically. See calamari/vagrant/precise-build/salt/roots/make_packages.sls
+See calamari/vagrant/precise-build/salt/roots/make_packages.sls
 
 Calamari UI
 -----------
@@ -44,7 +49,7 @@ Calamari UI
   git clone git@github.com:ceph/calamari-clients.git
   cd calamari-clients/vagrant/
   vagrant up
-
+  vagrant ssh -c 'sudo salt-call --local state.highstate'
 
 Manually testing installation
 -----------------------------
