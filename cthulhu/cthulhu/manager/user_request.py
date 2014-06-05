@@ -53,7 +53,7 @@ class UserRequestBase(object):
         have to look up via ceph.conf.
         """
         # getChild isn't in 2.6
-        logname = '.'.join((log.name, self.__class__.__name__)))
+        logname = '.'.join((log.name, self.__class__.__name__))
         self.log = logging.getLogger(logname)
         self.requested_at = now()
         self.completed_at = None
