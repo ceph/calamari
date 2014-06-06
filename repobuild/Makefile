@@ -29,7 +29,19 @@ rhel6:
 	createrepo rhel6
 	tar czf calamari-repo-rhel6.tar.gz rhel6/
 
-clean:
-	rm -rf el6 rhel6 ubuntu wheezy
+# before it got to EPEL7, we did this; supposed to be there now
+#RHEL7_SALT_LOC=http://apt-mirror.sepia.ceph.com/misc-rpms/
+#SALT_RPMS=salt-2014.1.4-1_ceph.el7.noarch.rpm salt-minion-2014.1.4-1_ceph.el7.noarch.rpm
 
-.PHONY: ubuntu wheezy el6 rhel6 clean
+rhel7:
+	mkdir rhel7 || true
+	yumdownloader --destdir=rhel7 m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq sshpass zeromq3 python-crypto libyaml salt salt-minion
+	# for r in $(SALT_RPMS); do curl -sS $(RHEL7_SALT_LOC)/$$r -o rhel7/$$r; done
+	cp ../../Diamond/dist/*.noarch.rpm rhel7/
+	createrepo rhel7
+	tar czf calamari-repo-rhel7.tar.gz rhel7/
+
+clean:
+	rm -rf el6 rhel6 rhel7 ubuntu wheezy
+
+.PHONY: ubuntu wheezy el6 rhel6 rhel7 clean
