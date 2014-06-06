@@ -45,7 +45,7 @@ class TestApi(ServerTestCase):
         pool_id = response.json()[0]['id']
 
         # Make sure there is at least one request
-        response = self.api.patch("cluster/%s/pool/%s" % (fsid, pool_id), {'name': 'newname'})
+        response = self.api.post("cluster/%s/pool" % (fsid), {'name': 'newname', 'pg_num': 64, 'pgp_num': 64})
         self.assertEqual(response.status_code, 202)
         request_id = response.json()['request_id']
 
