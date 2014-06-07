@@ -4,7 +4,7 @@ Priority: extra
 Homepage: http://www.inktank.com/
 Maintainer: Dan Mick <dan.mick@inktank.com>
 Standards-Version: 3.9.2
-Build-Depends: libcairo2-dev, python-pip, libpq-dev
+Build-Depends: libcairo2-dev, python-pip, libpq-dev, python-dev, python-virtualenv
 
 Package: calamari-server
 Architecture: all
