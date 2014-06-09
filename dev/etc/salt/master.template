@@ -67,6 +67,8 @@ pki_dir: {{calamari_root}}/dev/etc/salt/pki
 # Directory to store job and cache data
 cachedir: {{calamari_root}}/dev/var/cache/salt/master
 
+sqlite_queue_dir: {{calamari_root}}/dev/var/cache/salt/master/queue
+
 # Verify and set permissions on configuration directories at startup
 #verify_env: True
 
