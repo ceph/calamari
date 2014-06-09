@@ -1,13 +1,13 @@
 
-import re
 import datetime
 
 from pytz import utc
 import gevent.greenlet
 import gevent.event
 
-from calamari_common.salt_wrapper import condition_kwarg, LocalClient, SaltEventSource
+from calamari_common.remote import get_remote, Unavailable
 
+from cthulhu.manager import config
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
@@ -16,9 +16,9 @@ from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
-from cthulhu.manager import config, salt_config
 from cthulhu.util import now
 
+remote = get_remote()
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
 
@@ -106,17 +106,18 @@ class SyncObjects(object):
             return
 
         self._fetching_at[sync_type] = now()
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        # TODO clean up unused 'since' argument
-        pub_data = client.run_job(minion_id, 'ceph.get_cluster_object',
-                                  condition_kwarg([], {'cluster_name': self._cluster_name,
-                                                       'sync_type': sync_type.str,
-                                                       'since': None}))
-        if not pub_data:
+        try:
+            # TODO clean up unused 'since' argument
+            jid = remote.run_job(minion_id, 'ceph.get_cluster_object',
+                                 {'cluster_name': self._cluster_name,
+                                  'sync_type': sync_type.str,
+                                  'since': None})
+        except Unavailable:
+            # Don't throw an exception because if a fetch fails we should end up
+            # issuing another on next heartbeat
             log.error("Failed to start fetch job %s/%s" % (minion_id, sync_type))
-            # Don't throw an exception because if a fetch fails we should always
         else:
-            log.debug("SyncObjects.fetch: jid=%s minions=%s" % (pub_data['jid'], pub_data['minions']))
+            log.debug("SyncObjects.fetch: jid=%s" % jid)
 
     def on_fetch_complete(self, minion_id, sync_type, version, data):
         """
@@ -216,71 +217,36 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         """
         return self._sync_objects.get(object_type)
 
+    def on_job_complete(self, fqdn, jid, success, result, cmd, args):
+        # It would be much nicer to put the FSID at the start of
+        # the tag, if salt would only let us add custom tags to our jobs.
+        # Instead we enforce a convention that calamari jobs include
+        # fsid in their return value.
+        if 'fsid' not in result or result['fsid'] != self.fsid:
+            # Something for a different ClusterMonitor
+            log.debug("Ignoring job return, not for my FSID")
+            return
+
+        if cmd == 'ceph.get_cluster_object':
+            # A ceph.get_cluster_object response
+            if not success:
+                log.error("on_sync_object: failure from %s: %s" % (fqdn, result))
+                return
+
+            self.on_sync_object(fqdn, result)
+        else:
+            log.warning("Unexpected function '%s' (%s)" % (cmd, cmd))
+
     def _run(self):
         self._plugin_monitor.start()
 
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
 
-        event = SaltEventSource(log, salt_config)
-
-        while not self._complete.is_set():
-            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
-            ev = event.get_event(full=True)
-
-            if ev is not None:
-                data = ev['data']
-                tag = ev['tag']
-                log.debug("_run.ev: %s/tag=%s" % (data['id'] if 'id' in data else None, tag))
-
-                # I am interested in the following tags:
-                # - salt/job/<jid>/ret/<minion id> where jid is one that I started
-                #   (this includes ceph.rados_command and ceph.get_cluster_object)
-                # - ceph/cluster/<fsid> where fsid is my fsid
-
-                try:
-                    if tag.startswith("ceph/cluster/{0}".format(self.fsid)):
-                        # A ceph.heartbeat beacon
-                        self.on_heartbeat(data['id'], data['data'])
-                    elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
-                        if data['fun'] == "saltutil.running":
-                            # Update on what jobs are running
-                            # It would be nice to filter these down to those which really are for
-                            # this cluster, but as long as N_clusters and N_jobs are reasonably small
-                            # it's not an efficiency problem.
-                            self._requests.on_tick_response(data['id'], data['return'])
-
-                        # It would be much nicer to put the FSID at the start of
-                        # the tag, if salt would only let us add custom tags to our jobs.
-                        # Instead we enforce a convention that all calamari jobs must include
-                        # fsid in their return value.
-                        if (not isinstance(data, dict)) or not isinstance(data['return'], dict):
-                            # Something not formatted for ClusterMonitor
-                            log.warning("Ignoring event %s" % tag)
-                            continue
-
-                        if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
-                            # Something for a different ClusterMonitor
-                            log.debug("Ignoring job return, not for my FSID")
-                            continue
-
-                        if data['fun'] == 'ceph.get_cluster_object':
-                            # A ceph.get_cluster_object response
-                            if not data['success']:
-                                log.error("on_sync_object: failure from %s: %s" % (data['id'], data['return']))
-                                continue
-
-                            self.on_sync_object(data['id'], data['return'])
-                        else:
-                            log.warning("Unexpected function '%s' (%s)" % (data['fun'], tag))
-                    else:
-                        # This does not concern us, ignore it
-                        pass
-                except:
-                    # Because this is our main event handling loop, swallow exceptions
-                    # instead of letting them end the world.
-                    log.exception("Exception handling message with tag %s" % tag)
-                    log.debug("Message content: %s" % data)
+        remote.listen(self._complete,
+                      on_heartbeat=self.on_heartbeat,
+                      fsid=self.fsid,
+                      on_job=self.on_job_complete)
 
         log.info("%s complete" % self.__class__.__name__)
         self._plugin_monitor.stop()

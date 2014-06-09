@@ -6,17 +6,19 @@ try:
 except ImportError:
     zerorpc = None
 
-from calamari_common.salt_wrapper import Key, master_config, LocalClient
-from cthulhu.manager import config
-from cthulhu.log import log
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
     NotFound, SERVER
+from calamari_common.remote import get_remote
+
+from cthulhu.log import log
+from cthulhu.manager import config
 from cthulhu.manager.user_request import SaltRequest
 
 
 class RpcInterface(object):
     def __init__(self, manager):
         self._manager = manager
+        self._remote = get_remote()
 
     def __getattribute__(self, item):
         """
@@ -312,90 +314,38 @@ class RpcInterface(object):
                        if (state is None or r.state == state) and (fsid is None or r.fsid == fsid)],
                       lambda a, b: cmp(b['requested_at'], a['requested_at']))
 
-    def list_server_logs(self, fqdn):
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
-        log.debug('list_server_log result !!! {results}'.format(results=str(results)))
-        return results
-
-    def get_server_log(self, fqdn, log_path, lines):
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
-        return results
-
-    @property
-    def _salt_key(self):
-        return Key(master_config(config.get('cthulhu', 'salt_config_path')))
-
     def minion_status(self, status_filter):
         """
         Return a list of salt minion keys
 
-        :param minion_status: A status, one of acc, pre, rej, all
+        :param status_filter: An authentication status, or None
         """
 
-        # FIXME: I think we're supposed to use salt.wheel.Wheel.master_call
-        # for this stuff to call out to the master instead of touching
-        # the files directly (need to set up some auth to do that though)
-
-        keys = self._salt_key.list_keys()
-        result = []
-
-        key_to_status = {
-            'minions_pre': 'pre',
-            'minions_rejected': 'rejected',
-            'minions': 'accepted'
-        }
-
-        for key, status in key_to_status.items():
-            for minion in keys[key]:
-                if not status_filter or status == status_filter:
-                    result.append({
-                        'id': minion,
-                        'status': status
-                    })
-
-        return result
+        return self._remote.auth_list(status_filter)
 
     def minion_accept(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.accept(minion_id)
+        return self.auth_accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.reject(minion_id)
+        return self.auth_reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.delete_key(minion_id)
+        return self.auth_delete(minion_id)
 
     def minion_get(self, minion_id):
-        result = self._salt_key.name_match(minion_id, full=True)
-        if not result:
-            raise NotFound(SERVER, minion_id)
-
-        if 'minions' in result:
-            status = "accepted"
-        elif "minions_pre" in result:
-            status = "pre"
-        elif "minions_rejected" in result:
-            status = "rejected"
-        else:
-            raise ValueError(result)
-
-        return {
-            'id': minion_id,
-            'status': status
-        }
+        return self._remote.auth_get(minion_id)
 
     def server_get(self, fqdn):
         return self._manager.servers.dump(self._server_resolve(fqdn))
