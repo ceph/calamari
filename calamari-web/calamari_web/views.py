@@ -1,7 +1,7 @@
 
 
 from django.views.static import serve as static_serve
-from django.contrib.auth.decorators import login_required
+
 from django.http import HttpResponseRedirect, HttpResponse, \
     HttpResponseServerError, Http404
 from django.core.urlresolvers import reverse
@@ -22,6 +22,8 @@ def home(request):
 # No need for login_required behaviour if auth is switched off.
 if 'django.contrib.auth' not in settings.INSTALLED_APPS:
     login_required = lambda x: x
+else:
+    from django.contrib.auth.decorators import login_required
 
 
 @login_required
