@@ -16,8 +16,7 @@ except ImportError:
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
-from cthulhu.manager import derived, request_collection
-from cthulhu.manager.derived import DerivedObjects
+from cthulhu.manager import request_collection
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
@@ -186,7 +185,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self.done = gevent.event.Event()
 
         self._sync_objects = SyncObjects(self.name)
-        self._derived_objects = DerivedObjects()
 
         self._request_factories = {
             OSD: OsdRequestFactory,
@@ -223,10 +221,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         :return a SyncObject instance
         """
         return self._sync_objects.get(object_type)
-
-    @nosleep
-    def get_derived_object(self, object_type):
-        return self._derived_objects.get(object_type)
 
     def _run(self):
         self._plugin_monitor.start()
@@ -366,32 +360,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         new_object = self._sync_objects.on_fetch_complete(minion_id, sync_type, version, data)
 
         if new_object:
-            # The ServerMonitor is interested in cluster maps, do this prior
-            # to updating any derived objects so that derived generators have
-            # access to latest view of server state
+            # The ServerMonitor is interested in cluster maps
             if sync_type == OsdMap:
                 self._servers.on_osd_map(data)
             elif sync_type == MonMap:
                 self._servers.on_mon_map(data)
             elif sync_type == MdsMap:
                 self._servers.on_mds_map(self.fsid, data)
-
-            # The frontend would like us to maintain some derived objects that
-            # munge together the PG and OSD maps into an easier-to-consume form.
-            for generator in derived.generators:
-                if sync_type in generator.depends:
-                    dependency_data = {}
-                    for t in generator.depends:
-                        obj = self._sync_objects.get(t)
-                        if obj is not None:
-                            dependency_data[t] = obj.data
-                        else:
-                            dependency_data[t] = None
-
-                    if None not in dependency_data.values():
-                        log.debug("Updating %s" % generator.__name__)
-                        derived_objects = generator.generate(self, self._servers, dependency_data)
-                        self._derived_objects.update(derived_objects)
 
             self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
 

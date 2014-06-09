@@ -121,16 +121,6 @@ class RpcInterface(object):
         else:
             return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
 
-    def get_derived_object(self, fs_id, object_type):
-        """
-        Get one of the objects that ClusterMonitor generates from the sync objects, typically
-        something in a "frontend-friendly" format or augmented with extra info.
-
-        :param fs_id: The fsid of a cluster
-        :param object_type: String, name of the derived object
-        """
-        return self._fs_resolve(fs_id).get_derived_object(object_type)
-
     def update(self, fs_id, object_type, object_id, attributes):
         """
         Modify an object in a cluster.

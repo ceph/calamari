@@ -4,7 +4,7 @@ from django.utils.unittest.case import skipIf
 import os
 
 if os.environ.get('CALAMARI_CONFIG'):
-    from cthulhu.manager import manager, rpc, derived, cluster_monitor, plugin_monitor
+    from cthulhu.manager import manager, rpc, cluster_monitor, plugin_monitor
 
 
 class TestManager(TestCase):
@@ -29,15 +29,6 @@ class TestRpcThread(TestCase):
     @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
     def testCreateRpcThread(self):
         assert self.rpc_thread is not None
-
-
-class TestDerivedObjects(TestCase):
-    def setUp(self):
-        self.derived_TestCase = derived.DerivedObjects()
-
-    @skipIf(os.environ.get('CALAMARI_CONFIG') is None, "needs CALAMARI_CONFIG set")
-    def testDerivedObject(self):
-        pass
 
 
 class TestSyncObjects(TestCase):
