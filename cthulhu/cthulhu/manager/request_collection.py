@@ -3,12 +3,12 @@ from gevent.lock import RLock
 import datetime
 import logging
 
-from calamari_common.salt_wrapper import LocalClient
+from calamari_common.remote import get_remote
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
 from cthulhu.log import log as cthulhu_log
 from cthulhu.util import now
-from cthulhu.manager import config
+
 
 TICK_PERIOD = 20
 
@@ -35,6 +35,8 @@ class RequestCollection(object):
         self._by_request_id = {}
         self._by_jid = {}
         self._lock = RLock()
+
+        self._remote = get_remote()
 
         self._manager = manager
 
@@ -88,11 +90,8 @@ class RequestCollection(object):
         # Attempt to emit a saltutil.running to ping jobs, next tick we
         # will see if we got updates to the alive_at attribute to indicate non-staleness
         if query_minions:
-            log.info("RequestCollection.tick: sending saltutil.running to {0}".format(query_minions))
-            client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-            pub_data = client.run_job(list(query_minions), 'saltutil.running', [], expr_form="list")
-            if not pub_data:
-                log.warning("Failed to publish saltutil.running to {0}".format(query_minions))
+            log.info("RequestCollection.tick: sending get_running for {0}".format(query_minions))
+            self._remote.get_running(list(query_minions))
 
     def on_tick_response(self, minion_id, jobs):
         """
@@ -133,10 +132,8 @@ class RequestCollection(object):
 
             # In the background, try to cancel the request's JID on a best-effort basis
             if cancel_jid:
-                client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-                client.run_job(request.minion_id, 'saltutil.kill_job',
-                               [cancel_jid])
-                # We don't check for completion or errors from kill_job, it's a best-effort thing.  If we're
+                self._remote.cancel(request.minion_id, cancel_jid)
+                # We don't check for completion or errors, it's a best-effort thing.  If we're
                 # cancelling something we will do our best to kill any subprocess but can't
                 # any guarantees because running nodes may be out of touch with the calamari server.
 
@@ -254,16 +251,14 @@ class RequestCollection(object):
             request.set_error("Internal error %s" % e)
             request.complete()
 
-    def on_completion(self, data):
+    def on_completion(self, fqdn, jid, success, result, cmd, args):
         """
         Callback for when a salt/job/<jid>/ret event is received, in which
         we find the UserRequest that created the job, and inform it of
         completion so that it can progress.
         """
         with self._lock:
-            jid = data['jid']
-            result = data['return']
-            log.debug("on_completion: jid=%s data=%s" % (jid, data))
+            log.debug("on_completion: jid=%s success=%s result=%s" % (jid, success, result))
 
             try:
                 request = self.get_by_jid(jid)
@@ -272,7 +267,7 @@ class RequestCollection(object):
                 log.warning("on_completion: unknown jid {0}, return: {1}".format(jid, result))
                 return
 
-            if not data['success']:
+            if not success:
                 with self._update_index(request):
                     request.jid = None
 
@@ -285,8 +280,8 @@ class RequestCollection(object):
                         # An exception, probably, stringized by salt for us
                         request.set_error(result)
                     request.complete()
-            elif data['fun'] == 'ceph.rados_commands':
-                self._on_rados_completion(data['id'], request, result)
+            elif cmd == 'ceph.rados_commands':
+                self._on_rados_completion(fqdn, request, result)
             else:
                 # General case successful JID other than rados_command
                 with self._update_index(request):
