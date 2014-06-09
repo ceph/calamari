@@ -171,7 +171,7 @@ class TestPoolManagement(RequestTestCase):
         mods = self._non_default_args(cluster_id)
         for var, val in mods.items():
             # Sanity check we really are changing something, that the new val is diff
-            self.assertNotEqual(pool[var], val)
+            self.assertNotEqual(pool[var], val, '%s did not change' % (var))
             try:
                 self._update(cluster_id, pool_id, {var: val})
                 pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
