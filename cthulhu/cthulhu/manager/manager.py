@@ -3,7 +3,6 @@ import hashlib
 import logging
 import os
 import gc
-import re
 import time
 import signal
 import traceback
@@ -16,12 +15,14 @@ import greenlet
 from dateutil.tz import tzutc
 import gevent.greenlet
 
+
 try:
     import msgpack
 except ImportError:
     msgpack = None
 
 
+from calamari_common.remote import get_remote
 from cthulhu.log import log
 import cthulhu.log
 from cthulhu.util import Ticker
@@ -31,7 +32,7 @@ from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager import request_collection
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager.notifier import NotificationThread
-from cthulhu.manager import config, salt_config
+from cthulhu.manager import config
 from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceState
 
 
@@ -50,13 +51,14 @@ else:
     from cthulhu.persistence.servers import Server, Service
 
 
-from calamari_common.salt_wrapper import SaltEventSource
-
 # Manhole module optional for debugging.
 try:
     import manhole
 except ImportError:
     manhole = None
+
+
+remote = get_remote()
 
 
 class ProcessMonitorThread(gevent.greenlet.Greenlet):
@@ -118,35 +120,23 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
     def stop(self):
         self._complete.set()
 
+    def on_heartbeat(self, fqdn, data):
+        if not data['fsid'] in self._manager.clusters:
+            self._manager.on_discovery(fqdn, data)
+        else:
+            log.debug("%s: heartbeat from existing cluster %s" % (
+                self.__class__.__name__, data['fsid']))
+
+    def on_job(self, fqdn, jid, success, result, cmd, args):
+        self._manager.requests.on_completion(fqdn, jid, success, result, cmd, args)
+
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
 
-        event = SaltEventSource(log, salt_config)
-        while not self._complete.is_set():
-            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
-            ev = event.get_event(full=True)
-            if ev is not None and 'tag' in ev:
-                tag = ev['tag']
-                data = ev['data']
-                try:
-                    if tag.startswith("ceph/cluster/"):
-                        cluster_data = data['data']
-                        if not cluster_data['fsid'] in self._manager.clusters:
-                            self._manager.on_discovery(data['id'], cluster_data)
-                        else:
-                            log.debug("%s: heartbeat from existing cluster %s" % (
-                                self.__class__.__name__, cluster_data['fsid']))
-                    elif re.match("^salt/job/\d+/ret/[^/]+$", tag):
-                        if data['fun'] == 'saltutil.running':
-                            self._manager.requests.on_tick_response(data['id'], data['return'])
-                        else:
-                            self._manager.requests.on_completion(data)
-                    else:
-                        # This does not concern us, ignore it
-                        log.debug("TopLevelEvents: ignoring %s" % tag)
-                        pass
-                except:
-                    log.exception("Exception handling message tag=%s" % tag)
+        remote.listen(self._complete,
+                      on_heartbeat=self.on_heartbeat,
+                      on_job=self.on_job,
+                      on_running_jobs=self._manager.requests.on_tick_response)
 
         log.info("%s complete" % self.__class__.__name__)
 

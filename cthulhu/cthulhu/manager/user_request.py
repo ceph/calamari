@@ -1,15 +1,10 @@
 import logging
 import uuid
 
-from calamari_common.salt_wrapper import LocalClient
-from cthulhu.manager import config
+from calamari_common.remote import get_remote
 from cthulhu.log import log
 from calamari_common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
-
-
-class PublishError(Exception):
-    pass
 
 
 class UserRequestBase(object):
@@ -195,20 +190,16 @@ class RadosRequest(UserRequest):
             commands = self._commands
 
         self.log.debug("%s._submit: %s/%s/%s" % (self.__class__.__name__,
-                                                 self._minion_id, self._cluster_name, commands))
+                                                 self._minion_id,
+                                                 self._cluster_name,
+                                                 commands))
 
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
-                                  [self.fsid, self._cluster_name, commands])
-        if not pub_data:
-            # FIXME: LocalClient uses 'print' to record the
-            # details of what went wrong :-(
-            raise PublishError("Failed to publish job")
-
-        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
-
+        self.jid = get_remote().run_job(self._minion_id, 'ceph.rados_commands',
+                                        {'fsid': self.fsid,
+                                         'cluster_name': self._cluster_name,
+                                         'commands': commands})
+        self.log.info("Request %s started job %s" % (self.id, self.jid))
         self.alive_at = now()
-        self.jid = pub_data['jid']
 
         return self.jid
 
@@ -224,17 +215,10 @@ class SaltRequest(UserRequest):
         self._args = args
 
     def _submit(self):
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        pub_data = client.run_job(self._minion_id, self._cmd, self._args)
-        if not pub_data:
-            # FIXME: LocalClient uses 'print' to record the
-            # details of what went wrong :-(
-            raise PublishError("Failed to publish job")
-
-        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
-
+        self.jid = get_remote().run_job(self._minion_id, self._cmd, self._args)
         self.alive_at = now()
-        self.jid = pub_data['jid']
+
+        self.log.info("Request %s started job %s" % (self.id, self.jid))
 
         return self.jid
 

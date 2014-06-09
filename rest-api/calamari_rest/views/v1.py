@@ -34,9 +34,8 @@ else:
     from graphite.render.attime import parseATTime
     from graphite.render.datalib import fetchData
 
-from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
+from calamari_common.remote import get_remote
 from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
-from calamari_rest.views.server_metadata import get_local_grains
 
 try:
     from calamari_rest.version import VERSION
@@ -44,7 +43,7 @@ except ImportError:
     # could create version here if we wanted to be fancier
     VERSION = 'dev'
 
-
+from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
 from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
     PoolSerializer, ServerSerializer, InfoSerializer
@@ -555,7 +554,7 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = get_local_grains()
+        grains = get_remote().get_local_grains()
 
         try:
             ipaddr = socket.gethostbyname(grains['fqdn'])

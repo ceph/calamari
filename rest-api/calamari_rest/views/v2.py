@@ -9,6 +9,9 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
+
+from calamari_common.remote import get_remote
+
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
@@ -23,7 +26,6 @@ from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, 
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
-from calamari_rest.views.server_metadata import get_local_grains, get_remote_grains
 
 try:
     from calamari_common.db.event import Event
@@ -32,6 +34,8 @@ except ImportError:
     class Event(object):
         pass
 
+
+remote = get_remote()
 
 config = CalamariConfig()
 
@@ -53,7 +57,7 @@ from Saltstack that tell us useful properties of the host.
 The fields in this resource are passed through verbatim from SaltStack, see
 the examples for which fields are available.
     """
-    return Response(get_local_grains())
+    return Response(remote.get_local_metadata())
 
 
 class RequestViewSet(RPCViewSet, PaginatedMixin):
@@ -656,7 +660,7 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-        server_to_grains = get_remote_grains([s['fqdn'] for s in servers])
+        server_to_grains = remote.get_remote_metadata([s['fqdn'] for s in servers])
 
         for server in servers:
             fqdn = server['fqdn']
@@ -702,7 +706,7 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        grains = get_remote_grains([fqdn])[fqdn]
+        grains = remote.get_remote_metadata([fqdn])[fqdn]
         if not grains:
             return Response(status=status.HTTP_404_NOT_FOUND)
         else:

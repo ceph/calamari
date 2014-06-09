@@ -13,16 +13,16 @@ import logging
 from gevent import greenlet
 from gevent import event
 
+from calamari_common.types import OsdMap, MonMap, ServiceId
+from calamari_common.remote import get_remote
+
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log as cthulhu_log
-from cthulhu.manager import salt_config, config
+from cthulhu.manager import config
+from cthulhu.util import now
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
-from calamari_common.types import OsdMap, MonMap, ServiceId
-from calamari_common.salt_wrapper import SaltEventSource, MasterPillarUtil
-from cthulhu.util import now
-
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
@@ -33,10 +33,6 @@ REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 
 # getChild isn't in 2.6
 log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
-
-
-class GrainsNotFound(Exception):
-    pass
 
 
 class ServerState(object):
@@ -140,29 +136,12 @@ class ServerMonitor(greenlet.Greenlet):
         # Cache things we look up from pillar to avoid hitting disk repeatedly
         self._contact_period_cache = {}
 
+        self.remote = get_remote()
+
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        subscription = SaltEventSource(log, salt_config)
-
-        while not self._complete.is_set():
-            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
-            ev = subscription.get_event(full=True)
-
-            if ev is not None and ev['tag'].startswith("ceph/server"):
-                data = ev['data']
-                log.debug("ServerMonitor got ceph/server message from %s" % data['id'])
-                try:
-                    # NB assumption that FQDN==minion_id is true unless
-                    # someone has modded their salt minion config.
-                    self.on_server_heartbeat(data['id'], data['data'])
-                except:
-                    log.debug("Message detail: %s" % json.dumps(ev))
-                    log.exception("Error handling ceph/server message from %s" % data['id'])
-            if ev is not None and ev['tag'].startswith("salt/presen"):
-                # so these exist but i'm not convinced they work, I started a minion
-                # and then saw several messages indicating no mininions were present
-                log.debug("ServerMonitor: presence %s" % ev['data'])
+        self.remote.listen(self._complete, on_server_heartbeat=self.on_server_heartbeat)
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -174,25 +153,8 @@ class ServerMonitor(greenlet.Greenlet):
         try:
             return self._contact_period_cache[fqdn]
         except KeyError:
-            result = self._contact_period_cache[fqdn] = self._get_contact_period(fqdn)
+            result = self._contact_period_cache[fqdn] = self.remote.get_heartbeat_period(fqdn)
             return result
-
-    def _get_contact_period(self, fqdn):
-        pillar_util = MasterPillarUtil([fqdn], 'list',
-                                       grains_fallback=False,
-                                       pillar_fallback=False,
-                                       opts=salt_config)
-
-        try:
-            heartbeat_s = pillar_util.get_minion_pillar()[fqdn]['schedule']['ceph.heartbeat']['seconds']
-        except KeyError:
-            # Just in case salt pillar is unavailable for some reason, a somewhat sensible
-            # guess.  It's really an error, but I don't want to break the world in this case.
-            fallback_contact_period = 60
-            log.warn("Missing period in minion '{0}' pillar".format(fqdn))
-            return fallback_contact_period
-
-        return heartbeat_s
 
     def get_hostname_to_osds(self, osd_map):
         """
@@ -356,16 +318,6 @@ class ServerMonitor(greenlet.Greenlet):
         ])
         for stale_mon_id in known_mons - map_mons:
             self.forget_service(self.services[stale_mon_id])
-
-    def _get_grains(self, fqdn):
-        pillar_util = MasterPillarUtil(fqdn, 'glob',
-                                       use_cached_grains=True,
-                                       grains_fallback=False,
-                                       opts=salt_config)
-        try:
-            return pillar_util.get_minion_grains()[fqdn]
-        except KeyError:
-            raise GrainsNotFound(fqdn)
 
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):

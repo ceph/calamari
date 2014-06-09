@@ -1,12 +1,15 @@
 import logging
 from dateutil.parser import parse as dateutil_parse
-import salt.client
 
 from calamari_common.config import CalamariConfig
+from calamari_common.remote import get_remote
+from calamari_common.remote.base import Unavailable
 from calamari_common.types import ServiceId, MON
+
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.rpc_view import RPCViewSet
 
+remote = get_remote()
 log = logging.getLogger('django.request')
 config = CalamariConfig()
 
@@ -43,15 +46,13 @@ adding new management functionality.
 
         mon_fqdns = self._get_up_mon_servers(fsid)
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         log.debug("RemoteViewSet: mons for %s are %s" % (fsid, mon_fqdns))
         # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
         # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
         for mon_fqdn in mon_fqdns:
-            results = client.cmd(mon_fqdn, job_cmd, job_args)
-            if results:
-                return results[mon_fqdn]
-            else:
+            try:
+                return remote.run_job_sync(mon_fqdn, job_cmd, job_args)
+            except Unavailable:
                 log.info("Failed execute mon command on %s" % mon_fqdn)
 
         # If none of the mons gave us what we wanted, return a 503 service unavailable
@@ -61,9 +62,7 @@ adding new management functionality.
         """
         Attempt to run a Salt job on a specific server.
         """
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, job_cmd, job_args)
-        if not results:
+        try:
+            return remote.run_job_sync(fqdn, job_cmd, job_args)
+        except Unavailable:
             raise ServiceUnavailable("Server '{0}' not responding".format(fqdn))
-        else:
-            return results[fqdn]
