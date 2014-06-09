@@ -39,7 +39,7 @@ version: $(VERSION_PY)
 
 $(VERSION_PY):
 	@echo "target: $@"
-	echo "VERSION=\"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
+	echo "VERSION = \"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
 # separate targets exist below for debugging; the expected order is
 # "venv -> build-venv-carbon/build-venv-reqs -> fixup-venv"
