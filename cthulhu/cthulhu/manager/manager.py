@@ -24,9 +24,11 @@ except ImportError:
 
 from cthulhu.log import log
 import cthulhu.log
+from cthulhu.util import Ticker
 from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.eventer import Eventer
 from cthulhu.manager.request_collection import RequestCollection
+from cthulhu.manager import request_collection
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager.notifier import NotificationThread
 from cthulhu.manager import config, salt_config
@@ -201,6 +203,8 @@ class Manager(object):
 
         # Remote operations
         self.requests = RequestCollection(self)
+        self._request_ticker = Ticker(request_collection.TICK_PERIOD,
+                                      lambda: self._requests.tick())
 
         # FSID to ClusterMonitor
         self.clusters = {}
@@ -232,6 +236,7 @@ class Manager(object):
         self._process_monitor.stop()
         self.notifier.stop()
         self.eventer.stop()
+        self._request_ticker.stop()
 
     def _expunge(self, fsid):
         session = Session()
@@ -324,6 +329,7 @@ class Manager(object):
         self.notifier.start()
         self.persister.start()
         self.eventer.start()
+        self._request_ticker.start()
 
         self.servers.start()
 
@@ -335,6 +341,7 @@ class Manager(object):
         self.notifier.join()
         self.persister.join()
         self.eventer.join()
+        self._request_ticker.join()
         self.servers.join()
         for monitor in self.clusters.values():
             monitor.join()
@@ -353,9 +360,6 @@ class Manager(object):
         # to do anything
         cluster_monitor.ready()
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
-
-    def on_tick(self):
-        self.requests.tick()
 
 
 def dump_stacks():
@@ -409,5 +413,4 @@ def main():
     gevent.signal(signal.SIGINT, shutdown)
 
     while not complete.is_set():
-        m.on_tick()
-        complete.wait(timeout=5)
+        complete.wait(timeout=1)

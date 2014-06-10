@@ -10,13 +10,12 @@ from calamari_common.salt_wrapper import condition_kwarg, LocalClient, SaltEvent
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
-from cthulhu.manager import request_collection
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager import config, salt_config
-from cthulhu.util import now, Ticker
+from cthulhu.util import now
 
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
@@ -188,8 +187,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._plugin_monitor = PluginMonitor(servers)
         self._ready = gevent.event.Event()
 
-        self._request_ticker = Ticker(request_collection.TICK_PERIOD, lambda: self._requests.tick())
-
     def ready(self):
         """
         Block until the ClusterMonitor is ready to receive salt events
@@ -222,7 +219,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
 
-        self._request_ticker.start()
         event = SaltEventSource(log, salt_config)
 
         while not self._complete.is_set():
@@ -283,8 +279,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     log.exception("Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
 
-        self._request_ticker.stop()
-        self._request_ticker.join()
         log.info("%s complete" % self.__class__.__name__)
         self._plugin_monitor.stop()
         self._plugin_monitor.join()
