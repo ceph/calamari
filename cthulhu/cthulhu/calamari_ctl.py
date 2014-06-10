@@ -17,7 +17,7 @@ from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 
 from calamari_common.db.base import Base
-from calamari_common.config import CalamariConfig, AlembicConfig
+from calamari_common.config import CalamariConfig
 
 # Import sqlalchemy objects so that create_all sees them
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
@@ -64,6 +64,7 @@ def quiet():
 def _initialize_db(args, config):
     from alembic import command
     from sqlalchemy import create_engine
+    from calamari_common.config import AlembicConfig
 
     # Configure postgres database
     if os.path.exists(POSTGRES_SLS):
@@ -95,7 +96,6 @@ def _initialize_db(args, config):
         command.stamp(alembic_config, "head")
 
     # Django's database
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
     with quiet():
         execute_from_command_line(["", "syncdb", "--noinput"])
 
@@ -139,6 +139,8 @@ def initialize(args):
     if not os.path.exists(config.get('calamari_web', 'secret_key_path')):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
     try:
         _initialize_db(args, config)
