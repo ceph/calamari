@@ -204,7 +204,7 @@ class Manager(object):
         # Remote operations
         self.requests = RequestCollection(self)
         self._request_ticker = Ticker(request_collection.TICK_PERIOD,
-                                      lambda: self._requests.tick())
+                                      lambda: self.requests.tick())
 
         # FSID to ClusterMonitor
         self.clusters = {}
