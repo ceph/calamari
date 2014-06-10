@@ -20,6 +20,7 @@ user: {{ USER }}
 pidfile: {{ ROOT }}/var/run/salt-minion.pid
 pki_dir: {{ ROOT }}/etc/pki
 cachedir: {{ ROOT }}/var/cache
+log_file_level: DEBUG
 log_file: {{ ROOT }}/var/log/salt/minion
 sock_dir: /tmp
 grains:

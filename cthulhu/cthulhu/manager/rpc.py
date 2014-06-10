@@ -1,19 +1,25 @@
 import traceback
 
 import gevent.event
-import zerorpc
-from salt.key import Key
-import salt.config
 
-from cthulhu.manager import config
-from cthulhu.log import log
+try:
+    import zerorpc
+except ImportError:
+    zerorpc = None
+
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_RULE, ServiceId,\
     NotFound, SERVER
+from calamari_common.remote import get_remote
+
+from cthulhu.log import log
+from cthulhu.manager import config
+from cthulhu.manager.user_request import SaltRequest
 
 
 class RpcInterface(object):
     def __init__(self, manager):
         self._manager = manager
+        self._remote = get_remote()
 
     def __getattribute__(self, item):
         """
@@ -120,16 +126,6 @@ class RpcInterface(object):
         else:
             return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
 
-    def get_derived_object(self, fs_id, object_type):
-        """
-        Get one of the objects that ClusterMonitor generates from the sync objects, typically
-        something in a "frontend-friendly" format or augmented with extra info.
-
-        :param fs_id: The fsid of a cluster
-        :param object_type: String, name of the derived object
-        """
-        return self._fs_resolve(fs_id).get_derived_object(object_type)
-
     def update(self, fs_id, object_type, object_id, attributes):
         """
         Modify an object in a cluster.
@@ -154,6 +150,16 @@ class RpcInterface(object):
 
         else:
             raise NotImplementedError(object_type)
+
+    def debug_job(self, minion_id, cmd, args):
+        """
+        Used in synthetic testing.
+        """
+        request = SaltRequest(cmd, args)
+        self._manager.requests.submit(request, minion_id)
+        return {
+            'request_id': request.id
+        }
 
     def apply(self, fs_id, object_type, object_id, command):
         """
@@ -258,97 +264,63 @@ class RpcInterface(object):
             'completed_at': request.completed_at.isoformat() if request.completed_at else None
         }
 
-    def get_request(self, fs_id, request_id):
+    def get_request(self, request_id):
         """
         Get a JSON representation of a UserRequest
         """
-        cluster = self._fs_resolve(fs_id)
         try:
-            request = cluster.get_request(request_id)
+            return self._dump_request(self._manager.requests.get_by_id(request_id))
         except KeyError:
             raise NotFound('request', request_id)
 
-        return self._dump_request(request)
+    def cancel_request(self, request_id):
+        try:
+            self._manager.requests.cancel(request_id)
+            return self.get_request(request_id)
+        except KeyError:
+            raise NotFound('request', request_id)
 
-    def list_requests(self, fs_id, state):
-        cluster = self._fs_resolve(fs_id)
-        requests = cluster.list_requests()
-        return sorted([self._dump_request(r) for r in requests if (state is None or r.state == state)],
+    def list_requests(self, filter_args):
+        state = filter_args.get('state', None)
+        fsid = filter_args.get('fsid', None)
+        requests = self._manager.requests.get_all()
+        return sorted([self._dump_request(r)
+                       for r in requests
+                       if (state is None or r.state == state) and (fsid is None or r.fsid == fsid)],
                       lambda a, b: cmp(b['requested_at'], a['requested_at']))
-
-    @property
-    def _salt_key(self):
-        return Key(salt.config.master_config(config.get('cthulhu', 'salt_config_path')))
 
     def minion_status(self, status_filter):
         """
         Return a list of salt minion keys
 
-        :param minion_status: A status, one of acc, pre, rej, all
+        :param status_filter: An authentication status, or None
         """
 
-        # FIXME: I think we're supposed to use salt.wheel.Wheel.master_call
-        # for this stuff to call out to the master instead of touching
-        # the files directly (need to set up some auth to do that though)
-
-        keys = self._salt_key.list_keys()
-        result = []
-
-        key_to_status = {
-            'minions_pre': 'pre',
-            'minions_rejected': 'rejected',
-            'minions': 'accepted'
-        }
-
-        for key, status in key_to_status.items():
-            for minion in keys[key]:
-                if not status_filter or status == status_filter:
-                    result.append({
-                        'id': minion,
-                        'status': status
-                    })
-
-        return result
+        return self._remote.auth_list(status_filter)
 
     def minion_accept(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.accept(minion_id)
+        return self.auth_accept(minion_id)
 
     def minion_reject(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.reject(minion_id)
+        return self.auth_reject(minion_id)
 
     def minion_delete(self, minion_id):
         """
         :param minion_id: A minion ID, or a glob
         """
         self.minion_get(minion_id)
-        return self._salt_key.delete_key(minion_id)
+        return self.auth_delete(minion_id)
 
     def minion_get(self, minion_id):
-        result = self._salt_key.name_match(minion_id, full=True)
-        if not result:
-            raise NotFound(SERVER, minion_id)
-
-        if 'minions' in result:
-            status = "accepted"
-        elif "minions_pre" in result:
-            status = "pre"
-        elif "minions_rejected" in result:
-            status = "rejected"
-        else:
-            raise ValueError(result)
-
-        return {
-            'id': minion_id,
-            'status': status
-        }
+        return self._remote.auth_get(minion_id)
 
     def server_get(self, fqdn):
         return self._manager.servers.dump(self._server_resolve(fqdn))
@@ -397,6 +369,9 @@ class RpcThread(gevent.greenlet.Greenlet):
         super(RpcThread, self).__init__()
         self._manager = manager
         self._complete = gevent.event.Event()
+        if zerorpc is None:
+            log.error("zerorpc package is missing")
+            raise RuntimeError("Cannot run without zerorpc installed!")
         self._server = zerorpc.Server(RpcInterface(manager))
         self._bound = False
 

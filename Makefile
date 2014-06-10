@@ -39,7 +39,7 @@ version: $(VERSION_PY)
 
 $(VERSION_PY):
 	@echo "target: $@"
-	echo "VERSION=\"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
+	echo "VERSION = \"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
 # separate targets exist below for debugging; the expected order is
 # "venv -> build-venv-carbon/build-venv-reqs -> fixup-venv"
@@ -230,7 +230,7 @@ dev/calamari.conf:
 rest-api-integration: dev/calamari.conf
 	@echo "target: $@"
 	if [ -n "$$VIRTUAL_ENV" ] && [ -x $$VIRTUAL_ENV/bin/nosetests ] ; then \
-		CALAMARI_CONFIG=dev/calamari.conf nosetests tests/test_rest_api.py; \
+		CALAMARI_CONFIG=dev/calamari.conf nosetests tests/test_rest_api.py:TestApi.test_touch_urls; \
 	else \
 		CALAMARI_CONFIG=dev/calamari.conf python $$(which nosetests) tests/test_rest_api.py ; \
 	fi

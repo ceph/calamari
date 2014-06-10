@@ -1,8 +1,12 @@
 
 import gevent.greenlet
 import gevent.event
-import zmq
 import json
+
+try:
+    import zmq
+except ImportError:
+    zmq = None
 
 
 class NotificationThread(gevent.greenlet.Greenlet):
@@ -15,6 +19,10 @@ class NotificationThread(gevent.greenlet.Greenlet):
     """
     def __init__(self):
         super(NotificationThread, self).__init__()
+
+        if zmq is None:
+            raise RuntimeError("zmq module not found")
+
         self._complete = gevent.event.Event()
         self._pub = None
         self._ready = gevent.event.Event()

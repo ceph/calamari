@@ -3,36 +3,60 @@ import hashlib
 import logging
 import os
 import gc
-import gevent.event
-import gevent.socket as socket
+import time
 import signal
 import traceback
-import greenlet
-from dateutil.tz import tzutc
-
-import gevent.greenlet
-import manhole
-import msgpack
 import resource
 import sys
 
-import sqlalchemy.exc
-from sqlalchemy import create_engine
-import time
+import gevent.event
+import gevent.socket as socket
+import greenlet
+from dateutil.tz import tzutc
+import gevent.greenlet
 
+
+try:
+    import msgpack
+except ImportError:
+    msgpack = None
+
+
+from calamari_common.remote import get_remote
 from cthulhu.log import log
 import cthulhu.log
 from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.eventer import Eventer
+from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager.notifier import NotificationThread
-from cthulhu.manager import config, salt_config
+from cthulhu.manager import config
 from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceState
-from cthulhu.persistence.servers import Server, Service
 
-from cthulhu.persistence.sync_objects import SyncObject
-from cthulhu.persistence.persister import Persister, Session
-from cthulhu.util import SaltEventSource
+
+# sqlalchemy is optional: without it, all database writes will
+# be silently dropped.
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy = None
+else:
+    import sqlalchemy.exc
+    from sqlalchemy import create_engine
+
+    from cthulhu.persistence.sync_objects import SyncObject
+    from cthulhu.persistence.persister import Persister, Session
+    from cthulhu.persistence.servers import Server, Service
+
+
+# Manhole module optional for debugging.
+try:
+    import manhole
+except ImportError:
+    manhole = None
+
+
+remote = get_remote()
 
 
 class ProcessMonitorThread(gevent.greenlet.Greenlet):
@@ -84,9 +108,9 @@ class ProcessMonitorThread(gevent.greenlet.Greenlet):
         self._close()
 
 
-class DiscoveryThread(gevent.greenlet.Greenlet):
+class TopLevelEvents(gevent.greenlet.Greenlet):
     def __init__(self, manager):
-        super(DiscoveryThread, self).__init__()
+        super(TopLevelEvents, self).__init__()
 
         self._manager = manager
         self._complete = gevent.event.Event()
@@ -94,30 +118,23 @@ class DiscoveryThread(gevent.greenlet.Greenlet):
     def stop(self):
         self._complete.set()
 
+    def on_heartbeat(self, fqdn, data):
+        if not data['fsid'] in self._manager.clusters:
+            self._manager.on_discovery(fqdn, data)
+        else:
+            log.debug("%s: heartbeat from existing cluster %s" % (
+                self.__class__.__name__, data['fsid']))
+
+    def on_job(self, fqdn, jid, success, result, cmd, args):
+        self._manager.requests.on_completion(fqdn, jid, success, result, cmd, args)
+
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
 
-        event = SaltEventSource(salt_config)
-        while not self._complete.is_set():
-            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
-            ev = event.get_event(full=True)
-            if ev is not None:
-                tag = ev['tag']
-                data = ev['data']
-                try:
-                    if tag.startswith("ceph/cluster/"):
-                        cluster_data = data['data']
-                        if not cluster_data['fsid'] in self._manager.clusters:
-                            self._manager.on_discovery(data['id'], cluster_data)
-                        else:
-                            log.debug("%s: heartbeat from existing cluster %s" % (
-                                self.__class__.__name__, cluster_data['fsid']))
-                    else:
-                        # This does not concern us, ignore it
-                        pass
-                except:
-                    log.debug("Message content: %s" % data)
-                    log.exception("Exception handling message")
+        remote.listen(self._complete,
+                      on_heartbeat=self.on_heartbeat,
+                      on_job=self.on_job,
+                      on_running_jobs=self._manager.requests.on_tick_response)
 
         log.info("%s complete" % self.__class__.__name__)
 
@@ -134,19 +151,46 @@ class Manager(object):
         self._complete = gevent.event.Event()
 
         self._rpc_thread = RpcThread(self)
-        self._discovery_thread = DiscoveryThread(self)
+        self._discovery_thread = TopLevelEvents(self)
         self._process_monitor = ProcessMonitorThread()
 
         self.notifier = NotificationThread()
-        try:
-            # Prepare persistence
-            engine = create_engine(config.get('cthulhu', 'db_path'))
-            Session.configure(bind=engine)
+        if sqlalchemy is not None:
+            try:
+                # Prepare persistence
+                engine = create_engine(config.get('cthulhu', 'db_path'))
+                Session.configure(bind=engine)
 
-            self.persister = Persister()
-        except sqlalchemy.exc.ArgumentError as e:
-            log.error("Database error: %s" % e)
-            raise
+                self.persister = Persister()
+            except sqlalchemy.exc.ArgumentError as e:
+                log.error("Database error: %s" % e)
+                raise
+        else:
+            class NullPersister(object):
+                def start(self):
+                    pass
+
+                def stop(self):
+                    pass
+
+                def join(self):
+                    pass
+
+                def __getattribute__(self, item):
+                    if item.startswith('_'):
+                        return object.__getattribute__(self, item)
+                    else:
+                        try:
+                            return object.__getattribute__(self, item)
+                        except AttributeError:
+                            def blackhole(*args, **kwargs):
+                                pass
+                            return blackhole
+
+            self.persister = NullPersister()
+
+        # Remote operations
+        self.requests = RequestCollection(self)
 
         # FSID to ClusterMonitor
         self.clusters = {}
@@ -155,7 +199,7 @@ class Manager(object):
         self.eventer = Eventer(self)
 
         # Handle all ceph/server messages
-        self.servers = ServerMonitor(self.persister, self.eventer)
+        self.servers = ServerMonitor(self.persister, self.eventer, self.requests)
 
     def delete_cluster(self, fs_id):
         """
@@ -185,6 +229,9 @@ class Manager(object):
         session.commit()
 
     def _recover(self):
+        if sqlalchemy is None:
+            return
+
         session = Session()
         for server in session.query(Server).all():
             log.debug("Recovered server %s" % server.fqdn)
@@ -215,7 +262,8 @@ class Manager(object):
         # I want the most recent version of every sync_object
         fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid, SyncObject.cluster_name).distinct(SyncObject.fsid)]
         for fsid, name in fsids:
-            cluster_monitor = ClusterMonitor(fsid, name, self.notifier, self.persister, self.servers, self.eventer)
+            cluster_monitor = ClusterMonitor(fsid, name, self.notifier, self.persister, self.servers,
+                                             self.eventer, self.requests)
             self.clusters[fsid] = cluster_monitor
 
             object_types = [row[0] for row in session.query(SyncObject.sync_type).filter_by(fsid=fsid).distinct()]
@@ -284,7 +332,7 @@ class Manager(object):
     def on_discovery(self, minion_id, heartbeat_data):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
         cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
-                                         self.notifier, self.persister, self.servers, self.eventer)
+                                         self.notifier, self.persister, self.servers, self.eventer, self.requests)
         self.clusters[heartbeat_data['fsid']] = cluster_monitor
 
         # Run before passing on the heartbeat, because otherwise the
@@ -295,6 +343,9 @@ class Manager(object):
         # to do anything
         cluster_monitor.ready()
         cluster_monitor.on_heartbeat(minion_id, heartbeat_data)
+
+    def on_tick(self):
+        self.requests.tick()
 
 
 def dump_stacks():
@@ -325,14 +376,16 @@ def main():
     import salt.utils.event
     salt.utils.event.zmq = zmq.green
 
-    # Set up gevent compatibility in psycopg2
-    import psycogreen.gevent
-    psycogreen.gevent.patch_psycopg()
+    if sqlalchemy is not None:
+        # Set up gevent compatibility in psycopg2
+        import psycogreen.gevent
+        psycogreen.gevent.patch_psycopg()
 
-    # Enable manhole for debugging.  Use oneshot mode
-    # for gevent compatibility
-    manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
-    manhole.install(oneshot_on=signal.SIGUSR1)
+    if manhole is not None:
+        # Enable manhole for debugging.  Use oneshot mode
+        # for gevent compatibility
+        manhole.cry = lambda message: log.info("MANHOLE: %s" % message)
+        manhole.install(oneshot_on=signal.SIGUSR1)
 
     m = Manager()
     m.start()
@@ -347,4 +400,5 @@ def main():
     gevent.signal(signal.SIGINT, shutdown)
 
     while not complete.is_set():
-        complete.wait(timeout=1)
+        m.on_tick()
+        complete.wait(timeout=5)

@@ -35,7 +35,7 @@ class TestOsdManagement(RequestTestCase):
 
             # Apply the modification
             response = self.api.patch(osd_url, {k: v})
-            self._wait_for_completion(fsid, response)
+            self._wait_for_completion(response)
 
             # After completion the update should be visible
             # NB this is slightly racy on a real cluster because when we mark something
@@ -103,7 +103,7 @@ class TestOsdManagement(RequestTestCase):
         self.assertEqual(False, config['pause'])
 
         response = self.api.patch(url, data={"pause": True})
-        self._wait_for_completion(fsid, response)
+        self._wait_for_completion(response)
 
         config = self.api.get(url).json()
         self.assertEqual(True, config['pause'])

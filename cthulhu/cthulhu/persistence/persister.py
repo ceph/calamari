@@ -3,11 +3,16 @@
 from collections import namedtuple
 import logging
 import datetime
+from calamari_common.db.event import Event
 
 import gevent.greenlet
 import gevent.queue
 import gevent.event
-import msgpack
+
+try:
+    import msgpack
+except ImportError:
+    msgpack = None
 
 from sqlalchemy.orm import sessionmaker
 from cthulhu.manager import config
@@ -78,13 +83,14 @@ class Persister(gevent.greenlet.Greenlet):
             SyncObject.fsid == fsid,
             SyncObject.sync_type == sync_type).delete()
 
-    def _create_server(self, server):
-        self._session.add(server)
+    def _create_server(self, *args, **kwargs):
+        self._session.add(Server(*args, **kwargs))
 
     def _update_server(self, update_fqdn, **attrs):
         self._session.query(Server).filter_by(fqdn=update_fqdn).update(attrs)
 
-    def _create_service(self, service, associate_fqdn=None):
+    def _create_service(self, associate_fqdn, *args, **kwargs):
+        service = Service(*args, **kwargs)
         self._session.add(service)
         service.server = self._session.query(Server).filter_by(fqdn=associate_fqdn).one().id
 
@@ -114,7 +120,11 @@ class Persister(gevent.greenlet.Greenlet):
 
     def _save_events(self, events):
         for event in events:
-            self._session.add(event)
+            self._session.add(Event(
+                severity=event.severity,
+                message=event.message,
+                when=event.when,
+                **event.associations))
 
     def _run(self):
         log.info("Persister listening")

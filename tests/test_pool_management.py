@@ -40,7 +40,7 @@ class TestPoolManagement(RequestTestCase):
 
         log.debug("TPM._create {argh}".format(argh=str(args)))
         r = self.api.post("cluster/%s/pool" % cluster_id, args)
-        self._wait_for_completion(cluster_id, r)
+        self._wait_for_completion(r)
 
     def _assert_visible(self, cluster_id, pool_name, visible=True):
         # Check the pool is now visible
@@ -64,12 +64,12 @@ class TestPoolManagement(RequestTestCase):
         else:
             timeout = None
         r = self.api.patch("cluster/%s/pool/%s" % (cluster_id, pool_id), attrs)
-        self._wait_for_completion(cluster_id, r, timeout=timeout)
+        self._wait_for_completion(r, timeout=timeout)
 
     def _delete(self, cluster_id, pool_id):
         # Delete the pool
         r = self.api.delete("cluster/%s/pool/%s" % (cluster_id, pool_id))
-        self._wait_for_completion(cluster_id, r)
+        self._wait_for_completion(r)
 
     def test_lifecycle(self):
         """

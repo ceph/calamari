@@ -7,6 +7,14 @@ from tests.rest_api_unit_test import RestApiUnitTest
 
 class TestKey(RestApiUnitTest):
     def test_list_patch(self):
+        def get_key(minion_id):
+            return {
+                'minion1': {'status': 'pre'},
+                'minion2': {'status': 'pre'}
+            }[minion_id]
+
+        self.rpc.minion_get = mock.Mock(side_effect=get_key)
+
         response = self.client.patch("/api/v2/key", [
             {'id': 'minion1', 'status': 'accepted'},
             {'id': 'minion2', 'status': 'accepted'}

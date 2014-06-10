@@ -6,9 +6,9 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
+from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+    RECOVERY, ERROR
 from cthulhu.manager import config
-from calamari_common.db.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from cthulhu.util import now
 
 
@@ -25,6 +25,14 @@ GRACE_PERIOD = 30
 # we generate an event?
 CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
+
+
+class Event(object):
+    def __init__(self, severity, message, **associations):
+        self.severity = severity
+        self.message = message
+        self.associations = associations
+        self.when = now()
 
 
 class Eventer(gevent.greenlet.Greenlet):
@@ -68,15 +76,9 @@ class Eventer(gevent.greenlet.Greenlet):
         :param associations: Optional extra attributes to associate
                              the event with a particular cluster/server/service
         """
-        now_utc = now()
-        log.info("Eventer._emit: %s/%s/%s" % (now_utc, severity_str(severity), message))
+        log.info("Eventer._emit: %s/%s" % (severity_str(severity), message))
 
-        self._events.append(Event(
-            when=now_utc,
-            message=message,
-            severity=severity,
-            **associations
-        ))
+        self._events.append(Event(severity, message, **associations))
 
     def on_user_request_begin(self, request):
         self._emit(INFO, "Started: %s" % request.headline, **request.associations)

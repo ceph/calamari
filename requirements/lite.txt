@@ -1,0 +1,21 @@
+Django==1.5.1
+Markdown==2.3.1
+argparse==1.2.1
+django-filter==0.6
+django-jsonfield==0.9.10
+djangorestframework==2.3.12
+requests==1.2.3
+wsgiref==0.1.2
+supervisor
+
+# Gevent 1.0.x requires cython but doesn't do a good job of depending on it
+cython==0.19.2
+gevent>=1.0
+greenlet>=0.3.2
+
+# Cthulhu
+M2crypto==0.22.3
+salt==2014.1
+pyzmq>=14.2.0
+python-dateutil==2.2
+zerorpc==0.4.4

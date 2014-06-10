@@ -1,8 +1,12 @@
+import logging
 import time
 import datetime
 from tests.config import TestConfig
 
 config = TestConfig()
+
+
+log = logging.getLogger(__name__)
 
 
 def get_timeout_scaling_factor():
@@ -29,8 +33,13 @@ def wait_until_true(condition, timeout=10):
     return elapsed
 
 
-def scalable_wait_until_true(condition, timeout=10):
+def scalable_wait_until_true(condition, timeout=None):
+    if timeout is None:
+        timeout = 10
+
     timeout = timeout * get_timeout_scaling_factor()
+
+    log.info("Entering wait loop (timeout={0})".format(timeout))
     return wait_until_true(condition, timeout)
 
 

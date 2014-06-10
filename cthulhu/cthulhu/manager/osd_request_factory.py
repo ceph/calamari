@@ -1,6 +1,6 @@
 from cthulhu.manager.request_factory import RequestFactory
 from calamari_common.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
-from cthulhu.manager.user_request import OsdMapModifyingRequest, UserRequest
+from cthulhu.manager.user_request import OsdMapModifyingRequest, RadosRequest
 
 
 class OsdRequestFactory(RequestFactory):
@@ -31,31 +31,45 @@ class OsdRequestFactory(RequestFactory):
             # Returning None indicates no-op
             return None
 
-        print_attrs = attributes.copy()
-        del print_attrs['id']
+        msg_attrs = attributes.copy()
+        del msg_attrs['id']
 
-        return OsdMapModifyingRequest(
-            "Modifying {cluster_name}-osd.{id} ({attrs})".format(
-                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in print_attrs.items())
-            ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+        if msg_attrs.keys() == ['in']:
+            message = "Marking {cluster_name}-osd.{id} {state}".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, state=("in" if msg_attrs['in'] else "out"))
+        elif msg_attrs.keys() == ['up']:
+            message = "Marking {cluster_name}-osd.{id} down".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id)
+        elif msg_attrs.keys() == ['reweight']:
+            message = "Re-weighting {cluster_name}-osd.{id} to {pct}%".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, pct="{0:.1f}".format(msg_attrs['reweight'] * 100.0))
+        else:
+            message = "Modifying {cluster_name}-osd.{id} ({attrs})".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in msg_attrs.items()))
+
+        return OsdMapModifyingRequest(message, self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def scrub(self, osd_id):
-        return UserRequest("Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd scrub', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd scrub', {'who': str(osd_id)})])
 
     def deep_scrub(self, osd_id):
-        return UserRequest("Initiating deep-scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd deep-scrub', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating deep-scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name,
+                                                                      id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd deep-scrub', {'who': str(osd_id)})])
 
     def repair(self, osd_id):
-        return UserRequest("Initiating repair on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
-                           self._cluster_monitor.fsid,
-                           self._cluster_monitor.name,
-                           [('osd repair', {'who': str(osd_id)})])
+        return RadosRequest(
+            "Initiating repair on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name,
+            [('osd repair', {'who': str(osd_id)})])
 
     def get_valid_commands(self, osds):
         """
