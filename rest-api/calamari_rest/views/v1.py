@@ -554,7 +554,7 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = get_remote().get_local_grains()
+        grains = get_remote().get_local_metadata()
 
         try:
             ipaddr = socket.gethostbyname(grains['fqdn'])
