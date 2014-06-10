@@ -3,29 +3,19 @@ import re
 import datetime
 
 from pytz import utc
-import dateutil
 import gevent.greenlet
 import gevent.event
-import salt
-import salt.utils.event
-import salt.client
-try:
-    from salt.client import condition_kwarg
-except ImportError:
-    # Salt moved this in 382dd5e
-    from salt.utils.args import condition_input as condition_kwarg
+
+from calamari_common.salt_wrapper import condition_kwarg, LocalClient, SaltEventSource
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
-from cthulhu.manager import derived, request_collection
-from cthulhu.manager.derived import DerivedObjects
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
-from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager import config, salt_config
-from cthulhu.util import now, Ticker, SaltEventSource
+from cthulhu.util import now
 
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('cthulhu', 'favorite_timeout_factor'))
@@ -114,7 +104,7 @@ class SyncObjects(object):
             return
 
         self._fetching_at[sync_type] = now()
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
         # TODO clean up unused 'since' argument
         pub_data = client.run_job(minion_id, 'ceph.get_cluster_object',
                                   condition_kwarg([], {'cluster_name': self._cluster_name,
@@ -166,7 +156,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     another to listen to user requests.
     """
 
-    def __init__(self, fsid, cluster_name, notifier, persister, servers, eventer):
+    def __init__(self, fsid, cluster_name, notifier, persister, servers, eventer, requests):
         super(ClusterMonitor, self).__init__()
 
         self.fsid = fsid
@@ -177,6 +167,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._persister = persister
         self._servers = servers
         self._eventer = eventer
+        self._requests = requests
 
         # Which mon we are currently using for running requests,
         # identified by minion ID
@@ -187,8 +178,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self.done = gevent.event.Event()
 
         self._sync_objects = SyncObjects(self.name)
-        self._requests = RequestCollection(self._sync_objects, eventer)
-        self._derived_objects = DerivedObjects()
 
         self._request_factories = {
             OSD: OsdRequestFactory,
@@ -197,8 +186,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         self._plugin_monitor = PluginMonitor(servers)
         self._ready = gevent.event.Event()
-
-        self._request_ticker = Ticker(request_collection.TICK_PERIOD, lambda: self._requests.tick())
 
     def ready(self):
         """
@@ -209,14 +196,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def stop(self):
         log.info("%s stopping" % self.__class__.__name__)
         self._complete.set()
-
-    @nosleep
-    def list_requests(self):
-        return self._requests.get_all()
-
-    @nosleep
-    def get_request(self, request_id):
-        return self._requests.get_by_id(request_id)
 
     @nosleep
     def get_sync_object_data(self, object_type):
@@ -234,18 +213,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         """
         return self._sync_objects.get(object_type)
 
-    @nosleep
-    def get_derived_object(self, object_type):
-        return self._derived_objects.get(object_type)
-
     def _run(self):
         self._plugin_monitor.start()
 
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
 
-        self._request_ticker.start()
-        event = SaltEventSource(salt_config)
+        event = SaltEventSource(log, salt_config)
 
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
@@ -278,10 +252,12 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # Instead we enforce a convention that all calamari jobs must include
                         # fsid in their return value.
                         if (not isinstance(data, dict)) or not isinstance(data['return'], dict):
-                            log.info("Ignoring job return, not a cthulhu job")
+                            # Something not formatted for ClusterMonitor
+                            log.warning("Ignoring event %s" % tag)
                             continue
 
                         if 'fsid' not in data['return'] or data['return']['fsid'] != self.fsid:
+                            # Something for a different ClusterMonitor
                             log.debug("Ignoring job return, not for my FSID")
                             continue
 
@@ -292,10 +268,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                                 continue
 
                             self.on_sync_object(data['id'], data['return'])
-                        elif data['fun'] == 'ceph.rados_commands':
-                            # A ceph.rados_commands response
-                            self.on_completion(data)
-
+                        else:
+                            log.warning("Unexpected function '%s' (%s)" % (data['fun'], tag))
                     else:
                         # This does not concern us, ignore it
                         pass
@@ -305,8 +279,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     log.exception("Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
 
-        self._request_ticker.stop()
-        self._request_ticker.join()
         log.info("%s complete" % self.__class__.__name__)
         self._plugin_monitor.stop()
         self._plugin_monitor.join()
@@ -322,8 +294,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         :return True if this minion was the favorite or has just been
                 promoted.
         """
-        now = datetime.datetime.now(tz=dateutil.tz.tzlocal())
-        self._last_heartbeat[minion_id] = now
+        t_now = now()
+        self._last_heartbeat[minion_id] = t_now
 
         if self._favorite_mon is None:
             log.debug("%s is my new favourite" % minion_id)
@@ -332,7 +304,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         elif minion_id != self._favorite_mon:
             # Consider whether this minion should become my new favourite: has it been
             # too long since my current favourite reported in?
-            time_since = now - self._last_heartbeat[self._favorite_mon]
+            time_since = t_now - self._last_heartbeat[self._favorite_mon]
             favorite_timeout_s = self._servers.get_contact_period(self._favorite_mon) * FAVORITE_TIMEOUT_FACTOR
             if time_since > datetime.timedelta(seconds=favorite_timeout_s):
                 log.debug("My old favourite, %s, has not sent a heartbeat for %s: %s is my new favourite" % (
@@ -341,6 +313,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 self._set_favorite(minion_id)
 
         return minion_id == self._favorite_mon
+
+    @nosleep
+    def on_version(self, minion_id, sync_type, version):
+        self._sync_objects.on_version(minion_id, sync_type, version)
 
     @nosleep
     def on_heartbeat(self, minion_id, cluster_data):
@@ -372,32 +348,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         new_object = self._sync_objects.on_fetch_complete(minion_id, sync_type, version, data)
 
         if new_object:
-            # The ServerMonitor is interested in cluster maps, do this prior
-            # to updating any derived objects so that derived generators have
-            # access to latest view of server state
+            # The ServerMonitor is interested in cluster maps
             if sync_type == OsdMap:
                 self._servers.on_osd_map(data)
             elif sync_type == MonMap:
                 self._servers.on_mon_map(data)
             elif sync_type == MdsMap:
                 self._servers.on_mds_map(self.fsid, data)
-
-            # The frontend would like us to maintain some derived objects that
-            # munge together the PG and OSD maps into an easier-to-consume form.
-            for generator in derived.generators:
-                if sync_type in generator.depends:
-                    dependency_data = {}
-                    for t in generator.depends:
-                        obj = self._sync_objects.get(t)
-                        if obj is not None:
-                            dependency_data[t] = obj.data
-                        else:
-                            dependency_data[t] = None
-
-                    if None not in dependency_data.values():
-                        log.debug("Updating %s" % generator.__name__)
-                        derived_objects = generator.generate(self, self._servers, dependency_data)
-                        self._derived_objects.update(derived_objects)
 
             self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
 
@@ -415,7 +372,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
         new_object = self.inject_sync_object(minion_id, data['type'], data['version'], sync_object)
         if new_object:
-            self._requests.on_map(sync_type, self._sync_objects)
+            self._requests.on_map(self.fsid, sync_type, new_object)
             self._persister.update_sync_object(
                 self.fsid,
                 self.name,
@@ -424,10 +381,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                 now(), sync_object)
         else:
             log.warn("ClusterMonitor.on_sync_object: stale object received from %s" % minion_id)
-
-    @nosleep
-    def on_completion(self, data):
-        self._requests.on_completion(data)
 
     def _set_favorite(self, minion_id):
         assert minion_id != self._favorite_mon
@@ -441,6 +394,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         """
 
         # nosleep during preparation phase (may touch ClusterMonitor/ServerMonitor state)
+        request = None
         with nosleep_mgr():
             request_factory = self.get_request_factory(obj_type)
 

@@ -9,13 +9,9 @@ import json
 import datetime
 from dateutil import tz
 import logging
-import time
 
 from gevent import greenlet
 from gevent import event
-import salt.utils.event
-import salt.utils.master
-from salt.client import LocalClient
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log as cthulhu_log
@@ -24,13 +20,12 @@ from cthulhu.manager import salt_config, config
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from calamari_common.types import OsdMap, MonMap, ServiceId
+from calamari_common.salt_wrapper import SaltEventSource, MasterPillarUtil
 from cthulhu.persistence.servers import Server, Service
-from cthulhu.util import now, SaltEventSource
+from cthulhu.util import now
 
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
-
-TICK_PERIOD = 10
 
 # Ignore changes in boot time below this threshold, to avoid mistaking clock
 # adjustments for reboots.
@@ -39,6 +34,7 @@ REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 
 # getChild isn't in 2.6
 log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
+
 
 class GrainsNotFound(Exception):
     pass
@@ -121,10 +117,8 @@ class ServerMonitor(greenlet.Greenlet):
     - The ceph.services salt message from managed servers
     - Updates to the OSD map which may tell us about unmanaged servers
     """
-    def __init__(self, persister, eventer):
+    def __init__(self, persister, eventer, requests):
         super(ServerMonitor, self).__init__()
-
-        self._persister = persister
 
         # FQDN to ServerState
         self.servers = {}
@@ -141,6 +135,8 @@ class ServerMonitor(greenlet.Greenlet):
         self._complete = event.Event()
 
         self._eventer = eventer
+        self._persister = persister
+        self._requests = requests
 
         # Cache things we look up from pillar to avoid hitting disk repeatedly
         self._contact_period_cache = {}
@@ -148,9 +144,7 @@ class ServerMonitor(greenlet.Greenlet):
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        subscription = SaltEventSource(salt_config)
-
-        last_tick = time.time()
+        subscription = SaltEventSource(log, salt_config)
 
         while not self._complete.is_set():
             # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
@@ -171,31 +165,7 @@ class ServerMonitor(greenlet.Greenlet):
                 # and then saw several messages indicating no mininions were present
                 log.debug("ServerMonitor: presence %s" % ev['data'])
 
-            if time.time() - last_tick > TICK_PERIOD:
-                last_tick = time.time()
-                self.on_tick()
-
         log.info("Completed %s" % self.__class__.__name__)
-
-    def on_tick(self):
-        # This procedure is to catch the annoying case of AES key changes (#7836), which are otherwise
-        # ignored by minions which are doing only minion->master messaging.  To ensure they
-        # pick up on key changes, we actively send them something (doesn't matter what).  To
-        # avoid doing this constantly, we only send things to minions which seem to be a little
-        # late
-
-        # After this length of time, doubt a minion enough to send it a message in case
-        # it needs a kick to update its key
-        def _ping_period(fqdn):
-            return datetime.timedelta(seconds=self.get_contact_period(fqdn) * 2)
-
-        t = now()
-        late_servers = [s.fqdn for s in self.servers.values() if s.last_contact and (t - s.last_contact) > _ping_period(s.fqdn)]
-        log.debug("late servers: %s" % late_servers)
-        if late_servers:
-            client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-            pub = client.pub(late_servers, "test.ping", expr_form='list')
-            log.debug(pub)
 
     def get_contact_period(self, fqdn):
         """
@@ -209,10 +179,10 @@ class ServerMonitor(greenlet.Greenlet):
             return result
 
     def _get_contact_period(self, fqdn):
-        pillar_util = salt.utils.master.MasterPillarUtil([fqdn], 'list',
-                                                         grains_fallback=False,
-                                                         pillar_fallback=False,
-                                                         opts=salt_config)
+        pillar_util = MasterPillarUtil([fqdn], 'list',
+                                       grains_fallback=False,
+                                       pillar_fallback=False,
+                                       opts=salt_config)
 
         try:
             heartbeat_s = pillar_util.get_minion_pillar()[fqdn]['schedule']['ceph.heartbeat']['seconds']
@@ -389,10 +359,10 @@ class ServerMonitor(greenlet.Greenlet):
             self.forget_service(self.services[stale_mon_id])
 
     def _get_grains(self, fqdn):
-        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
+        pillar_util = MasterPillarUtil(fqdn, 'glob',
+                                       use_cached_grains=True,
+                                       grains_fallback=False,
+                                       opts=salt_config)
         try:
             return pillar_util.get_minion_grains()[fqdn]
         except KeyError:
@@ -432,7 +402,6 @@ class ServerMonitor(greenlet.Greenlet):
                     new_server = False
                     log.info("Server %s went from unmanaged to managed" % fqdn)
                     newly_managed_server = True
-
                 else:
                     # We will go on to treat these as distinct servers even though
                     # they have the same hostname

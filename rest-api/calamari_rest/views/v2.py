@@ -1,31 +1,31 @@
 from collections import defaultdict
 import logging
+import shlex
 
-from dateutil.parser import parse as dateutil_parse
 from django.http import Http404
-from rest_framework.exceptions import ParseError, APIException
+from rest_framework.exceptions import ParseError, APIException, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
-import salt.client
-import salt.config
-import salt.utils.master
-import gevent.pool
 
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
-    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer
+    ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
+    CliSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
+from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
+from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
-from calamari_rest.views.v1 import _get_local_grains
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
+from calamari_rest.views.server_metadata import get_local_grains, get_remote_grains
+
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
@@ -47,7 +47,7 @@ from Saltstack that tell us useful properties of the host.
 The fields in this resource are passed through verbatim from SaltStack, see
 the examples for which fields are available.
     """
-    return Response(_get_local_grains())
+    return Response(get_local_grains())
 
 
 class RequestViewSet(RPCViewSet, PaginatedMixin):
@@ -62,20 +62,28 @@ state is one of 'complete', 'submitted'.
 
 The returned records are ordered by the 'requested_at' attribute, in descending order (i.e.
 the first page of results contains the most recent requests).
+
+To cancel a request while it is running, send an empty POST to ``request/<request id>/cancel``.
     """
     serializer_class = RequestSerializer
 
-    def retrieve(self, request, fsid, request_id):
-        user_request = DataObject(self.client.get_request(fsid, request_id))
-        return Response(RequestSerializer(user_request).data)
+    def cancel(self, request, request_id):
+        user_request = DataObject(self.client.cancel_request(request_id))
+        return Response(self.serializer_class(user_request).data)
 
-    def list(self, request, fsid):
+    def retrieve(self, request, **kwargs):
+        request_id = kwargs['request_id']
+        user_request = DataObject(self.client.get_request(request_id))
+        return Response(self.serializer_class(user_request).data)
+
+    def list(self, request, **kwargs):
+        fsid = kwargs.get('fsid', None)
         filter_state = request.GET.get('state', None)
         valid_states = [USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED]
         if filter_state is not None and filter_state not in valid_states:
             raise ParseError("State must be one of %s" % ", ".join(valid_states))
 
-        requests = self.client.list_requests(fsid, filter_state)
+        requests = self.client.list_requests({'state': filter_state, 'fsid': fsid})
         return Response(self._paginate(request, requests))
 
 
@@ -133,7 +141,6 @@ Calamari accepts messages from a server, the server's key must be accepted.
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # TODO handle 404
 
     def _partial_update(self, minion_id, data):
         valid_status = ['accepted', 'rejected']
@@ -142,13 +149,16 @@ Calamari accepts messages from a server, the server's key must be accepted.
         elif data['status'] not in valid_status:
             raise ParseError({'status': "Must be one of %s" % ",".join(valid_status)})
         else:
-            # TODO validate transitions, cannot go from rejected to accepted.
-            if data['status'] == 'accepted':
+            key = self.client.minion_get(minion_id)
+            transition = [key['status'], data['status']]
+            if transition == ['pre', 'accepted']:
                 self.client.minion_accept(minion_id)
-            elif data['status'] == 'rejected':
+            elif transition == ['pre', 'rejected']:
                 self.client.minion_reject(minion_id)
             else:
-                raise NotImplementedError()
+                raise ParseError({'status': ["Transition {0}->{1} is invalid".format(
+                    transition[0], transition[1]
+                )]})
 
     def _validate_list(self, request):
         keys = request.DATA
@@ -169,7 +179,6 @@ Calamari accepts messages from a server, the server's key must be accepted.
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def destroy(self, request, minion_id):
-        # TODO handle 404
         self.client.minion_delete(minion_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -256,11 +265,6 @@ class NullableDataObject(DataObject):
             return self.__dict__.get(item, None)
         else:
             raise AttributeError
-
-
-class ServiceUnavailable(APIException):
-    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    default_detail = "Service unavailable"
 
 
 class ConfigViewSet(RPCViewSet):
@@ -597,6 +601,21 @@ such as the cluster maps
         return Response([s.str for s in SYNC_OBJECT_TYPES])
 
 
+class DebugJob(RPCViewSet, RequestReturner):
+    """
+For debugging and automated testing only.
+    """
+    def create(self, request, fqdn):
+        cmd = request.DATA['cmd']
+        args = request.DATA['args']
+
+        # Avoid this debug interface being an arbitrary execution mechanism.
+        if not cmd.startswith("ceph.selftest"):
+            raise PermissionDenied("Command '%s' is not a self test command".format(cmd))
+
+        return self._return_request(self.client.debug_job(fqdn, cmd, args))
+
+
 class ServerClusterViewSet(RPCViewSet):
     """
 View of servers within a particular cluster.
@@ -631,32 +650,26 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
+        server_to_grains = get_remote_grains([s['fqdn'] for s in servers])
 
-        def _lookup_one(server):
-            log.debug(">> resolving grains for server {0}".format(server['fqdn']))
+        for server in servers:
             fqdn = server['fqdn']
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            grains = server_to_grains[fqdn]
             server['frontend_iface'] = None
             server['backend_iface'] = None
-            try:
-                grains = cache_grains[fqdn]
-                if server['frontend_addr']:
-                    server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
-                if server['backend_addr']:
-                    server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
-            except KeyError:
-                pass
-            log.debug("<< resolving grains for server {0}".format(server['fqdn']))
-
-        # Issue up to this many disk I/Os to load grains at once
-        CONCURRENT_GRAIN_LOADS = 16
-        p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
-        p.map(_lookup_one, servers)
+            if grains is None:
+                # No metadata available for this server
+                continue
+            else:
+                try:
+                    if server['frontend_addr']:
+                        server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
+                    if server['backend_addr']:
+                        server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
+                except KeyError:
+                    # Expected network metadata not available, we cannot infer
+                    # front/back interfaces so leave them null
+                    pass
 
     def list(self, request, fsid):
         servers = self.client.server_list_cluster(fsid)
@@ -683,20 +696,11 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
-
-        try:
-            # We (ab)use an internal interface to get at the cache by minion ID
-            # instead of by glob, because the process of resolving the glob
-            # relies on access to the root only PKI folder.
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
-            return Response(cache_grains[fqdn])
-        except KeyError:
+        grains = get_remote_grains([fqdn])[fqdn]
+        if not grains:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response(grains)
 
     def retrieve(self, request, fqdn):
         return Response(
@@ -761,7 +765,7 @@ in a GET, such as ``?severity=RECOVERY`` to show everything but INFO.
         return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fqdn=fqdn))))
 
 
-class LogTailViewSet(RPCViewSet):
+class LogTailViewSet(RemoteViewSet):
     """
 A primitive remote log viewer.
 
@@ -777,56 +781,23 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
         Retrieve the cluster log from one of a cluster's mons (expect it to be in /var/log/ceph/ceph.log)
         """
 
+        # Number of lines to get
         lines = request.GET.get('lines', 40)
 
         # Resolve FSID to name
         name = self.client.get_cluster(fsid)['name']
 
-        # Resolve FSID to list of mon FQDNs
-        servers = self.client.server_list_cluster(fsid)
-        # Sort to get most recently contacted server first; drop any
-        # for whom last_contact is None
-        servers = [s for s in servers if s['last_contact']]
-        servers = sorted(servers,
-                         key=lambda t: dateutil_parse(t['last_contact']),
-                         reverse=True)
-        mon_fqdns = []
-        for server in servers:
-            for service in server['services']:
-                service_id = ServiceId(*(service['id']))
-                if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
-                    mon_fqdns.append(server['fqdn'])
+        # Execute remote operation synchronously
+        result = self.run_mon_job(fsid, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
-        # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
-        # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
-        for mon_fqdn in mon_fqdns:
-            results = client.cmd(mon_fqdn, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
-            if results:
-                return Response({'lines': results[mon_fqdn]})
-            else:
-                log.info("Failed to get log from %s" % mon_fqdn)
-
-        # If none of the mons gave us what we wanted, return a 503 service unavailable
-        return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'lines': result})
 
     def list_server_logs(self, request, fqdn):
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
-        if not results:
-            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response(sorted(results[fqdn]))
+        return Response(sorted(self.run_job(fqdn, "log_tail.list_logs", ["."])))
 
     def get_server_log(self, request, fqdn, log_path):
         lines = request.GET.get('lines', 40)
-
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
-        if not results:
-            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        else:
-            return Response({'lines': results[fqdn]})
+        return Response({'lines': self.run_job(fqdn, "log_tail.tail", [log_path, lines])})
 
 
 class MonViewSet(RPCViewSet):
@@ -940,3 +911,54 @@ useful to show users data from the /status sub-url, which returns the
 
     def list(self, request, fsid):
         return Response(self.serializer_class([DataObject(m) for m in self._get_mons(fsid)], many=True).data)
+
+
+class CliViewSet(RemoteViewSet):
+    """
+Access the `ceph` CLI tool remotely.
+
+To achieve the same result as running "ceph osd dump" at a shell, an
+API consumer may POST an object in either of the following formats:
+
+::
+
+    {'command': ['osd', 'dump']}
+
+    {'command': 'osd dump'}
+
+
+The response will be a 200 status code if the command executed, regardless
+of whether it was successful, to check the result of the command itself
+read the ``status`` attribute of the returned data.
+
+The command will be executed on the first available mon server, retrying
+on subsequent mon servers if no response is received.  Due to this retry
+behaviour, it is possible for the command to be run more than once in
+rare cases; since most ceph commands are idempotent this is usually
+not a problem.
+    """
+    serializer_class = CliSerializer
+
+    def create(self, request, fsid):
+        # Validate
+        try:
+            command = request.DATA['command']
+        except KeyError:
+            raise ParseError("'command' field is required")
+        else:
+            if not (isinstance(command, basestring) or isinstance(command, list)):
+                raise ParseError("'command' must be a string or list")
+
+        # Parse string commands to list
+        if isinstance(command, basestring):
+            command = shlex.split(command)
+
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        log.debug("CliViewSet: result = '%s'" % result)
+
+        if not isinstance(result, dict):
+            # Errors from salt like "module not available" come back as strings
+            raise APIException("Remote error: %s" % str(result))
+
+        return Response(self.serializer_class(DataObject(result)).data)

@@ -1,15 +1,18 @@
 from contextlib import contextmanager
 from gevent.lock import RLock
 import datetime
-from salt.client import LocalClient
 
+from calamari_common.salt_wrapper import LocalClient
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
-from cthulhu.log import log
+from cthulhu.log import log as cthulhu_log
 from cthulhu.util import now
 from cthulhu.manager import config
 
 TICK_PERIOD = 20
+
+
+log = cthulhu_log.getChild("request_collection")
 
 
 class RequestCollection(object):
@@ -24,15 +27,14 @@ class RequestCollection(object):
     wake up in a different world.
     """
 
-    def __init__(self, sync_objects, eventer):
+    def __init__(self, manager):
         super(RequestCollection, self).__init__()
-
-        self._sync_objects = sync_objects
-        self._eventer = eventer
 
         self._by_request_id = {}
         self._by_jid = {}
         self._lock = RLock()
+
+        self._manager = manager
 
     def get_by_id(self, request_id):
         return self._by_request_id[request_id]
@@ -113,18 +115,28 @@ class RequestCollection(object):
         try and cancel any outstanding JID for it.
         """
         request = self._by_request_id[request_id]
+
+        # Idempotent behaviour: no-op if already cancelled
+        if request.state == request.COMPLETE:
+            return
+
         with self._update_index(request):
+            # I will take over cancelling the JID from the request
+            cancel_jid = request.jid
+            request.jid = None
+
+            # Request is now done, no further calls
             request.set_error("Cancelled")
             request.complete()
 
-            if request.jid:
+            # In the background, try to cancel the request's JID on a best-effort basis
+            if cancel_jid:
                 client = LocalClient(config.get('cthulhu', 'salt_config_path'))
                 client.run_job(request.minion_id, 'saltutil.kill_job',
-                               [request.jid])
+                               [cancel_jid])
                 # We don't check for completion or errors from kill_job, it's a best-effort thing.  If we're
                 # cancelling something we will do our best to kill any subprocess but can't
                 # any guarantees because running nodes may be out of touch with the calamari server.
-                request.jid = None
 
     @nosleep
     def fail_all(self, failed_minion):
@@ -150,9 +162,9 @@ class RequestCollection(object):
             request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request
-        self._eventer.on_user_request_begin(request)
+        self._manager.eventer.on_user_request_begin(request)
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, fsid, sync_type, sync_object):
         """
         Callback for when a new cluster map is available, in which
         we notify any interested ongoing UserRequests of the new map
@@ -161,13 +173,16 @@ class RequestCollection(object):
         with self._lock:
             requests = self.get_all(state=UserRequest.SUBMITTED)
             for request in requests:
+                if request.fsid != fsid:
+                    pass
+
                 try:
                     # If this is one of the types that this request
                     # is waiting for, invoke on_map.
                     for awaited_type in request.awaiting_versions.keys():
                         if awaited_type == sync_type:
                             with self._update_index(request):
-                                request.on_map(sync_type, sync_objects)
+                                request.on_map(sync_type, sync_object)
                 except Exception as e:
                     log.exception("Request %s threw exception in on_map", request.id)
                     if request.jid:
@@ -178,7 +193,64 @@ class RequestCollection(object):
                     request.complete()
 
                 if request.state == UserRequest.COMPLETE:
-                    self._eventer.on_user_request_complete(request)
+                    self._manager.eventer.on_user_request_complete(request)
+
+    def _on_rados_completion(self, minion_id, request, result):
+        """
+        Handle JID completion from a ceph.rados_commands operation
+        """
+        if request.state != UserRequest.SUBMITTED:
+            # Unexpected, ignore.
+            log.error("Received completion for request %s/%s in state %s" % (
+                request.id, request.jid, request.state
+            ))
+            return
+
+        if result['error']:
+            # This indicates a failure within ceph.rados_commands which was caught
+            # by our code, like one of our Ceph commands returned an error code.
+            # NB in future there may be UserRequest subclasses which want to receive
+            # and handle these errors themselves, so this branch would be refactored
+            # to allow that.
+            log.error("Request %s experienced an error: %s" % (request.id, result['error_status']))
+            request.jid = None
+            request.set_error(result['error_status'])
+            request.complete()
+            return
+
+        try:
+            with self._update_index(request):
+                old_jid = request.jid
+                request.complete_jid(result)
+                assert request.jid != old_jid
+
+                # After a jid completes, requests may start waiting for cluster
+                # map updates, we ask ClusterMonitor to hurry up and get them on
+                # behalf of the request.
+                if request.awaiting_versions:
+                    assert request.fsid
+                    cluster_monitor = self._manager.clusters[request.fsid]
+                    for sync_type, version in request.awaiting_versions.items():
+
+                        if version is not None:
+                            log.debug("Notifying cluster of awaited version %s/%s" % (sync_type.str, version))
+                            cluster_monitor.on_version(minion_id, sync_type, version)
+
+                    # The request may be waiting for an epoch that we already have, if so
+                    # give it to the request right away
+                    for sync_type, want_version in request.awaiting_versions.items():
+                        sync_object = cluster_monitor.get_sync_object(sync_type)
+                        if want_version and sync_type.cmp(sync_object.version, want_version) >= 0:
+                            log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
+                            request.on_map(sync_type, sync_object)
+
+        except Exception as e:
+            # Ensure that a misbehaving piece of code in a UserRequest subclass
+            # results in a terminated job, not a zombie job
+            log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+            request.jid = None
+            request.set_error("Internal error %s" % e)
+            request.complete()
 
     def on_completion(self, data):
         """
@@ -195,70 +267,31 @@ class RequestCollection(object):
                 request = self.get_by_jid(jid)
                 log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
             except KeyError:
-                log.warning("on_completion: unknown jid {0}".format(jid))
+                log.warning("on_completion: unknown jid {0}, return: {1}".format(jid, result))
                 return
 
             if not data['success']:
-                # This indicates a failure at the salt level, i.e. job threw an exception
-                log.error("Remote execution failed for request %s: %s" % (request.id, result))
-                if isinstance(result, dict):
-                    # Handler ran and recorded an error for us
-                    request.set_error(result['error_status'])
-                else:
-                    # An exception, probably, stringized by salt for us
-                    request.set_error(result)
-                request.complete()
-            elif result['error']:
-                # This indicates a failure within ceph.rados_commands which was caught
-                # by our code, like one of our Ceph commands returned an error code.
-                # NB in future there may be UserRequest subclasses which want to receive
-                # and handle these errors themselves, so this branch would be refactored
-                # to allow that.
-                log.error("Request %s experienced an error: %s" % (request.id, result['error_status']))
-                request.jid = None
-                request.set_error(result['error_status'])
-                request.complete()
-            else:
-                if request.state != UserRequest.SUBMITTED:
-                    # Unexpected, ignore.
-                    log.error("Received completion for request %s/%s in state %s" % (
-                        request.id, request.jid, request.state
-                    ))
-                    return
-
-                try:
-                    with self._update_index(request):
-                        old_jid = request.jid
-                        request.complete_jid(result)
-                        assert request.jid != old_jid
-
-                        # After a jid completes, requests may start waiting for cluster
-                        # map updates, we ask ClusterMonitor to hurry up and get them on
-                        # behalf of the request.
-                        if request.awaiting_versions:
-                            for sync_type, version in request.awaiting_versions.items():
-                                if version is not None:
-                                    log.debug("Notifying SyncObjects of awaited version %s/%s" % (sync_type.str, version))
-                                    self._sync_objects.on_version(data['id'], sync_type, version)
-
-                            # The request may be waiting for an epoch that we already have, if so
-                            # give it to the request right away
-                            for sync_type, want_version in request.awaiting_versions.items():
-                                got_version = self._sync_objects.get_version(sync_type)
-                                if want_version and sync_type.cmp(got_version, want_version) >= 0:
-                                    log.info("Awaited %s %s is immediately available" % (sync_type, want_version))
-                                    request.on_map(sync_type, self._sync_objects)
-
-                except Exception as e:
-                    # Ensure that a misbehaving piece of code in a UserRequest subclass
-                    # results in a terminated job, not a zombie job
-                    log.exception("Calling complete_jid for %s/%s" % (request.id, request.jid))
+                with self._update_index(request):
                     request.jid = None
-                    request.set_error("Internal error %s" % e)
+
+                    # This indicates a failure at the salt level, i.e. job threw an exception
+                    log.error("Remote execution failed for request %s: %s" % (request.id, result))
+                    if isinstance(result, dict):
+                        # Handler ran and recorded an error for us
+                        request.set_error(result['error_status'])
+                    else:
+                        # An exception, probably, stringized by salt for us
+                        request.set_error(result)
                     request.complete()
+            elif data['fun'] == 'ceph.rados_commands':
+                self._on_rados_completion(data['id'], request, result)
+            else:
+                # General case successful JID other than rados_command
+                with self._update_index(request):
+                    request.complete_jid(result)
 
         if request.state == UserRequest.COMPLETE:
-            self._eventer.on_user_request_complete(request)
+            self._manager.eventer.on_user_request_complete(request)
 
     def _update_index(self, request):
         """

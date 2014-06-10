@@ -2,7 +2,7 @@ from django.utils.unittest import TestCase
 from mock import MagicMock, patch
 
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
-from cthulhu.manager.user_request import UserRequest
+from cthulhu.manager.user_request import RadosRequest
 from calamari_common.types import OSD_IMPLEMENTED_COMMANDS, OsdMap
 
 
@@ -28,14 +28,14 @@ class TestOSDFactory(TestCase):
     @patch('cthulhu.manager.user_request.LocalClient', salt_local_client)
     def testScrub(self):
         scrub = self.osd_request_factory.scrub(0)
-        self.assertIsInstance(scrub, UserRequest, 'Testing Scrub')
+        self.assertIsInstance(scrub, RadosRequest, 'Testing Scrub')
 
         scrub.submit(54321)
         self.salt_local_client.run_job.assert_called_with(54321, 'ceph.rados_commands', [12345, 'I am a fake', [('osd scrub', {'who': '0'})]])
 
     def testDeepScrub(self):
         deep_scrub = self.osd_request_factory.deep_scrub(0)
-        self.assertIsInstance(deep_scrub, UserRequest, 'Failed to make a deep scrub request')
+        self.assertIsInstance(deep_scrub, RadosRequest, 'Failed to make a deep scrub request')
 
     def test_validate_scrub(self):
         self.assertEqual(self.osd_request_factory.get_valid_commands([0]), {0: {'valid_commands': OSD_IMPLEMENTED_COMMANDS}})

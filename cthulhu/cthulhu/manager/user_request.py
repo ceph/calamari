@@ -1,8 +1,7 @@
 import logging
 import uuid
 
-from salt.client import LocalClient
-
+from calamari_common.salt_wrapper import LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from calamari_common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
@@ -45,7 +44,7 @@ class UserRequestBase(object):
     COMPLETE = USER_REQUEST_COMPLETE
     states = [NEW, SUBMITTED, COMPLETE]
 
-    def __init__(self, fsid, cluster_name, commands):
+    def __init__(self, fsid, cluster_name):
         """
         Requiring cluster_name and fsid is redundant (ideally everything would
         speak in terms of fsid) but convenient, because the librados interface
@@ -63,9 +62,8 @@ class UserRequestBase(object):
         self.id = uuid.uuid4().__str__()
 
         self._minion_id = None
-        self._fsid = fsid
+        self.fsid = fsid
         self._cluster_name = cluster_name
-        self._commands = commands
 
         self.jid = None
 
@@ -132,27 +130,12 @@ class UserRequestBase(object):
         assert self.state == self.NEW
 
         self._minion_id = minion_id
-        self._submit(self._commands)
+        self._submit()
 
         self.state = self.SUBMITTED
 
-    def _submit(self, commands):
-        self.log.debug("Request._submit: %s/%s/%s" % (self._minion_id, self._cluster_name, commands))
-
-        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
-        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
-                                  [self._fsid, self._cluster_name, commands])
-        if not pub_data:
-            # FIXME: LocalClient uses 'print' to record the
-            # details of what went wrong :-(
-            raise PublishError("Failed to publish job")
-
-        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
-
-        self.alive_at = now()
-        self.jid = pub_data['jid']
-
-        return self.jid
+    def _submit(self):
+        raise NotImplementedError()
 
     def complete_jid(self, result):
         """
@@ -180,7 +163,7 @@ class UserRequestBase(object):
         self.state = self.COMPLETE
         self.completed_at = now()
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         """
         It is only valid to call this for sync_types which are currently in awaiting_versions
         """
@@ -189,8 +172,8 @@ class UserRequestBase(object):
 
 class UserRequest(UserRequestBase):
 
-    def __init__(self, headline, fsid, cluster_name, commands):
-        super(UserRequest, self).__init__(fsid, cluster_name, commands)
+    def __init__(self, headline, fsid, cluster_name):
+        super(UserRequest, self).__init__(fsid, cluster_name)
         self._await_version = None
         self._headline = headline
 
@@ -199,20 +182,72 @@ class UserRequest(UserRequestBase):
         return self._headline
 
 
-class OsdMapModifyingRequest(UserRequestBase):
+class RadosRequest(UserRequest):
+    """
+    A user request whose remote operations consist of librados mon commands
+    """
+    def __init__(self, headline, fsid, cluster_name, commands):
+        self._commands = commands
+        super(RadosRequest, self).__init__(headline, fsid, cluster_name)
+
+    def _submit(self, commands=None):
+        if commands is None:
+            commands = self._commands
+
+        self.log.debug("%s._submit: %s/%s/%s" % (self.__class__.__name__,
+                                                 self._minion_id, self._cluster_name, commands))
+
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        pub_data = client.run_job(self._minion_id, 'ceph.rados_commands',
+                                  [self.fsid, self._cluster_name, commands])
+        if not pub_data:
+            # FIXME: LocalClient uses 'print' to record the
+            # details of what went wrong :-(
+            raise PublishError("Failed to publish job")
+
+        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
+
+        self.alive_at = now()
+        self.jid = pub_data['jid']
+
+        return self.jid
+
+
+class SaltRequest(UserRequest):
+    """
+    A request whose remote operations consist of direct salt fn calls, not
+    specific to ceph or a ceph cluster.
+    """
+    def __init__(self, cmd, args):
+        super(SaltRequest, self).__init__("salt: %s: %s" % (cmd, args), None, None)
+        self._cmd = cmd
+        self._args = args
+
+    def _submit(self):
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        pub_data = client.run_job(self._minion_id, self._cmd, self._args)
+        if not pub_data:
+            # FIXME: LocalClient uses 'print' to record the
+            # details of what went wrong :-(
+            raise PublishError("Failed to publish job")
+
+        self.log.info("Request %s started job %s" % (self.id, pub_data['jid']))
+
+        self.alive_at = now()
+        self.jid = pub_data['jid']
+
+        return self.jid
+
+
+class OsdMapModifyingRequest(RadosRequest):
     """
     Specialization of UserRequest which waits for Calamari's copy of
     the OsdMap sync object to catch up after execution of RADOS commands.
     """
 
     def __init__(self, headline, fsid, cluster_name, commands):
-        super(OsdMapModifyingRequest, self).__init__(fsid, cluster_name, commands)
+        super(OsdMapModifyingRequest, self).__init__(headline, fsid, cluster_name, commands)
         self._await_version = None
-        self._headline = headline
-
-    @property
-    def headline(self):
-        return self._headline
 
     @property
     def status(self):
@@ -224,7 +259,7 @@ class OsdMapModifyingRequest(UserRequestBase):
     @property
     def associations(self):
         return {
-            'fsid': self._fsid
+            'fsid': self.fsid
         }
 
     @property
@@ -243,11 +278,10 @@ class OsdMapModifyingRequest(UserRequestBase):
         self.result = result
         self._await_version = result['versions']['osd_map']
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, osd_map):
         assert sync_type == OsdMap
         assert self._await_version is not None
 
-        osd_map = sync_objects.get(OsdMap)
         ready = osd_map.version >= self._await_version
         if ready:
             self.log.debug("check passed (%s >= %s)" % (osd_map.version, self._await_version))
@@ -279,10 +313,10 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
         else:
             return {}
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         if self._awaiting_pgs:
             assert sync_type == PgSummary
-            pg_summary = sync_objects.get(PgSummary)
+            pg_summary = sync_object
             pgs_not_creating = 0
             for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
                 states = state_tuple.split("+")
@@ -294,7 +328,7 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
 
         elif self._await_version:
             assert sync_type == OsdMap
-            osd_map = sync_objects.get(OsdMap)
+            osd_map = sync_object
             if osd_map.version >= self._await_version:
                 for pool_id, pool in osd_map.pools_by_id.items():
                     if pool['pool_name'] == self._pool_name:
@@ -448,13 +482,14 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                 OsdMap: None
             }
 
-    def on_map(self, sync_type, sync_objects):
+    def on_map(self, sync_type, sync_object):
         self.log.debug("PgCreatingRequest %s %s" % (sync_type.str, self._phase))
         if self._phase == self.PG_MAP_WAIT:
             if sync_type == PgSummary:
                 # Count the PGs in this pool which are not in state 'creating'
-                pg_summary = sync_objects.get(PgSummary)
+                pg_summary = sync_object
                 pgs_not_creating = 0
+
                 for state_tuple, count in pg_summary.data['by_pool'][self._pool_id].items():
                     states = state_tuple.split("+")
                     if 'creating' not in states:
@@ -487,7 +522,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                 # Keep an eye on the OsdMap to check that pg_num is what we expect: otherwise
                 # if forces of darkness changed pg_num then our PG creation check could
                 # get confused and fail to complete.
-                osd_map = sync_objects.get(OsdMap)
+                osd_map = sync_object
                 pool = osd_map.pools_by_id[self._pool_id]
                 if pool['pg_num'] != self._pg_progress.expected_count():
                     self.set_error("PG creation interrupted (unexpected change to pg_num)")
@@ -500,7 +535,7 @@ class PgCreatingRequest(OsdMapModifyingRequest):
 
         elif self._phase == self.OSD_MAP_WAIT:
             # Read back the pg_num for my pool from the OSD map
-            osd_map = sync_objects.get(OsdMap)
+            osd_map = sync_object
             pool = osd_map.pools_by_id[self._pool_id]
 
             # In Ceph <= 0.67.7, "osd pool set pg_num" will return success even if it hasn't
@@ -522,6 +557,5 @@ class PgCreatingRequest(OsdMapModifyingRequest):
                     # This was the OSD map update from a PG creation command, so start waiting
                     # for the pgs
                     self._phase = self.PG_MAP_WAIT
-
         else:
             raise NotImplementedError("Unexpected {0} in phase {1}".format(sync_type, self._phase))

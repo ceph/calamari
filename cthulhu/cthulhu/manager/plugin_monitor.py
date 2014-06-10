@@ -2,8 +2,9 @@ import gevent
 from gevent import event
 import importlib
 import os
-import salt.client
 import time
+
+from calamari_common.salt_wrapper import LocalClient
 from calamari_common.util import memoize
 from cthulhu.manager import config
 from cthulhu.log import log
@@ -24,7 +25,7 @@ class PluginMonitor(gevent.greenlet.Greenlet):
     @property
     @memoize
     def salt_client(self):
-        return salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        return LocalClient(config.get('cthulhu', 'salt_config_path'))
 
     def load_plugins(self):
 

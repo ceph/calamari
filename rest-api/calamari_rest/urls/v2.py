@@ -27,6 +27,12 @@ urlpatterns = patterns(
     url(r'^', include(router.urls)),
 
     # About ongoing operations in cthulhu
+    url(r'^request/(?P<request_id>[a-zA-Z0-9-]+)/cancel$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'post': 'cancel'}), name='request-cancel'),
+    url(r'^request/(?P<request_id>[a-zA-Z0-9-]+)$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'get': 'retrieve'}), name='request-detail'),
+    url(r'^request$',
+        calamari_rest.views.v2.RequestViewSet.as_view({'get': 'list'}), name='request-list'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request/(?P<request_id>[a-zA-Z0-9-]+)$',
         calamari_rest.views.v2.RequestViewSet.as_view({'get': 'retrieve'}), name='cluster-request-detail'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/request$',
@@ -49,7 +55,7 @@ urlpatterns = patterns(
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'retrieve', 'patch': 'update'}),
         name='cluster-osd-detail'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'get_implemented_commands'})),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd /command$', calamari_rest.views.v2.OsdViewSet.as_view({'get': 'get_implemented_commands'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)/command$', calamari_rest.views.v2.OsdViewSet.as_view(
         {'get': 'get_valid_commands'})),
 
@@ -69,6 +75,8 @@ urlpatterns = patterns(
         calamari_rest.views.v2.SyncObject.as_view({'get': 'describe'}), name='cluster-sync-object-describe'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/sync_object/(?P<sync_type>[a-zA-Z0-9-_]+)$',
         calamari_rest.views.v2.SyncObject.as_view({'get': 'retrieve'}), name='cluster-sync-object'),
+    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/debug_job', calamari_rest.views.v2.DebugJob.as_view({'post': 'create'}),
+        name='server-debug-job'),
 
     # All about servers
     url(r'^key$', calamari_rest.views.v2.SaltKeyViewSet.as_view(
@@ -102,5 +110,9 @@ urlpatterns = patterns(
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log$',
         calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'list_server_logs'})),
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log/(?P<log_path>.+)$',
-        calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'get_server_log'}))
+        calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'get_server_log'})),
+
+    # Ceph CLI access
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/cli$',
+        calamari_rest.views.v2.CliViewSet.as_view({'post': 'create'}))
 )
