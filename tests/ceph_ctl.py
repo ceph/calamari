@@ -188,6 +188,9 @@ class ExternalCephControl(CephControl):
         if server_count != 3 or cluster_count != 1:
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
+        self._bootstrap(self.config['master_fqdn'])
+        self.restart_minions()
+
         self.reset_all_osds(self._run_command(self._get_admin_node(),
                                               "ceph --cluster {cluster} osd dump -f json-pretty".format(
                                                   cluster=self.cluster_name)))
@@ -215,9 +218,6 @@ class ExternalCephControl(CephControl):
                                                        "ceph --cluster {cluster} pg stat".format(
                                                            cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
-
-        self._bootstrap(self.config['master_fqdn'])
-        self.restart_minions()
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -277,15 +277,15 @@ class ExternalCephControl(CephControl):
     def reset_all_pools(self, output):
         target = self._get_admin_node()
         default_pools = {'data', 'metadata', 'rbd'}
-        for pool in default_pools:
+        pools = json.loads(output)
+        existing_pools = self._get_pools(pools)
+
+        for pool in default_pools - existing_pools:
             self._run_command(target, 'ceph osd pool create {pool} 64'.format(pool=pool))
 
-        pools = json.loads(output)
-        for pool in pools:
-            if pool['poolname'] in default_pools:
-                continue
+        for pool in existing_pools - default_pools:
             self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
-                pool=pool['poolname']))
+                pool=pool))
 
     def restart_minions(self):
         for target in self.get_fqdns(None):
@@ -316,6 +316,8 @@ class ExternalCephControl(CephControl):
                                                                                         id=int(osd_id)))
         log.info(output)
 
+    def _get_pools(self, output):
+        return set([x['poolname'] for x in output])
 
 if __name__ == "__main__":
     externalctl = ExternalCephControl()
