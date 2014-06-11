@@ -61,6 +61,12 @@ For RH systems:
 
 1. Create a virtualenv (if you are on ubuntu and using systemwide installs of
    cairo and m2crypto, then pass *--system-site-packages*)
+``virtualenv --no-site-packages <somename>``
+
+Then activate the virtualenv by running:
+
+``source  <virtualenv path>/bin/activate``
+
 2. Install dependencies with ``pip install -r requirements/{debian,rh}/requirements.txt`` and ``pip install -r requirements/{debian,rh}/requirements.force.txt``.
 3. Install graphite and carbon, which require some special command lines:
 
