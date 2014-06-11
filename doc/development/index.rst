@@ -18,16 +18,16 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   calamari_rest/index
+   dev_env
+   building_packages
    logging
-   debugging.rst
+   debugging
    testing
    coding_style
    coverage
-   OSX
-   building_packages
    cthulhu_components
    communications
    cthulhu_locking
    persistence
    requests
+   OSX
