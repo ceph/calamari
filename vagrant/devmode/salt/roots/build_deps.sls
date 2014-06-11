@@ -5,7 +5,7 @@ build_deps:
       - git
       - python-dev
       - swig
-      - libzmq-dev
+      - libzmq3-dev
       - g++
       - python-cairo
       - python-m2crypto
