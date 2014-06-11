@@ -4,6 +4,10 @@
 calamari_control = embedded
 ceph_control = embedded
 
+api_url = http://localhost:8000/api/v2/
+api_username = admin
+api_password = admin
+
 embedded_timeout_factor = 1
 external_timeout_factor = 3
 

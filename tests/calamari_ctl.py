@@ -12,16 +12,14 @@ import psutil
 from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
+from tests.config import TestConfig
 
 log = logging.getLogger(__name__)
 
 # Assumes running nosetests from root of git repo
 TREE_ROOT = os.path.abspath("./")
 
-API_URL = "http://localhost:8000/api/v2/"
-API_USERNAME = 'admin'
-API_PASSWORD = 'admin'
-
+config = TestConfig()
 
 # We scale this linearly with the number of fqdns expected
 KEY_WAIT_PERIOD = 10
@@ -48,15 +46,15 @@ class CalamariControl(object):
 
     @property
     def api_url(self):
-        return API_URL
+        return config.get('testing', 'api_url')
 
     @property
     def api_username(self):
-        return API_USERNAME
+        return config.get('testing', 'api_username')
 
     @property
     def api_password(self):
-        return API_PASSWORD
+        return config.get('testing', 'api_password')
 
     @property
     def api(self):
