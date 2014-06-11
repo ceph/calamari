@@ -6,6 +6,7 @@ from settings import STATIC_ROOT, GRAPHITE_API_PREFIX, CONTENT_DIR
 # from django.contrib import admin
 # admin.autodiscover()
 
+
 urlpatterns = patterns(
     '',
 
@@ -19,23 +20,11 @@ urlpatterns = patterns(
     url(r'^api/v1/', include('calamari_rest.urls.v1')),
     url(r'^api/v2/', include('calamari_rest.urls.v2')),
 
-    url(r'^admin/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
-        {'document_root': '%s/admin/' % STATIC_ROOT}),
-
-    url(r'^login/$', 'django.views.static.serve',
-        {'document_root': '%s/login/' % STATIC_ROOT, 'path': "index.html"}),
-
-    url(r'^login/(?P<path>.*)$', 'django.views.static.serve',
-        {'document_root': '%s/login/' % STATIC_ROOT}),
-
     url(r'^bootstrap$', 'calamari_web.views.bootstrap', name='bootstrap'),
 
     url(r'^dashboard/(?P<path>.*)$', 'calamari_web.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_ROOT},
         name='dashboard'),
-
-    url(r'^manage/(?P<path>.*)$', 'calamari_web.views.serve_dir_or_index',
-        {'document_root': '%s/manage/' % STATIC_ROOT}),
 
     url(r'^render/?', include('graphite.render.urls')),
     url(r'^metrics/?', include('graphite.metrics.urls')),
@@ -55,6 +44,12 @@ urlpatterns = patterns(
     url(r'^static/el6/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/el6/' % STATIC_ROOT}),
 )
+
+UI_PATHS = ['login', 'admin', 'manage']
+
+for path in UI_PATHS:
+    urlpatterns = urlpatterns + [url(r'^{0}/(?P<path>.*)$'.format(path), 'calamari_web.views.serve_dir_or_index',
+                                     {'document_root': '{0}/{1}/'.format(STATIC_ROOT, path)})]
 
 handler500 = 'calamari_web.views.server_error'
 

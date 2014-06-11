@@ -3,7 +3,7 @@
 from django.views.static import serve as static_serve
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect, HttpResponse, \
-    HttpResponseServerError
+    HttpResponseServerError, Http404
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import requires_csrf_token
@@ -18,11 +18,16 @@ def home(request):
     return HttpResponseRedirect(reverse('dashboard', kwargs={'path': ''}))
 
 
-@login_required
 def serve_dir_or_index(request, path, document_root):
     if len(path) == 0:
         path = 'index.html'
-    return static_serve(request, path, document_root)
+
+    try:
+        return static_serve(request, path, document_root)
+    except Http404:
+        return HttpResponse(
+            "User interface file not found, check that the Calamari user interface is properly installed.",
+            status=404)
 
 
 @login_required
