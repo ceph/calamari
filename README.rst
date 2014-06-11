@@ -1,4 +1,6 @@
 
+.. image:: https://travis-ci.org/ceph/calamari.svg?branch=master
+    :target: https://travis-ci.org/ceph/calamari.svg?branch=master
 
 Calamari server
 ===============
