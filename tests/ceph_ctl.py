@@ -296,8 +296,7 @@ class ExternalCephControl(CephControl):
         for target in self.get_fqdns(None):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
 
-            # TODO abstract out the port number
-            output = self._run_command(target, '''"wget -O - http://{fqdn}:8000/bootstrap |\
+            output = self._run_command(target, '''"wget -O - http://{fqdn}/bootstrap |\
              sudo python ;\
              sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
              sudo killall salt-minion; sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
