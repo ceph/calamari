@@ -201,7 +201,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def get_sync_object_data(self, object_type):
         """
         :param object_type: A SyncObject subclass
-        :return a json-serializable object
+        :returns: a json-serializable object
         """
         return self._sync_objects.get_data(object_type)
 
@@ -209,7 +209,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     def get_sync_object(self, object_type):
         """
         :param object_type: A SyncObject subclass
-        :return a SyncObject instance
+        :returns: a SyncObject instance
         """
         return self._sync_objects.get(object_type)
 
