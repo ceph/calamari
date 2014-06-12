@@ -24,7 +24,7 @@ el6:
 
 rhel6:
 	mkdir rhel6 || true
-	yumdownloader --destdir=rhel6 --archlist=x86_64 -x '*i686*' salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
+	sudo yumdownloader --destdir=rhel6 --archlist=x86_64 -x '*i686*' salt-minion m2crypto openpgm python-babel python-jinja2 python-msgpack PyYAML python-zmq salt sshpass zeromq3 python-crypto libyaml
 	cp ../../Diamond/dist/*.noarch.rpm rhel6/
 	createrepo rhel6
 	tar czf calamari-repo-rhel6.tar.gz rhel6/
