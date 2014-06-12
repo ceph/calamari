@@ -97,13 +97,18 @@ Step 2: Testing setup
 ^^^^^^^^^^^^^^^^^^^^^
 
 There are a few manual changes you'll need to make to test against this cluster:
+
 - Add a master_fqdn dict to teuthology/archive/info.yaml like:
+
 .. code-block:: yaml
+
     master_fqdn:
         <FQDN of the machine where you are running a calmari devmode instance>
 
 - Edit tests/tests.conf changing ceph_control under testing to 'external'
+
 .. code-block:: yaml
+
     [testing]
         ceph_control = external
 
