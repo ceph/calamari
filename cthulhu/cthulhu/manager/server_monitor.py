@@ -580,7 +580,7 @@ class ServerMonitor(greenlet.Greenlet):
         Look up a list of ServiceState objects by ID.
 
         :param service_ids: A list of ServiceId
-        :return A list of the same length as service_ids, containing ServiceState
+        :returns: A list of the same length as service_ids, containing ServiceState
                 objects or None for any unfound ServiceIds.
         """
         return [self.services.get(service_id, None) for service_id in service_ids]
