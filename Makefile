@@ -75,9 +75,9 @@ build-venv-reqs: venv
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/$(FLAVOR)/requirements.production.txt && \
+	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
 	./bin/python ./bin/pip install -I -r \
-	  $(SRC)/requirements/$(FLAVOR)/requirements.production.force.txt && \
+	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
