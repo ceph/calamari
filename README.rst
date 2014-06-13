@@ -31,12 +31,11 @@ running, and feedback to the mailing list will certainly be appreciated.
 
 Pre-built Calamari packages are not available here, but scripts are included to build your own: http://calamari.readthedocs.org/en/latest/development/building_packages.html
 
-Comprehensive installation instructions are not yet available, but you can get some idea from: http://calamari.readthedocs.org/en/latest/development/dev_env.html#connecting-ceph-servers-to-calamari
+A high level guide to installing Calamari from packages you have built is available here: http://calamari.readthedocs.org/en/latest/operations/index.html
 
 Check the `mailing list archives <http://lists.ceph.com/pipermail/ceph-calamari-ceph.com/>`_ for
 recent discussions of commonly encountered issues, and post your questions there.  Check back here
-for more comprehensive instructions in the near future.
-
+for more comprehensive guidance for end-users in the near future.
 
 Resources
 ---------
