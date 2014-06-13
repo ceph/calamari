@@ -266,10 +266,13 @@ class ExternalCephControl(CephControl):
     def reset_all_osds(self, output):
         target = self._get_admin_node()
         osd_stat = json.loads(output)
+
         # TODO this iteration should happen on the remote side
-        for osd in osd_stat['osds']:
-            self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd['osd']))
-            self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd['osd']))
+        for osd in self._get_osds_down_or_out(output)['down']:
+            self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd))
+
+        for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd['weight'])) != 1]:
+            self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
 
         for flag in ['pause']:
             self._run_command(target, "ceph --cluster ceph osd unset {flag}".format(flag=flag))
