@@ -2,19 +2,17 @@
 Calamari
 ========
 
-Welcome to the Calamari developer documentation.
+Welcome to the Calamari documentation.
 
+**For users**: :doc:`operations/index`
 
+**For developers working on Calamari**: :doc:`development/index`
 
-Contents
---------
+**For developers using the Calamari REST API**: :doc:`calamari_rest/index`
 
-.. toctree::
-   :maxdepth: 2
-
-   calamari_rest/index
-   development/index
-
+This documentation is built using Sphinx.  The sources are in git
+at https://github.com/ceph/calamari/tree/master/doc.  To contribute fixes
+or additions, please sent pull requests via that git repository.
 
 Indices and tables
 ==================

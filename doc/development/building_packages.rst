@@ -69,6 +69,8 @@ suitable for rebuilding as a package for other platforms, or for use in a develo
 environment.  This tarball is the same thing that is inside the calamari-clients-<version>.deb
 package, but in a distro-agnostic form.
 
+Finally, check your packages install correctly by following the installation
+procedure: :doc:`/operations/server_install`
 
 Troubleshooting
 ---------------
@@ -85,24 +87,3 @@ check for errors like this:
 When you want to dig into the details of what these vagrant configurations are doing, go
 look in the ``salt/`` subdirectory of each one to see what is being run on a ``vagrant up``.
 
-
-Manually testing installation
------------------------------
-
-.. code-block:: bash
-
-  mkdir verify
-  cd verify
-  vagrant init precise64
-  vagrant up
-  vagrant ssh
-  sudo apt-get update && sudo apt-get install -y python-software-properties && sudo add-apt-repository ppa:saltstack/salt && sudo apt-get update && sudo apt-get install -y salt-master salt-minion && sudo apt-get install -y apache2 libapache2-mod-wsgi libcairo2 supervisor python-cairo libpq5 postgresql
-
-Now copy the built products into your virtual machine.
-
-.. code-block:: bash
-
-  sudo dpkg -i ~/calamari-server*.deb
-  sudo /opt/calamari/venv/bin/calamari-ctl initialize
-  sudo mkdir /opt/calamari/webapp/content/ubuntu
-  sudo tar zxf ~/calamari-repo.tar.gz -C /opt/calamari/webapp/content/ubuntu
