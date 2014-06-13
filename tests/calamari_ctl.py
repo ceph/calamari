@@ -13,6 +13,7 @@ from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
 from tests.config import TestConfig
+from unittest import SkipTest
 
 log = logging.getLogger(__name__)
 
@@ -306,3 +307,6 @@ class ExternalCalamariControl(CalamariControl):
 
     def stop(self):
         pass
+
+    def restart(self):
+        raise SkipTest('I don\'t reset external calamari')
