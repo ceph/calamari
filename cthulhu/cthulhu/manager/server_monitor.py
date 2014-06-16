@@ -7,6 +7,7 @@ individual hosts with no regard to the relations between them.
 from collections import defaultdict
 import json
 import datetime
+import traceback
 from dateutil import tz
 import logging
 
@@ -141,7 +142,12 @@ class ServerMonitor(greenlet.Greenlet):
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        self.remote.listen(self._complete, on_server_heartbeat=self.on_server_heartbeat)
+        try:
+            self.remote.listen(self._complete, on_server_heartbeat=self.on_server_heartbeat)
+        except:
+            log.error("Unhandled exception")
+            log.error(traceback.format_exc())
+            raise
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -337,7 +343,7 @@ class ServerMonitor(greenlet.Greenlet):
         except KeyError:
             # Look up the grains for this server, we need to know its hostname in order
             # to resolve this vs. the OSD map.
-            hostname = self._get_grains(fqdn)['host']
+            hostname = self.remote.get_remote_metadata([fqdn])[fqdn]['host']
 
             if hostname in self.hostname_to_server:
                 server_state = self.hostname_to_server[hostname]
@@ -370,7 +376,7 @@ class ServerMonitor(greenlet.Greenlet):
 
         boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
         if new_server:
-            hostname = self._get_grains(fqdn)['host']
+            hostname = self.remote.get_remote_metadata([fqdn])[fqdn]['host']
             server_state = ServerState(fqdn, hostname, managed=True,
                                        last_contact=now(), boot_time=boot_time,
                                        ceph_version=server_heartbeat['ceph_version'])
