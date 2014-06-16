@@ -107,34 +107,6 @@ class Remote(object):
         """
         raise NotImplementedError()
 
-    # Run a ceph.rados_commands
-
-
-    # Get a sync_object
-
-    # Run a logtail.*
-
-    # List running JIDs on a list of minions
-
-    # Cancel a JID
-
-    # Subscribe to ceph cluster heartbeats for one cluster
-
-    # Subscribe to ceph cluster heartbeats for all clusters
-
-    # Subscribe to ceph server heartbeats
-
-
-    # Add a minion or minion range
-
-    # List minions with their authentication state
-
-    # Modify a minion's authentication state
-
-    # Get the metadata for a server
-
-    # Get the metadata for this server (where calamari-server is running)
-
 
 # This code was originally salt-only, so we use the salt magic values for
 # authentication states of remote servers
