@@ -1,10 +1,19 @@
 
 {% if grains['os_family'] == 'RedHat' %}
 
+{% if grains['osrelease'] == '7.0' %}
+# work around https://github.com/saltstack/salt/pull/12316; use new
+# command postgresql-setup anyway
+postgresql_initdb:
+    cmd:
+        - run
+        - name: postgresql-setup initdb
+{% else %}
 postgresql_initdb:
     cmd:
         - run
         - name: service postgresql initdb
+{% endif %}
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:
