@@ -191,14 +191,10 @@ class ExternalCephControl(CephControl):
         self._bootstrap(self.config['master_fqdn'])
         self.restart_minions()
 
-        self.reset_all_osds(self._run_command(self._get_admin_node(),
-                                              "ceph --cluster {cluster} osd dump -f json-pretty".format(
-                                                  cluster=self.cluster_name)))
+        self.reset_all_osds(self._get_osd_state())
 
         # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
-                                                       "ceph --cluster {cluster} osd dump -f json-pretty".format(
-                                                           cluster=self.cluster_name)),
+        self._wait_for_state(self._get_osd_state,
                              self._check_osds_in_and_up)
         # TODO what about tests that create OSDs we should remove them
 
@@ -218,6 +214,11 @@ class ExternalCephControl(CephControl):
                                                        "ceph --cluster {cluster} pg stat".format(
                                                            cluster=self.cluster_name)),
                              self._check_pgs_active_and_clean)
+
+    def _get_osd_state(self):
+        return json.loads(self._run_command(self._get_admin_node(),
+                                            "ceph --cluster {cluster} osd dump -f json-pretty".format(
+                                                cluster=self.cluster_name)))
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -271,11 +272,12 @@ class ExternalCephControl(CephControl):
         for osd in self._get_osds_down_or_out(output)['down']:
             self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd))
 
+    def reset_all_osds(self, osd_stat):
         for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd['weight'])) != 1]:
-            self._run_command(target, 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
+            self._run_command(self._get_admin_node(), 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
 
         for flag in ['pause']:
-            self._run_command(target, "ceph --cluster ceph osd unset {flag}".format(flag=flag))
+            self._run_command(self._get_admin_node(), "ceph --cluster ceph osd unset {flag}".format(flag=flag))
 
     def reset_all_pools(self, output):
         target = self._get_admin_node()
