@@ -180,13 +180,13 @@ install-alembic:
 
 install-deb-conf:
 	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/debian/calamari.conf \
+	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
 
 install-rh-conf:
 	@echo "target: $@"
 	# httpd conf for graphite and calamari vhosts, redhat
-	@$(INSTALL) -D conf/httpd/rh/calamari.conf \
+	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:
