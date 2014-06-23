@@ -469,7 +469,7 @@ def service_status(socket_path):
     """
     Given an admin socket path, learn all we can about that service
     """
-    cluster_name, service_type, service_id = re.match("^(.*)-(.*)\.(.*).asok$", os.path.basename(socket_path)).groups()
+    cluster_name, service_type, service_id = re.match("^(.+)-(mon|osd|mds)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
     # Interrogate the service for its FSID
     config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
     fsid = config['fsid']
