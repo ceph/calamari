@@ -1386,7 +1386,7 @@ class CephCluster(CephClusterState):
 
     def get_stats(self, fqdn):
         stats = dict()
-        hostname = fqdn.split('.')[0]
+        graphite_fqdn = fqdn.replace(".", "_")
 
         # Server stats
         # =============
@@ -1400,10 +1400,10 @@ class CephCluster(CephClusterState):
             # Junk stats to generate load on carbon/graphite
             for k in cpu_stat_names:
                 v = random.random()
-                cpu_stats["cpu{0}".format(cpu)][k] = random.random()
+                cpu_stats["cpu{0}".format(cpu)][k] = v
                 cpu_stats['total'][k] += v
 
-        stats.update(flatten_dictionary(cpu_stats, prefix="servers.{0}.cpu".format(hostname)))
+        stats.update(flatten_dictionary(cpu_stats, prefix="servers.{0}.cpu".format(graphite_fqdn)))
 
         # Network stats
         # =============
@@ -1414,7 +1414,7 @@ class CephCluster(CephClusterState):
                       'rx_packets', 'tx_byte', 'tx_compressed', 'tx_drop', 'tx_errors', 'tx_fifo', 'tx_frame',
                       'tx_multicast', 'tx_packets']:
                 net_stats[interface][k] = random.random()
-        stats.update(flatten_dictionary(net_stats, prefix="servers.{0}.network".format(hostname)))
+        stats.update(flatten_dictionary(net_stats, prefix="servers.{0}.network".format(graphite_fqdn)))
 
         # Service stats
         # =============
@@ -1439,14 +1439,22 @@ class CephCluster(CephClusterState):
                 pool_stats[pool_id]['bytes_used'] += pg_stats['num_bytes']
                 pool_stats[pool_id]['objects'] += pg_stats['num_objects']
 
+                pool_stats[pool_id]['num_read'] = 10 + random.randint(-10, 10)
+                pool_stats[pool_id]['num_write'] = 10 + random.randint(-10, 10)
+
             for s in pool_stats.values():
                 s['kb_used'] = s['bytes_used'] / KB
 
             total_used = 0
+            all_pools = defaultdict(lambda: 0)
             for pool_id, pstats in pool_stats.items():
                 total_used += pstats['bytes_used']
                 for k, v in pstats.items():
-                    stats["ceph.cluster.{0}.pool.{1}.{2}".format(self.name, pool_id, k)] = v
+                    all_pools[k] += v
+                    stats["ceph.cluster.{0}.pool.{1}.{2}".format(self.fsid, pool_id, k)] = v
+
+            for k, v in all_pools.items():
+                stats["ceph.cluster.{0}.pool.all.{1}".format(self.fsid, k)] = v
 
             total_space = sum([o['total_bytes'] for o in self._osd_stats.values()])
 
@@ -1457,7 +1465,7 @@ class CephCluster(CephClusterState):
                 'total_avail': (total_space - total_used) / 1024
             }
             for k, v in df_stats.items():
-                stats["ceph.cluster.{0}.df.{1}".format(self.name, k)] = v
+                stats["ceph.cluster.{0}.df.{1}".format(self.fsid, k)] = v
 
         return stats.items()
 
