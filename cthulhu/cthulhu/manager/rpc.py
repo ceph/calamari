@@ -1,8 +1,10 @@
 import traceback
 
 import gevent.event
+import gevent.pool
 import zerorpc
 from salt.key import Key
+import salt.utils.master
 import salt.config
 
 from cthulhu.manager import config
@@ -349,6 +351,35 @@ class RpcInterface(object):
             'id': minion_id,
             'status': status
         }
+
+    def minion_get_grains(self, fqdns):
+        """
+        This call exists to work around a change to salt-master's permissions on
+        /var/cache/salt/ that prevented the REST API from reading cached grains
+        on RHEL7/2014.1.5.
+        """
+
+        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
+        pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
+                                                         use_cached_grains=True,
+                                                         grains_fallback=False,
+                                                         opts=salt_config)
+
+        grains = {}
+
+        def _lookup_one(fqdn):
+            # We (ab)use an internal interface to get at the cache by minion ID
+            # instead of by glob, because the process of resolving the glob
+            # relies on access to the root only PKI folder.
+            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            grains[fqdn] = cache_grains
+
+        # Issue up to this many disk I/Os to load grains at once
+        CONCURRENT_GRAIN_LOADS = 16
+        p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
+        p.map(_lookup_one, fqdns)
+
+        return grains
 
     def server_get(self, fqdn):
         return self._manager.servers.dump(self._server_resolve(fqdn))

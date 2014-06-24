@@ -631,32 +631,18 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil('', 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
-
-        def _lookup_one(server):
-            log.debug(">> resolving grains for server {0}".format(server['fqdn']))
-            fqdn = server['fqdn']
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+        cache_grains = self.client.minion_get_grains([s['fqdn'] for s in servers])
+        for server in servers:
             server['frontend_iface'] = None
             server['backend_iface'] = None
             try:
-                grains = cache_grains[fqdn]
+                grains = cache_grains[server['fqdn']]
                 if server['frontend_addr']:
                     server['frontend_iface'] = self._addr_to_iface(server['frontend_addr'], grains['ip_interfaces'])
                 if server['backend_addr']:
                     server['backend_iface'] = self._addr_to_iface(server['backend_addr'], grains['ip_interfaces'])
             except KeyError:
                 pass
-            log.debug("<< resolving grains for server {0}".format(server['fqdn']))
-
-        # Issue up to this many disk I/Os to load grains at once
-        CONCURRENT_GRAIN_LOADS = 16
-        p = gevent.pool.Pool(CONCURRENT_GRAIN_LOADS)
-        p.map(_lookup_one, servers)
 
     def list(self, request, fsid):
         servers = self.client.server_list_cluster(fsid)
@@ -683,17 +669,9 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        salt_config = salt.config.client_config(config.get('cthulhu', 'salt_config_path'))
-        pillar_util = salt.utils.master.MasterPillarUtil(fqdn, 'glob',
-                                                         use_cached_grains=True,
-                                                         grains_fallback=False,
-                                                         opts=salt_config)
-
         try:
-            # We (ab)use an internal interface to get at the cache by minion ID
-            # instead of by glob, because the process of resolving the glob
-            # relies on access to the root only PKI folder.
-            cache_grains, cache_pillar = pillar_util._get_cached_minion_data(fqdn)
+            cache_grains = self.client.minion_get_grains([fqdn])
+
             return Response(cache_grains[fqdn])
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
