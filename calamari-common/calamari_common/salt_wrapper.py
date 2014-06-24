@@ -9,6 +9,7 @@ environment.
 
 
 import gevent
+import logging
 
 
 try:
@@ -56,7 +57,8 @@ class SaltEventSource(object):
         """
         :param config: a salt client_config instance
         """
-        self._log = logger.getChild("salt")
+        # getChild isn't in 2.6
+        self._log = logging.getLogger('.'.join((logger.name, 'salt')))
         self._silence_counter = 0
         self._config = config
         self._master_event = MasterEvent(self._config['sock_dir'])

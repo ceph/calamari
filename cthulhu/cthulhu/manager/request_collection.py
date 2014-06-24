@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from gevent.lock import RLock
 import datetime
+import logging
 
 from calamari_common.salt_wrapper import LocalClient
 from cthulhu.gevent_util import nosleep
@@ -12,7 +13,8 @@ from cthulhu.manager import config
 TICK_PERIOD = 20
 
 
-log = cthulhu_log.getChild("request_collection")
+# getChild isn't in 2.6
+log = logging.getLogger('.'.join((cthulhu_log.name, 'request_collection')))
 
 
 class RequestCollection(object):
