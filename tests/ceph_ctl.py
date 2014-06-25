@@ -166,6 +166,7 @@ class ExternalCephControl(CephControl):
 
         # TODO parse this out of the cluster.yaml
         self.cluster_name = 'ceph'
+        self.default_pools = {'data', 'metadata', 'rbd'}
 
         self.cluster_distro = config.get('testing', 'cluster_distro')
 
@@ -194,34 +195,21 @@ class ExternalCephControl(CephControl):
         self._bootstrap(self.config['master_fqdn'])
         self.restart_minions()
 
-        self.reset_all_osds(self._get_osd_state())
+        self.reset_all_osds(self._list_osds())
 
         # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(self._get_osd_state,
+        self._wait_for_state(self._list_osds,
                              self._check_osds_in_and_up)
-        # TODO what about tests that create OSDs we should remove them
 
-        self.reset_all_pools(self._run_command(self._get_admin_node(),
-                                               "ceph --cluster {cluster} osd lspools -f json-pretty".format(
-                                                   cluster=self.cluster_name)))
+        self.reset_all_pools(self._list_pools())
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
-                                                       "ceph --cluster {cluster} osd lspools -f json-pretty".format(
-                                                           cluster=self.cluster_name)),
+        self._wait_for_state(self._list_pools,
                              self._check_default_pools_only)
 
         # wait till all PGs are active and clean assertion per #7813
-        # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
-        self._wait_for_state(lambda: self._run_command(self._get_admin_node(),
-                                                       "ceph --cluster {cluster} pg stat".format(
-                                                           cluster=self.cluster_name)),
+        self._wait_for_state(self._list_pgs,
                              self._check_pgs_active_and_clean)
-
-    def _get_osd_state(self):
-        return json.loads(self._run_command(self._get_admin_node(),
-                                            "ceph --cluster {cluster} osd dump -f json-pretty".format(
-                                                cluster=self.cluster_name)))
 
     def get_server_fqdns(self):
         return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
@@ -248,32 +236,25 @@ class ExternalCephControl(CephControl):
         log.info('Waiting for {state} on cluster'.format(state=state))
         wait_until_true(lambda: state(command()))
 
-    def _check_default_pools_only(self, output):
-        pools = json.loads(output)
-        return {'data', 'metadata', 'rbd'} == set([x['poolname'] for x in pools])
+    def _list_pgs(self):
+        # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
+        return self._run_command(self._get_admin_node(),
+                                 "ceph --cluster {cluster} pg stat".format(
+                                     cluster=self.cluster_name))
 
     def _check_pgs_active_and_clean(self, output):
         _, total_stat, pg_stat, _ = output.replace(';', ':').split(':')
         return 'active+clean' == pg_stat.split()[1] and total_stat.split()[0] == pg_stat.split()[0]
 
-    def _get_osds_down_or_out(self, output):
-        osd_stat = json.loads(output)
-        osd_down = [osd['osd'] for osd in osd_stat['osds'] if not osd['up']]
-        osd_out = [osd['osd'] for osd in osd_stat['osds'] if not osd['in']]
+    def _list_osds(self):
+        return json.loads(self._run_command(self._get_admin_node(),
+                                            "ceph --cluster {cluster} osd dump -f json-pretty".format(
+                                                cluster=self.cluster_name)))
 
-        return {'down': osd_down, 'out': osd_out}
-
-    def _check_osds_in_and_up(self, output):
-        osd_state = self._get_osds_down_or_out(output)
-        return not osd_state['down'] + osd_state['out']
-
-    def reset_all_osds(self, output):
-        target = self._get_admin_node()
-        osd_stat = json.loads(output)
-
-        # TODO this iteration should happen on the remote side
-        for osd in self._get_osds_down_or_out(output)['down']:
-            self._run_command(target, 'ceph osd in {osd_id}'.format(osd_id=osd))
+    def _check_osds_in_and_up(self, osds):
+        osd_down = [osd['osd'] for osd in osds['osds'] if not osd['up']]
+        osd_out = [osd['osd'] for osd in osds['osds'] if not osd['in']]
+        return not osd_down + osd_out
 
     def reset_all_osds(self, osd_stat):
         for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd['weight'])) != 1]:
@@ -282,17 +263,21 @@ class ExternalCephControl(CephControl):
         for flag in ['pause']:
             self._run_command(self._get_admin_node(), "ceph --cluster ceph osd unset {flag}".format(flag=flag))
 
-    def reset_all_pools(self, output):
-        target = self._get_admin_node()
-        default_pools = {'data', 'metadata', 'rbd'}
-        pools = json.loads(output)
-        existing_pools = self._get_pools(pools)
+    def _list_pools(self):
+        pools = json.loads(self._run_command(self._get_admin_node(),
+                                             "ceph --cluster {cluster} osd lspools -f json-pretty".format(
+                                                 cluster=self.cluster_name)))
+        return set([x['poolname'] for x in pools])
 
-        for pool in default_pools - existing_pools:
-            self._run_command(target, 'ceph osd pool create {pool} 64'.format(pool=pool))
+    def _check_default_pools_only(self, pools):
+        return self.default_pools == pools
 
-        for pool in existing_pools - default_pools:
-            self._run_command(target, 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
+    def reset_all_pools(self, existing_pools):
+        for pool in self.default_pools - existing_pools:
+            self._run_command(self._get_admin_node(), 'ceph osd pool create {pool} 64'.format(pool=pool))
+
+        for pool in existing_pools - self.default_pools:
+            self._run_command(self._get_admin_node(), 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
                 pool=pool))
 
     def restart_minions(self):
@@ -308,15 +293,17 @@ class ExternalCephControl(CephControl):
             info = json.loads(urllib2.urlopen(url).read())
 
             try:
-                bootstrap_cmd = info['bootstrap_{distro}'.format(distro=self.cluster_distro)]
+                # TODO subshell here, _run_command only halts the tests if the salt-minion restart fails
+                # Also that would mean that we'd need to make apt-get update run clean
+                # it currently fails due to lack of i386 packages in precise
+                bootstrap_cmd = '''{bootstrap};
+                    sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion;
+                    sudo killall salt-minion;
+                    sudo service salt-minion restart'''.format(bootstrap=info['bootstrap_{distro}'.format(distro=self.cluster_distro)])
             except KeyError:
                 raise NotImplementedError('Cannot bootstrap a {distro} cluster'.format(distro=self.cluster_distro))
 
             output = self._run_command(target, bootstrap_cmd)
-            log.info(output)
-
-            output = self._run_command(target, '''sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
-             sudo killall salt-minion; sudo service salt-minion restart"''')
             log.info(output)
 
     def _get_admin_node(self):
@@ -332,8 +319,6 @@ class ExternalCephControl(CephControl):
                                                                                         id=int(osd_id)))
         log.info(output)
 
-    def _get_pools(self, output):
-        return set([x['poolname'] for x in output])
 
 if __name__ == "__main__":
     externalctl = ExternalCephControl()

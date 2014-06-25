@@ -5,7 +5,7 @@ from ceph_ctl import ExternalCephControl
 class TestableExternalCephControl(ExternalCephControl):
     def __init__(self):
         # Override the __init__ in the base-class to avoid config parsing
-        pass
+        self.default_pools = {'foo', 'bar'}
 
 
 class TestExternalCephControl(TestCase):
@@ -13,104 +13,41 @@ class TestExternalCephControl(TestCase):
         self.ext_ceph_ctl = TestableExternalCephControl()
 
     def test_osd_stat_down_and_out(self):
-        stat_output = '''
-        {"osds": [
-        { "osd": 0,
-          "uuid": "6a42162d-2dd8-4984-b7fe-2cc372cec028",
-          "up": 0,
-          "in": 0,
-          "state": [
-                "exists",
-                "up"]},
-        { "osd": 1,
-          "uuid": "d5b9047c-d1af-4488-82cb-1e681d20fe06",
-          "up": 1,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]}
-        ]}
-        '''
-        self.assertEquals(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), {'down': [0], 'out': [0]})
+        osds = {"osds": [
+            {"osd": 0, "up": 0, "in": 0},
+            {"osd": 1, "up": 1, "in": 1}]}
+        self.assertEquals(self.ext_ceph_ctl._check_osds_in_and_up(osds), False)
 
     def test_osd_stat_up_not_in(self):
-        stat_output = '''
-        {"osds": [
-        { "osd": 0,
-          "uuid": "6a42162d-2dd8-4984-b7fe-2cc372cec028",
-          "up": 1,
-          "in": 0,
-          "state": [
-                "exists",
-                "up"]},
-        { "osd": 1,
-          "uuid": "d5b9047c-d1af-4488-82cb-1e681d20fe06",
-          "up": 1,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]}
-        ]}
-        '''
-        self.assertEqual(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), {'down': [], 'out': [0]})
+        osds = {"osds": [
+            {"osd": 0, "up": 1, "in": 0},
+            {"osd": 1, "up": 1, "in": 1}]}
+
+        self.assertEqual(self.ext_ceph_ctl._check_osds_in_and_up(osds), False)
 
     def test_osd_stat_in_not_up(self):
-        stat_output = '''
-        {"osds": [
-        { "osd": 0,
-          "uuid": "6a42162d-2dd8-4984-b7fe-2cc372cec028",
-          "up": 0,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]},
-        { "osd": 1,
-          "uuid": "d5b9047c-d1af-4488-82cb-1e681d20fe06",
-          "up": 1,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]}
-        ]}
-        '''
-        self.assertEqual(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), {'down': [0], 'out': []})
+        osds = {"osds": [
+            {"osd": 0, "up": 0, "in": 1},
+            {"osd": 1, "up": 1, "in": 1}]}
+        self.assertEqual(self.ext_ceph_ctl._check_osds_in_and_up(osds), False)
 
     def test_osd_stat_up_and_in(self):
-        stat_output = '''
-        {"osds": [
-        { "osd": 0,
-          "uuid": "6a42162d-2dd8-4984-b7fe-2cc372cec028",
-          "up": 1,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]},
-        { "osd": 1,
-          "uuid": "d5b9047c-d1af-4488-82cb-1e681d20fe06",
-          "up": 1,
-          "in": 1,
-          "state": [
-                "exists",
-                "up"]}
-        ]}
-        '''
-        self.assertEqual(self.ext_ceph_ctl._get_osds_down_or_out(stat_output), {'down': [], 'out': []})
+        osds = {"osds": [
+            {"osd": 0, "up": 1, "in": 1},
+            {"osd": 1, "up": 1, "in": 1}]}
+        self.assertEqual(self.ext_ceph_ctl._check_osds_in_and_up(osds), True)
 
     def test_default_pools_only(self):
-        lspools_output = '\n[\n    { "poolnum": 0,\n      "poolname": "data"},\n    { "poolnum": 1,\n      "poolname": "metadata"},\n    { "poolnum": 2,\n      "poolname": "rbd"}]\n'
-        self.assertTrue(self.ext_ceph_ctl._check_default_pools_only(lspools_output))
-
-    def test_default_pools_only_missing_data(self):
-        lspools_output = '\n[\n    { "poolnum": 0,\n      "poolname": "not_data"},\n    { "poolnum": 1,\n      "poolname": "metadata"},\n    { "poolnum": 2,\n      "poolname": "rbd"}]\n'
-        self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(lspools_output))
+        pools = {'foo', 'bar'}
+        self.assertTrue(self.ext_ceph_ctl._check_default_pools_only(pools))
 
     def test_default_pools_only_too_few(self):
-        lspools_output = '\n[\n   { "poolnum": 1,\n      "poolname": "metadata"},\n    { "poolnum": 2,\n      "poolname": "rbd"}]\n'
-        self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(lspools_output))
+        pools = {'foo'}
+        self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(pools))
 
-    def test_default_pools_only_different_ids(self):
-        lspools_output = '\n[\n    { "poolnum": 1,\n      "poolname": "data"},\n    { "poolnum": 0,\n      "poolname": "metadata"},\n    { "poolnum": 2,\n      "poolname": "rbd"}]\n'
-        self.assertTrue(self.ext_ceph_ctl._check_default_pools_only(lspools_output))
+    def test_default_pools_only_too_many(self):
+        pools = {'foo', 'bar', 'baz'}
+        self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(pools))
 
     def test_pg_stat_less_active_and_clean(self):
         self.assertFalse(self.ext_ceph_ctl._check_pgs_active_and_clean(
