@@ -9,6 +9,7 @@ import yaml
 from subprocess import Popen, PIPE
 from utils import wait_until_true, run_once
 import json
+import urllib2
 
 from minion_sim.sim import MinionSim
 from minion_sim.log import log as minion_sim_log
@@ -166,6 +167,8 @@ class ExternalCephControl(CephControl):
         # TODO parse this out of the cluster.yaml
         self.cluster_name = 'ceph'
 
+        self.cluster_distro = config.get('testing', 'cluster_distro')
+
     def _run_command(self, target, command):
         ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
@@ -297,14 +300,23 @@ class ExternalCephControl(CephControl):
             self._run_command(target, 'sudo service salt-minion restart')
 
     @run_once
-    def _bootstrap(self, master_fqdn):
+    def _bootstrap(self, master_fqdn, distro='ubuntu'):
         for target in self.get_fqdns(None):
             log.info('Bootstrapping salt-minion on {target}'.format(target=target))
 
-            output = self._run_command(target, '''"wget -O - http://{fqdn}/bootstrap |\
-             sudo python ;\
-             sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
-             sudo killall salt-minion; sudo service salt-minion restart"'''.format(fqdn=master_fqdn))
+            url = 'http://{fqdn}/api/v2/info'.format(fqdn=master_fqdn)
+            info = json.loads(urllib2.urlopen(url).read())
+
+            try:
+                bootstrap_cmd = info['bootstrap_{distro}'.format(distro=self.cluster_distro)]
+            except KeyError:
+                raise NotImplementedError('Cannot bootstrap a {distro} cluster'.format(distro=self.cluster_distro))
+
+            output = self._run_command(target, bootstrap_cmd)
+            log.info(output)
+
+            output = self._run_command(target, '''sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion && \
+             sudo killall salt-minion; sudo service salt-minion restart"''')
             log.info(output)
 
     def _get_admin_node(self):

@@ -4,6 +4,8 @@
 calamari_control = embedded
 ceph_control = embedded
 
+cluster_distro = ubuntu
+
 api_url = http://localhost:8000/api/v2/
 api_username = admin
 api_password = admin
