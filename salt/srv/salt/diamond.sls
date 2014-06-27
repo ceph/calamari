@@ -62,7 +62,7 @@ diamond:
       - file: diamond-network-config
       - file: diamond-ceph-config
       - file: diamond-config
-{% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' -%}
+{% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
       - file: diamond-init-config
 {% endif %}
 {% endif %}
