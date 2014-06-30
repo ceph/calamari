@@ -60,6 +60,8 @@ Test that you have a working step 0:
 
     ssh ubuntu@teuthology.front.sepia.ceph.com "echo 'it works'"
 
+.. _building-the-cluster:
+
 Step 1: Building the cluster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -113,6 +115,8 @@ There are a few manual changes you'll need to make to test against this cluster:
         ceph_control = external
 
 - Make sure you have the repositories setup so that bootstrap can succeed TODO
+
+.. _kickoff-tests:
 
 Step 2: Kickoff tests
 ^^^^^^^^^^^^^^^^^^^^^
@@ -174,6 +178,88 @@ WARNING: This should only be performed on machines you have locked previously.
 
 you can add a —profile argument to the cobbler command to select distro
 and do a "sudo cobbler profile list" on plana01 to see what's available
+
+
+Testing to validate a packaged installation
+-------------------------------------------
+
+In this section we'll explore a method to run the test suite against external ceph and calamari.
+This  is useful for checking the sanity of a cluster and calamari that are running external to the development environment.
+
+WARNING
+^^^^^^^
+
+Do not run this procedure on any instances of ceph or calamari that have data you care about.
+The tests delete all non-default pools.
+Running this against a cluster will mean certain data loss.
+
+Theory of operation
+^^^^^^^^^^^^^^^^^^^
+
+This test suite can manipulate the state of calamari and ceph-clusters in a rudimentary fashion.
+It can be configured to control instances of each. We say that packages are good If this suite passes against calamari and ceph
+that was provisioned using those packages.
+
+Assumptions and prerequisites
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Setup an instance of calamari and a ceph cluster that are connected. see :ref:`building-the-cluster`
+
+An instance of devmode running e.g.
+
+.. code-block:: bash
+
+    calamari/vagrant/devmode $ vagrant up
+
+
+Configuration
+^^^^^^^^^^^^^
+
+In devmode:
+
+.. code-block:: bash
+
+    mkdir ~/teuthology/archive
+    echo '''master_fqdn:
+        <FQDN of your calamari instance>
+
+    cluster:
+        <user@FQDN of ceph mon>
+                roles:
+                - mon.1
+                - osd.1
+                - client.0
+        <user@FQDN of ceph mon>
+                roles:
+                - mon.1
+                - osd.1
+                - client.0
+    ''' > ~/teuthology/archive/info.yaml
+    # Be sure to include one cluster entry for each monitor node
+
+
+.. code-block:: bash
+
+    echo '''[testing]
+
+    calamari_control = external
+    ceph_control = external
+
+    api_url = http://<FQDN of your calamari instance>/api/v2/
+    api_username = admin
+    api_password = admin
+
+    embedded_timeout_factor = 1
+    external_timeout_factor = 3
+
+    external_cluster_path = /home/vagrant/calamari/../teuthology/archive/info.yaml
+    ''' > ~/calamari/tests/test.conf
+
+
+Running the tests
+^^^^^^^^^^^^^^^^^
+
+see :ref:`kickoff-tests`
 
 
 Unit tests
