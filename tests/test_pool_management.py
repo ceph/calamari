@@ -123,6 +123,10 @@ class TestPoolManagement(RequestTestCase):
             'quota_max_bytes': 42000000
         }
 
+        crush_rules = self.api.get("cluster/{0}/crush_rule".format(fsid)).json()
+        if len(crush_rules) <= 1:
+            del(args['crush_ruleset'])
+
         if self._get_version() > (0, 67, 7):
             log.debug("Including hashpspool in non_default_args")
             config = self.api.get("cluster/{0}/config".format(fsid)).json()

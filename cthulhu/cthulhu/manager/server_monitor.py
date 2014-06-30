@@ -40,6 +40,7 @@ REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 # getChild isn't in 2.6
 log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
 
+
 class GrainsNotFound(Exception):
     pass
 
