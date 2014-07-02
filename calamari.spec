@@ -17,6 +17,7 @@ BuildRequires:  postgresql-libs
 Requires:       httpd
 Requires:	mod_wsgi
 Requires:       cairo
+Requires:       pycairo
 Requires:	logrotate
 Requires:       supervisor
 Requires:       salt-master
