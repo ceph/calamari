@@ -102,7 +102,7 @@ a fresh checkout, there's a script for this:
     Writing /home/vagrant/calamari/dev/etc/salt/master
     Writing /home/vagrant/calamari/dev/calamari.conf
     Complete.  Now run:
-     1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize`
+     1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize`
      2. supervisord -c dev/supervisord.conf -n
 
 
@@ -120,7 +120,7 @@ Create the cthulhu service's database:
 
 ::
 
-    CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize
+    CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize
 
 
 Aside: the ``CALAMARI_CONFIG`` environment variable causes all the calamari services to
