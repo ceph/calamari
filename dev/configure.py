@@ -33,6 +33,6 @@ for template in TEMPLATES:
     open(output_file, 'w').write(output_str)
 
 print """Complete.  Now run:
- 1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize`
+ 1. `CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize`
  2. supervisord -c dev/supervisord.conf -n
 """
