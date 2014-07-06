@@ -28,5 +28,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     salt.minion_config = "salt/minion"
     salt.run_highstate = false
     salt.bootstrap_script = "salt/urllib-bootstrap-salt.sh"
+    salt.install_type = "git"
+    salt.install_args = "develop"
   end
 end
