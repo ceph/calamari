@@ -72,7 +72,7 @@ class TestApi(ServerTestCase):
             "cluster/<pk>": ["cluster/%s" % fsid],
             "<request_id>": [request_id],
             "user/<pk>": ["user/{0}".format(user_id)],
-            "<log_path>": "ceph/ceph.log",
+            "<log_path>": ["ceph/ceph.log"],
             "config/<key>": ["config/mds_bal_interval"],
             "command/<command>": ["command/%s" % x for x in ("scrub", "deep_scrub", "repair")],
             "<mon_id>": [mon_id]

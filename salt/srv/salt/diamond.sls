@@ -5,8 +5,8 @@ diamond-config:
     - name: /etc/diamond/diamond.conf
     - source: salt://base/diamond.conf
     - template: jinja
-  require:
-    - pkg: diamond
+    - require:
+        - pkg: diamond
 
 {% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
 diamond-init-config:
@@ -15,8 +15,8 @@ diamond-init-config:
     - name: /etc/default/diamond
     - pattern: DIAMOND_USER=".*"
     - repl: DIAMOND_USER="root"
-  require:
-    - pkg: diamond
+    - require:
+        - pkg: diamond
 {% endif %}
 
 diamond-ceph-config:
@@ -24,17 +24,31 @@ diamond-ceph-config:
     - managed
     - name: /etc/diamond/collectors/CephCollector.conf
     - source: salt://base/CephCollector.conf
-  require:
-    - pkg: diamond
+    - require:
+        - pkg: diamond
 
 diamond-network-config:
   file:
     - managed
     - name: /etc/diamond/collectors/NetworkCollector.conf
     - source: salt://base/NetworkCollector.conf
-  require:
-    - pkg: diamond
+    - require:
+        - pkg: diamond
 
+{% if grains['os'] == 'RedHat' and grains['osrelease'] == '7' %}
+# work around https://github.com/saltstack/salt/pull/12316
+diamond:
+  pkg:
+    - installed
+    - skip_verify: true
+  cmd:
+    - name: systemctl restart diamond
+    - watch:
+      - pkg: diamond
+      - file: diamond-network-config
+      - file: diamond-ceph-config
+      - file: diamond-config
+{% else %}
 diamond:
   pkg:
     - installed
@@ -50,4 +64,5 @@ diamond:
       - file: diamond-config
 {% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
       - file: diamond-init-config
+{% endif %}
 {% endif %}

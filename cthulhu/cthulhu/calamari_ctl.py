@@ -44,6 +44,7 @@ log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
+SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
 
 @contextmanager
@@ -147,6 +148,21 @@ def initialize(args):
     # Handle SQLite case, otherwise no chown is needed
     if config.get('calamari_web', 'db_engine').endswith("sqlite3"):
         os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
+
+    # Start services, configure to run on boot
+    if os.path.exists(SERVICES_SLS):
+        log.info("Starting/enabling services...")
+        p = subprocess.Popen(["salt-call", "--local", "state.template",
+                              SERVICES_SLS],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        log.debug("Services salt stdout: %s" % out)
+        log.debug("Services salt stderr: %s" % err)
+        if p.returncode != 0:
+            raise RuntimeError("salt-call for services failed with rc={0}".format(p.returncode))
+    else:
+        # This is the path you take if you're running in a development environment
+        log.debug("Skipping services configuration")
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")

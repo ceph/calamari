@@ -27,7 +27,7 @@ pip_pkgs:
     - user: vagrant
     - bin_env: /home/vagrant/calamari/env
     - activate: true
-    - requirements: /home/vagrant/calamari/requirements/debian/requirements.txt
+    - requirements: /home/vagrant/calamari/requirements/2.7/requirements.txt
     - download_cache: /vagrant/pip_cache
     - require:
       - virtualenv: virtualenv
