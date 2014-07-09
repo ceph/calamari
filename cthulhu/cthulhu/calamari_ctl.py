@@ -46,6 +46,16 @@ ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
 SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
+# These are chown -R'ed to the apache user so that the Django webapp
+# can do things like call client.cmd.  Se
+# http://docs.saltstack.com/en/latest/ref/configuration/nonroot.html
+
+SALT_DIRS_TO_CHOWN = [
+    '/etc/salt',
+    '/var/cache/salt',
+    '/var/log/salt',
+    '/var/run/salt',
+]
 
 @contextmanager
 def quiet():
@@ -167,6 +177,11 @@ def initialize(args):
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
     subprocess.call(['supervisorctl', 'restart', 'cthulhu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # fix up salt directory permissions so that Apache can access them
+    for saltdir in SALT_DIRS_TO_CHOWN:
+        for dir, _, _ in os.walk(saltdir):
+            os.chown(dir, apache_user.pw_uid, apache_user.pw_gid)
 
     # TODO: optionally generate or install HTTPS certs + hand to apache
     log.info("Complete.")
