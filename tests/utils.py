@@ -15,7 +15,7 @@ def get_timeout_scaling_factor():
         factor = config.get('testing', 'external_timeout_factor')
     elif config.get('testing', 'ceph_control') == 'embedded':
         factor = config.get('testing', 'embedded_timeout_factor')
-    return factor
+    return int(factor)
 
 
 class WaitTimeout(Exception):

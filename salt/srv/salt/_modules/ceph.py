@@ -28,30 +28,19 @@ def fire_event(data, tag):
     """
     __salt__['event.fire_master'](data, tag)  # noqa
 
-try:
-    import rados
-    from ceph_argparse import parse_json_funcsigs, validate_command, json_command
-except ImportError:
-    rados = None
-    parse_json_funcsigs = None
-    validate_command = None
-    json_command = None
 
-    class CephError(object):
-        pass
-else:
-    class CephError(rados.Error):
-        pass
+class MonitoringError(Exception):
+    pass
 
 
-class RadosError(CephError):
+class RadosError(MonitoringError):
     """
     Something went wrong talking to Ceph with librados
     """
     pass
 
 
-class AdminSocketError(CephError):
+class AdminSocketError(MonitoringError):
     """
     Something went wrong talking to Ceph with a /var/run/ceph socket.
     """
@@ -78,6 +67,9 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
 
     argdict = args.copy()
     argdict['format'] = 'json'
+
+    import rados
+    from ceph_argparse import json_command
 
     ret, outbuf, outs = json_command(cluster_handle,
                                      prefix=prefix,
@@ -106,6 +98,8 @@ def admin_socket(asok_path, cmd, fmt=''):
     Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
     path to the admin socket; cmd is a list of strings
     """
+
+    from ceph_argparse import parse_json_funcsigs, validate_command
 
     def do_sockio(path, cmd):
         """ helper: do all the actual low-level stream I/O """
@@ -221,6 +215,10 @@ def rados_commands(fsid, cluster_name, commands):
     should always know both, and it saves this function the trouble
     of looking up one from the other.
     """
+
+    import rados
+    from ceph_argparse import json_command
+
     # Open a RADOS session
     cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
     cluster_handle.connect()
@@ -309,6 +307,9 @@ def get_cluster_object(cluster_name, sync_type, since):
     # TODO: for the synced objects that support it, support
     # fetching older-than-present versions to allow the master
     # to backfill its history.
+
+    import rados
+    from ceph_argparse import json_command
 
     # Check you're asking me for something I know how to give you
     assert sync_type in SYNC_TYPES
@@ -404,7 +405,9 @@ def get_heartbeats():
 
     """
 
-    if rados is None:
+    try:
+        import rados
+    except ImportError:
         # Ceph isn't installed, report no services or clusters
         server_heartbeat = {
             'services': {},
@@ -424,7 +427,7 @@ def get_heartbeats():
     for filename in glob("/var/run/ceph/*.asok"):
         try:
             service_data = service_status(filename)
-        except rados.Error:
+        except (rados.Error, MonitoringError):
             # Failed to get info for this service, stale socket or unresponsive,
             # exclude it from report
             pass
@@ -452,7 +455,7 @@ def get_heartbeats():
             cluster_handle = rados.Rados(name=RADOS_NAME, clustername=fsid_names[fsid], conffile='')
             cluster_handle.connect()
             cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
-        except rados.Error:
+        except (rados.Error, MonitoringError):
             # Something went wrong getting data for this cluster, exclude it from our report
             pass
 

@@ -11,8 +11,8 @@ install:
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/build_deps.sls
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/postgres.sls
     - pip install pyzmq==14.1.1 --install-option="--zmq=bundled"
-    - pip install -r requirements/debian/requirements.force.txt
-    - pip install -r requirements/debian/requirements.txt
+    - pip install -r requirements/2.7/requirements.force.txt
+    - pip install -r requirements/2.7/requirements.txt
     - pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
     - pip install git+https://github.com/ceph/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
     - for m in rest-api minion-sim cthulhu calamari-web calamari-common ; do cd $m ; python setup.py develop ; cd .. ; done

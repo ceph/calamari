@@ -75,9 +75,9 @@ build-venv-reqs: venv
 	./bin/python ./bin/pip install \
 	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/$(FLAVOR)/requirements.production.txt && \
+	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
 	./bin/python ./bin/pip install -I -r \
-	  $(SRC)/requirements/$(FLAVOR)/requirements.production.force.txt && \
+	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
@@ -180,13 +180,13 @@ install-alembic:
 
 install-deb-conf:
 	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/debian/calamari.conf \
+	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
 
 install-rh-conf:
 	@echo "target: $@"
 	# httpd conf for graphite and calamari vhosts, redhat
-	@$(INSTALL) -D conf/httpd/rh/calamari.conf \
+	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:
