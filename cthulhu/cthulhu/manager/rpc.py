@@ -4,6 +4,7 @@ import gevent.event
 import zerorpc
 from salt.key import Key
 import salt.config
+import salt.client
 
 from cthulhu.manager import config
 from cthulhu.log import log
@@ -275,6 +276,17 @@ class RpcInterface(object):
         requests = cluster.list_requests()
         return sorted([self._dump_request(r) for r in requests if (state is None or r.state == state)],
                       lambda a, b: cmp(b['requested_at'], a['requested_at']))
+
+    def list_server_logs(self, fqdn):
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
+        log.debug('list_server_log result !!! {results}'.format(results=str(results)))
+        return results
+
+    def get_server_log(self, fqdn, log_path, lines):
+        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
+        return results
 
     @property
     def _salt_key(self):

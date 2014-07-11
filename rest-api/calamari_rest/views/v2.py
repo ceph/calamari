@@ -797,12 +797,11 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
                 if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
                     mon_fqdns.append(server['fqdn'])
 
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
         log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
         # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
         # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
         for mon_fqdn in mon_fqdns:
-            results = client.cmd(mon_fqdn, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
+            results = self.client.get_server_log(mon_fqdn, "ceph/{name}.log".format(name=name), lines)
             if results:
                 return Response({'lines': results[mon_fqdn]})
             else:
@@ -812,17 +811,14 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
         return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def list_server_logs(self, request, fqdn):
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
+        results = self.client.list_server_logs(fqdn)
         if not results:
             return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(sorted(results[fqdn]))
 
     def get_server_log(self, request, fqdn, log_path):
         lines = request.GET.get('lines', 40)
-
-        client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
-        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
+        results = self.client.get_server_log(fqdn, log_path, lines)
         if not results:
             return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
         else:
