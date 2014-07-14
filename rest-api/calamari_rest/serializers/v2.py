@@ -160,6 +160,15 @@ class OsdConfigSerializer(ValidatingSerializer):
 OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
 
 
+class CrushMapSerializer(ValidatingSerializer):
+    class Meta:
+        fields = []
+        create_allowed = ()
+        create_required = ()
+        modify_allowed = ()
+        modify_required = ()
+
+
 class CrushRuleSerializer(serializers.Serializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')

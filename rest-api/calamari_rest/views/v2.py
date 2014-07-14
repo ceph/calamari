@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import PoolSerializer, CrushMapSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer
@@ -85,6 +85,24 @@ To cancel a request while it is running, send an empty POST to ``request/<reques
 
         requests = self.client.list_requests({'state': filter_state, 'fsid': fsid})
         return Response(self._paginate(request, requests))
+
+
+class CrushMapViewSet(RPCViewSet):
+    """
+    Allows retrieval and replacement of a crushmap as a whole
+    """
+    serializer_class = CrushMapSerializer
+
+    def retrieve(self, request, fsid):
+        return Response('{}')
+
+    def replace(self, request, fsid):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            # pass  # TODO actual behavior goes here
+            return Response({})
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CrushRuleViewSet(RPCViewSet):
