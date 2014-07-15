@@ -39,7 +39,7 @@ pip_force_pkgs:
     - user: vagrant
     - bin_env: /home/vagrant/calamari/env
     - activate: true
-    - requirements: /home/vagrant/calamari/requirements/debian/requirements.force.txt
+    - requirements: /home/vagrant/calamari/requirements/2.7/requirements.force.txt
     - ignore_installed: true
     - download_cache: /vagrant/pip_cache
     - require:
