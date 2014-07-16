@@ -12,7 +12,7 @@ are described here.  Whichever method you follow, the end result should
 be to see your servers listed in the 'manage' section of the Calamari
 user interface, awaiting your authorization to join.
 
-Connection minions using a local repository
+Connecting minions using a local repository
 -------------------------------------------
 
 Prerequisites:
@@ -59,7 +59,7 @@ For the set of nodes you wish to connect to Calamari, run:
 
     ceph-deploy calamari connect <node1> [<node2> ...]
 
-Connection minions manually
+Connecting minions manually
 ---------------------------
 
 Install diamond
