@@ -180,14 +180,16 @@ install-alembic:
 
 install-deb-conf:
 	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
+	@$(INSTALL) -D conf/httpd/calamari.conf \
 		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
 
 install-rh-conf:
 	@echo "target: $@"
-	# httpd conf for graphite and calamari vhosts, redhat
-	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
+	# add WSGISocketPrefix, see:
+	# http://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGISocketPrefix
+	@$(INSTALL) -D conf/httpd/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
+	@sed -i '1iWSGISocketPrefix run/wsgi' $(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:
 	@echo "target: $@"
