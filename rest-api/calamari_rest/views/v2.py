@@ -4,6 +4,7 @@ import shlex
 
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException, PermissionDenied
+from rest_framework.renderers import StaticHTMLRenderer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -89,12 +90,15 @@ To cancel a request while it is running, send an empty POST to ``request/<reques
 
 class CrushMapViewSet(RPCViewSet):
     """
-    Allows retrieval and replacement of a crushmap as a whole
+Allows retrieval and replacement of a crushmap as a whole
     """
     serializer_class = CrushMapSerializer
+    renderer_classes = (StaticHTMLRenderer,)
 
     def retrieve(self, request, fsid):
-        return Response('{}')
+        crush_map = self.client.get_sync_object(fsid, 'crush_map')
+        log.error(crush_map)
+        return Response("<pre>{crushmap}</pre>".format(crushmap=crush_map))
 
     def replace(self, request, fsid):
         serializer = self.serializer_class(data=request.DATA)

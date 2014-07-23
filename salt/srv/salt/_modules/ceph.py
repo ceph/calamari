@@ -5,6 +5,7 @@ import os
 import re
 import socket
 import subprocess
+import tempfile
 import time
 import struct
 import msgpack
@@ -148,6 +149,7 @@ def admin_socket(asok_path, cmd, fmt=''):
     return ret
 
 
+# TODO this is duplicate from calamari_common.types
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
@@ -366,6 +368,21 @@ def get_cluster_object(cluster_name, sync_type, since):
                                           timeout=RADOS_TIMEOUT)
             assert ret == 0
             data['crush'] = json.loads(raw)
+
+            ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
+                                          timeout=RADOS_TIMEOUT)
+            assert ret == 0
+            fd, filename = tempfile.mkstemp() 
+            os.write(fd, raw)
+            os.close(fd)
+
+            args = ["crushtool", "-d", filename]
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            ret = p.returncode
+            assert ret == 0
+            data['crush_map_text'] = stdout
+
 
     return {
         'type': sync_type,

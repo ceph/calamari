@@ -14,6 +14,7 @@ class TestCrushMap(TestCase):
 
         with mock.patch('calamari_rest.views.v2.RPCViewSet'):
             self.cmvs = CrushMapViewSet()
+            self.cmvs.client = mock.MagicMock()
 
     def test_retrieve_crushmap(self):
         self.request.method = 'GET'
