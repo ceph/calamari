@@ -28,7 +28,7 @@ Requires:	postgresql-libs
 Requires:	postgresql-server
 Version: 	%{version}
 Release: 	%{?revision}%{?dist}
-License: 	Inktank
+License: 	LGPL-2.1+
 URL:     	http://ceph.com/
 Source0: 	%{name}_%{version}.tar.gz
 
