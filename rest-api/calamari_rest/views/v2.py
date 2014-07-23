@@ -96,7 +96,8 @@ Allows retrieval and replacement of a crushmap as a whole
     renderer_classes = (StaticHTMLRenderer,)
 
     def retrieve(self, request, fsid):
-        crush_map = self.client.get_sync_object(fsid, 'crush_map')
+        crush_map = self.client.get_sync_object(fsid, 'osd_map')['crush_map_text']
+
         log.error(crush_map)
         return Response("<pre>{crushmap}</pre>".format(crushmap=crush_map))
 
