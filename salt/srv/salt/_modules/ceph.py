@@ -211,6 +211,30 @@ def pg_summary(pgs_brief):
     }
 
 
+def transform_crushmap(data, operation='get'):
+    """
+    Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
+    respectively
+    returns (0 on success, transformed crushmap, errors)
+    """
+    # write data to a tempfile because crushtool can't handle stdin :(
+    with tempfile.NamedTemporaryFile(delete=True) as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+
+        if operation == 'set':
+            args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
+        elif operation == 'get':
+            args = ["crushtool", "-d", f.name]
+        else:
+            return 1, '', 'Did not specify get or set'
+        
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return p.returncode, stdout, stderr
+
+
 def rados_commands(fsid, cluster_name, commands):
     """
     Passing in both fsid and cluster_name, because the caller
@@ -231,15 +255,7 @@ def rados_commands(fsid, cluster_name, commands):
     for i, (prefix, argdict) in enumerate(commands):
         argdict['format'] = 'json'
         if prefix == 'osd setcrushmap':
-            fd, filename = tempfile.mkstemp() 
-            cfd, cfilename = tempfile.mkstemp() 
-            os.write(fd, argdict['data'])
-            os.close(fd)
-            os.close(cfd)
-            args = ["crushtool", "-c", filename, '-o', '/dev/stdout']
-            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = p.communicate()
-            ret = p.returncode
+            ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
             assert ret == 0
             ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
         else:
@@ -385,14 +401,8 @@ def get_cluster_object(cluster_name, sync_type, since):
             ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
                                           timeout=RADOS_TIMEOUT)
             assert ret == 0
-            fd, filename = tempfile.mkstemp() 
-            os.write(fd, raw)
-            os.close(fd)
 
-            args = ["crushtool", "-d", filename]
-            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = p.communicate()
-            ret = p.returncode
+            ret, stdout, outs = transform_crushmap(raw, 'get')
             assert ret == 0
             data['crush_map_text'] = stdout
 
