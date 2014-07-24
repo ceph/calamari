@@ -11,7 +11,7 @@ from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
 from calamari_rest.parsers.v2 import CrushMapParser
-from calamari_rest.serializers.v2 import PoolSerializer, CrushMapSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer
@@ -93,7 +93,6 @@ class CrushMapViewSet(RPCViewSet):
     """
 Allows retrieval and replacement of a crushmap as a whole
     """
-    #serializer_class = CrushMapSerializer
     parser_classes = (CrushMapParser,)
 
     def retrieve(self, request, fsid):
