@@ -230,7 +230,20 @@ def rados_commands(fsid, cluster_name, commands):
     # Each command is a 2-tuple of a prefix followed by an argument dictionary
     for i, (prefix, argdict) in enumerate(commands):
         argdict['format'] = 'json'
-        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
+        if prefix == 'osd setcrushmap':
+            fd, filename = tempfile.mkstemp() 
+            cfd, cfilename = tempfile.mkstemp() 
+            os.write(fd, argdict['data'])
+            os.close(fd)
+            os.close(cfd)
+            args = ["crushtool", "-c", filename, '-o', '/dev/stdout']
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            ret = p.returncode
+            assert ret == 0
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+        else:
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
         if ret != 0:
             return {
                 'error': True,

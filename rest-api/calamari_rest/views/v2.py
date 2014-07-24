@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
+from calamari_rest.parsers.v2 import CrushMapParser
 from calamari_rest.serializers.v2 import PoolSerializer, CrushMapSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
@@ -20,7 +21,7 @@ from calamari_rest.views.paginated_mixin import PaginatedMixin
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_common.config import CalamariConfig
-from calamari_common.types import CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
+from calamari_common.types import CRUSH_MAP, CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
@@ -92,8 +93,8 @@ class CrushMapViewSet(RPCViewSet):
     """
 Allows retrieval and replacement of a crushmap as a whole
     """
-    serializer_class = CrushMapSerializer
-    renderer_classes = (StaticHTMLRenderer,)
+    #serializer_class = CrushMapSerializer
+    parser_classes = (CrushMapParser,)
 
     def retrieve(self, request, fsid):
         crush_map = self.client.get_sync_object(fsid, 'osd_map')['crush_map_text']
@@ -101,12 +102,7 @@ Allows retrieval and replacement of a crushmap as a whole
         return Response(crush_map)
 
     def replace(self, request, fsid):
-        serializer = self.serializer_class(data=request.DATA)
-        if serializer.is_valid(request.method):
-            # pass  # TODO actual behavior goes here
-            return Response({})
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.client.update(fsid, CRUSH_MAP, None, request.DATA))
 
 
 class CrushRuleViewSet(RPCViewSet):
