@@ -1,4 +1,4 @@
-from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer, StaticHTMLRenderer
+from rest_framework.renderers import BrowsableAPIRenderer, StaticHTMLRenderer
 
 
 class CalamariBrowsableAPIRenderer(BrowsableAPIRenderer):
@@ -6,4 +6,5 @@ class CalamariBrowsableAPIRenderer(BrowsableAPIRenderer):
         if view.get_view_name() == 'Crush Map':
             return StaticHTMLRenderer()
         else:
-            return JSONRenderer()
+            renderer = super(CalamariBrowsableAPIRenderer, self).get_default_renderer(view)
+            return renderer

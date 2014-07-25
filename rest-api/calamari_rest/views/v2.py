@@ -4,7 +4,6 @@ import shlex
 
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException, PermissionDenied
-from rest_framework.renderers import StaticHTMLRenderer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -97,7 +96,6 @@ Allows retrieval and replacement of a crushmap as a whole
 
     def retrieve(self, request, fsid):
         crush_map = self.client.get_sync_object(fsid, 'osd_map')['crush_map_text']
-        log.error(crush_map)
         return Response(crush_map)
 
     def replace(self, request, fsid):
