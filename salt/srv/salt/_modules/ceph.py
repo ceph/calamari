@@ -149,7 +149,6 @@ def admin_socket(asok_path, cmd, fmt=''):
     return ret
 
 
-# TODO this is duplicate from calamari_common.types
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
@@ -211,7 +210,7 @@ def pg_summary(pgs_brief):
     }
 
 
-def transform_crushmap(data, operation='get'):
+def transform_crushmap(data, operation):
     """
     Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
     respectively
@@ -221,7 +220,6 @@ def transform_crushmap(data, operation='get'):
     with tempfile.NamedTemporaryFile(delete=True) as f:
         f.write(data)
         f.flush()
-        os.fsync(f.fileno())
 
         if operation == 'set':
             args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
@@ -256,7 +254,8 @@ def rados_commands(fsid, cluster_name, commands):
         argdict['format'] = 'json'
         if prefix == 'osd setcrushmap':
             ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
-            assert ret == 0
+            if ret != 0:
+                raise RuntimeError(outs)
             ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
         else:
             ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
