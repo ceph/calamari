@@ -373,7 +373,10 @@ class OSDList(RPCView):
         # Apply the ServerMonitor data
         for o, (service_id, fqdn) in zip(osds, service_to_server):
             o['fqdn'] = fqdn
-            o['host'] = fqdn_to_server[fqdn]['hostname']
+            if fqdn is not None:
+                o['host'] = fqdn_to_server[fqdn]['hostname']
+            else:
+                o['host'] = None
 
         return osds, osds_by_pg_state
 
