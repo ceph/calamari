@@ -29,4 +29,5 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     salt.run_highstate = false
     salt.bootstrap_script = "../urllib-bootstrap-salt.sh"
   end
+  config.vm.network :forwarded_port, guest: 22, host: 2204, id: "ssh", auto_correct: true
 end

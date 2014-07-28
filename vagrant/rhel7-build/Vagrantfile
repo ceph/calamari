@@ -31,4 +31,5 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     salt.install_type = "git"
     salt.install_args = "develop"
   end
+  config.vm.network :forwarded_port, guest: 22, host: 2203, id: "ssh", auto_correct: true
 end
