@@ -1,11 +1,18 @@
-
-ubuntu:
-	reprepro --confdir=./conf/ubuntu --noskipold -b ./ubuntu/ update
+precise:
+	reprepro --confdir=./conf/precise --noskipold -b ./precise/ update
 	# Using plain salt-minion for the moment (#6855)
 	#       reprepro -b ubuntu/ includedeb precise ../../calamari-salt-minion_*.deb
-	reprepro --confdir=./conf/ubuntu -b ./ubuntu/ remove precise diamond
-	reprepro --confdir=./conf/ubuntu --noskipold -b ./ubuntu/ includedeb precise ../../Diamond/build/*.deb
-	tar czf calamari-repo-ubuntu.tar.gz ubuntu/
+	reprepro --confdir=./conf/precise -b ./precise/ remove precise diamond
+	reprepro --confdir=./conf/precise --noskipold -b ./precise/ includedeb precise ../../Diamond/build/*.deb
+	tar czf calamari-repo-precise.tar.gz precise/
+
+trusty:
+	reprepro --confdir=./conf/trusty --noskipold -b ./trusty/ update
+	# Using plain salt-minion for the moment (#6855)
+	#       reprepro -b ubuntu/ includedeb precise ../../calamari-salt-minion_*.deb
+	reprepro --confdir=./conf/trusty -b ./trusty/ remove trusty diamond
+	reprepro --confdir=./conf/trusty --noskipold -b ./ubuntu/ includedeb trusty ../../Diamond/build/*.deb
+	tar czf calamari-repo-trusty.tar.gz trusty/
 
 wheezy:
 	reprepro --confdir=./conf/wheezy --noskipold -b ./wheezy/ update
@@ -44,4 +51,4 @@ rhel7:
 clean:
 	rm -rf el6 rhel6 rhel7 ubuntu wheezy
 
-.PHONY: ubuntu wheezy el6 rhel6 rhel7 clean
+.PHONY: precise trusty wheezy el6 rhel6 rhel7 clean
