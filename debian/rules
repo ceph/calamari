@@ -2,5 +2,18 @@
 export DH_VERBOSE=1
 export DEB_BUILD_OPTIONS=nocheck
 
+DH_PYTHON2_ARGS=""
+
 %:
 	dh $@ --with python2
+
+# if --no-shebang-rewrite is available, we need it:
+# Don't allow dh_python2 to rewrite the #! lines in the console
+# scripts (just calamari-ctl at this point).
+
+override_dh_python2:
+	if dh_python2 --help 2>&1 | grep -s -- --no-shebang-rewrite ; \
+	then \
+		DH_PYTHON2_ARGS="--no-shebang-rewrite"; \
+	fi ; \
+	dh_python2 $$DH_PYTHON2_ARGS

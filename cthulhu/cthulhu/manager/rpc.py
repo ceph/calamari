@@ -1,5 +1,4 @@
 import traceback
-
 import gevent.event
 
 try:
@@ -7,7 +6,7 @@ try:
 except ImportError:
     zerorpc = None
 
-from calamari_common.salt_wrapper import Key, master_config
+from calamari_common.salt_wrapper import Key, master_config, LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_MAP, CRUSH_RULE, ServiceId,\
@@ -289,6 +288,17 @@ class RpcInterface(object):
                        for r in requests
                        if (state is None or r.state == state) and (fsid is None or r.fsid == fsid)],
                       lambda a, b: cmp(b['requested_at'], a['requested_at']))
+
+    def list_server_logs(self, fqdn):
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.list_logs", ["."])
+        log.debug('list_server_log result !!! {results}'.format(results=str(results)))
+        return results
+
+    def get_server_log(self, fqdn, log_path, lines):
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, "log_tail.tail", [log_path, lines])
+        return results
 
     @property
     def _salt_key(self):

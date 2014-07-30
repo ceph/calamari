@@ -802,17 +802,46 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
         # Resolve FSID to name
         name = self.client.get_cluster(fsid)['name']
 
-        # Execute remote operation synchronously
-        result = self.run_mon_job(fsid, "log_tail.tail", ["ceph/{name}.log".format(name=name), lines])
+        # Resolve FSID to list of mon FQDNs
+        servers = self.client.server_list_cluster(fsid)
+        # Sort to get most recently contacted server first; drop any
+        # for whom last_contact is None
+        servers = [s for s in servers if s['last_contact']]
+        servers = sorted(servers,
+                         key=lambda t: dateutil_parse(t['last_contact']),
+                         reverse=True)
+        mon_fqdns = []
+        for server in servers:
+            for service in server['services']:
+                service_id = ServiceId(*(service['id']))
+                if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
+                    mon_fqdns.append(server['fqdn'])
+
+        log.debug("LogTailViewSet: mons for %s are %s" % (fsid, mon_fqdns))
+        # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
+        # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
+        for mon_fqdn in mon_fqdns:
+            results = self.client.get_server_log(mon_fqdn, "ceph/{name}.log".format(name=name), lines)
+            if results:
+                return Response({'lines': results[mon_fqdn]})
+            else:
+                log.info("Failed to get log from %s" % mon_fqdn)
 
         return Response({'lines': result})
 
     def list_server_logs(self, request, fqdn):
-        return Response(sorted(self.run_job(fqdn, "log_tail.list_logs", ["."])))
+        results = self.client.list_server_logs(fqdn)
+        if not results:
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(sorted(results[fqdn]))
 
     def get_server_log(self, request, fqdn, log_path):
         lines = request.GET.get('lines', 40)
-        return Response({'lines': self.run_job(fqdn, "log_tail.tail", [log_path, lines])})
+        results = self.client.get_server_log(fqdn, log_path, lines)
+        if not results:
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        else:
+            return Response({'lines': results[fqdn]})
 
 
 class MonViewSet(RPCViewSet):

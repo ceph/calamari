@@ -1,0 +1,9 @@
+Origin: Ubuntu
+Label: Ubuntu Trusty
+Suite: stable
+Codename: trusty
+Version: 14.04
+Architectures: amd64
+Components: main
+Description: Ubuntu trusty
+Update: upstream salt

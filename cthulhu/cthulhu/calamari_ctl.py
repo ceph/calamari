@@ -200,6 +200,13 @@ def main():
 Calamari setup tool.
     """)
 
+    parser.add_argument('--devmode',
+                        dest="devmode",
+                        action='store_true',
+                        default=False,
+                        help="signals that we don't need root privileges to run",
+                        required=False)
+
     subparsers = parser.add_subparsers()
     initialize_parser = subparsers.add_parser('initialize',
                                               help="Set up the Calamari server database, and an "
@@ -227,7 +234,10 @@ Calamari setup tool.
     args = parser.parse_args()
 
     try:
-        args.func(args)
+        if args.devmode or os.geteuid() == 0:
+            args.func(args)
+        else:
+            log.error('Need root privileges to run')
     except:
         debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
         open(debug_filename, 'w').write(json.dumps({

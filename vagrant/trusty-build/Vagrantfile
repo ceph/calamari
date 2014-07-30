@@ -5,16 +5,15 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  #config.vm.box_url = "https://dl.dropbox.com/u/5721940/vagrant-boxes/vagrant-centos-6.4-x86_64-vmware_fusion.box"
-  config.vm.box_url = "https://github.com/2creatives/vagrant-centos/releases/download/v0.1.0/centos64-x86_64-20131030.box"
-  config.vm.box = "centos6"
+  config.vm.box = "trusty64"
+  config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
 
   config.vm.provider "virtualbox" do |v|
-    v.memory = 512
+    v.memory = 1024
   end
 
   config.vm.provider :virtualbox do |vb|
-    vb.customize ["modifyvm", :id, "--memory", "512"]
+    vb.customize ["modifyvm", :id, "--memory", "1024"]
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate//git", "1"]
   end
 
@@ -22,8 +21,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
   config.vm.provision :salt do |salt|
     salt.minion_config = "salt/minion"
+    salt.verbose = true
     salt.run_highstate = false
-    salt.bootstrap_script = "../urllib-bootstrap-salt.sh"
   end
-  config.vm.network :forwarded_port, guest: 22, host: 2201, id: "ssh", auto_correct: true
+  config.vm.network :forwarded_port, guest: 22, host: 2205, id: "ssh", auto_correct: true
 end

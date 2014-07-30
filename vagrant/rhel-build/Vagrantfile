@@ -27,6 +27,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision :salt do |salt|
     salt.minion_config = "salt/minion"
     salt.run_highstate = false
-    salt.bootstrap_script = "salt/rhel-bootstrap-salt.sh"
+    salt.bootstrap_script = "../urllib-bootstrap-salt.sh"
   end
+  config.vm.network :forwarded_port, guest: 22, host: 2204, id: "ssh", auto_correct: true
 end
