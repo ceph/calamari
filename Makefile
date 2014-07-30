@@ -135,18 +135,18 @@ install_real: build install-common install-deb-conf
 
 install-conf: $(CONFFILES)
 	@echo "target: $@"
-	@$(INSTALL) -D conf/calamari.wsgi \
+	@$(INSTALL) -D -m 0644 conf/calamari.wsgi \
 		$(DESTDIR)/opt/calamari/conf/calamari.wsgi
 	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
-	@$(INSTALL) -D conf/supervisord.production.conf \
+	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
 		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
 	@$(INSTALL) -d $(DESTDIR)/etc/salt/master.d
-	@$(INSTALL) -D conf/salt.master.conf \
+	@$(INSTALL) -D -m 0644 conf/salt.master.conf \
 		$(DESTDIR)/etc/salt/master.d/calamari.conf
 	@$(INSTALL) -d $(DESTDIR)/etc/graphite
-	@$(INSTALL) -D conf/carbon/carbon.conf \
+	@$(INSTALL) -D -m 0644 conf/carbon/carbon.conf \
 		$(DESTDIR)/etc/graphite/carbon.conf
-	@$(INSTALL) -D conf/carbon/storage-schemas.conf \
+	@$(INSTALL) -D -m 0644 conf/carbon/storage-schemas.conf \
 		$(DESTDIR)/etc/graphite/storage-schemas.conf
 	# wsgi conf for graphite constructed in postinst
 	# log dirs for Django apps
@@ -158,12 +158,12 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
-	@$(INSTALL) -D conf/calamari/$(FLAVOR)/calamari.conf \
+	@$(INSTALL) -D -m 0644 conf/calamari/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/calamari/calamari.conf
-	@$(INSTALL) -D conf/alembic.ini \
+	@$(INSTALL) -D -m 0644 conf/alembic.ini \
 		$(DESTDIR)/etc/calamari/alembic.ini
 	@$(INSTALL) -d $(DESTDIR)/etc/logrotate.d
-	@$(INSTALL) -D conf/logrotate.d/calamari \
+	@$(INSTALL) -D -m 0644 conf/logrotate.d/calamari \
 	    $(DESTDIR)/etc/logrotate.d/calamari
 
 install-salt:
@@ -180,13 +180,13 @@ install-alembic:
 
 install-deb-conf:
 	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
+	@$(INSTALL) -D -m 0644 conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
 
 install-rh-conf:
 	@echo "target: $@"
 	# httpd conf for graphite and calamari vhosts, redhat
-	@$(INSTALL) -D conf/httpd/$(FLAVOR)/calamari.conf \
+	@$(INSTALL) -D -m 0644 conf/httpd/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:

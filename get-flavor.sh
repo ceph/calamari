@@ -9,6 +9,8 @@ VERSION=$(lsb_release -r -s)
 # RHEL6: RedHatEnterpriseServer
 # precise: Ubuntu
 # wheezy: Debian
+# SLES: SUSE Linux
+# openSUSE: openSUSE project
 
 
 case $ID in
@@ -19,6 +21,7 @@ case $ID in
             *) echo "$0: unhandled EL version $VERSION"; exit 1 ;;
         esac ;;
     "Ubuntu"|"Debian") ret="debian" ;;
+    *SUSE*) ret="suse" ;;
     *) echo "$0: unhandled id $ID"; exit 1 ;;
 esac
 
