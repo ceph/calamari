@@ -191,7 +191,11 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated'
-    ]
+    ],
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'calamari_rest.renderers.CalamariBrowsableAPIRenderer',
+    )
 }
 
 # >>> These settings belong to the graphite app

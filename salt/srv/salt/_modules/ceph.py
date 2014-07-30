@@ -5,6 +5,7 @@ import os
 import re
 import socket
 import subprocess
+import tempfile
 import time
 import struct
 import msgpack
@@ -209,6 +210,29 @@ def pg_summary(pgs_brief):
     }
 
 
+def transform_crushmap(data, operation):
+    """
+    Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
+    respectively
+    returns (0 on success, transformed crushmap, errors)
+    """
+    # write data to a tempfile because crushtool can't handle stdin :(
+    with tempfile.NamedTemporaryFile(delete=True) as f:
+        f.write(data)
+        f.flush()
+
+        if operation == 'set':
+            args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
+        elif operation == 'get':
+            args = ["crushtool", "-d", f.name]
+        else:
+            return 1, '', 'Did not specify get or set'
+        
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return p.returncode, stdout, stderr
+
+
 def rados_commands(fsid, cluster_name, commands):
     """
     Passing in both fsid and cluster_name, because the caller
@@ -228,7 +252,13 @@ def rados_commands(fsid, cluster_name, commands):
     # Each command is a 2-tuple of a prefix followed by an argument dictionary
     for i, (prefix, argdict) in enumerate(commands):
         argdict['format'] = 'json'
-        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
+        if prefix == 'osd setcrushmap':
+            ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
+            if ret != 0:
+                raise RuntimeError(outs)
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+        else:
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
         if ret != 0:
             return {
                 'error': True,
@@ -366,6 +396,15 @@ def get_cluster_object(cluster_name, sync_type, since):
                                           timeout=RADOS_TIMEOUT)
             assert ret == 0
             data['crush'] = json.loads(raw)
+
+            ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
+                                          timeout=RADOS_TIMEOUT)
+            assert ret == 0
+
+            ret, stdout, outs = transform_crushmap(raw, 'get')
+            assert ret == 0
+            data['crush_map_text'] = stdout
+
 
     return {
         'type': sync_type,
