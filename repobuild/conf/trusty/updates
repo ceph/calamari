@@ -1,0 +1,7 @@
+Name: salt
+Method: http://ppa.launchpad.net/saltstack/salt/ubuntu
+
+Name: upstream
+Method: http://archive.ubuntu.com/ubuntu/
+FilterList: purge upstream.packages
+
