@@ -797,7 +797,6 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
         Retrieve the cluster log from one of a cluster's mons (expect it to be in /var/log/ceph/ceph.log)
         """
 
-        # Number of lines to get
         lines = request.GET.get('lines', 40)
 
         # Resolve FSID to name
@@ -828,7 +827,8 @@ GETs take an optional ``lines`` parameter for the number of lines to retrieve.
             else:
                 log.info("Failed to get log from %s" % mon_fqdn)
 
-        return Response({'lines': result})
+        # If none of the mons gave us what we wanted, return a 503 service unavailable
+        return Response("mon log data unavailable", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def list_server_logs(self, request, fqdn):
         results = self.client.list_server_logs(fqdn)
