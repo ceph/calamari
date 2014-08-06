@@ -217,7 +217,7 @@ class Manager(object):
 
     def delete_cluster(self, fs_id):
         """
-        Note that the cluster will pop right back again if its
+        Note that the cluster will pop right back again if it's
         still sending heartbeats.
         """
         victim = self.clusters[fs_id]
