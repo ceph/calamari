@@ -237,27 +237,16 @@ rest-api-integration: dev/calamari.conf
 		CALAMARI_CONFIG=dev/calamari.conf python $$(which nosetests) tests/test_rest_api.py ; \
 	fi
 
-doc/rest-api/api_examples.json: rest-api-integration
+doc/calamari_rest/resources/api_examples.json: rest-api-integration
 	@echo "target: $@"
-	cp api_examples.json doc/rest-api
+	cp api_examples.json doc/calamari_rest/resources
 
-rest-api-generated: doc/rest-api/api_examples.json dev/calamari.conf
+rest-api-generated: doc/calamari_rest/resources/api_examples.json dev/calamari.conf
 	@echo "target: $@"
-	cd doc/rest-api && CALAMARI_CONFIG=../../dev/calamari.conf python ../../webapp/calamari/manage.py api_docs
+	cd doc/calamari_rest/resources && CALAMARI_CONFIG=../../../dev/calamari.conf python ../../../webapp/calamari/manage.py api_docs
 
-rest-docs: rest-api-generated dev/calamari.conf
-	@echo "target: $@"
-	cd doc/rest-api && make html
-
-dev-docs: dev/calamari.conf
-	@echo "target: $@"
-	cd doc/development && make html
-
-plugin-docs: dev/calamari.conf
-	@echo "target: $@"
-	cd doc/plugin && make html
-
-docs: rest-docs dev-docs
+docs: rest-api-generated
+	cd doc && make html
 
 unit-tests: dev/calamari.conf
 	@echo "target: $@"
