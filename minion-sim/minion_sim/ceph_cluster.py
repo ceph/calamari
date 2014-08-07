@@ -777,6 +777,96 @@ DEFAULT_CRUSH = json.loads("""
 """)
 
 
+DEFAULT_CRUSH_MAP_TEXT = """
+# begin crush map
+tunable choose_local_fallback_tries 5
+tunable chooseleaf_descend_once 0
+tunable choose_local_tries 2
+tunable choose_total_tries 19
+
+# devices
+device 0 osd.0
+device 1 osd.1
+device 2 osd.2
+device 3 osd.3
+device 4 osd.4
+
+# types
+type 0 osd
+type 1 host
+type 2 rack
+type 3 row
+type 4 room
+type 5 datacenter
+type 6 root
+
+# buckets
+host gravel3 {
+    id -4       # do not change unnecessarily
+    # weight 0.910
+    alg straw
+    hash 0  # rjenkins1
+    item osd.2 weight 0.910
+}
+host gravel2 {
+    id -3       # do not change unnecessarily
+    # weight 0.910
+    alg straw
+    hash 0  # rjenkins1
+    item osd.1 weight 0.910
+}
+host gravel1 {
+    id -2       # do not change unnecessarily
+    # weight 3.020
+    alg straw
+    hash 0  # rjenkins1
+    item osd.0 weight 0.910
+    item osd.3 weight 1.820
+    item osd.4 weight 0.290
+}
+root default {
+    id -1       # do not change unnecessarily
+    # weight 4.840
+    alg straw
+    hash 0  # rjenkins1
+    item gravel1 weight 3.020
+    item gravel2 weight 0.910
+    item gravel3 weight 0.910
+}
+
+# rules
+rule data {
+    ruleset 0
+    type replicated
+    min_size 1
+    max_size 10
+    step take default
+    step chooseleaf firstn 0 type host
+    step emit
+}
+rule metadata {
+    ruleset 1
+    type replicated
+    min_size 1
+    max_size 10
+    step take default
+    step chooseleaf firstn 0 type host
+    step emit
+}
+rule rbd {
+    ruleset 2
+    type replicated
+    min_size 1
+    max_size 10
+    step take default
+    step chooseleaf firstn 0 type host
+    step emit
+}
+
+# end crush map
+"""
+
+
 def flatten_dictionary(data, sep='.', prefix=None):
     """Produces iterator of pairs where the first value is
     the joined key names and the second value is the value
@@ -958,7 +1048,8 @@ class CephClusterState(object):
             'epoch': 1,
             'osds': [],
             'pools': [],
-            'crush': DEFAULT_CRUSH
+            'crush': DEFAULT_CRUSH,
+            'crush_map_text': DEFAULT_CRUSH_MAP_TEXT,
         }
 
         for i in range(0, osd_count):
