@@ -25,6 +25,19 @@ To get started:
 - Learn about the :doc:`conventions` used
 - Refer to specific information about the available API :doc:`resources/resources`
 
+How to update this documentation
+--------------------------------
+
+While updates directly to ``.rst`` files will be immediately incorporated into the next
+build of this documentation, the auto-generated portions require an extra step to reflect
+changes in the code.  The ``docs`` target in the top level Makefile takes care of this: it
+requires a fully configured development environment, and requires that some of the integration
+tests (the top level ``tests/``) are in a passing state, as these are used to generate the API
+examples.
+
+In summary, when you have made a code change that you want to be reflected in the API, run ``make docs``
+at the top level and commit the resulting changes to the ``doc/calamari_rest/resources/`` directory.
+
 Contents
 --------
 
