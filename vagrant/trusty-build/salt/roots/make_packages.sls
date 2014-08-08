@@ -9,7 +9,7 @@ build-diamond:
 build-repo:
   cmd.run:
     - user: vagrant
-    - name: make ubuntu
+    - name: make trusty
     - cwd: /home/vagrant/calamari/repobuild
     - require:
       - git: /git/calamari
@@ -23,7 +23,7 @@ build-calamari-server:
     - require:
       - git: /git/calamari
 
-{% for path in ('calamari/repobuild/calamari-repo-ubuntu.tar.gz',
+{% for path in ('calamari/repobuild/calamari-repo-trusty.tar.gz',
                 'calamari-server_*.deb',
                 'Diamond/build/diamond_*.deb') %}
 

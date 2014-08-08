@@ -77,13 +77,15 @@ import errno
 
 
 CENTOS = 'centos'
-REDHAT = 'redhat'
-UBUNTU = 'ubuntu'
-DEBIAN = 'debian'
-DISTROS = [CENTOS, REDHAT, UBUNTU, DEBIAN]
+REDHAT6 = 'redhat6'
+REDHAT7 = 'redhat7'
+PRECISE = 'precise'
+TRUSTY = 'trusty'
+WHEEZY = 'wheezy'
+DISTROS = [CENTOS, REDHAT6, REDHAT7, PRECISE, TRUSTY, WHEEZY]
 
 SUPPORT_MATRIX = "Inktank Ceph Enterprise supports RHEL 6.3, RHEL 6.4, CentOS 6.3, CentOS 6.4, " \
-                 "Ubuntu 12.04 LTS, and Debian 7."
+                 "Ubuntu 12.04/14.04 LTS, and Debian 7."
 
 SALT_PACKAGE = "salt-minion"
 SALT_CONFIG_PATH = "/etc/salt/"
@@ -124,33 +126,39 @@ else:
 if lsb_release.startswith("CentOS release 6."):
     distro = CENTOS
 elif lsb_release.startswith("Red Hat Enterprise Linux Server release 6."):
-    distro = REDHAT
+    distro = REDHAT6
+elif lsb_release.startswith("Red Hat Enterprise Linux Server release 7."):
+    distro = REDHAT7
 elif lsb_release.startswith("Ubuntu 12.04"):
-    distro = UBUNTU
+    distro = PRECISE
+elif lsb_release.startswith("Ubuntu 14.04"):
+    distro = TRUSTY
 elif lsb_release.startswith("Debian GNU/Linux 7."):
-    distro = DEBIAN
+    distro = WHEEZY
 else:
     print "Unsupported distribution '%s'" % lsb_release
     print SUPPORT_MATRIX
     sys.exit(-1)
 
 # Configure package repository
-if distro in [CENTOS, REDHAT]:
+if distro in [CENTOS, REDHAT6, REDHAT7]:
+    tag = {{CENTOS: 'el6', REDHAT6: 'rhel6', REDHAT7: 'rhel7'}}.get(distro)
     open("/etc/yum.repos.d/calamari.repo", 'w').write(
-    "[el6-calamari]\\n" \
+    "[{{tag}}-calamari]\\n" \
 "name=Calamari\\n" \
-"baseurl={base_url}static/el6\\n" \
+"baseurl={base_url}static/{{tag}}\\n" \
 "gpgcheck=0\\n" \
-"enabled=1\\n")
-elif distro == UBUNTU:
+"enabled=1\\n".format(tag=tag))
+elif distro in [PRECISE, TRUSTY]:
+    tag = {{PRECISE: 'precise', TRUSTY: 'trusty'}}.get(distro)
     # Would be nice to use apt-add-repository, but it's not always there and
     # trying to apt-get install it from the net would be a catch-22
-    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/ubuntu precise main")
-elif distro == DEBIAN:
-    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/debian wheezy main")
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/{{tag}} {{tag}} main".format(tag=tag))
+elif distro == WHEEZY:
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/debian wheezy  main")
 else:
     # Should never happen
-    raise NotImplmentedError()
+    raise NotImplementedError()
 
 # Emplace minion config prior to installation so that it is present
 # when the minion first starts.
@@ -165,7 +173,7 @@ except OSError, e:
 open(os.path.join(SALT_CONFIG_PATH, "minion.d/calamari.conf"), 'w').write("master: %s\\n" % MASTER)
 
 # Deploy salt minion
-if distro in [CENTOS, REDHAT]:
+if distro in [CENTOS, REDHAT6, REDHAT7]:
     subprocess.call(["yum", "check-update"])
     subprocess.check_call(["yum", "install", "-y", SALT_PACKAGE])
     subprocess.check_call(["chkconfig", "salt-minion", "on"])
