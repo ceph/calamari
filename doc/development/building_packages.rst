@@ -17,6 +17,7 @@ calamari-server
     git clone git@github.com:ceph/Diamond.git --branch=calamari
     cd calamari/vagrant/precise-build
     vagrant up
+    vagrant ssh -c 'sudo salt-call state.highstate'
 
 
 .. note::
@@ -33,6 +34,7 @@ calamari-clients
   git clone git@github.com:ceph/calamari-clients.git
   cd calamari-clients/vagrant/precise-build
   vagrant up
+  vagrant ssh -c 'sudo salt-call state.highstate'
 
 .. note::
 
@@ -54,7 +56,7 @@ of the git repositories.  For example, having run all the above commands:
     calamari-clients # git clone of calamari-clients
     calamari-clients-build-output.tar.gz    # unpackaged build of calamari-clients
     calamari-clients_1.2-rc2-47-g5f7c653_all.deb    # package for installation on calamari server
-    calamari-repo-ubuntu.tar.gz    # minion repository, see below
+    calamari-repo-precise.tar.gz    # minion repository, see below
     calamari-server_1.2-rc2-58-gf3f7872_all.deb    # package for installation on calamari server
     diamond_3.4.67_all.deb    # diamond package for use on ceph servers
 
@@ -85,5 +87,5 @@ check for errors like this:
   sudo salt-call state.highstate
 
 When you want to dig into the details of what these vagrant configurations are doing, go
-look in the ``salt/`` subdirectory of each one to see what is being run on a ``vagrant up``.
+look in the ``salt/`` subdirectory of each one to see what is being run on a ``highstate``.
 
