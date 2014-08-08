@@ -48,4 +48,4 @@ python-dateutil==2.2
 zerorpc==0.4.4
 
 # For minion-sim
-diamond==3.4.37
+diamond==3.4.421
