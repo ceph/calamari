@@ -7,7 +7,7 @@ This page is about the internal makeup of the Cthulhu service.
 An instance of the ``cthulhu-manager`` process consists of a ``Manager`` and
 its children.  ``Manager`` consumes salt events, and so may its children.
 
-gevent is used throughout: see :code:`cthulhu_locking`.
+gevent is used throughout: see :doc:`cthulhu_locking`.
 
 Manager
 -------
