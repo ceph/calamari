@@ -8,6 +8,7 @@ setup(
     author="Inktank Storage Inc.",
     author_email="info@inktank.com",
     license="LGPL-2.1+",
+    zip_safe=False,
     entry_points={
         'console_scripts': [
         ]

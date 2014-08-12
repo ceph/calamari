@@ -8,5 +8,6 @@ setup(
     url="http://www.inktank.com/enterprise/",
     author="Inktank Storage Inc.",
     author_email="info@inktank.com",
-    license="LGPL-2.1+"
+    license="LGPL-2.1+",
+    zip_safe=False,
 )
