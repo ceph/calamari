@@ -3,6 +3,7 @@
 *.rej
 .idea
 .vagrant
+.tox
 webapp/content/
 *.log
 *.pyc
