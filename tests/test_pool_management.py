@@ -108,6 +108,16 @@ class TestPoolManagement(RequestTestCase):
 
         return version.split(".")
 
+    def _get_min_size(self, config):
+        min_size = int(config['osd_pool_default_min_size'])
+        default_size = int(config['osd_pool_default_size'])
+        if min_size:
+            min_size = min(min_size, default_size)
+        else:
+            min_size = int(default_size - default_size / 2.)
+
+        return min_size
+
     def _non_default_args(self, fsid):
         """
         Get some pool arguments that are different to the defaults.  Because the
@@ -116,7 +126,6 @@ class TestPoolManagement(RequestTestCase):
 
         args = {
             'size': 3,
-            'min_size': 2,
             'crash_replay_interval': 120,
             'crush_ruleset': 1,
             'quota_max_objects': 42,
@@ -127,12 +136,14 @@ class TestPoolManagement(RequestTestCase):
         if len(crush_rules) <= 1:
             del(args['crush_ruleset'])
 
+        config = self.api.get("cluster/{0}/config".format(fsid)).json()
+        config = dict([(i['key'], i['value']) for i in config])
+
+        args['min_size'] = self._get_min_size(config) + 1
+
         if self._get_version() > (0, 67, 7):
             log.debug("Including hashpspool in non_default_args")
-            config = self.api.get("cluster/{0}/config".format(fsid)).json()
-            config = dict([(i['key'], i['value']) for i in config])
             default_hashpspool = config['osd_pool_default_flag_hashpspool'] == 'true'
-
             args['hashpspool'] = False if default_hashpspool else True
         else:
             log.debug("Old ceph: excluding hashpspool from non_default_args")
