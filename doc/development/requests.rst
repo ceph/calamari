@@ -102,10 +102,6 @@ Reference: the relevant classes
 
 .. autoclass:: cthulhu.manager.user_request.UserRequest
 
-.. autoclass:: cthulhu.manager.rpc.RpcInterface
-
-.. autoclass:: cthulhu.manager.cluster_monitor.ClusterMonitor
-
 .. autoclass:: cthulhu.manager.pool_request_factory.PoolRequestFactory
 
 .. autoclass:: cthulhu.manager.user_request.OsdMapModifyingRequest
