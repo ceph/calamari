@@ -46,7 +46,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
 
 #extensions.append('rst2pdf.pdfbuilder')
 #pdf_documents = [
