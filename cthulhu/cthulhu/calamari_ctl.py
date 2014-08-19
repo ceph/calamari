@@ -45,6 +45,7 @@ log.addHandler(buffer_handler)
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
 SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
+RELAX_SALT_PERMS_SLS = "/opt/calamari/salt-local/relax_salt_perms.sls"
 
 
 @contextmanager
@@ -60,6 +61,23 @@ def quiet():
     finally:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
+
+
+def run_local_salt(sls, message):
+    # Configure postgres database
+    if os.path.exists(sls):
+        log.info("Starting/enabling {message}...".format(message=message))
+        p = subprocess.Popen(["salt-call", "--local", "state.template",
+                              sls],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        log.debug("{message} salt stdout: {out}".format(message=message, out=out))
+        log.debug("{message} salt stderr: {err}".format(message=message, err=err))
+        if p.returncode != 0:
+            raise RuntimeError("salt-call for {message} failed with rc={rc}".format(message=message, rc=p.returncode))
+    else:
+        # This is the path you take if you're running in a development environment
+        log.debug("Skipping {message} configuration, SLS not found".format(message=message))
 
 
 def initialize(args):
@@ -81,19 +99,8 @@ def initialize(args):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
-    # Configure postgres database
-    if os.path.exists(POSTGRES_SLS):
-        p = subprocess.Popen(["salt-call", "--local", "state.template",
-                              POSTGRES_SLS],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        log.debug("Postgres salt stdout: %s" % out)
-        log.debug("Postgres salt stderr: %s" % err)
-        if p.returncode != 0:
-            raise RuntimeError("salt-call for postgres failed with rc={0}".format(p.returncode))
-    else:
-        # This is the path you take if you're running in a development environment
-        log.debug("Skipping postgres configuration, SLS not found")
+    run_local_salt(sls=RELAX_SALT_PERMS_SLS, message='salt')
+    run_local_salt(sls=POSTGRES_SLS, message='postgres')
 
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')
@@ -150,19 +157,7 @@ def initialize(args):
         os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
 
     # Start services, configure to run on boot
-    if os.path.exists(SERVICES_SLS):
-        log.info("Starting/enabling services...")
-        p = subprocess.Popen(["salt-call", "--local", "state.template",
-                              SERVICES_SLS],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        log.debug("Services salt stdout: %s" % out)
-        log.debug("Services salt stderr: %s" % err)
-        if p.returncode != 0:
-            raise RuntimeError("salt-call for services failed with rc={0}".format(p.returncode))
-    else:
-        # This is the path you take if you're running in a development environment
-        log.debug("Skipping services configuration")
+    run_local_salt(sls=SERVICES_SLS, message='services')
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
