@@ -14,6 +14,8 @@ calamari_httpd()
 	a2dissite 000-default > /dev/null
 	a2ensite calamari.conf > /dev/null
 	a2enmod wsgi > /dev/null
+	# stunningly, precise does not enable this by default
+	a2enmod version > /dev/null
 	chown -R www-data:www-data /var/log/calamari
 	cd $d
 
