@@ -1,0 +1,12 @@
+[Unit]
+Description=Cthulhu Manager
+After=network.target carbon-cache.service postgresql.service salt-master.service
+Requires=carbon-cache.service postgresql.service salt-master.service
+Before=apache2.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/cthulhu-manager
+
+[Install]
+WantedBy=multi-user.target

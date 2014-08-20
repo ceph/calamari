@@ -21,6 +21,15 @@ all: build
 
 build: version build-venv
 
+build-unpacked: version
+	# similar to the set in build-venv-reqs, but installs to the global
+	# python site dir, not inside the venv
+	for p in calamari-common rest-api calamari-web cthulhu ; do \
+		cd $$p ; \
+		python setup.py install --prefix=/usr --root=$(DESTDIR) ; \
+		cd .. ; \
+	done
+
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
 	@echo "target: $@"
@@ -124,6 +133,8 @@ install-common: install-conf install-venv install-salt install-alembic install-s
 install-rpm: build install-common install-rh-conf
 	@echo "target: $@"
 
+install-suse: build-unpacked install-conf install-salt install-alembic install-suse-webapp install-suse-conf
+
 # for deb
 install: build
 	@echo "target: $@"
@@ -190,6 +201,19 @@ install-rh-conf:
 	@$(INSTALL) -D conf/httpd/calamari.conf \
 		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
 	@sed -i '1iWSGISocketPrefix run/wsgi' $(DESTDIR)/etc/httpd/conf.d/calamari.conf
+
+install-suse-conf:
+	@echo "target: $@"
+	# httpd conf for graphite and calamari vhosts, suse
+	@$(INSTALL) -D -m 0644 conf/httpd/suse/calamari.conf \
+		$(DESTDIR)/etc/apache2/conf.d/calamari.conf
+	@$(INSTALL) -D -m 0644 conf/cthulhu.service \
+		$(DESTDIR)/usr/lib/systemd/system/cthulhu.service
+
+install-suse-webapp:
+	@echo "target: $@"
+	$(INSTALL) -d -m 755 $(DESTDIR)/srv/www/calamari
+	cp -rp webapp/calamari $(DESTDIR)/srv/www/calamari
 
 install-venv:
 	@echo "target: $@"
