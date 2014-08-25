@@ -2,22 +2,22 @@
 
 calamari_httpd()
 {
-	d=$(pwd)
-	# allow apache access to all
-	chown -R www-data:www-data /opt/calamari/webapp/calamari
+    d=$(pwd)
+    # allow apache access to all
+    chown -R www-data:www-data /opt/calamari/webapp/calamari
 
-	# www-data shouldn't need to write, but it does because graphite creates index on read
-	chown -R www-data:www-data /var/lib/graphite
+    # www-data shouldn't need to write, but it does because graphite creates index on read
+    chown -R www-data:www-data /var/lib/graphite
 
     # Redirect the a2* output to /dev/null because it advises
     # user to restart apache, which we already do for them.
-	a2dissite 000-default > /dev/null
-	a2ensite calamari.conf > /dev/null
-	a2enmod wsgi > /dev/null
-	# stunningly, precise does not enable this by default
-	a2enmod version > /dev/null
-	chown -R www-data:www-data /var/log/calamari
-	cd $d
+    a2dissite 000-default > /dev/null
+    a2ensite calamari.conf > /dev/null
+    a2enmod wsgi > /dev/null
+    # stunningly, precise does not enable this by default
+    a2enmod version > /dev/null
+    chown -R www-data:www-data /var/log/calamari
+    cd $d
 
     # Load our salt config
     service salt-master restart
@@ -30,12 +30,12 @@ calamari_httpd()
 }
 
 case "$1" in
-	configure)
-		calamari_httpd
+    configure)
+        calamari_httpd
 
-		# Restart apache (without trusting 'restart' to work properly)
-		service apache2 stop || true
-		service apache2 start
+        # Restart apache (without trusting 'restart' to work properly)
+        service apache2 stop || true
+        service apache2 start
 
         # Prompt the user to proceed with the final script-driven
         # part of the installation process
@@ -43,17 +43,17 @@ case "$1" in
         echo ""
         echo "Please run 'sudo calamari-ctl initialize' to complete the installation."
 
-		# rpm/centos
-		# service httpd restart
-		# chkconfig httpd on
-		;;
+        # rpm/centos
+        # service httpd restart
+        # chkconfig httpd on
+        ;;
 
-	abort-upgrade|abort-remove|abort-deconfigure)
-		;;
-	*)
-		echo "postinst called with unknown argument $1" >&2
-		exit 1
-		;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument $1" >&2
+        exit 1
+        ;;
 esac
 
 
