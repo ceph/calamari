@@ -20,7 +20,12 @@ calamari_httpd()
     cd $d
 
     # Load our salt config
-    service salt-master restart
+    # see https://github.com/saltstack/salt/issues/12248 for why this
+    # is not a simple restart; remove this when that issue is resolved
+    # service salt-master restart
+    service salt-master stop
+    killall salt-master
+    service salt-master start
 
     # Load our supervisor config
     # NB 'service supervisor restart' is broken on precise
