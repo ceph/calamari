@@ -39,10 +39,18 @@ urlpatterns = patterns(
     url('^content/(?P<path>.*)$', 'django.views.static.serve', {'document_root': CONTENT_DIR}),
 
     # XXX this is a hack to serve apt repo in dev mode (Full installation serves this with apache)
-    url(r'^static/ubuntu/(?P<path>.*)$', 'django.views.static.serve',
-        {'document_root': '%s/ubuntu/' % STATIC_ROOT}),
+    url(r'^static/precise/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/precise/' % STATIC_ROOT}),
+    url(r'^static/trusty/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/trusty/' % STATIC_ROOT}),
+    url(r'^static/wheezy/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/wheezy/' % STATIC_ROOT}),
     url(r'^static/el6/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': '%s/el6/' % STATIC_ROOT}),
+    url(r'^static/rhel6/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/rhel6/' % STATIC_ROOT}),
+    url(r'^static/rhel7/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': '%s/rhel7/' % STATIC_ROOT}),
 )
 
 UI_PATHS = ['login', 'admin', 'manage']
