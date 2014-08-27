@@ -296,10 +296,11 @@ class ExternalCephControl(CephControl):
                 # TODO subshell here, _run_command only halts the tests if the salt-minion restart fails
                 # Also that would mean that we'd need to make apt-get update run clean
                 # it currently fails due to lack of i386 packages in precise
-                bootstrap_cmd = '''{bootstrap};
+                bootstrap_cmd = '''"{bootstrap};
                     sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion;
+                    sudo service salt-minion stop
                     sudo killall salt-minion;
-                    sudo service salt-minion restart'''.format(bootstrap=info['bootstrap_{distro}'.format(distro=self.cluster_distro)])
+                    sudo service salt-minion start"'''.format(bootstrap=info['bootstrap_{distro}'.format(distro=self.cluster_distro)])
             except KeyError:
                 raise NotImplementedError('Cannot bootstrap a {distro} cluster'.format(distro=self.cluster_distro))
 
