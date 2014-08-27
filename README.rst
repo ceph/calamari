@@ -3,8 +3,8 @@
     :target: https://travis-ci.org/ceph/calamari.svg?branch=master
 
 
-.. image:: https://readthedocs.org/projects/calamari/?badge=latest
-    :target: https://readthedocs.org/projects/calamari/?badge=latest
+.. image:: https://readthedocs.org/projects/calamari/badge/?version=latest
+   :target: https://readthedocs.org/projects/calamari/?badge=latest
 
 
 Calamari server
