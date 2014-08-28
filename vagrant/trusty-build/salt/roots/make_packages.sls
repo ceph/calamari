@@ -9,7 +9,7 @@ build-diamond:
 build-repo:
   cmd.run:
     - user: vagrant
-    - name: make ubuntu
+    - name: make trusty
     - cwd: /home/vagrant/calamari/repobuild
     - require:
       - git: /git/calamari
