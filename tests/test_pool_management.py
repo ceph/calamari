@@ -114,7 +114,7 @@ class TestPoolManagement(RequestTestCase):
         if min_size:
             min_size = min(min_size, default_size)
         else:
-            min_size = int(default_size - default_size / 2.)
+            min_size = default_size - int(default_size / 2.)
 
         return min_size
 
@@ -125,7 +125,7 @@ class TestPoolManagement(RequestTestCase):
         """
 
         args = {
-            'size': 3,
+            'size': 4,
             'crash_replay_interval': 120,
             'crush_ruleset': 1,
             'quota_max_objects': 42,
