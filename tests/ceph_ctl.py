@@ -171,7 +171,8 @@ class ExternalCephControl(CephControl):
         self.cluster_distro = config.get('testing', 'cluster_distro')
 
     def _run_command(self, target, command):
-        ssh_command = 'ssh ubuntu@{target} {command}'.format(target=target, command=command)
+        # TODO consider taking out shell=True
+        ssh_command = 'ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@{target} "{command}"'.format(target=target, command=command)
         proc = Popen(ssh_command, shell=True, stdout=PIPE)
         out, err = proc.communicate()
         if proc.returncode != 0:
@@ -298,8 +299,9 @@ class ExternalCephControl(CephControl):
                 # it currently fails due to lack of i386 packages in precise
                 bootstrap_cmd = '''{bootstrap};
                     sudo sed -i 's/^[#]*open_mode:.*$/open_mode: True/;s/^[#]*log_level:.*$/log_level: debug/' /etc/salt/minion;
+                    sudo service salt-minion stop
                     sudo killall salt-minion;
-                    sudo service salt-minion restart'''.format(bootstrap=info['bootstrap_{distro}'.format(distro=self.cluster_distro)])
+                    sudo service salt-minion start'''.format(bootstrap=info['bootstrap_{distro}'.format(distro=self.cluster_distro)])
             except KeyError:
                 raise NotImplementedError('Cannot bootstrap a {distro} cluster'.format(distro=self.cluster_distro))
 
