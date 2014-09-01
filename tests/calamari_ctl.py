@@ -89,6 +89,10 @@ class CalamariControl(object):
         wait_until_true(_fqdns_present, timeout=KEY_WAIT_PERIOD * len(minion_ids))
 
         for minion_id in minion_ids:
+            if self.api.get("key/%s" % minion_id).json()['status'] == 'accepted':
+                # skip already accepted minions (happens running against external calamari instance)
+                log.debug("Key for %s is already authorised" % minion_id)
+                continue
             log.debug("Authorising key for %s" % minion_id)
             r = self.api.patch("key/%s" % minion_id, {'status': 'accepted'})
             r.raise_for_status()
