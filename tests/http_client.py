@@ -60,12 +60,14 @@ class AuthenticatedHttpClient(requests.Session):
         response.raise_for_status()
         self.headers['X-XSRF-TOKEN'] = response.cookies['XSRF-TOKEN']
 
-        self.post("auth/login/", {
+        response = self.post("auth/login/", {
             'next': "/",
             'username': self._username,
             'password': self._password
         })
         response.raise_for_status()
+        # XSRF token rotates on login
+        self.headers['X-XSRF-TOKEN'] = response.cookies['XSRF-TOKEN']
 
         # Check we're allowed in now.
         response = self.get("cluster")

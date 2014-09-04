@@ -171,9 +171,13 @@ class ExternalCephControl(CephControl):
         self.cluster_distro = config.get('testing', 'cluster_distro')
 
     def _run_command(self, target, command):
-        # TODO consider taking out shell=True
-        ssh_command = 'ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@{target} "{command}"'.format(target=target, command=command)
-        proc = Popen(ssh_command, shell=True, stdout=PIPE)
+        user_at_host = next(t for t in self.config['cluster'].iterkeys() if t.split('@')[1] == target)
+        proc = Popen([
+            'ssh',
+            '-oStrictHostKeyChecking=no',
+            '-oUserKnownHostsFile=/dev/null',
+            user_at_host,
+            command], stdout=PIPE, stderr=PIPE)
         out, err = proc.communicate()
         if proc.returncode != 0:
             log.error("stdout: %s" % out)
