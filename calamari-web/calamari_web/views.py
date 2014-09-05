@@ -145,9 +145,9 @@ if distro in [CENTOS, REDHAT]:
 elif distro == UBUNTU:
     # Would be nice to use apt-add-repository, but it's not always there and
     # trying to apt-get install it from the net would be a catch-22
-    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/ubuntu precise main")
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/ubuntu precise main")
 elif distro == DEBIAN:
-    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb {base_url}static/debian wheezy main")
+    open("/etc/apt/sources.list.d/calamari.list", 'w').write("deb [arch=amd64] {base_url}static/debian wheezy main")
 else:
     # Should never happen
     raise NotImplmentedError()
