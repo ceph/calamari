@@ -565,7 +565,7 @@ Provides metadata about the installation of Calamari server in use
         proto = "https" if request.is_secure() else "http"
         bootstrap_url = "{0}://{1}{2}".format(proto, request.META['HTTP_HOST'], reverse('bootstrap'))
         BOOTSTRAP_UBUNTU = "wget -O - {url} | sudo python"
-        BOOTSTRAP_RHEL = "curl {url} | python"
+        BOOTSTRAP_RHEL = "curl {url} | sudo python"
 
         return Response(self.serializer_class(DataObject({
             "version": str(VERSION),
