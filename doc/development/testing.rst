@@ -105,14 +105,18 @@ There are a few manual changes you'll need to make to test against this cluster:
 .. code-block:: yaml
 
     master_fqdn:
-        <FQDN of the machine where you are running a calmari devmode instance>
+        <FQDN, including port (:8000 by default), of the calamari devmode instance>
+	myhost.example.com:8000
 
-- Edit tests/tests.conf changing ceph_control under testing to 'external'
+- Edit tests/test.conf changing ceph_control under testing to 'external'
 
 .. code-block:: yaml
 
     [testing]
         ceph_control = external
+
+- set cluster_distro to 'ubuntu' or 'rhel' (the closest one to the distro
+  you're actually running on the cluster)
 
 - Make sure you have the repositories setup so that bootstrap can succeed TODO
 
