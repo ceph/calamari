@@ -2,14 +2,32 @@ Source: calamari
 Section: misc
 Priority: extra
 Homepage: http://www.inktank.com/
+Vcs-Browser: https://github.com/ceph/calamari.git
 Maintainer: Dan Mick <dan.mick@inktank.com>
-Standards-Version: 3.9.2
-Build-Depends: libcairo2-dev, python-pip, libpq-dev, python-dev, python-virtualenv
+Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 9),
+               git,
+               libcairo2-dev,
+               libpq-dev,
+               lsb-release,
+               python-dev,
+               python-pip,
+               python-virtualenv
 
 Package: calamari-server
-Architecture: all
-Depends: apache2, libapache2-mod-wsgi, libcairo2, supervisor, logrotate, salt-master, salt-minion, python-cairo, libpq5, postgresql
+Architecture: any
+Depends: apache2,
+         libapache2-mod-wsgi,
+         libcairo2,
+         libpq5,
+         logrotate,
+         postgresql,
+         python-cairo,
+         salt-master,
+         salt-minion,
+         supervisor,
+         ${misc:Depends},
+         ${python:Depends}
 Description: Inktank package containing the Calamari management srever
  Calamari is a webapp to monitor and control a Ceph cluster via a web
  browser.
-
