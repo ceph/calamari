@@ -13,7 +13,6 @@ import subprocess
 from django.core.management import execute_from_command_line
 import pwd
 from django.utils.crypto import get_random_string
-from django.contrib.auth import get_user_model
 import time
 from calamari_common.config import CalamariConfig, AlembicConfig
 from sqlalchemy import create_engine
@@ -121,6 +120,8 @@ def initialize(args):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
     with quiet():
         execute_from_command_line(["", "syncdb", "--noinput"])
+
+    from django.contrib.auth import get_user_model
 
     log.info("Initializing web interface...")
     user_model = get_user_model()
