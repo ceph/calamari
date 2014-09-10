@@ -41,7 +41,7 @@ class PoolRequestFactory(RequestFactory):
                     'val': attributes[attr_name].__str__()  # set-quota wants a string in case it has units in
                 }))
 
-        # Renames come last (the preceeding commands reference the pool by its old name)
+        # Renames come last (the preceding commands reference the pool by its old name)
         if 'name' in attributes:
             commands.append(('osd pool rename', {
                 "srcpool": pool_name,
@@ -138,7 +138,7 @@ class PoolRequestFactory(RequestFactory):
         ))
 
         log.debug("Post-create attributes: %s" % post_create_attrs)
-        log.debug("Commands: %s" % post_create_attrs)
+        log.debug("Commands: %s" % commands)
 
         return PoolCreatingRequest(
             "Creating pool '{name}'".format(name=attributes['name']),
