@@ -7,7 +7,7 @@ VERSION=$(lsb_release -r -s)
 # ID is:
 # Centos6.4: CentOS
 # RHEL6: RedHatEnterpriseServer
-# precise: Ubuntu
+# precise, trusty: Ubuntu
 # wheezy: Debian
 # SLES: SUSE Linux
 # openSUSE: openSUSE project
