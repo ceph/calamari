@@ -21,6 +21,8 @@ api/v2/cluster/\<fsid\>/config                             :ref:`Config <ConfigV
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/config/\<key\>                     :ref:`Config <ConfigViewSet>`                         :doc:`Example <api_example_api_v2_cluster__fsid__config__key_>`            Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
+api/v2/cluster/\<fsid\>/crush_map                          :ref:`Crush Map <CrushMapViewSet>`                                                                                               Yes     Yes               
+---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_rule_set                     :ref:`Crush Rule Set <CrushRuleSetViewSet>`           :doc:`Example <api_example_api_v2_cluster__fsid__crush_rule_set>`          Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_rule                         :ref:`Crush Rule <CrushRuleViewSet>`                  :doc:`Example <api_example_api_v2_cluster__fsid__crush_rule>`              Yes                       
@@ -240,6 +242,31 @@ key   string False                  Name of the configuration setting
 value string False                  Current value of the setting, as a string 
 ===== ====== ======== ====== ====== ========================================= 
 
+
+
+.. _CrushMapViewSet:
+
+Crush Map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Allows retrieval and replacement of a crushmap as a whole
+    
+
+URLs
+____
+
+====================================================================================== === === ==== ===== ====== 
+URL                                                                                    GET PUT POST PATCH DELETE 
+====================================================================================== === === ==== ===== ====== 
+:doc:`api/v2/cluster/\<fsid\>/crush_map <api_example_api_v2_cluster__fsid__crush_map>` Yes     Yes               
+====================================================================================== === === ==== ===== ====== 
+
+
+Fields
+______
+
+*No field data available*
 
 
 .. _CrushRuleSetViewSet:
@@ -687,33 +714,33 @@ URL                                                                             
 Fields
 ______
 
-===================== ======= ======== ======== ======= =================================================================================== 
-Name                  Type    Readonly Create   Modify  Description                                                                         
-===================== ======= ======== ======== ======= =================================================================================== 
-name                  string  False    Required Allowed Human readable name of the pool, maychange over the pools lifetime at user request. 
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-id                    string  False                     Unique numeric ID                                                                   
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-size                  integer False    Allowed  Allowed Replication factor                                                                  
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-pg_num                integer False    Required Allowed Number of placement groups in this pool                                             
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-crush_ruleset         integer False    Allowed  Allowed CRUSH ruleset in use                                                                
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-min_size              integer False    Allowed  Allowed Minimum number of replicas required for I/O                                         
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-crash_replay_interval integer False    Allowed  Allowed Number of seconds to allow clients to replay acknowledged, but uncommitted requests 
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-pgp_num               integer False    Allowed  Allowed Effective number of placement groups to use when calculating data placement         
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-hashpspool            boolean False    Allowed  Allowed Enable HASHPSPOOL flag                                                              
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-full                  boolean False                     True if the pool is full                                                            
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-quota_max_objects     integer False    Allowed  Allowed Quota limit on object count (0 is unlimited)                                        
---------------------- ------- -------- -------- ------- ----------------------------------------------------------------------------------- 
-quota_max_bytes       integer False    Allowed  Allowed Quota limit on usage in bytes (0 is unlimited)                                      
-===================== ======= ======== ======== ======= =================================================================================== 
+===================== ======= ======== ======== ======= ============================================================================================================= 
+Name                  Type    Readonly Create   Modify  Description                                                                                                   
+===================== ======= ======== ======== ======= ============================================================================================================= 
+name                  string  False    Required Allowed Human readable name of the pool, maychange over the pools lifetime at user request.                           
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+id                    string  False                     Unique numeric ID                                                                                             
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+size                  integer False    Allowed  Allowed Replication factor                                                                                            
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+pg_num                integer False    Required Allowed Number of placement groups in this pool                                                                       
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+crush_ruleset         integer False    Allowed  Allowed CRUSH ruleset in use                                                                                          
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+min_size              integer False    Allowed  Allowed Minimum number of replicas required for I/O; clamped to 'size' if greater; 0 defaults to 'size - int(size/2)' 
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+crash_replay_interval integer False    Allowed  Allowed Number of seconds to allow clients to replay acknowledged, but uncommitted requests                           
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+pgp_num               integer False    Allowed  Allowed Effective number of placement groups to use when calculating data placement                                   
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+hashpspool            boolean False    Allowed  Allowed Enable HASHPSPOOL flag                                                                                        
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+full                  boolean False                     True if the pool is full                                                                                      
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+quota_max_objects     integer False    Allowed  Allowed Quota limit on object count (0 is unlimited)                                                                  
+--------------------- ------- -------- -------- ------- ------------------------------------------------------------------------------------------------------------- 
+quota_max_bytes       integer False    Allowed  Allowed Quota limit on usage in bytes (0 is unlimited)                                                                
+===================== ======= ======== ======== ======= ============================================================================================================= 
 
 
 
@@ -1094,8 +1121,6 @@ Examples
    :maxdepth: 1
 
 
-   api_example_api_v2_cluster__fsid__derived_object__derived_type_
-
    api_example_api_v2_info
 
    api_example_api_v2_cluster__fsid__event
@@ -1104,9 +1129,17 @@ Examples
 
    api_example_api_v2_cluster__fsid__pool__pool_id_
 
+   api_example_api_v2_request__request_id_
+
    api_example_api_v2_cluster__fsid__crush_rule_set
 
+   api_example_api_v2_cluster__fsid__crush_map
+
+   api_example_api_v2_cluster__fsid__log
+
    api_example_api_v2_auth_login
+
+   api_example_api_v2_cluster__fsid__request__request_id_
 
    api_example_api_v2_key__minion_id_
 
@@ -1124,9 +1157,13 @@ Examples
 
    api_example_api_v2_cluster__fsid__crush_rule
 
+   api_example_api_v2_cluster__fsid__osd _command
+
    api_example_api_v2_server
 
-   api_example_api_v2_cluster__fsid__log
+   api_example_api_v2_cluster__fsid__mon__mon_id_
+
+   api_example_api_v2_cluster__fsid__mon
 
    api_example_api_v2_cluster__fsid__sync_object
 
@@ -1142,7 +1179,7 @@ Examples
 
    api_example_api_v2_cluster__fsid__osd__osd_id_
 
-   api_example_api_v2_cluster__fsid__derived_object
+   api_example_api_v2_cluster__fsid__mon__mon_id__status
 
    api_example_api_v2_cluster__pk_
 
@@ -1154,12 +1191,18 @@ Examples
 
    api_example_api_v2_cluster__fsid__pool
 
-   api_example_api_v2_cluster__fsid__request__request_id_
+   api_example_api_v2_request
+
+   api_example_api_v2_cluster__fsid__osd__osd_id__command__command_
 
    api_example_api_v2_cluster__fsid__osd
+
+   api_example_api_v2_cluster__fsid__osd__osd_id__command
 
    api_example_api_v2_cluster__fsid__config__key_
 
    api_example_api_v2_server__fqdn__log
+
+   api_example_api_v2_cluster__fsid__osd_config
 
 

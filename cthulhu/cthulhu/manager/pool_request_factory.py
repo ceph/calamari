@@ -41,7 +41,7 @@ class PoolRequestFactory(RequestFactory):
                     'val': attributes[attr_name].__str__()  # set-quota wants a string in case it has units in
                 }))
 
-        # Renames come last (the preceeding commands reference the pool by its old name)
+        # Renames come last (the preceding commands reference the pool by its old name)
         if 'name' in attributes:
             commands.append(('osd pool rename', {
                 "srcpool": pool_name,
@@ -66,10 +66,36 @@ class PoolRequestFactory(RequestFactory):
         return OsdMapModifyingRequest("Deleting pool '{name}'".format(name=pool_name),
                                       self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
+    def _pool_min_size(self, req_size, req_min_size):
+        '''
+        Find an appropriate "min_size" parameter for a pool create operation
+        req_size is requested pool size; 0 means "use osd_pool_default_size"
+        req_min_size is requested min size
+
+        Used in both create and update
+        '''
+        ceph_config = self._cluster_monitor.get_sync_object_data(Config)
+        size = req_size or int(ceph_config.get('osd_pool_default_size'), 0)
+        min_size = req_min_size or \
+            int(ceph_config.get('osd_pool_default_min_size'), 0)
+        if min_size:
+            ret_min_size = min(min_size, size)
+        else:
+            ret_min_size = size - size / 2
+        log.info('_pool_min_size: size %d, min_size %d, ret %d' %
+                 (size, min_size, ret_min_size))
+        return ret_min_size
+
     def update(self, pool_id, attributes):
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
         pool = self._resolve_pool(pool_id)
         pool_name = pool['pool_name']
+
+        # Recalculate/clamp min_size if it or size is updated
+        if 'size' in attributes or 'min_size' in attributes:
+            size = attributes.get('size', pool['size'])
+            min_size = attributes.get('min_size', pool['min_size'])
+            attributes['min_size'] = self._pool_min_size(size, min_size)
 
         if 'pg_num' in attributes:
             # Special case when setting pg_num: have to do some extra work
@@ -125,6 +151,11 @@ class PoolRequestFactory(RequestFactory):
     def create(self, attributes):
         commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
 
+        # Calculate appropriate min_size, including default if none given
+        req_size = attributes.get('size', 0)
+        req_min_size = attributes.get('min_size', 0)
+        attributes['min_size'] = self._pool_min_size(req_size, req_min_size)
+
         # Which attributes must we set after the initial create?
         post_create_attrs = attributes.copy()
         del post_create_attrs['name']
@@ -138,7 +169,7 @@ class PoolRequestFactory(RequestFactory):
         ))
 
         log.debug("Post-create attributes: %s" % post_create_attrs)
-        log.debug("Commands: %s" % post_create_attrs)
+        log.debug("Commands: %s" % commands)
 
         return PoolCreatingRequest(
             "Creating pool '{name}'".format(name=attributes['name']),

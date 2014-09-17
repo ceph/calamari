@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/config
 =========================================
 
-api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
+api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/config
 ----------------------------------------------------------
 
 .. code-block:: json
@@ -12,8 +12,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "auth_mon_ticket_ttl"
      }, 
      {
-       "value": "5", 
-       "key": "mds_tick_interval"
+       "value": "0", 
+       "key": "journal_replay_from"
      }, 
      {
        "value": "1", 
@@ -144,16 +144,12 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_locker"
      }, 
      {
-       "value": "cephx", 
-       "key": "auth_service_required"
-     }, 
-     {
        "value": "false", 
        "key": "filestore_debug_inject_read_err"
      }, 
      {
-       "value": "5", 
-       "key": "mon_clock_drift_warn_backoff"
+       "value": "10000", 
+       "key": "mds_bal_split_wr"
      }, 
      {
        "value": "104857600", 
@@ -166,6 +162,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "0.8", 
        "key": "osd_age"
+     }, 
+     {
+       "value": "192.168.18.0/24", 
+       "key": "public_network"
      }, 
      {
        "value": "45", 
@@ -200,6 +200,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_max_pgls"
      }, 
      {
+       "value": "0/1", 
+       "key": "context"
+     }, 
+     {
        "value": "false", 
        "key": "filestore_fsync_flushes_journal_data"
      }, 
@@ -210,10 +214,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "10", 
        "key": "osd_recovery_op_priority"
-     }, 
-     {
-       "value": "false", 
-       "key": "rgw_enable_ops_log"
      }, 
      {
        "value": "false", 
@@ -260,8 +260,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "log_to_syslog"
      }, 
      {
-       "value": "1/1", 
-       "key": "crush"
+       "value": "true", 
+       "key": "mon_compact_on_trim"
      }, 
      {
        "value": "false", 
@@ -312,8 +312,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "paxos_service_trim_max"
      }, 
      {
-       "value": "0/5", 
-       "key": "rbd"
+       "value": "3600", 
+       "key": "rgw_gc_processor_period"
      }, 
      {
        "value": "30", 
@@ -432,6 +432,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_s3_auth_use_rados"
      }, 
      {
+       "value": "false", 
+       "key": "ms_nocrc"
+     }, 
+     {
        "value": "65536", 
        "key": "mon_max_pool_pg_num"
      }, 
@@ -482,10 +486,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "0/5", 
        "key": "ms"
-     }, 
-     {
-       "value": "0.85", 
-       "key": "osd_backfill_full_ratio"
      }, 
      {
        "value": "/var/lib/ceph/mon/myceph-gravel1", 
@@ -564,8 +564,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_early_reply"
      }, 
      {
-       "value": "1024", 
-       "key": "rgw_usage_log_flush_threshold"
+       "value": "0/5", 
+       "key": "journaler"
      }, 
      {
        "value": "/var/lib/ceph/radosgw/myceph-gravel1", 
@@ -594,10 +594,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "100", 
        "key": "osd_scan_list_ping_tp_interval"
-     }, 
-     {
-       "value": "107374182400", 
-       "key": "osd_max_object_size"
      }, 
      {
        "value": "/var/lib/ceph/osd/myceph-gravel1/journal", 
@@ -680,16 +676,16 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_osd_min_down_reports"
      }, 
      {
-       "value": "10000", 
-       "key": "mon_pg_warn_min_objects"
+       "value": "false", 
+       "key": "mutex_perf_counter"
      }, 
      {
        "value": "60", 
        "key": "mds_session_timeout"
      }, 
      {
-       "value": "10000", 
-       "key": "mds_bal_split_wr"
+       "value": "5", 
+       "key": "mon_clock_drift_warn_backoff"
      }, 
      {
        "value": "4096", 
@@ -704,8 +700,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_osd_adjust_down_out_interval"
      }, 
      {
-       "value": "true", 
-       "key": "osd_open_classes_on_start"
+       "value": "false", 
+       "key": "rgw_relaxed_s3_bucket_names"
      }, 
      {
        "value": "500", 
@@ -752,8 +748,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_recovery_thread_timeout"
      }, 
      {
-       "value": "false", 
-       "key": "mon_osd_auto_mark_in"
+       "value": "0.7", 
+       "key": "mds_cache_mid"
      }, 
      {
        "value": "mon.gravel1", 
@@ -772,8 +768,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "crypto"
      }, 
      {
-       "value": "0/5", 
-       "key": "journaler"
+       "value": "1024", 
+       "key": "rgw_usage_log_flush_threshold"
      }, 
      {
        "value": "true", 
@@ -804,8 +800,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_scrub_chunk_min"
      }, 
      {
-       "value": "false", 
-       "key": "err_to_syslog"
+       "value": "30", 
+       "key": "rgw_data_log_window"
      }, 
      {
        "value": "1/5", 
@@ -880,8 +876,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "restapi_base_url"
      }, 
      {
-       "value": "500", 
-       "key": "osd_map_cache_size"
+       "value": "419430400", 
+       "key": "filestore_wbthrottle_xfs_bytes_hard_limit"
      }, 
      {
        "value": "false", 
@@ -896,8 +892,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "filestore_sloppy_crc_block_size"
      }, 
      {
-       "value": "5", 
-       "key": "heartbeat_interval"
+       "value": "0", 
+       "key": "filestore_max_inline_xattrs"
      }, 
      {
        "value": "0/1", 
@@ -936,12 +932,16 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "fuse_allow_other"
      }, 
      {
-       "value": "false", 
-       "key": "mutex_perf_counter"
+       "value": "10000", 
+       "key": "mon_pg_warn_min_objects"
      }, 
      {
        "value": "10000", 
        "key": "log_max_recent"
+     }, 
+     {
+       "value": "true", 
+       "key": "journal_aio"
      }, 
      {
        "value": "false", 
@@ -980,8 +980,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_leveldb_write_buffer_size"
      }, 
      {
-       "value": "true", 
-       "key": "rgw_enforce_swift_acls"
+       "value": "0", 
+       "key": "rgw_s3_success_create_obj_status"
      }, 
      {
        "value": "0.001", 
@@ -1020,8 +1020,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_debug_drop_ping_duration"
      }, 
      {
-       "value": "0", 
-       "key": "max_open_files"
+       "value": "false", 
+       "key": "journal_ignore_corruption"
      }, 
      {
        "value": "1/1", 
@@ -1036,8 +1036,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_log_skip_corrupt_events"
      }, 
      {
-       "value": "0", 
-       "key": "mds_bal_idle_threshold"
+       "value": "", 
+       "key": "rgw_host"
      }, 
      {
        "value": "0", 
@@ -1064,24 +1064,20 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_default_notify_timeout"
      }, 
      {
-       "value": "0/1", 
-       "key": "filer"
+       "value": "replica_log", 
+       "key": "rgw_replica_log_obj_prefix"
      }, 
      {
        "value": "4", 
        "key": "mds_beacon_interval"
      }, 
      {
-       "value": "-1", 
-       "key": "mds_standby_for_rank"
-     }, 
-     {
        "value": "600", 
        "key": "rgw_op_thread_timeout"
      }, 
      {
-       "value": "262144", 
-       "key": "mon_slurp_bytes"
+       "value": "512", 
+       "key": "filestore_max_inline_xattr_size_other"
      }, 
      {
        "value": "0.2", 
@@ -1248,6 +1244,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_client_bytes"
      }, 
      {
+       "value": "false", 
+       "key": "filestore_journal_writeahead"
+     }, 
+     {
        "value": "20", 
        "key": "osd_heartbeat_grace"
      }, 
@@ -1276,8 +1276,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "client_trace"
      }, 
      {
-       "value": "gravel1, gravel2, gravel3", 
-       "key": "mon_initial_members"
+       "value": "true", 
+       "key": "filestore_btrfs_snap"
      }, 
      {
        "value": "6", 
@@ -1292,12 +1292,12 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_list_buckets_max_chunk"
      }, 
      {
-       "value": "true", 
-       "key": "mon_compact_on_trim"
+       "value": "1/1", 
+       "key": "crush"
      }, 
      {
-       "value": "false", 
-       "key": "journal_ignore_corruption"
+       "value": "0", 
+       "key": "max_open_files"
      }, 
      {
        "value": "-1", 
@@ -1368,10 +1368,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_config_key_max_entry_size"
      }, 
      {
-       "value": "104857600", 
-       "key": "objecter_inflight_op_bytes"
-     }, 
-     {
        "value": "0.3", 
        "key": "mds_bal_midchunk"
      }, 
@@ -1404,8 +1400,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_region_root_pool"
      }, 
      {
-       "value": "15", 
-       "key": "mds_beacon_grace"
+       "value": "300", 
+       "key": "mon_timecheck_interval"
      }, 
      {
        "value": "25000", 
@@ -1424,8 +1420,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_max_pg_log_entries"
      }, 
      {
-       "value": "512", 
-       "key": "filestore_max_inline_xattr_size_other"
+       "value": "262144", 
+       "key": "mon_slurp_bytes"
      }, 
      {
        "value": "1/5", 
@@ -1434,6 +1430,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "86400", 
        "key": "rgw_swift_token_expiration"
+     }, 
+     {
+       "value": "104857600", 
+       "key": "objecter_inflight_op_bytes"
      }, 
      {
        "value": "true", 
@@ -1476,20 +1476,20 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "filestore_journal_trailing"
      }, 
      {
-       "value": "300", 
-       "key": "mon_timecheck_interval"
+       "value": "15", 
+       "key": "mds_beacon_grace"
      }, 
      {
        "value": "false", 
        "key": "client_debug_force_sync_read"
      }, 
      {
-       "value": "0", 
-       "key": "client_debug_inject_tick_delay"
-     }, 
-     {
        "value": "7300", 
        "key": "ms_bind_port_max"
+     }, 
+     {
+       "value": "0", 
+       "key": "client_debug_inject_tick_delay"
      }, 
      {
        "value": "3", 
@@ -1533,15 +1533,15 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      }, 
      {
        "value": "true", 
-       "key": "journal_aio"
+       "key": "journal_block_align"
      }, 
      {
        "value": "false", 
        "key": "lockdep"
      }, 
      {
-       "value": "0/1", 
-       "key": "context"
+       "value": "0", 
+       "key": "osd_max_attr_size"
      }, 
      {
        "value": "0", 
@@ -1594,6 +1594,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      {
        "value": "65536", 
        "key": "mon_leveldb_block_size"
+     }, 
+     {
+       "value": "0", 
+       "key": "mds_kill_rename_at"
      }, 
      {
        "value": "0", 
@@ -1656,10 +1660,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_balancer"
      }, 
      {
-       "value": "30", 
-       "key": "osd_client_watch_timeout"
-     }, 
-     {
        "value": "0.33", 
        "key": "osd_heartbeat_min_healthy_ratio"
      }, 
@@ -1684,10 +1684,6 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_kill_link_at"
      }, 
      {
-       "value": "false", 
-       "key": "ms_nocrc"
-     }, 
-     {
        "value": "1", 
        "key": "client_tick_interval"
      }, 
@@ -1696,8 +1692,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_tick_interval"
      }, 
      {
-       "value": "3600", 
-       "key": "rgw_gc_processor_period"
+       "value": "0/5", 
+       "key": "rbd"
      }, 
      {
        "value": "1440", 
@@ -1741,7 +1737,11 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      }, 
      {
        "value": "true", 
-       "key": "journal_block_align"
+       "key": "rgw_copy_obj_progress"
+     }, 
+     {
+       "value": "false", 
+       "key": "rgw_enable_ops_log"
      }, 
      {
        "value": "", 
@@ -1752,16 +1752,16 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_max_file_size"
      }, 
      {
-       "value": "false", 
-       "key": "rgw_relaxed_s3_bucket_names"
+       "value": "true", 
+       "key": "osd_open_classes_on_start"
      }, 
      {
        "value": "", 
        "key": "heartbeat_file"
      }, 
      {
-       "value": "0.7", 
-       "key": "mds_cache_mid"
+       "value": "false", 
+       "key": "mon_osd_auto_mark_in"
      }, 
      {
        "value": "false", 
@@ -1772,16 +1772,20 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_standby_replay"
      }, 
      {
-       "value": "0", 
-       "key": "osd_max_attr_size"
+       "value": "32", 
+       "key": "mon_osd_max_split_count"
      }, 
      {
-       "value": "419430400", 
-       "key": "filestore_wbthrottle_xfs_bytes_hard_limit"
+       "value": "-1", 
+       "key": "mds_standby_for_rank"
      }, 
      {
-       "value": "0", 
-       "key": "filestore_max_inline_xattrs"
+       "value": "500", 
+       "key": "osd_map_cache_size"
+     }, 
+     {
+       "value": "5", 
+       "key": "heartbeat_interval"
      }, 
      {
        "value": "90", 
@@ -1808,8 +1812,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "auth_service_ticket_ttl"
      }, 
      {
-       "value": "", 
-       "key": "rgw_host"
+       "value": "0", 
+       "key": "mds_bal_idle_threshold"
      }, 
      {
        "value": "false", 
@@ -1840,12 +1844,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "filestore_fail_eio"
      }, 
      {
-       "value": "1000", 
-       "key": "mds_bal_merge_rd"
-     }, 
-     {
-       "value": "0.3", 
-       "key": "mon_osd_min_up_ratio"
+       "value": "30", 
+       "key": "rgw_opstate_ratelimit_sec"
      }, 
      {
        "value": "209715200", 
@@ -1880,12 +1880,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_leveldb_block_size"
      }, 
      {
-       "value": "1000", 
-       "key": "client_oc_max_objects"
-     }, 
-     {
-       "value": "false", 
-       "key": "mds_wipe_ino_prealloc"
+       "value": "64", 
+       "key": "rgw_md_log_max_shards"
      }, 
      {
        "value": "1/5", 
@@ -1932,16 +1928,16 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_thrash_exports"
      }, 
      {
-       "value": "30", 
-       "key": "rgw_opstate_ratelimit_sec"
+       "value": "0.3", 
+       "key": "mon_osd_min_up_ratio"
      }, 
      {
        "value": "1/5", 
        "key": "mon"
      }, 
      {
-       "value": "64", 
-       "key": "rgw_md_log_max_shards"
+       "value": "1000", 
+       "key": "client_oc_max_objects"
      }, 
      {
        "value": "30", 
@@ -2004,12 +2000,12 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_copy_obj_progress_every_bytes"
      }, 
      {
-       "value": "-1", 
-       "key": "mds_bal_max"
+       "value": "0/5", 
+       "key": "optracker"
      }, 
      {
-       "value": "0", 
-       "key": "mds_kill_rename_at"
+       "value": "107374182400", 
+       "key": "osd_max_object_size"
      }, 
      {
        "value": "0", 
@@ -2028,8 +2024,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mon_leveldb_compression"
      }, 
      {
-       "value": "true", 
-       "key": "rgw_copy_obj_progress"
+       "value": "0.85", 
+       "key": "osd_backfill_full_ratio"
      }, 
      {
        "value": "5", 
@@ -2052,12 +2048,12 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "filestore_max_sync_interval"
      }, 
      {
-       "value": "30", 
-       "key": "rgw_data_log_window"
+       "value": "1000", 
+       "key": "mds_bal_merge_rd"
      }, 
      {
-       "value": "0", 
-       "key": "journal_replay_from"
+       "value": "5", 
+       "key": "mds_tick_interval"
      }, 
      {
        "value": "", 
@@ -2185,7 +2181,7 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
      }, 
      {
        "value": "false", 
-       "key": "filestore_journal_writeahead"
+       "key": "err_to_syslog"
      }, 
      {
        "value": "REMOTE_ADDR", 
@@ -2208,6 +2204,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rbd_cache_max_dirty"
      }, 
      {
+       "value": "86400", 
+       "key": "osd_scrub_min_interval"
+     }, 
+     {
        "value": "60", 
        "key": "osd_scrub_thread_timeout"
      }, 
@@ -2224,8 +2224,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_pool_default_crush_rule"
      }, 
      {
-       "value": "0", 
-       "key": "rgw_s3_success_create_obj_status"
+       "value": "true", 
+       "key": "rgw_enforce_swift_acls"
      }, 
      {
        "value": "false", 
@@ -2244,8 +2244,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "osd_map_share_max_epochs"
      }, 
      {
-       "value": "replica_log", 
-       "key": "rgw_replica_log_obj_prefix"
+       "value": "0/1", 
+       "key": "filer"
      }, 
      {
        "value": "10", 
@@ -2268,12 +2268,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_cache_lru_size"
      }, 
      {
-       "value": "true", 
-       "key": "mds_log"
-     }, 
-     {
-       "value": "true", 
-       "key": "filestore_btrfs_snap"
+       "value": "gravel1, gravel2, gravel3", 
+       "key": "mon_initial_members"
      }, 
      {
        "value": "8", 
@@ -2336,6 +2332,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "ms_dispatch_throttle_bytes"
      }, 
      {
+       "value": "false", 
+       "key": "osd_debug_skip_full_check_in_backfill_reservation"
+     }, 
+     {
        "value": "0.95", 
        "key": "mon_osd_full_ratio"
      }, 
@@ -2352,6 +2352,10 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_op_thread_suicide_timeout"
      }, 
      {
+       "value": "20", 
+       "key": "mds_log_max_expiring"
+     }, 
+     {
        "value": "", 
        "key": "restapi_log_level"
      }, 
@@ -2364,16 +2368,16 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "filestore_wbthrottle_btrfs_ios_start_flusher"
      }, 
      {
-       "value": "20", 
-       "key": "mds_log_max_expiring"
-     }, 
-     {
-       "value": "192.168.18.0/24", 
-       "key": "public_network"
-     }, 
-     {
        "value": "false", 
-       "key": "osd_debug_skip_full_check_in_backfill_reservation"
+       "key": "mds_wipe_ino_prealloc"
+     }, 
+     {
+       "value": "true", 
+       "key": "mds_log"
+     }, 
+     {
+       "value": "30", 
+       "key": "osd_client_watch_timeout"
      }, 
      {
        "value": "65536", 
@@ -2392,8 +2396,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "rgw_region"
      }, 
      {
-       "value": "0/5", 
-       "key": "optracker"
+       "value": "-1", 
+       "key": "mds_bal_max"
      }, 
      {
        "value": "true", 
@@ -2404,8 +2408,8 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/config
        "key": "mds_dir_commit_ratio"
      }, 
      {
-       "value": "86400", 
-       "key": "osd_scrub_min_interval"
+       "value": "cephx", 
+       "key": "auth_service_required"
      }, 
      {
        "value": "3", 

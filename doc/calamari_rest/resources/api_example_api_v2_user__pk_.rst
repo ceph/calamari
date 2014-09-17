@@ -1,14 +1,14 @@
 Examples for api/v2/user/<pk>
 =============================
 
-api/v2/user/1
+api/v2/user/2
 -------------
 
 .. code-block:: json
 
    {
-     "username": "admin", 
-     "id": 1, 
-     "email": ""
+     "username": "default", 
+     "id": 2, 
+     "email": "default@localhost.localdomain"
    }
 

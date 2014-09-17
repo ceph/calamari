@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/crush_rule_set
 =================================================
 
-api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/crush_rule_set
+api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/crush_rule_set
 ------------------------------------------------------------------
 
 .. code-block:: json

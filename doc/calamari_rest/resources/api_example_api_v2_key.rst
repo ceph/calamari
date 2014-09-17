@@ -9,15 +9,7 @@ api/v2/key
    [
      {
        "status": "pre", 
-       "id": "gravel1.rockery"
-     }, 
-     {
-       "status": "pre", 
-       "id": "gravel2.rockery"
-     }, 
-     {
-       "status": "pre", 
-       "id": "gravel3.rockery"
+       "id": "precise64"
      }, 
      {
        "status": "accepted", 

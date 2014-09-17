@@ -1,14 +1,14 @@
 Examples for api/v2/cluster/<fsid>/osd
 ======================================
 
-api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
+api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/osd
 -------------------------------------------------------
 
 .. code-block:: json
 
    [
      {
-       "uuid": "71ec6efb-3208-4c00-8a94-dccc068b51a5", 
+       "uuid": "2c2f9ae3-acc2-4f14-86ef-3e181090bbb5", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment000.cluster0.com", 
@@ -17,13 +17,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 0
      }, 
      {
-       "uuid": "7c2bf7f0-125c-407d-b00e-7f2d197274a0", 
+       "uuid": "566c503c-e64f-45c2-a9ca-3d07ee4145ed", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment000.cluster0.com", 
@@ -32,13 +38,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 1
      }, 
      {
-       "uuid": "f459eb16-93e6-473b-97d5-55b584cb8f9c", 
+       "uuid": "5cd83218-03c2-4c44-a7e0-ba90584cbd78", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment000.cluster0.com", 
@@ -47,13 +59,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 2
      }, 
      {
-       "uuid": "7c2cee1e-c1c1-41d4-bff1-8fc8bba9f4e4", 
+       "uuid": "60fe60d9-8eee-4c8e-aa5d-051ea8bdc97b", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment000.cluster0.com", 
@@ -62,13 +80,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 3
      }, 
      {
-       "uuid": "14f75388-b21c-4e95-96aa-d95de00d7525", 
+       "uuid": "331cad3c-2ad7-4acb-b3a8-41eee20e8e46", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment001.cluster0.com", 
@@ -77,13 +101,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 4
      }, 
      {
-       "uuid": "ddc12406-4e0a-4c52-b631-bdbb9a289321", 
+       "uuid": "2d2dcccc-2505-4acb-89a8-16402ffef117", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment001.cluster0.com", 
@@ -92,13 +122,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 5
      }, 
      {
-       "uuid": "5a7082be-e52a-406e-a718-d3a347ff8c7b", 
+       "uuid": "d593f943-05a5-4238-a087-629f2273334a", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment001.cluster0.com", 
@@ -107,13 +143,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 6
      }, 
      {
-       "uuid": "e6aea034-934b-4e4d-900c-a5d2e6f89214", 
+       "uuid": "2a5ca0e4-c3cc-4219-b096-d4fec9d2c849", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment001.cluster0.com", 
@@ -122,13 +164,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 7
      }, 
      {
-       "uuid": "93d86b22-8e99-41e5-92a5-f85d983c2918", 
+       "uuid": "ea092b0f-e55b-4d0e-9e91-3a8915112069", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment002.cluster0.com", 
@@ -137,13 +185,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 8
      }, 
      {
-       "uuid": "46df62ad-6fda-4a07-b4a7-80310468e1b1", 
+       "uuid": "2cd4057c-5250-43f0-95ea-08c2c8b8fbb3", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment002.cluster0.com", 
@@ -152,13 +206,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 9
      }, 
      {
-       "uuid": "2d7eb7b5-91d3-40aa-8068-67417ee93542", 
+       "uuid": "46b00e42-a4e4-4a8d-94fc-feccc84bdbbe", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment002.cluster0.com", 
@@ -167,13 +227,19 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 10
      }, 
      {
-       "uuid": "22599ab7-505b-4ae2-8da0-2b1bfdb8ca8b", 
+       "uuid": "cfae2632-6b99-4bb8-a269-ef862af948fa", 
        "reweight": 1.0, 
        "up": true, 
        "server": "figment002.cluster0.com", 
@@ -182,7 +248,13 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/osd
        "pools": [
          0, 
          1, 
-         2
+         2, 
+         3
+       ], 
+       "valid_commands": [
+         "scrub", 
+         "deep_scrub", 
+         "repair"
        ], 
        "cluster_addr": "", 
        "id": 11

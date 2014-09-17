@@ -1,14 +1,14 @@
 Examples for api/v2/cluster/<fsid>/pool/<pool_id>
 =================================================
 
-api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/pool/0
+api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/pool/0
 ----------------------------------------------------------
 
 .. code-block:: json
 
    {
      "full": false, 
-     "name": "newname", 
+     "name": "data", 
      "quota_max_objects": 0, 
      "hashpspool": false, 
      "min_size": 1, 

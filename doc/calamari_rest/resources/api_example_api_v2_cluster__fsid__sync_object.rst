@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/sync_object
 ==============================================
 
-api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/sync_object
+api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/sync_object
 ---------------------------------------------------------------
 
 .. code-block:: json
@@ -11,7 +11,7 @@ api/v2/cluster/cad0935f-e105-41db-8c71-4aa7c4602fb3/sync_object
      "osd_map", 
      "mon_map", 
      "mon_status", 
-     "pg_brief", 
+     "pg_summary", 
      "health", 
      "config"
    ]

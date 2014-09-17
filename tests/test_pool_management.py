@@ -150,6 +150,18 @@ class TestPoolManagement(RequestTestCase):
 
         return args
 
+    def _min_size_testvals(self, size):
+        '''
+        return a list of tuples of (test values, expected result) for
+        changing min_size relative to the argument 'size'
+        '''
+        return [
+            (size, size),
+            (size + 1, size),
+            (size - 1, size - 1),
+            (0, size - size / 2)
+        ]
+
     def test_create_args(self):
         """
         Test that when non-default attributes are passed to create, they are
@@ -160,16 +172,25 @@ class TestPoolManagement(RequestTestCase):
 
         # Some non-default values
         optionals = self._non_default_args(cluster_id)
-
-        pool_name = 'test1'
-        self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
-        pool_id = self._assert_visible(cluster_id, pool_name)['id']
-
-        pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
-        for var, val in optionals.items():
-            self.assertEqual(pool[var], val, "pool[%s]!=%s (actually %s)" % (
-                var, val, pool[var]
-            ))
+        for minsize, minsize_exp in self._min_size_testvals(optionals['size']):
+            pool_name = 'test1'
+            optionals['min_size'] = minsize
+            self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
+            pool_id = self._assert_visible(cluster_id, pool_name)['id']
+            pool = self.api.get("cluster/%s/pool/%s" %
+                                (cluster_id, pool_id)).json()
+            for var, val in optionals.items():
+                # for min_size, the value set may be modified;
+                # use 'expected' rather than exact 'val'
+                if var == 'min_size':
+                    val = minsize_exp
+                self.assertEqual(pool[var], val,
+                                 "pool[%s]!=%s (actually %s)" %
+                                 (var, val, pool[var]))
+                # TODO: call out to the ceph cluster to check the
+                # value landed
+            # remove pool to try next minsize value
+            self._delete(cluster_id, pool_id)
 
     def test_modification(self):
         """
@@ -195,6 +216,25 @@ class TestPoolManagement(RequestTestCase):
                 # value landed
             except:
                 log.exception("Exception updating %s:%s" % (var, val))
+                raise
+
+        # test some min_size updates, relative to pool size established
+        # above (which we reread here to isolate parts of the test)
+        size = self.api.get(
+            "cluster/%s/pool/%s" % (cluster_id, pool_id)).json()['size']
+        for val, expected in self._min_size_testvals(size):
+            try:
+                self._update(cluster_id, pool_id, {'min_size': val})
+                pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
+                self.assertEqual(
+                    pool['min_size'], expected,
+                    msg="set min_size {}, expected result {}, got result {}".
+                    format(val, expected, pool['min_size'])
+                )
+                # TODO: call out to the ceph cluster to check the
+                # value landed
+            except:
+                log.exception("Exception updating min_size:%s" % val)
                 raise
 
     def test_rename(self):

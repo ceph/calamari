@@ -31,7 +31,7 @@ To get backtraces of all running greenlets, do this:
 
 ::
 
-    >>> from cthulhu.manager import dump_stacks
+    >>> from cthulhu.manager.manager import dump_stacks
     >>> dump_stacks()
 
 

@@ -7,13 +7,13 @@ api/v2/info
 .. code-block:: json
 
    {
-     "bootstrap_rhel": "curl http://localhost:8000/bootstrap | python", 
+     "bootstrap_rhel": "curl http://localhost:8000/bootstrap | sudo python", 
      "license": "N/A", 
      "registered": "N/A", 
-     "hostname": "silver", 
-     "ipaddr": "172.16.197.1", 
-     "fqdn": "silver", 
-     "version": "2.0", 
+     "hostname": "precise64", 
+     "ipaddr": "127.0.1.1", 
+     "fqdn": "precise64", 
+     "version": "dev", 
      "bootstrap_ubuntu": "wget -O - http://localhost:8000/bootstrap | sudo python", 
      "bootstrap_url": "http://localhost:8000/bootstrap"
    }
