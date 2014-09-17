@@ -8,118 +8,124 @@ api/v2/server
 
    [
      {
+       "managed": true, 
+       "last_contact": "2014-09-17T19:36:42.380298+00:00", 
+       "hostname": "figment000", 
+       "fqdn": "figment000.cluster0.com", 
+       "boot_time": "1970-01-02T10:17:36+00:00", 
        "services": [
          {
            "running": true, 
-           "type": "osd", 
-           "id": "2", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "type": "mon", 
+           "id": "figment000", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "osd", 
            "id": "1", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
-           "type": "osd", 
-           "id": "0", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
-           "type": "mon", 
-           "id": "figment000", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "osd", 
            "id": "3", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "osd", 
+           "id": "2", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "osd", 
+           "id": "0", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }
        ], 
-       "hostname": "figment000", 
-       "managed": true, 
-       "fqdn": "figment000.cluster0.com", 
-       "last_contact": "2014-02-19T00:50:35.182615+00:00"
+       "ceph_version": "0.67.8-simulator"
      }, 
      {
+       "managed": true, 
+       "last_contact": "2014-09-17T19:36:44.925755+00:00", 
+       "hostname": "figment002", 
+       "fqdn": "figment002.cluster0.com", 
+       "boot_time": "1970-01-02T10:17:36+00:00", 
        "services": [
          {
            "running": true, 
            "type": "osd", 
            "id": "9", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
-           "type": "osd", 
-           "id": "8", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
-           "type": "osd", 
-           "id": "10", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "osd", 
            "id": "11", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "mon", 
            "id": "figment002", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "osd", 
+           "id": "10", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "osd", 
+           "id": "8", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }
        ], 
-       "hostname": "figment002", 
-       "managed": true, 
-       "fqdn": "figment002.cluster0.com", 
-       "last_contact": "2014-02-19T00:50:33.549330+00:00"
+       "ceph_version": "0.67.8-simulator"
      }, 
      {
+       "managed": true, 
+       "last_contact": "2014-09-17T19:36:42.347925+00:00", 
+       "hostname": "figment001", 
+       "fqdn": "figment001.cluster0.com", 
+       "boot_time": "1970-01-02T10:17:36+00:00", 
        "services": [
          {
            "running": true, 
-           "type": "mon", 
-           "id": "figment001", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
            "type": "osd", 
-           "id": "7", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
-         }, 
-         {
-           "running": true, 
-           "type": "osd", 
-           "id": "6", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "id": "4", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "osd", 
            "id": "5", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }, 
          {
            "running": true, 
            "type": "osd", 
-           "id": "4", 
-           "fsid": "cad0935f-e105-41db-8c71-4aa7c4602fb3"
+           "id": "6", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "osd", 
+           "id": "7", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+         }, 
+         {
+           "running": true, 
+           "type": "mon", 
+           "id": "figment001", 
+           "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
          }
        ], 
-       "hostname": "figment001", 
-       "managed": true, 
-       "fqdn": "figment001.cluster0.com", 
-       "last_contact": "2014-02-19T00:50:33.602012+00:00"
+       "ceph_version": "0.67.8-simulator"
      }
    ]
 

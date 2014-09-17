@@ -7,60 +7,35 @@ api/v2/event
 .. code-block:: json
 
    {
-     "count": 39, 
+     "count": 5, 
      "previous": null, 
      "results": [
        {
-         "message": "Succeeded: Modifying pool 'data' (name=newname, id=0)", 
-         "when": "2014-02-19T00:50:36.146", 
+         "message": "Started: Creating pool 'newname'", 
+         "when": "2014-09-17T19:36:43.893Z", 
          "severity": "INFO"
        }, 
        {
-         "message": "Started: Modifying pool 'data' (name=newname, id=0)", 
-         "when": "2014-02-19T00:50:36.071", 
+         "message": "Added server figment000.cluster0.com with 1 monitor service, 4 OSDs", 
+         "when": "2014-09-17T19:36:42.381Z", 
          "severity": "INFO"
        }, 
        {
-         "message": "Added server figment000.cluster0.com with 4 osd", 
-         "when": "2014-02-19T00:50:35.182", 
+         "message": "Added server figment001.cluster0.com with 4 OSDs, 1 monitor service", 
+         "when": "2014-09-17T19:36:42.349Z", 
          "severity": "INFO"
        }, 
        {
-         "message": "Added server figment001.cluster0.com with 1 mon, 4 osd", 
-         "when": "2014-02-19T00:50:33.603", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Added server figment002.cluster0.com with 4 osd, 1 mon", 
-         "when": "2014-02-19T00:50:33.550", 
+         "message": "Added server figment002.cluster0.com with 4 OSDs, 1 monitor service", 
+         "when": "2014-09-17T19:36:38.961Z", 
          "severity": "INFO"
        }, 
        {
          "message": "Calamari server started", 
-         "when": "2014-02-19T00:50:15.328", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Succeeded: Modifying pool 'data' (name=newname, id=0)", 
-         "when": "2014-02-19T00:49:52.807", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Started: Modifying pool 'data' (name=newname, id=0)", 
-         "when": "2014-02-19T00:49:52.731", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Added server figment000.cluster0.com with 4 osd", 
-         "when": "2014-02-19T00:49:51.711", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Added server figment002.cluster0.com with 4 osd, 1 mon", 
-         "when": "2014-02-19T00:49:48.434", 
+         "when": "2014-09-17T19:35:55.127Z", 
          "severity": "INFO"
        }
      ], 
-     "next": "http://localhost:8000/api/v2/event?page=2"
+     "next": null
    }
 
