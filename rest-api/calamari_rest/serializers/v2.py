@@ -89,7 +89,7 @@ class PoolSerializer(ValidatingSerializer):
     size = serializers.IntegerField(required=False,
                                     help_text="Replication factor")
     min_size = serializers.IntegerField(required=False,
-                                        help_text="Minimum number of replicas required for I/O")
+                                        help_text="Minimum number of replicas required for I/O; clamped to 'size' if greater; 0 defaults to 'size - int(size/2)'")
     crash_replay_interval = serializers.IntegerField(required=False,
                                                      help_text="Number of seconds to allow clients to "
                                                                "replay acknowledged, but uncommitted requests")
