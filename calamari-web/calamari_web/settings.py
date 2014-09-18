@@ -259,7 +259,9 @@ LDAP_URI = None
 JAVASCRIPT_DEBUG = False
 GRAPHITE_API_PREFIX = "/graphite"
 
-TEMPLATE_DIRS = (os.path.join(config.get('graphite', 'root'), "lib/python2.{pyminor}/site-packages/graphite/templates".format(pyminor=sys.version_info[1]),))
+TEMPLATE_DIRS = (os.path.join(config.get('graphite', 'root'),
+                              "lib/python2.{pyminor}/site-packages/graphite/templates".format(pyminor=sys.version_info[1])),
+                 )
 CONTENT_DIR = os.path.join(config.get('graphite', 'root'), "webapp/content/")
 STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
 
