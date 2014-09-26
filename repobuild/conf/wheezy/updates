@@ -1,6 +1,10 @@
 Name: salt
 Method: http://debian.saltstack.com/debian
+VerifyRelease: blindtrust
+GetInRelease: no
 
 Name: upstream
 Method: http://ftp.debian.org/debian
 FilterList: purge upstream.packages
+VerifyRelease: blindtrust
+GetInRelease: no
