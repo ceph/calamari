@@ -3,18 +3,15 @@ Method: http://ppa.launchpad.net/saltstack/salt/ubuntu
 # get everything but libzmq3; it comes from trusty.packages
 FilterFormula: Package (!% libzmq3*)
 VerifyRelease: blindtrust
-GetInRelease: no
 
 Name: upstream
 Method: http://archive.ubuntu.com/ubuntu/
 FilterList: purge upstream.packages
 VerifyRelease: blindtrust
-GetInRelease: no
 
 Name: trusty
 Method: http://archive.ubuntu.com/ubuntu/
 Suite: trusty
 FilterList: purge trusty.packages
 VerifyRelease: blindtrust
-GetInRelease: no
 
