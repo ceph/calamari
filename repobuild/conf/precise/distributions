@@ -7,3 +7,14 @@ Architectures: amd64
 Components: main
 Description: Ubuntu precise
 Update: upstream salt
+
+# we will get libzmq3 from trusty
+Origin: Ubuntu
+Label: Ubuntu Trusty
+Suite: stable
+Codename: trusty
+Version: 14.04
+Architectures: amd64
+Components: main universe
+Description: Ubuntu trusty
+Update: trusty
