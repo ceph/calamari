@@ -17,3 +17,12 @@ Architectures: amd64
 Components: main
 Description: Debian wheezy repo
 update: upstream
+
+Origin: Debian
+Label: Debian Jessie
+Suite: testing
+Codename: jessie
+Architectures: amd64
+Components: main
+Description: Debian jessie repo
+Update: jessie
