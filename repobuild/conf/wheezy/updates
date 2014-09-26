@@ -1,10 +1,18 @@
 Name: salt
 Method: http://debian.saltstack.com/debian
+FilterFormula: Package (!% libzmq*)
 VerifyRelease: blindtrust
 GetInRelease: no
 
 Name: upstream
 Method: http://ftp.debian.org/debian
 FilterList: purge upstream.packages
+VerifyRelease: blindtrust
+GetInRelease: no
+
+Name: jessie
+Method: http://ftp.debian.org/debian
+Suite: jessie
+FilterList: purge jessie.packages
 VerifyRelease: blindtrust
 GetInRelease: no
