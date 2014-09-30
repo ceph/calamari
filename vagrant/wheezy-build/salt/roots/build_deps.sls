@@ -2,7 +2,7 @@ install_salt:
     pkgrepo.managed:
     - humanname: salt wheezy
     - name: deb http://debian.saltstack.com/debian wheezy-saltstack main
-    - dist: wheezy
+    - dist: wheezy-saltstack
     - file: /etc/apt/sources.list.d/saltstack.list
     - keyurl: http://debian.saltstack.com/debian-salt-team-joehealy.gpg.key
     pkg.latest:
