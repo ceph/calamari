@@ -11,7 +11,7 @@ from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
 from calamari_rest.parsers.v2 import CrushMapParser
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer,\
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer
@@ -21,7 +21,7 @@ from calamari_rest.views.paginated_mixin import PaginatedMixin
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_common.config import CalamariConfig
-from calamari_common.types import CRUSH_MAP, CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
+from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
@@ -101,6 +101,54 @@ Allows retrieval and replacement of a crushmap as a whole
 
     def replace(self, request, fsid):
         return Response(self.client.update(fsid, CRUSH_MAP, None, request.DATA))
+
+
+class CrushNodeViewSet(RPCViewSet):
+    """
+The CRUSH algorithm distributes data objects among storage devices according to a per-device weight value, approximating a uniform probability distribution. CRUSH distributes objects and their replicas according to the hierarchical cluster map you define. Your CRUSH map represents the available storage devices and the logical elements that contain them.
+    """
+
+    serializer_class = CrushNodeSerializer
+
+    def create(self, request, fsid):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.create(fsid, CRUSH_NODE, serializer.get_data())
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request, fsid):
+        crush_nodes = self.client.list(fsid, CRUSH_NODE, {})
+        return Response(self.serializer_class(crush_nodes).data)
+
+    def retrieve(self, request, fsid, node_id):
+        crush_node = self.client.get(fsid, CRUSH_NODE, int(node_id))
+        if crush_node:
+            return Response(self.serializer_class(DataObject(crush_node)).data)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, fsid, node_id):
+        delete_response = self.client.delete(fsid, CRUSH_NODE, int(node_id), status=status.HTTP_202_ACCEPTED)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
+
+    def update(self, request, fsid, node_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            updates = serializer.get_data()
+
+            response = self.client.update(fsid, CRUSH_NODE, int(node_id), updates)
+            assert 'request_id' in response
+            return Response(response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CrushRuleViewSet(RPCViewSet):

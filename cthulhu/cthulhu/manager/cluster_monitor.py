@@ -10,11 +10,12 @@ from calamari_common.salt_wrapper import condition_kwarg, LocalClient, SaltEvent
 
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
+from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
 from cthulhu.manager.crush_request_factory import CrushRequestFactory
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from calamari_common.types import CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
+from calamari_common.types import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.manager import config, salt_config
 from cthulhu.util import now
 
@@ -182,6 +183,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
         self._request_factories = {
             CRUSH_MAP: CrushRequestFactory,
+            CRUSH_NODE: CrushNodeRequestFactory,
             OSD: OsdRequestFactory,
             POOL: PoolRequestFactory
         }
