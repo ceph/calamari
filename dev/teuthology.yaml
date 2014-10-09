@@ -8,10 +8,10 @@ interactive-on-error: true
 tasks:
 - install:
     branch:
-        dumpling
+        firefly
     extras: yes
 - ssh_keys:
 - ceph-deploy:
     branch:
-        stable: dumpling
+        stable: firefly
 - interactive:
