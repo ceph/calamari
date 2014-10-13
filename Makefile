@@ -260,6 +260,7 @@ lint:
 		flake8 calamari-common/ --ignore=E501 &&\
 		flake8 calamari-web/ --ignore=E501 &&\
 		flake8 tests/ --ignore=E501 &&\
+		flake8 salt/srv/salt/_modules/ --ignore=E501 &&\
 		echo "OK"
 
 check: unit-tests lint

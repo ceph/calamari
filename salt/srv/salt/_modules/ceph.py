@@ -227,7 +227,7 @@ def transform_crushmap(data, operation):
             args = ["crushtool", "-d", f.name]
         else:
             return 1, '', 'Did not specify get or set'
-        
+
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
         return p.returncode, stdout, stderr
@@ -404,7 +404,6 @@ def get_cluster_object(cluster_name, sync_type, since):
             ret, stdout, outs = transform_crushmap(raw, 'get')
             assert ret == 0
             data['crush_map_text'] = stdout
-
 
     return {
         'type': sync_type,
