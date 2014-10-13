@@ -512,16 +512,22 @@ def service_status(socket_path):
     Given an admin socket path, learn all we can about that service
     """
     cluster_name, service_type, service_id = re.match("^(.+)-(mon|osd|mds)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
-    # Interrogate the service for its FSID
-    config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
-    fsid = config['fsid']
 
     status = None
-    if service_type == 'mon':
+    # Interrogate the service for its FSID
+    if service_type != 'mon':
+        try:
+            fsid = json.loads(admin_socket(socket_path, ['status'], 'json'))['cluster_fsid']
+        except AdminSocketError:
+            # older osd/mds daemons don't support 'status'; try our best
+            config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
+            fsid = config['fsid']
+    else:
         # For mons, we send some extra info here, because if they're out
         # of quorum we may not find out from the cluster heartbeats, so
         # need to use the service heartbeats to detect that.
         status = json.loads(admin_socket(socket_path, ['mon_status'], 'json'))
+        fsid = status['monmap']['fsid']
 
     version_response = admin_socket(socket_path, ['version'], 'json')
     if version_response is not None:
