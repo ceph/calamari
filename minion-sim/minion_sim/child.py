@@ -121,6 +121,16 @@ def main():
                     pass
                 elif prefix == "osd set":
                     cluster.set_osd_flags(args['key'])
+                elif prefix == "osd crush add":
+                    cluster.crush_add(args)
+                elif prefix == "osd crush add-bucket":
+                    cluster.crush_add_bucket(args)
+                elif prefix == "osd crush move":
+                    cluster.crush_move(args)
+                elif prefix == "osd crush remove":
+                    cluster.crush_remove(args)
+                elif prefix == "osd crush reweight":
+                    cluster.crush_reweight(args)
                 else:
                     raise NotImplementedError()
             except Exception as e:

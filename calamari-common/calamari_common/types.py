@@ -56,6 +56,8 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
+            self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
+            self.parent_bucket_by_node_id = self._map_parent_buckets(data['tree']['nodes'])
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -68,9 +70,35 @@ class OsdMap(VersionedSyncObject):
             self.osd_tree_node_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
+    def _filter_crush_nodes(self, nodes):
+        crush_nodes = {}
+        for node in nodes:
+            for item in node['items']:
+                item['weight'] = float(item['weight']) / 0x10000
+
+            node['weight'] = float(node['weight']) / 0x10000
+            crush_nodes[node['id']] = node
+        return crush_nodes
+
+    def _map_parent_buckets(self, nodes):
+        """
+        Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
+        """
+        parent_map = {}
+        for node in nodes:
+            parent_map.update([(child_id, node) for child_id in node.get('children', [])])
+        log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
+        return parent_map
+
     @memoize
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
+
+    def get_tree_node(self, node_id):
+        try:
+            return self.crush_node_by_id[node_id]
+        except KeyError:
+            raise NotFound(CRUSH_NODE, node_id)
 
     def _get_crush_rule_osds(self, rule):
         nodes_by_id = self.get_tree_nodes_by_id()
@@ -222,6 +250,10 @@ class NotFound(Exception):
         return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
 
 
+class BucketNotEmptyError(Exception):
+    pass
+
+
 MON = 'mon'
 OSD = 'osd'
 MDS = 'mds'
@@ -229,6 +261,7 @@ POOL = 'pool'
 OSD_MAP = 'osd_map'
 CRUSH_MAP = 'crush_map'
 CRUSH_RULE = 'crush_rule'
+CRUSH_NODE = 'crush_node'
 CLUSTER = 'cluster'
 SERVER = 'server'
 

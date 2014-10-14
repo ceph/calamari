@@ -112,6 +112,8 @@ class RPCView(APIView):
         except RemoteError as e:
             if e.name == 'NotFound':
                 return Response(str(e.msg), status=status.HTTP_404_NOT_FOUND)
+            elif e.name == 'BucketNotEmptyError':
+                return Response(str(e.msg), status=status.HTTP_409_CONFLICT)
             else:
                 raise
         except NotFound as e:

@@ -12,18 +12,12 @@ import json
 import urllib2
 
 from minion_sim.sim import MinionSim
-from minion_sim.log import log as minion_sim_log
 from django.utils.unittest.case import SkipTest
 from tests.config import TestConfig
 
 config = TestConfig()
-logging.basicConfig()
-
-log = logging.getLogger(__name__)
-
-handler = logging.FileHandler("minion_sim.log")
-handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
-minion_sim_log.addHandler(handler)
+log = logging.getLogger("ceph_ctl")
+log.setLevel(logging.DEBUG)
 
 
 class CephControl(object):
@@ -171,6 +165,8 @@ class ExternalCephControl(CephControl):
         self.cluster_distro = config.get('testing', 'cluster_distro')
 
     def _run_command(self, target, command):
+        log.debug(target)
+        log.debug(command)
         user_at_host = next(t for t in self.config['cluster'].iterkeys() if t.split('@')[1] == target)
         proc = Popen([
             'ssh',
@@ -191,7 +187,7 @@ class ExternalCephControl(CephControl):
         return out
 
     def configure(self, server_count, cluster_count=1):
-
+        log.debug('external configure')
         # I hope you only wanted three, because I ain't buying
         # any more servers...
         if server_count > 3 or cluster_count != 1:
@@ -200,6 +196,7 @@ class ExternalCephControl(CephControl):
         self._bootstrap(self.config['master_fqdn'])
         self.restart_minions()
 
+        self.reset_crush_map()
         self.reset_all_osds(self._list_osds())
 
         # Ensure all OSDs are initially up: assertion per #7813
@@ -224,7 +221,9 @@ class ExternalCephControl(CephControl):
         return self.get_server_fqdns()
 
     def shutdown(self):
-        pass
+        log.info('Resetting CRUSH map on shutdown')
+        temp_crushmap_filename = "/tmp/test_crush_map"
+        self._run_command(self._get_admin_node(), "ceph --cluster {c} osd setcrushmap -i {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
 
     def get_fqdns(self, fsid):
         # TODO when we support multiple cluster change this
@@ -236,6 +235,16 @@ class ExternalCephControl(CephControl):
             if minion_id and minion_id not in target:
                 continue
             self._run_command(target, "sudo service salt-minion {action}".format(action=action))
+
+    def reset_crush_map(self):
+        """
+        This depends on the map being good on first run and the admin_node being stable because it is the persistance of the tempfile that make this work
+        """
+        # TODO make this more robust
+        temp_crushmap_filename = "/tmp/test_crush_map"
+        log.info('Resetting CRUSH map')
+        # get map store it
+        self._run_command(self._get_admin_node(), "ls {crush_name} || ceph --cluster {c} osd getcrushmap -o {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
 
     def _wait_for_state(self, command, state):
         log.info('Waiting for {state} on cluster'.format(state=state))
@@ -262,7 +271,8 @@ class ExternalCephControl(CephControl):
         return not osd_down + osd_out
 
     def reset_all_osds(self, osd_stat):
-        for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd['weight'])) != 1]:
+        # this structure doesn't contain weight in dumpling = default 0
+        for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd.get('weight', 0))) != 1]:
             self._run_command(self._get_admin_node(), 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
 
         for flag in ['pause']:
