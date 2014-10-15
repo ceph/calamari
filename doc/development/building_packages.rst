@@ -37,7 +37,7 @@ calamari-clients
 .. note::
 
     The ``precise-build`` vagrant configuration is the only one that actually builds the UI: the
-    other configurtions in this folder simply take the output from ``precise-build`` and repackage
+    other configurations in this folder simply take the output from ``precise-build`` and repackage
     it for another distribution.
 
 Build results
@@ -76,8 +76,8 @@ Troubleshooting
 ---------------
 
 First a general note: while the vagrant environments are automatically provisioned
-with salt during "vagrant up", this isn't foolproof.  If something seems wrong,
-check for errors like this:
+with salt during "vagrant up", this isn't foolproof.  If something seems wrong
+or built packages are not seen in the directory above mentioned, try this:
 
 .. code-block:: bash
 
