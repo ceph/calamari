@@ -516,7 +516,7 @@ def service_status(socket_path):
     # Interrogate the service for its FSID
     if service_type != 'mon':
         try:
-            fsid = json.loads(admin_socket(socket_path, ['status'], 'json'))['cluster_fsid'])
+            fsid = json.loads(admin_socket(socket_path, ['status'], 'json'))['cluster_fsid']
         except AdminSocketError:
             # older osd/mds daemons don't support 'status'; try our best
             config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
