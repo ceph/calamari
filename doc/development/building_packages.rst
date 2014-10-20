@@ -13,8 +13,8 @@ calamari-server
 
 ::
 
-    git clone git@github.com:ceph/calamari.git
-    git clone git@github.com:ceph/Diamond.git --branch=calamari
+    git clone https://github.com/ceph/calamari.git
+    git clone https://github.com/ceph/Diamond.git --branch=calamari
     cd calamari/vagrant/precise-build
     vagrant up
 
@@ -30,7 +30,7 @@ calamari-clients
 
 ::
 
-  git clone git@github.com:ceph/calamari-clients.git
+  git clone https://github.com/ceph/calamari-clients.git
   cd calamari-clients/vagrant/precise-build
   vagrant up
 
