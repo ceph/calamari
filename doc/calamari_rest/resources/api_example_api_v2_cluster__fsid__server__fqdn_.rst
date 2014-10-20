@@ -8,7 +8,7 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/server/figment000.cluster0.c
 
    {
      "managed": true, 
-     "last_contact": "2014-09-17T19:36:42.380298+00:00", 
+     "last_contact": "2014-10-20T19:29:52.102351+00:00", 
      "ceph_version": "0.67.8-simulator", 
      "backend_addr": "", 
      "hostname": "figment000", 
@@ -19,14 +19,14 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/server/figment000.cluster0.c
      "services": [
        {
          "running": true, 
-         "type": "mon", 
-         "id": "figment000", 
+         "type": "osd", 
+         "id": "1", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
          "running": true, 
          "type": "osd", 
-         "id": "1", 
+         "id": "2", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
@@ -37,8 +37,8 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/server/figment000.cluster0.c
        }, 
        {
          "running": true, 
-         "type": "osd", 
-         "id": "2", 
+         "type": "mon", 
+         "id": "figment000", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
