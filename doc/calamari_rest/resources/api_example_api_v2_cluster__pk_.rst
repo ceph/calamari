@@ -7,7 +7,7 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4
 .. code-block:: json
 
    {
-     "update_time": "2014-09-17T19:36:44.935570+00:00", 
+     "update_time": "2014-10-20T19:29:51.192009+00:00", 
      "id": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4", 
      "name": "ceph_fake"
    }

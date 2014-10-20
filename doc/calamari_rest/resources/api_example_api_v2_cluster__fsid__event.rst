@@ -12,22 +12,22 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/event
      "results": [
        {
          "message": "Started: Creating pool 'newname'", 
-         "when": "2014-09-17T19:36:43.893Z", 
-         "severity": "INFO"
-       }, 
-       {
-         "message": "Added server figment000.cluster0.com with 1 monitor service, 4 OSDs", 
-         "when": "2014-09-17T19:36:42.381Z", 
+         "when": "2014-10-20T12:29:52.536-07:00", 
          "severity": "INFO"
        }, 
        {
          "message": "Added server figment001.cluster0.com with 4 OSDs, 1 monitor service", 
-         "when": "2014-09-17T19:36:42.349Z", 
+         "when": "2014-10-20T12:29:52.142-07:00", 
+         "severity": "INFO"
+       }, 
+       {
+         "message": "Added server figment000.cluster0.com with 4 OSDs, 1 monitor service", 
+         "when": "2014-10-20T12:29:52.103-07:00", 
          "severity": "INFO"
        }, 
        {
          "message": "Added server figment002.cluster0.com with 4 OSDs, 1 monitor service", 
-         "when": "2014-09-17T19:36:38.961Z", 
+         "when": "2014-10-20T12:29:51.178-07:00", 
          "severity": "INFO"
        }
      ], 

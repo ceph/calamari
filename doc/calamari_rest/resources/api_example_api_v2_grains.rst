@@ -9,12 +9,11 @@ api/v2/grains
    {
      "kernel": "Linux", 
      "domain": "", 
-     "kernelrelease": "3.2.0-23-generic", 
+     "zmqversion": "4.0.4", 
+     "kernelrelease": "3.13.0-24-generic", 
      "pythonpath": [
        "/home/vagrant/calamari/calamari-web", 
        "/home/vagrant/calamari/webapp/calamari", 
-       "/home/vagrant/calamari/env/local/lib/python2.7/site-packages/distribute-0.6.24-py2.7.egg", 
-       "/home/vagrant/calamari/env/local/lib/python2.7/site-packages/pip-1.1-py2.7.egg", 
        "/home/vagrant/calamari/env/src/coverage", 
        "/home/vagrant/calamari/env/src/whisper", 
        "/home/vagrant/calamari/rest-api", 
@@ -23,18 +22,17 @@ api/v2/grains
        "/home/vagrant/calamari/calamari-web", 
        "/home/vagrant/calamari/calamari-common", 
        "/home/vagrant/calamari/env/lib/python2.7", 
-       "/home/vagrant/calamari/env/lib/python2.7/plat-linux2", 
+       "/home/vagrant/calamari/env/lib/python2.7/plat-x86_64-linux-gnu", 
        "/home/vagrant/calamari/env/lib/python2.7/lib-tk", 
        "/home/vagrant/calamari/env/lib/python2.7/lib-old", 
        "/home/vagrant/calamari/env/lib/python2.7/lib-dynload", 
        "/usr/lib/python2.7", 
-       "/usr/lib/python2.7/plat-linux2", 
+       "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
        "/usr/lib/python2.7/lib-tk", 
        "/home/vagrant/calamari/env/local/lib/python2.7/site-packages", 
        "/usr/local/lib/python2.7/site-packages", 
        "/usr/local/lib/python2.7/dist-packages", 
        "/usr/lib/python2.7/dist-packages", 
-       "/usr/lib/pymodules/python2.7", 
        "/home/vagrant/calamari/calamari-web/calamari_web/thirdparty"
      ], 
      "ip_interfaces": {
@@ -44,46 +42,49 @@ api/v2/grains
        "virbr0": [
          "192.168.122.1"
        ], 
+       "tun0": [
+         "10.99.118.70"
+       ], 
        "eth1": [
-         "192.168.107.138"
+         "192.168.1.21"
        ], 
        "eth0": [
-         "10.0.2.15"
+         "192.168.4.141"
        ]
      }, 
-     "mem_total": 365, 
+     "mem_total": 2001, 
      "saltversioninfo": [
        2014, 
        1, 
+       10, 
        0
      ], 
      "id": "", 
-     "osrelease": "12.04", 
+     "osrelease": "14.04", 
      "ps": "ps -efHww", 
      "server_id": 0, 
-     "lsb_distrib_description": "Ubuntu 12.04 LTS", 
+     "lsb_distrib_description": "Ubuntu 14.04 LTS", 
      "num_cpus": 2, 
      "hwaddr_interfaces": {
        "lo": "00:00:00:00:00:00", 
-       "virbr0": "36:92:b2:48:8b:9b", 
-       "eth1": "08:00:27:30:de:31", 
-       "eth0": "08:00:27:88:0c:a6"
+       "virbr0": "5a:55:99:1b:1d:40", 
+       "eth1": "00:0c:29:06:63:21", 
+       "eth0": "00:0c:29:06:63:17"
      }, 
-     "virtual": "VirtualBox", 
+     "virtual": "VMware", 
      "osfullname": "Ubuntu", 
      "master": "", 
      "ipv4": [
-       "10.0.2.15", 
+       "10.99.118.70", 
        "127.0.0.1", 
-       "192.168.107.138", 
-       "192.168.122.1"
+       "192.168.1.21", 
+       "192.168.122.1", 
+       "192.168.4.141"
      ], 
      "ipv6": [
-       "2607:f298:a:607:3c03:41c9:95bf:f4cc", 
-       "2607:f298:a:607:a00:27ff:fe30:de31", 
        "::1", 
-       "fe80::a00:27ff:fe30:de31", 
-       "fe80::a00:27ff:fe88:ca6"
+       "fe80::20c:29ff:fe06:6317", 
+       "fe80::20c:29ff:fe06:6321"
      ], 
      "cpu_flags": [
        "fpu", 
@@ -104,52 +105,88 @@ api/v2/grains
        "pat", 
        "pse36", 
        "clflush", 
+       "dts", 
        "mmx", 
        "fxsr", 
        "sse", 
        "sse2", 
-       "ht", 
+       "ss", 
        "syscall", 
        "nx", 
+       "pdpe1gb", 
        "rdtscp", 
        "lm", 
        "constant_tsc", 
-       "rep_good", 
+       "arch_perfmon", 
+       "pebs", 
+       "bts", 
        "nopl", 
+       "xtopology", 
+       "tsc_reliable", 
+       "nonstop_tsc", 
+       "aperfmperf", 
+       "eagerfpu", 
        "pni", 
+       "pclmulqdq", 
        "ssse3", 
-       "lahf_lm"
+       "fma", 
+       "cx16", 
+       "pcid", 
+       "sse4_1", 
+       "sse4_2", 
+       "x2apic", 
+       "movbe", 
+       "popcnt", 
+       "aes", 
+       "xsave", 
+       "avx", 
+       "f16c", 
+       "rdrand", 
+       "hypervisor", 
+       "lahf_lm", 
+       "ida", 
+       "arat", 
+       "epb", 
+       "xsaveopt", 
+       "pln", 
+       "pts", 
+       "dtherm", 
+       "fsgsbase", 
+       "smep"
      ], 
-     "localhost": "precise64", 
+     "localhost": "localhost", 
      "lsb_distrib_id": "Ubuntu", 
      "fqdn_ip4": [
-       "127.0.1.1"
+       "127.0.1.1", 
+       "127.0.0.1"
      ], 
-     "fqdn_ip6": [], 
-     "nodename": "precise64", 
-     "saltversion": "2014.1.0", 
-     "lsb_distrib_release": "12.04", 
-     "saltpath": "/home/vagrant/calamari/env/local/lib/python2.7/site-packages/salt", 
+     "fqdn_ip6": [
+       "::1"
+     ], 
+     "nodename": "localhost", 
+     "saltversion": "2014.1.10", 
+     "lsb_distrib_release": "14.04", 
+     "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
      "pythonversion": [
        2, 
        7, 
-       3, 
+       6, 
        "final", 
        0
      ], 
-     "host": "precise64", 
+     "host": "localhost", 
      "os_family": "Debian", 
-     "oscodename": "precise", 
-     "defaultencoding": "ISO8859-1", 
-     "osfinger": "Ubuntu-12.04", 
+     "oscodename": "trusty", 
+     "defaultencoding": "UTF-8", 
+     "osfinger": "Ubuntu-14.04", 
      "num_gpus": 0, 
-     "cpu_model": "Intel(R) Core(TM) i5-2400 CPU @ 3.10GHz", 
-     "fqdn": "precise64", 
+     "cpu_model": "Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz", 
+     "fqdn": "localhost", 
      "osarch": "amd64", 
      "cpuarch": "x86_64", 
-     "lsb_distrib_codename": "precise", 
+     "lsb_distrib_codename": "trusty", 
      "gpus": [], 
-     "path": "/home/vagrant/calamari/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/opt/vagrant_ruby/bin", 
+     "path": "/home/vagrant/calamari/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/home/vagrant/plan9port/bin", 
      "os": "Ubuntu", 
      "defaultlanguage": "en_US"
    }

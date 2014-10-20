@@ -1,8 +1,8 @@
-Examples for api/v2/cluster/<fsid>/request
-==========================================
+Examples for api/v2/request
+===========================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/request
------------------------------------------------------------
+api/v2/request
+--------------
 
 .. code-block:: json
 

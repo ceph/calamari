@@ -23,6 +23,10 @@ api/v2/cluster/\<fsid\>/config/\<key\>                     :ref:`Config <ConfigV
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_map                          :ref:`Crush Map <CrushMapViewSet>`                                                                                               Yes     Yes               
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
+api/v2/cluster/\<fsid\>/crush_node                         :ref:`Crush Node <CrushNodeViewSet>`                                                                                             Yes     Yes               
+---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
+api/v2/cluster/\<fsid\>/crush_node/\<node_id\>             :ref:`Crush Node <CrushNodeViewSet>`                                                                                             Yes          Yes   Yes    
+---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_rule_set                     :ref:`Crush Rule Set <CrushRuleSetViewSet>`           :doc:`Example <api_example_api_v2_cluster__fsid__crush_rule_set>`          Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- -------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_rule                         :ref:`Crush Rule <CrushRuleViewSet>`                  :doc:`Example <api_example_api_v2_cluster__fsid__crush_rule>`              Yes                       
@@ -267,6 +271,50 @@ Fields
 ______
 
 *No field data available*
+
+
+.. _CrushNodeViewSet:
+
+Crush Node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+The CRUSH algorithm distributes data objects among storage devices according to a per-device weight value, approximating a uniform probability distribution. CRUSH distributes objects and their replicas according to the hierarchical cluster map you define. Your CRUSH map represents the available storage devices and the logical elements that contain them.
+    
+
+URLs
+____
+
+============================================================================================================== === === ==== ===== ====== 
+URL                                                                                                            GET PUT POST PATCH DELETE 
+============================================================================================================== === === ==== ===== ====== 
+:doc:`api/v2/cluster/\<fsid\>/crush_node <api_example_api_v2_cluster__fsid__crush_node>`                       Yes     Yes               
+-------------------------------------------------------------------------------------------------------------- --- --- ---- ----- ------ 
+:doc:`api/v2/cluster/\<fsid\>/crush_node/\<node_id\> <api_example_api_v2_cluster__fsid__crush_node__node_id_>` Yes          Yes   Yes    
+============================================================================================================== === === ==== ===== ====== 
+
+
+Fields
+______
+
+=========== =============== ======== ======= ======= ================================================================================================================================================================= 
+Name        Type            Readonly Create  Modify  Description                                                                                                                                                       
+=========== =============== ======== ======= ======= ================================================================================================================================================================= 
+bucket_type string          False    Allowed Allowed Buckets facilitate a hierarchy of nodes and leaves. Node (or non-leaf) buckets typically represent physical locations in a hierarchy. e.g. host, rack, datacenter 
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+name        string          False    Allowed Allowed unique name                                                                                                                                                       
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+id          integer         False    Allowed         unique ID expressed as an integer (optional)                                                                                                                      
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+weight      float           False                    the relative capacity/capability of the item(s)                                                                                                                   
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+alg         multiple choice False                    bucket algorithm                                                                                                                                                  
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+hash        integer         False                    hash algorithm                                                                                                                                                    
+----------- --------------- -------- ------- ------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+items       field           False    Allowed Allowed A bucket may have one or more items. The items may consist of node buckets or leaves. Items may have a weight that reflects the relative weight of the item.      
+=========== =============== ======== ======= ======= ================================================================================================================================================================= 
+
 
 
 .. _CrushRuleSetViewSet:
@@ -1121,21 +1169,25 @@ Examples
    :maxdepth: 1
 
 
+   api_example_api_v2_cluster__fsid__crush_node
+
    api_example_api_v2_info
 
    api_example_api_v2_cluster__fsid__event
 
    api_example_api_v2_cluster__fsid__sync_object__sync_type_
 
+   api_example_api_v2_cluster__fsid__mon
+
    api_example_api_v2_cluster__fsid__pool__pool_id_
 
    api_example_api_v2_request__request_id_
 
+   api_example_api_v2_cluster__fsid__crush_node__node_id_
+
    api_example_api_v2_cluster__fsid__crush_rule_set
 
    api_example_api_v2_cluster__fsid__crush_map
-
-   api_example_api_v2_cluster__fsid__log
 
    api_example_api_v2_auth_login
 
@@ -1163,7 +1215,7 @@ Examples
 
    api_example_api_v2_cluster__fsid__mon__mon_id_
 
-   api_example_api_v2_cluster__fsid__mon
+   api_example_api_v2_cluster__fsid__log
 
    api_example_api_v2_cluster__fsid__sync_object
 

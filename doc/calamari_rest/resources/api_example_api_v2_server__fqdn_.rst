@@ -8,21 +8,21 @@ api/v2/server/figment000.cluster0.com
 
    {
      "managed": true, 
-     "last_contact": "2014-09-17T19:36:42.380298+00:00", 
+     "last_contact": "2014-10-20T19:29:52.102351+00:00", 
      "hostname": "figment000", 
      "fqdn": "figment000.cluster0.com", 
      "boot_time": "1970-01-02T10:17:36+00:00", 
      "services": [
        {
          "running": true, 
-         "type": "mon", 
-         "id": "figment000", 
+         "type": "osd", 
+         "id": "1", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
          "running": true, 
          "type": "osd", 
-         "id": "1", 
+         "id": "2", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
@@ -33,8 +33,8 @@ api/v2/server/figment000.cluster0.com
        }, 
        {
          "running": true, 
-         "type": "osd", 
-         "id": "2", 
+         "type": "mon", 
+         "id": "figment000", 
          "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
        }, 
        {
