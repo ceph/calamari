@@ -65,12 +65,17 @@ class TestOsdMap(UnitTestCase):
 
 class TestCrushNodes(UnitTestCase):
 
+    def setUp(self):
+        self.osd_map_data = MagicMock()
+        self.osd_map_data.__getitem__.side_effect = lambda x: self.data[x] if x in self.data else self.osd_map_data
+
     def test_parent_map_none(self):
-        osd_map = OsdMap(None, None)
-        self.assertEqual({}, osd_map._map_parent_buckets({}))
+        self.data = {'tree': {'nodes': []}}
+        osd_map = OsdMap(None, self.osd_map_data)
+        self.assertEqual({}, osd_map.parent_bucket_by_node_id)
 
     def test_parent_map_one(self):
-        tree_nodes = [
+        self.data = {'tree': {'nodes': [
             {"children": [],
              "type": "rack",
              "id": -5,
@@ -83,52 +88,26 @@ class TestCrushNodes(UnitTestCase):
              "name": "default",
              "type_id": 6,
              }
-        ]
+        ]}}
 
-        osd_map = OsdMap(None, None)
-        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {
-            -5: {"children": [-5],
-                 "type": "root",
-                 "id": -1,
-                 "name": "default",
-                 "type_id": 6
-                 }
-        })
+        osd_map = OsdMap(None, self.osd_map_data)
+        self.assertEqual(osd_map.parent_bucket_by_node_id, {-5: [{'type_id': 6, 'type': 'root', 'children': [-5], 'name': 'default', 'id': -1}]})
 
     def test_parent_map_some(self):
-        tree_nodes = [
+        self.data = {'tree': {'nodes': [
             {"children": [-4, -3, -2],
              "type": "root",
              "id": -1,
              "name": "default",
              "type_id": 6
              }
-        ]
+        ]}}
 
-        osd_map = OsdMap(None, None)
-        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {
-            -4: {"children": [-4, -3, -2],
-                 "type": "root",
-                 "id": -1,
-                 "name": "default",
-                 "type_id": 6
-                 },
-            -3: {"children": [-4, -3, -2],
-                 "type": "root",
-                 "id": -1,
-                 "name": "default",
-                 "type_id": 6
-                 },
-            -2: {"children": [-4, -3, -2],
-                 "type": "root",
-                 "id": -1,
-                 "name": "default",
-                 "type_id": 6
-                 },
-        })
+        osd_map = OsdMap(None, self.osd_map_data)
+        self.assertEqual(osd_map.parent_bucket_by_node_id, {-4: [{'type_id': 6, 'type': 'root', 'children': [-4, -3, -2], 'name': 'default', 'id': -1}], -3: [{'type_id': 6, 'type': 'root', 'children': [-4, -3, -2], 'name': 'default', 'id': -1}], -2: [{'type_id': 6, 'type': 'root', 'children': [-4, -3, -2], 'name': 'default', 'id': -1}]})
 
     def test_parent_map_many(self):
-        tree_nodes = [
+        self.data = {'tree': {'nodes': [
             {
                 "children": [],
                 "type": "rack",
@@ -207,39 +186,291 @@ class TestCrushNodes(UnitTestCase):
                 "type": "osd",
                 "id": 2
             }
-        ]
+        ]}}
 
-        osd_map = OsdMap(None, None)
-        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {-4: {'children': [-4, -2, -3],
-                                                                        'id': -1,
-                                                                        'name': 'default',
-                                                                        'type': 'root',
-                                                                        'type_id': 6},
-                                                                   -3: {'children': [-4, -2, -3],
-                                                                        'id': -1,
-                                                                        'name': 'default',
-                                                                        'type': 'root',
-                                                                        'type_id': 6},
-                                                                   -2: {'children': [-4, -2, -3],
-                                                                        'id': -1,
-                                                                        'name': 'default',
-                                                                        'type': 'root',
-                                                                        'type_id': 6},
-                                                                   0: {'children': [0],
-                                                                       'id': -2,
-                                                                       'name': 'vpm114',
-                                                                       'type': 'host',
-                                                                       'type_id': 1},
-                                                                   1: {'children': [1],
-                                                                       'id': -3,
-                                                                       'name': 'vpm068',
-                                                                       'type': 'host',
-                                                                       'type_id': 1},
-                                                                   2: {'children': [2],
-                                                                       'id': -4,
-                                                                       'name': 'vpm140',
-                                                                       'type': 'host',
-                                                                       'type_id': 1}})
+        osd_map = OsdMap(None, self.osd_map_data)
+        self.assertEqual(osd_map.parent_bucket_by_node_id, {0: [{'type_id': 1, 'type': 'host', 'children': [0], 'name': 'vpm114', 'id': -2}], 1: [{'type_id': 1, 'type': 'host', 'children': [1], 'name': 'vpm068', 'id': -3}], 2: [{'type_id': 1, 'type': 'host', 'children': [2], 'name': 'vpm140', 'id': -4}], -4: [{'type_id': 6, 'type': 'root', 'children': [-4, -2, -3], 'name': 'default', 'id': -1}], -3: [{'type_id': 6, 'type': 'root', 'children': [-4, -2, -3], 'name': 'default', 'id': -1}], -2: [{'type_id': 6, 'type': 'root', 'children': [-4, -2, -3], 'name': 'default', 'id': -1}]})
+
+    def test_parent_map_multiple_roots(self):
+        self.data = {"tree": {"nodes": [
+            {
+                "children": [
+                    2
+                ],
+                "type": "host",
+                "id": -40,
+                "name": "vpm145ssd",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.2",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 1,
+                "type": "osd",
+                "id": 2
+            },
+            {
+                "children": [
+                    0
+                ],
+                "type": "host",
+                "id": -30,
+                "name": "vpm113ssd",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.0",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 1,
+                "type": "osd",
+                "id": 0
+            },
+            {
+                "children": [
+                    1
+                ],
+                "type": "host",
+                "id": -20,
+                "name": "vpm061ssd",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.1",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 1,
+                "type": "osd",
+                "id": 1
+            },
+            {
+                "children": [
+                    -5
+                ],
+                "type": "root",
+                "id": -10,
+                "name": "defaultssd",
+                "type_id": 10
+            },
+            {
+                "children": [
+                    -4,
+                    -3,
+                    -2
+                ],
+                "type": "rack",
+                "id": -5,
+                "name": "rackthing",
+                "type_id": 3
+            },
+            {
+                "children": [
+                    1
+                ],
+                "type": "host",
+                "id": -2,
+                "name": "vpm061",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.1",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 3,
+                "type": "osd",
+                "id": 1
+            },
+            {
+                "children": [
+                    0
+                ],
+                "type": "host",
+                "id": -3,
+                "name": "vpm113",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.0",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 3,
+                "type": "osd",
+                "id": 0
+            },
+            {
+                "children": [
+                    2
+                ],
+                "type": "host",
+                "id": -4,
+                "name": "vpm145",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.2",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 3,
+                "type": "osd",
+                "id": 2
+            },
+            {
+                "children": [
+                    -4,
+                    -3,
+                    -2
+                ],
+                "type": "root",
+                "id": -1,
+                "name": "default",
+                "type_id": 10
+            },
+            {
+                "children": [
+                    1
+                ],
+                "type": "host",
+                "id": -2,
+                "name": "vpm061",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.1",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 2,
+                "type": "osd",
+                "id": 1
+            },
+            {
+                "children": [
+                    0
+                ],
+                "type": "host",
+                "id": -3,
+                "name": "vpm113",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.0",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 2,
+                "type": "osd",
+                "id": 0
+            },
+            {
+                "children": [
+                    2
+                ],
+                "type": "host",
+                "id": -4,
+                "name": "vpm145",
+                "type_id": 1
+            },
+            {
+                "status": "up",
+                "name": "osd.2",
+                "exists": 1,
+                "reweight": "1.000000",
+                "type_id": 0,
+                "crush_weight": "0.099991",
+                "depth": 2,
+                "type": "osd",
+                "id": 2
+            }
+        ]}}
+        osd_map = OsdMap(None, self.osd_map_data)
+        self.assertEqual(osd_map.parent_bucket_by_node_id, {-5: [{'children': [-5],
+                                                                  'id': -10,
+                                                                  'name': 'defaultssd',
+                                                                  'type': 'root',
+                                                                  'type_id': 10}],
+                                                            -4: [{'children': [-4, -3, -2],
+                                                                  'id': -5,
+                                                                  'name': 'rackthing',
+                                                                  'type': 'rack',
+                                                                  'type_id': 3},
+                                                                 {'children': [-4, -3, -2],
+                                                                  'id': -1,
+                                                                  'name': 'default',
+                                                                  'type': 'root',
+                                                                  'type_id': 10}],
+                                                            -3: [{'children': [-4, -3, -2],
+                                                                  'id': -5,
+                                                                  'name': 'rackthing',
+                                                                  'type': 'rack',
+                                                                  'type_id': 3},
+                                                                 {'children': [-4, -3, -2],
+                                                                  'id': -1,
+                                                                  'name': 'default',
+                                                                  'type': 'root',
+                                                                  'type_id': 10}],
+                                                            -2: [{'children': [-4, -3, -2],
+                                                                  'id': -5,
+                                                                  'name': 'rackthing',
+                                                                  'type': 'rack',
+                                                                  'type_id': 3},
+                                                                 {'children': [-4, -3, -2],
+                                                                  'id': -1,
+                                                                  'name': 'default',
+                                                                  'type': 'root',
+                                                                  'type_id': 10}],
+                                                            0: [{'children': [0],
+                                                                 'id': -30,
+                                                                 'name': 'vpm113ssd',
+                                                                 'type': 'host',
+                                                                 'type_id': 1},
+                                                                {'children': [0],
+                                                                 'id': -3,
+                                                                 'name': 'vpm113',
+                                                                 'type': 'host',
+                                                                 'type_id': 1}],
+                                                            1: [{'children': [1],
+                                                                 'id': -20,
+                                                                 'name': 'vpm061ssd',
+                                                                 'type': 'host',
+                                                                 'type_id': 1},
+                                                                {'children': [1],
+                                                                 'id': -2,
+                                                                 'name': 'vpm061',
+                                                                 'type': 'host',
+                                                                 'type_id': 1}],
+                                                            2: [{'children': [2],
+                                                                 'id': -40,
+                                                                 'name': 'vpm145ssd',
+                                                                 'type': 'host',
+                                                                 'type_id': 1},
+                                                                {'children': [2],
+                                                                 'id': -4,
+                                                                 'name': 'vpm145',
+                                                                 'type': 'host',
+                                                                 'type_id': 1}]})
 
 
 class TestCrushType(UnitTestCase):

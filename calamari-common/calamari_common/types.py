@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from calamari_common.util import memoize
 
 import logging
@@ -57,7 +57,6 @@ class OsdMap(VersionedSyncObject):
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
-            self.parent_bucket_by_node_id = self._map_parent_buckets(data['tree']['nodes'])
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -80,13 +79,20 @@ class OsdMap(VersionedSyncObject):
             crush_nodes[node['id']] = node
         return crush_nodes
 
-    def _map_parent_buckets(self, nodes):
+    @property
+    @memoize
+    def parent_bucket_by_node_id(self):
         """
         Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
         """
-        parent_map = {}
-        for node in nodes:
-            parent_map.update([(child_id, node) for child_id in node.get('children', [])])
+        parent_map = defaultdict(list)
+        if self.data is not None:
+            has_been_mapped = set()
+            for node in self.data['tree']['nodes']:
+                for child_id in node.get('children', []):
+                    if (child_id, node['id']) not in has_been_mapped:
+                        parent_map[child_id].append(node)
+                        has_been_mapped.add((child_id, node['id']))
         log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
         return parent_map
 
