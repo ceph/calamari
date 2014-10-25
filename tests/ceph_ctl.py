@@ -197,8 +197,15 @@ class ExternalCephControl(CephControl):
         if server_count > 3 or cluster_count != 1:
             raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
 
-        self._bootstrap(self.config['master_fqdn'])
-        self.restart_minions()
+        # config.get() doesn't have a default.  Boo.
+        if config.has_option('testing', 'bootstrap'):
+            bootstrap = config.getboolean('testing', 'bootstrap')
+        else:
+            bootstrap = True
+
+        if bootstrap:
+            self._bootstrap(self.config['master_fqdn'])
+            self.restart_minions()
 
         self.reset_all_osds(self._list_osds())
 
