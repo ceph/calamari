@@ -226,7 +226,12 @@ class ExternalCephControl(CephControl):
                              self._check_pgs_active_and_clean)
 
     def get_server_fqdns(self):
-        return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
+        fqdns = []
+        for target, roles in self.config['cluster'].iteritems():
+            if any([r.startswith('osd') or r.startswith('mon')
+                   for r in roles['roles']]):
+                fqdns.append(target.split('@')[1])
+        return fqdns
 
     def get_service_fqdns(self, fsid, service_type):
         # I run OSDs and mons in the same places (on all three servers)
