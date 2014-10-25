@@ -321,10 +321,16 @@ class ExternalCephControl(CephControl):
             output = self._run_command(target, bootstrap_cmd)
             log.info(output)
 
-    def _get_admin_node(self):
+    def _find_node_with_role(self, role):
         for target, roles in self.config['cluster'].iteritems():
-            if 'client.0' in roles['roles']:
+            if role in roles['roles']:
                 return target.split('@')[1]
+
+    def _get_admin_node(self):
+        return self._find_node_with_role('mon.0')
+
+    def get_calamari_node(self):
+        return self._find_node_with_role('client.0')
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = 'in' if osd_in else 'out'
