@@ -44,9 +44,12 @@ else:
 
 class ServerTestCase(TestCase):
     def setUp(self):
-        self.calamari_ctl = CALAMARI_CTL()
 
         try:
+            # CEPH_CTL's instantiation divines calamari_node
+            # to use for CALAMARI_CTL
+            self.ceph_ctl = CEPH_CTL()
+            self.calamari_ctl = CALAMARI_CTL(self.ceph_ctl.get_calamari_node())
             self.calamari_ctl.start()
 
             self.api = self.calamari_ctl.api
@@ -54,7 +57,6 @@ class ServerTestCase(TestCase):
             # Let's give calamari something to monitor, though
             # it's up to the test whether they want to
             # actually fire it up/interact with it.
-            self.ceph_ctl = CEPH_CTL()
 
         except Exception:
             log.exception("Exception during setup, tearing down")

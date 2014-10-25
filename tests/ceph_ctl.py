@@ -84,6 +84,12 @@ class CephControl(object):
         """
         raise NotImplementedError()
 
+    def get_calamari_node(self):
+        """
+        Return the fqdn of the machine running the calamari server
+        """
+        raise NotImplementedError()
+
 
 class EmbeddedCephControl(CephControl):
     """
