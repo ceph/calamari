@@ -26,6 +26,7 @@ Requires:       redhat-lsb-core
 Requires:	postgresql
 Requires:	postgresql-libs
 Requires:	postgresql-server
+Requires:	python-setuptools
 Version: 	%{version}
 Release: 	%{?revision}%{?dist}
 License: 	LGPL-2.1+
