@@ -176,6 +176,19 @@ class CrushRuleSerializer(serializers.Serializer):
     osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
 
 
+class CrushTypeSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'name')
+
+    name = serializers.CharField(
+        help_text="Human readable type name, not a unique identifier"
+    )
+    id = serializers.IntegerField(
+        help_text="The id used to identify the type within the CRUSH map, unique",
+        source="type_id"
+    )
+
+
 class NodeItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     weight = serializers.FloatField()

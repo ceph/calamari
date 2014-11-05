@@ -11,7 +11,7 @@ from rest_framework import status
 from django.contrib.auth.decorators import login_required
 
 from calamari_rest.parsers.v2 import CrushMapParser
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer,\
+from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer
@@ -21,7 +21,7 @@ from calamari_rest.views.paginated_mixin import PaginatedMixin
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_common.config import CalamariConfig
-from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
+from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
@@ -186,6 +186,22 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
         }) for (rd_id, rd_rules) in rulesets_data.items()]
 
         return Response(CrushRuleSetSerializer(rulesets, many=True).data)
+
+
+class CrushTypeViewSet(RPCViewSet):
+    """
+By default these include root, datacenter, room, row, pod, pdu, rack, chassis and host, but those types can be customized to be anything appropriate by modifying the CRUSH map.
+By convention, there is one leaf bucket type and it is type 0; however, you may give it any name you like (e.g., osd, disk, drive, storage, etc.)
+    """
+    serializer_class = CrushTypeSerializer
+
+    def list(self, request, fsid):
+        crush_types = self.client.list(fsid, CRUSH_TYPE, {})
+        return Response(self.serializer_class(crush_types).data)
+
+    def retrieve(self, request, fsid, type_id):
+        crush_type = self.client.get(fsid, CRUSH_TYPE, int(type_id))
+        return Response(self.serializer_class(DataObject(crush_type)).data)
 
 
 class SaltKeyViewSet(RPCViewSet):
