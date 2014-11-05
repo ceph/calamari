@@ -9,7 +9,7 @@ except ImportError:
 from calamari_common.salt_wrapper import Key, master_config, LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
-from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, ServiceId,\
+from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
     NotFound, SERVER
 from cthulhu.manager.user_request import SaltRequest
 
@@ -232,6 +232,12 @@ class RpcInterface(object):
             except KeyError:
                 raise NotFound(CRUSH_NODE, object_id)
             return crush_node
+        elif object_type == CRUSH_TYPE:
+            try:
+                crush_type = cluster.get_sync_object(OsdMap).crush_type_by_id[object_id]
+            except KeyError:
+                raise NotFound(CRUSH_TYPE, object_id)
+            return crush_type
         else:
             raise NotImplementedError(object_type)
 
@@ -263,6 +269,8 @@ class RpcInterface(object):
             return osd_map['crush']['rules']
         elif object_type == CRUSH_NODE:
             return osd_map['crush']['buckets']
+        elif object_type == CRUSH_TYPE:
+            return osd_map['crush']['types']
         else:
             raise NotImplementedError(object_type)
 

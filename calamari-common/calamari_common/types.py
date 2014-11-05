@@ -90,6 +90,11 @@ class OsdMap(VersionedSyncObject):
         log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
         return parent_map
 
+    @property
+    @memoize
+    def crush_type_by_id(self):
+        return dict((n["type_id"], n) for n in self.data['crush']['types'])
+
     @memoize
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
@@ -262,6 +267,7 @@ OSD_MAP = 'osd_map'
 CRUSH_MAP = 'crush_map'
 CRUSH_RULE = 'crush_rule'
 CRUSH_NODE = 'crush_node'
+CRUSH_TYPE = 'crush_type'
 CLUSTER = 'cluster'
 SERVER = 'server'
 
