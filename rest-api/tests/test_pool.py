@@ -16,6 +16,12 @@ def fake_list(fsid, type, filter, **kwargs):
                  'pg_num': 64,
                  'type': 1,
                  'pool': 0,
+                 'size': 2},
+                {'pool_name': 'notdata',
+                 'pg_placement_num': 64,
+                 'pg_num': 64,
+                 'type': 1,
+                 'pool': 1,
                  'size': 2}
                 ]
     elif type == CRUSH_RULE:
@@ -96,8 +102,14 @@ class TestPoolValidation(TestCase):
     def test_update_name_duplication_fails(self):
         self.request.method = 'PATCH'
         self.request.DATA = {'name': 'data', 'pg_num': 64}
-        response = self.pvs.update(self.request, 12345, 0)
+        response = self.pvs.update(self.request, 12345, 1)
         self.assertEqual(response.status_code, 409)
+
+    def test_update_name_not_duplicate_on_same_pool(self):
+        self.request.method = 'PATCH'
+        self.request.DATA = {'name': 'data', 'pg_num': 64}
+        response = self.pvs.update(self.request, 12345, 0)
+        self.assertEqual(response.status_code, 202)
 
     def test_update_without_name_works(self):
         self.request.method = 'PATCH'
