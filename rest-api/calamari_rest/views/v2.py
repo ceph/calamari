@@ -463,7 +463,7 @@ but those without static defaults will be set to null.
 
     def _validate_semantics(self, fsid, pool_id, data):
         errors = defaultdict(list)
-        self._check_name_unique(fsid, data, errors)
+        self._check_name_unique(fsid, pool_id, data, errors)
         self._check_crush_ruleset(fsid, data, errors)
         self._check_pgp_less_than_pg_num(data, errors)
         self._check_pg_nums_dont_decrease(fsid, pool_id, data, errors)
@@ -501,8 +501,9 @@ but those without static defaults will be set to null.
         if 'pgp_num' in data and 'pg_num' in data and data['pg_num'] < data['pgp_num']:
             errors['pgp_num'].append('must be >= to pg_num')
 
-    def _check_name_unique(self, fsid, data, errors):
-        if 'name' in data and data['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
+    def _check_name_unique(self, fsid, pool_id, data, errors):
+        pool_name_to_id = dict([(x.pool_name, x.pool) for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]])
+        if pool_name_to_id.get(data.get('name')) not in (None, pool_id):
             errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
 
