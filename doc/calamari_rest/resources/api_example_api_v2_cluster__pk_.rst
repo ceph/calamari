@@ -1,14 +1,14 @@
 Examples for api/v2/cluster/<pk>
 ================================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4
+api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793
 ---------------------------------------------------
 
 .. code-block:: json
 
    {
-     "update_time": "2014-10-20T19:29:51.192009+00:00", 
-     "id": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4", 
+     "update_time": "2014-11-06T21:15:15.168126+00:00", 
+     "id": "dce20d46-f010-4883-988c-4a6d8bd15793", 
      "name": "ceph_fake"
    }
 

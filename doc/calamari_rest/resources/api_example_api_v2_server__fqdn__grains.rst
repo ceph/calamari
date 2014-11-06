@@ -57,7 +57,7 @@ api/v2/server/figment000.cluster0.com/grains
      "saltversioninfo": [
        2014, 
        1, 
-       10, 
+       13, 
        0
      ], 
      "id": "figment000.cluster0.com", 
@@ -68,7 +68,7 @@ api/v2/server/figment000.cluster0.com/grains
      "num_cpus": 2, 
      "hwaddr_interfaces": {
        "lo": "00:00:00:00:00:00", 
-       "virbr0": "5a:55:99:1b:1d:40", 
+       "virbr0": "86:71:cb:51:b0:d6", 
        "eth1": "00:0c:29:06:63:21", 
        "eth0": "00:0c:29:06:63:17"
      }, 
@@ -84,8 +84,7 @@ api/v2/server/figment000.cluster0.com/grains
      ], 
      "ipv6": [
        "::1", 
-       "fe80::20c:29ff:fe06:6317", 
-       "fe80::20c:29ff:fe06:6321"
+       "fe80::20c:29ff:fe06:6317"
      ], 
      "cpu_flags": [
        "fpu", 
@@ -163,7 +162,7 @@ api/v2/server/figment000.cluster0.com/grains
      ], 
      "shell": "/bin/bash", 
      "nodename": "figment000", 
-     "saltversion": "2014.1.10", 
+     "saltversion": "2014.1.13", 
      "lsb_distrib_release": "14.04", 
      "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
      "pythonversion": [

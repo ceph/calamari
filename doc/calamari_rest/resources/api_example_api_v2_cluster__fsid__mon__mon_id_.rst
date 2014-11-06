@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/mon/<mon_id>
 ===============================================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/mon/figment000
+api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/mon/figment000
 ------------------------------------------------------------------
 
 .. code-block:: json

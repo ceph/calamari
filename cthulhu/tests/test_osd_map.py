@@ -1,14 +1,14 @@
-from django.utils.unittest.case import TestCase
 from unittest.case import TestCase as UnitTestCase
 from calamari_common.types import OsdMap
 from tests.util import load_fixture
+from mock import MagicMock
 
 
 # An OSD map with some non-default CRUSH rules in it
 INTERESTING_OSD_MAP = load_fixture('interesting_osd_map.json')
 
 
-class TestOsdMap(TestCase):
+class TestOsdMap(UnitTestCase):
     """
     Tests for the processing that we do on the OSD map to expose
     higher level views.
@@ -67,7 +67,7 @@ class TestCrushNodes(UnitTestCase):
 
     def test_parent_map_none(self):
         osd_map = OsdMap(None, None)
-        assert {} == osd_map._map_parent_buckets({})
+        self.assertEqual({}, osd_map._map_parent_buckets({}))
 
     def test_parent_map_one(self):
         tree_nodes = [
@@ -86,14 +86,14 @@ class TestCrushNodes(UnitTestCase):
         ]
 
         osd_map = OsdMap(None, None)
-        assert osd_map._map_parent_buckets(tree_nodes) == {
+        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {
             -5: {"children": [-5],
                  "type": "root",
                  "id": -1,
                  "name": "default",
                  "type_id": 6
                  }
-        }
+        })
 
     def test_parent_map_some(self):
         tree_nodes = [
@@ -106,7 +106,7 @@ class TestCrushNodes(UnitTestCase):
         ]
 
         osd_map = OsdMap(None, None)
-        assert osd_map._map_parent_buckets(tree_nodes) == {
+        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {
             -4: {"children": [-4, -3, -2],
                  "type": "root",
                  "id": -1,
@@ -125,7 +125,7 @@ class TestCrushNodes(UnitTestCase):
                  "name": "default",
                  "type_id": 6
                  },
-        }
+        })
 
     def test_parent_map_many(self):
         tree_nodes = [
@@ -210,33 +210,45 @@ class TestCrushNodes(UnitTestCase):
         ]
 
         osd_map = OsdMap(None, None)
-        assert osd_map._map_parent_buckets(tree_nodes) == {-4: {'children': [-4, -2, -3],
-                                                                'id': -1,
-                                                                'name': 'default',
-                                                                'type': 'root',
-                                                                'type_id': 6},
-                                                           -3: {'children': [-4, -2, -3],
-                                                                'id': -1,
-                                                                'name': 'default',
-                                                                'type': 'root',
-                                                                'type_id': 6},
-                                                           -2: {'children': [-4, -2, -3],
-                                                                'id': -1,
-                                                                'name': 'default',
-                                                                'type': 'root',
-                                                                'type_id': 6},
-                                                           0: {'children': [0],
-                                                               'id': -2,
-                                                               'name': 'vpm114',
-                                                               'type': 'host',
-                                                               'type_id': 1},
-                                                           1: {'children': [1],
-                                                               'id': -3,
-                                                               'name': 'vpm068',
-                                                               'type': 'host',
-                                                               'type_id': 1},
-                                                           2: {'children': [2],
-                                                               'id': -4,
-                                                               'name': 'vpm140',
-                                                               'type': 'host',
-                                                               'type_id': 1}}
+        self.assertEqual(osd_map._map_parent_buckets(tree_nodes), {-4: {'children': [-4, -2, -3],
+                                                                        'id': -1,
+                                                                        'name': 'default',
+                                                                        'type': 'root',
+                                                                        'type_id': 6},
+                                                                   -3: {'children': [-4, -2, -3],
+                                                                        'id': -1,
+                                                                        'name': 'default',
+                                                                        'type': 'root',
+                                                                        'type_id': 6},
+                                                                   -2: {'children': [-4, -2, -3],
+                                                                        'id': -1,
+                                                                        'name': 'default',
+                                                                        'type': 'root',
+                                                                        'type_id': 6},
+                                                                   0: {'children': [0],
+                                                                       'id': -2,
+                                                                       'name': 'vpm114',
+                                                                       'type': 'host',
+                                                                       'type_id': 1},
+                                                                   1: {'children': [1],
+                                                                       'id': -3,
+                                                                       'name': 'vpm068',
+                                                                       'type': 'host',
+                                                                       'type_id': 1},
+                                                                   2: {'children': [2],
+                                                                       'id': -4,
+                                                                       'name': 'vpm140',
+                                                                       'type': 'host',
+                                                                       'type_id': 1}})
+
+
+class TestCrushType(UnitTestCase):
+
+    def test_shows_non_default_types(self):
+        osd_map_data = MagicMock()
+        data = {'crush': {'types': [{'type_id': 100, 'name': 'custom_type'}],
+                          'buckets': []}}
+
+        osd_map_data.__getitem__.side_effect = lambda x: data[x] if x in data else osd_map_data
+        osd_map = OsdMap(None, osd_map_data)
+        self.assertEqual({'type_id': 100, 'name': 'custom_type'}, osd_map.crush_type_by_id[100])
