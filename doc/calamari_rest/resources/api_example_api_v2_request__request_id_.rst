@@ -1,19 +1,19 @@
 Examples for api/v2/request/<request_id>
 ========================================
 
-api/v2/request/70878214-b39a-4937-bd68-44a1e82e25db
+api/v2/request/34b86742-c026-484c-bba6-a60e71e06275
 ---------------------------------------------------
 
 .. code-block:: json
 
    {
      "status": "Waiting for OSD map epoch 2", 
-     "requested_at": "2014-10-20T19:29:52.481795+00:00", 
+     "requested_at": "2014-11-06T21:15:15.547623+00:00", 
      "headline": "Creating pool 'newname'", 
      "error_message": "", 
      "completed_at": null, 
      "state": "submitted", 
      "error": false, 
-     "id": "70878214-b39a-4937-bd68-44a1e82e25db"
+     "id": "34b86742-c026-484c-bba6-a60e71e06275"
    }
 

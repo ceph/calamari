@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/mon/<mon_id>/status
 ======================================================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/mon/figment000/status
+api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/mon/figment000/status
 -------------------------------------------------------------------------
 
 .. code-block:: json
@@ -15,8 +15,8 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/mon/figment000/status
          1, 
          2
        ], 
-       "created": "2014-10-20T14:29:38.405317", 
-       "modified": "2014-10-20T14:29:38.405311", 
+       "created": "2014-11-06T15:14:34.316557", 
+       "modified": "2014-11-06T15:14:34.316541", 
        "epoch": 0, 
        "mons": [
          {
@@ -35,7 +35,7 @@ api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/mon/figment000/status
            "addr": ""
          }
        ], 
-       "fsid": "cd50fad9-74d7-4579-9acc-f0d1e4d014b4"
+       "fsid": "dce20d46-f010-4883-988c-4a6d8bd15793"
      }, 
      "rank": 0, 
      "quorum": [
