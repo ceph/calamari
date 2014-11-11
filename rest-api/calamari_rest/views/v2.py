@@ -20,6 +20,7 @@ from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
+from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
@@ -567,6 +568,7 @@ Filtering is available on this resource:
 
         # Get data
         osds = self.client.list(fsid, OSD, list_filter, async=True)
+        parent_map = self.client.get_sync_object(fsid, 'osd_map', ['parent_bucket_by_node_id'], async=True)
         osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'], async=True)
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'], async=True)
         osds = osds.get()
@@ -576,6 +578,7 @@ Filtering is available on this resource:
         osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds], async=True)
 
         # Preparation complete, await all data to serialize result
+        parent_map = parent_map.get()
         osd_to_pools = osd_to_pools.get()
         crush_nodes = crush_nodes.get()
         server_info = server_info.get()
@@ -596,9 +599,8 @@ Filtering is available on this resource:
 
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
-
-        for o in osds:
             o.update(osd_commands[o['osd']])
+            o.update({'crush_node_ancestry': lookup_ancestry(o['osd'], parent_map)})
 
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
@@ -614,6 +616,8 @@ Filtering is available on this resource:
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
         osd.update(osd_commands[int(osd_id)])
+        parent_map = self.client.get_sync_object(fsid, 'osd_map', ['parent_bucket_by_node_id'])
+        osd.update({'crush_node_ancestry': lookup_ancestry(osd['osd'], parent_map)})
 
         return Response(self.serializer_class(DataObject(osd)).data)
 

@@ -115,7 +115,7 @@ class PoolSerializer(ValidatingSerializer):
 
 class OsdSerializer(ValidatingSerializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry')
         create_allowed = ()
         create_required = ()
         modify_allowed = ('up', 'in', 'reweight')
@@ -132,6 +132,7 @@ class OsdSerializer(ValidatingSerializer):
 
     public_addr = serializers.CharField(read_only=True, help_text="Public/frontend IP address")
     cluster_addr = serializers.CharField(read_only=True, help_text="Cluster/backend IP address")
+    crush_node_ancestry = serializers.Field(help_text="An ordered list of CRUSH node ids that represent a path from the parent node of this OSD up to the root of the tree")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
