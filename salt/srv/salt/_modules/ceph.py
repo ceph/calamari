@@ -465,6 +465,10 @@ def get_heartbeats():
     for filename in glob("/var/run/ceph/*.asok"):
         try:
             service_data = service_status(filename)
+        except AttributeError:
+            # Failed to parse the filename as a standard mon, osd, or mds
+            # exclude it from report
+            pass
         except (rados.Error, MonitoringError):
             # Failed to get info for this service, stale socket or unresponsive,
             # exclude it from report
