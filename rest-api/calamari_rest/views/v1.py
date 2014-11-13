@@ -100,17 +100,11 @@ class Space(RPCView):
     serializer_class = ClusterSpaceSerializer
 
     def get(self, request, fsid):
-        def to_bytes(kb):
-            if kb is not None:
-                return kb * 1024
-            else:
-                return None
-
         df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
         space = {
-            'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
-            'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
-            'free_bytes': to_bytes(get_latest_graphite(df_path('total_avail')))
+            'used_bytes': get_latest_graphite(df_path('total_used_bytes')),
+            'capacity_bytes': get_latest_graphite(df_path('total_bytes')),
+            'free_bytes': get_latest_graphite(df_path('total_avail_bytes'))
         }
 
         return Response(ClusterSpaceSerializer(DataObject({

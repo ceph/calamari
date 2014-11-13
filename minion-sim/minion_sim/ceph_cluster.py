@@ -1610,9 +1610,9 @@ class CephCluster(CephClusterState):
 
             # These stats are given in kB
             df_stats = {
-                'total_space': total_space / 1024,
-                'total_used': total_used / 1024,
-                'total_avail': (total_space - total_used) / 1024
+                'total_bytes': total_space / 1024,
+                'total_used_bytes': total_used / 1024,
+                'total_avail_bytes': (total_space - total_used) / 1024
             }
             for k, v in df_stats.items():
                 stats["ceph.cluster.{0}.df.{1}".format(self.fsid, k)] = v
