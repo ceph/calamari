@@ -14,8 +14,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning,
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message=".*gevent.coros has been renamed to gevent.lock.*")
 
-from rest_framework import viewsets, status
-from rest_framework.views import APIView
+from rest_framework import status
 import time
 
 from rest_framework.response import Response
@@ -28,6 +27,7 @@ except ImportError:
 
 from calamari_common.config import CalamariConfig
 from calamari_common.types import NotFound
+from calamari_rest.viewsets import RoleLimitedViewSet
 config = CalamariConfig()
 
 
@@ -73,7 +73,7 @@ else:
         pass
 
 
-class RPCView(APIView):
+class RPCViewSet(RoleLimitedViewSet):
     serializer_class = None
     log = logging.getLogger('django.request.profile')
 
@@ -81,14 +81,14 @@ class RPCView(APIView):
         if zerorpc is None:
             raise RuntimeError("Cannot run without zerorpc")
 
-        super(RPCView, self).__init__(*args, **kwargs)
+        super(RPCViewSet, self).__init__(*args, **kwargs)
         self.client = ProfiledRpcClient()
 
     def dispatch(self, request, *args, **kwargs):
         self.client.connect(config.get('cthulhu', 'rpc_url'))
         a = time.time()
         try:
-            return super(RPCView, self).dispatch(request, *args, **kwargs)
+            return super(RPCViewSet, self).dispatch(request, *args, **kwargs)
         finally:
             b = time.time()
             self.client.close()
@@ -105,7 +105,7 @@ class RPCView(APIView):
 
     def handle_exception(self, exc):
         try:
-            return super(RPCView, self).handle_exception(exc)
+            return super(RPCViewSet, self).handle_exception(exc)
         except LostRemote as e:
             return Response({'detail': "RPC error ('%s')" % e},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, exception=True)
@@ -120,7 +120,7 @@ class RPCView(APIView):
                 return Response(str(e), status=status.HTTP_404_NOT_FOUND)
 
     def metadata(self, request):
-        ret = super(RPCView, self).metadata(request)
+        ret = super(RPCViewSet, self).metadata(request)
 
         actions = {}
         # TODO: get the fields marked up with whether they are:
@@ -139,7 +139,3 @@ class RPCView(APIView):
         ret['actions'] = actions
 
         return ret
-
-
-class RPCViewSet(viewsets.ViewSetMixin, RPCView):
-    pass
