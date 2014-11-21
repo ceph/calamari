@@ -35,9 +35,10 @@ class CalamariControl(object):
     installation running on a dedicated host.
     """
 
-    def __init__(self):
+    def __init__(self, calamari_node=None):
         log.info("CalamariControl.__init__")
         self._api = None
+        self.calamari_node = calamari_node
 
     def start(self):
         raise NotImplementedError()
@@ -47,6 +48,8 @@ class CalamariControl(object):
 
     @property
     def api_url(self):
+        if self.calamari_node:
+            return 'http://{}/api/v2/'.format(self.calamari_node)
         return config.get('testing', 'api_url')
 
     @property
