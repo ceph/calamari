@@ -162,7 +162,9 @@ class ExternalCephControl(CephControl):
         self.cluster_name = 'ceph'
         self.default_pools = {'data', 'metadata', 'rbd'}
 
-        self.cluster_distro = config.get('testing', 'cluster_distro')
+        self.cluster_distro = None
+        if config.has_option('testing', 'cluster_distro'):
+            self.cluster_distro = config.get('testing', 'cluster_distro')
 
     def _run_command(self, target, command):
         log.debug(target)
