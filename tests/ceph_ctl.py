@@ -11,7 +11,6 @@ from utils import wait_until_true, run_once
 import json
 import urllib2
 
-from minion_sim.sim import MinionSim
 from django.utils.unittest.case import SkipTest
 from tests.config import TestConfig
 
@@ -91,6 +90,7 @@ class EmbeddedCephControl(CephControl):
     def configure(self, server_count, cluster_count=1):
         osds_per_host = 4
 
+        from minion_sim.sim import MinionSim
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
