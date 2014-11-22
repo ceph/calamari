@@ -190,10 +190,8 @@ class ExternalCephControl(CephControl):
 
     def configure(self, server_count, cluster_count=1):
         log.debug('external configure')
-        # I hope you only wanted three, because I ain't buying
-        # any more servers...
-        if server_count > 3 or cluster_count != 1:
-            raise SkipTest('ExternalCephControl does not multiple clusters or clusters with more than three nodes')
+        if cluster_count != 1:
+            raise SkipTest('ExternalCephControl does not do multiple clusters')
 
         if config.has_option('testing', 'bootstrap'):
             bootstrap = config.getboolean('testing', 'bootstrap')
