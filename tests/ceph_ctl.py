@@ -11,8 +11,6 @@ from utils import wait_until_true, run_once
 import json
 import urllib2
 
-from minion_sim.sim import MinionSim
-from minion_sim.log import log as minion_sim_log
 from django.utils.unittest.case import SkipTest
 from tests.config import TestConfig
 
@@ -20,10 +18,6 @@ config = TestConfig()
 logging.basicConfig()
 
 log = logging.getLogger(__name__)
-
-handler = logging.FileHandler("minion_sim.log")
-handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
-minion_sim_log.addHandler(handler)
 
 
 class CephControl(object):
@@ -96,6 +90,12 @@ class EmbeddedCephControl(CephControl):
 
     def configure(self, server_count, cluster_count=1):
         osds_per_host = 4
+
+        from minion_sim.sim import MinionSim
+        from minion_sim.log import log as minion_sim_log
+        handler = logging.FileHandler("minion_sim.log")
+        handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s %(message)s"))
+        minion_sim_log.addHandler(handler)
 
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
