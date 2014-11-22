@@ -222,9 +222,6 @@ class ExternalCephControl(CephControl):
         self._wait_for_state(self._list_pgs,
                              self._check_pgs_active_and_clean)
 
-    def get_server_fqdns(self):
-        return [target.split('@')[1] for target in self.config['cluster'].iterkeys()]
-
     def get_service_fqdns(self, fsid, service_type):
         fqdns = []
         for target, roles in self.config['cluster'].iteritems():
@@ -232,6 +229,11 @@ class ExternalCephControl(CephControl):
                 fqdns.append(target.split('@')[1])
         return fqdns
 
+    def get_server_fqdns(self):
+        # make fsid real for multiple cluster; for now passing None
+        serverset = set(self.get_service_fqdns(None, 'mon') +
+                        self.get_service_fqdns(None, 'osd'))
+        return list(serverset)
 
     def shutdown(self):
         log.info('Resetting CRUSH map on shutdown')
@@ -336,9 +338,8 @@ class ExternalCephControl(CephControl):
             log.info(output)
 
     def _get_admin_node(self):
-        for target, roles in self.config['cluster'].iteritems():
-            if 'client.0' in roles['roles']:
-                return target.split('@')[1]
+        # return the first monitor we find
+        return self.get_service_fqdns(None, 'mon')[0]
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = 'in' if osd_in else 'out'
