@@ -225,7 +225,7 @@ class ExternalCephControl(CephControl):
     def shutdown(self):
         log.info('Resetting CRUSH map on shutdown')
         temp_crushmap_filename = "/tmp/test_crush_map"
-        self._run_command(self._get_admin_node(), "ceph --cluster {c} osd setcrushmap -i {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
+        self._run_command(self._get_admin_node(), "sudo ceph --cluster {c} osd setcrushmap -i {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
 
     def get_fqdns(self, fsid):
         # TODO when we support multiple cluster change this
@@ -246,7 +246,7 @@ class ExternalCephControl(CephControl):
         temp_crushmap_filename = "/tmp/test_crush_map"
         log.info('Resetting CRUSH map')
         # get map store it
-        self._run_command(self._get_admin_node(), "ls {crush_name} || ceph --cluster {c} osd getcrushmap -o {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
+        self._run_command(self._get_admin_node(), "ls {crush_name} || sudo ceph --cluster {c} osd getcrushmap -o {crush_name}".format(c=self.cluster_name, crush_name=temp_crushmap_filename))
 
     def _wait_for_state(self, command, state):
         log.info('Waiting for {state} on cluster'.format(state=state))
@@ -255,7 +255,7 @@ class ExternalCephControl(CephControl):
     def _list_pgs(self):
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
         return self._run_command(self._get_admin_node(),
-                                 "ceph --cluster {cluster} pg stat".format(
+                                 "sudo ceph --cluster {cluster} pg stat".format(
                                      cluster=self.cluster_name))
 
     def _check_pgs_active_and_clean(self, output):
@@ -264,7 +264,7 @@ class ExternalCephControl(CephControl):
 
     def _list_osds(self):
         return json.loads(self._run_command(self._get_admin_node(),
-                                            "ceph --cluster {cluster} osd dump -f json-pretty".format(
+                                            "sudo ceph --cluster {cluster} osd dump -f json-pretty".format(
                                                 cluster=self.cluster_name)))
 
     def _check_osds_in_and_up(self, osds):
@@ -275,14 +275,14 @@ class ExternalCephControl(CephControl):
     def reset_all_osds(self, osd_stat):
         # this structure doesn't contain weight in dumpling = default 0
         for osd in [osd['osd'] for osd in osd_stat['osds'] if int(float(osd.get('weight', 0))) != 1]:
-            self._run_command(self._get_admin_node(), 'ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
+            self._run_command(self._get_admin_node(), 'sudo ceph osd reweight {osd_id} 1.0'.format(osd_id=osd))
 
         for flag in ['pause']:
-            self._run_command(self._get_admin_node(), "ceph --cluster ceph osd unset {flag}".format(flag=flag))
+            self._run_command(self._get_admin_node(), "sudo ceph --cluster ceph osd unset {flag}".format(flag=flag))
 
     def _list_pools(self):
         pools = json.loads(self._run_command(self._get_admin_node(),
-                                             "ceph --cluster {cluster} osd lspools -f json-pretty".format(
+                                             "sudo ceph --cluster {cluster} osd lspools -f json-pretty".format(
                                                  cluster=self.cluster_name)))
         return set([x['poolname'] for x in pools])
 
@@ -291,10 +291,10 @@ class ExternalCephControl(CephControl):
 
     def reset_all_pools(self, existing_pools):
         for pool in self.default_pools - existing_pools:
-            self._run_command(self._get_admin_node(), 'ceph osd pool create {pool} 64'.format(pool=pool))
+            self._run_command(self._get_admin_node(), 'sudo ceph osd pool create {pool} 64'.format(pool=pool))
 
         for pool in existing_pools - self.default_pools:
-            self._run_command(self._get_admin_node(), 'ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
+            self._run_command(self._get_admin_node(), 'sudo ceph osd pool delete {pool} {pool} --yes-i-really-really-mean-it'.format(
                 pool=pool))
 
     def restart_minions(self):
@@ -331,10 +331,12 @@ class ExternalCephControl(CephControl):
 
     def mark_osd_in(self, fsid, osd_id, osd_in=True):
         command = 'in' if osd_in else 'out'
-        output = self._run_command(self._get_admin_node(),
-                                   "ceph --cluster {cluster} osd {command} {id}".format(cluster=self.cluster_name,
-                                                                                        command=command,
-                                                                                        id=int(osd_id)))
+        output = self._run_command(
+            self._get_admin_node(),
+            "sudo ceph --cluster {cluster} osd {command} {id}".format(
+                cluster=self.cluster_name, command=command, id=int(osd_id)
+            )
+        )
         log.info(output)
 
 
