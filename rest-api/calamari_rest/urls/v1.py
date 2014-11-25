@@ -37,22 +37,22 @@ urlpatterns = patterns(
     # In v1, the Health view gave you the 'health' sync_object and the cluster update time
     # In v2, you can request the sync object by name with /sync_object and you can get the
     # cluster update time from /cluster/<id>
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health$', calamari_rest.views.v1.Health.as_view(), name='cluster-health'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health$', calamari_rest.views.v1.Health.as_view({'get': 'get'}), name='cluster-health'),
 
     # In v1, the HealthCounters view /cluster/<id>/health_counters gave you a JSON object in its 'counters' attribute
     # In v2, you get that information by doing a derived object request for the 'health_counters' object, andyou
     # can get the cluster update time from /cluster/<id>
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health_counters$', calamari_rest.views.v1.HealthCounters.as_view(),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/health_counters$', calamari_rest.views.v1.HealthCounters.as_view({'get': 'get'}),
         name='cluster-health-counters'),
 
     # In v1, the Space view /cluster/<id>/space gave you ceph.cluster.{}.df.[used_bytes|capacity_bytes|free_bytes]
     # In v2, you can get these directly using the TODO view that takes a tuple of stat names and gives you latest values
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/space$', calamari_rest.views.v1.Space.as_view(), name='osd-space'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/space$', calamari_rest.views.v1.Space.as_view({'get': 'get'}), name='osd-space'),
 
     # In v2 this no longer has "pg_state" filtering (was unused in UI and relied on expensive PG
     # map traversal)
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', calamari_rest.views.v1.OSDList.as_view(), name='cluster-osd-list'),
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', calamari_rest.views.v1.OSDDetail.as_view(),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$', calamari_rest.views.v1.OSDList.as_view({'get': 'get'}), name='cluster-osd-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd/(?P<osd_id>\d+)$', calamari_rest.views.v1.OSDDetail.as_view({'get': 'get'}),
         name='cluster-osd-detail'),
 
     # In v1, the /pool view gave you cluster,pool_id,name,quota_max_bytes,quota_max_objects,used_objects,used_bytes
