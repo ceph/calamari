@@ -1,5 +1,5 @@
 
-from rest_framework.viewsets import ViewSet
+from calamari_rest.viewsets import RoleLimitedViewSet
 from calamari_web.settings import config
 
 try:
@@ -12,7 +12,7 @@ else:
     Session = sessionmaker()
 
 
-class DatabaseViewSet(ViewSet):
+class DatabaseViewSet(RoleLimitedViewSet):
     @property
     def serializer_class(self):
         raise NotImplementedError()

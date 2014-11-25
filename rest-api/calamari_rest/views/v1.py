@@ -32,7 +32,8 @@ else:
     from graphite.render.attime import parseATTime
     from graphite.render.datalib import fetchData
 
-from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
+from calamari_rest.views.rpc_view import DataObject, RPCViewSet
+from calamari_rest.viewsets import RoleLimitedViewSet
 from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
 from calamari_rest.views.server_metadata import get_local_grains
 
@@ -96,7 +97,7 @@ def get_latest_graphite(metric):
         return None
 
 
-class Space(RPCView):
+class Space(RPCViewSet):
     serializer_class = ClusterSpaceSerializer
 
     def get(self, request, fsid):
@@ -118,7 +119,7 @@ class Space(RPCView):
         })).data)
 
 
-class Health(RPCView):
+class Health(RPCViewSet):
     serializer_class = ClusterHealthSerializer
 
     def get(self, request, fsid):
@@ -130,7 +131,7 @@ class Health(RPCView):
         })).data)
 
 
-class HealthCounters(RPCView):
+class HealthCounters(RPCViewSet):
     serializer_class = ClusterHealthCountersSerializer
 
     PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -301,7 +302,7 @@ class HealthCounters(RPCView):
         })).data)
 
 
-class OSDList(RPCView):
+class OSDList(RPCViewSet):
     """
     Provides an object which includes a list of all OSDs, and
     some summary counters (pg_state_counts)
@@ -413,7 +414,7 @@ class OSDList(RPCView):
         return Response(OSDListSerializer(osd_list).data)
 
 
-class OSDDetail(RPCView):
+class OSDDetail(RPCViewSet):
     """
     This is the same data that is provided in the OSD list, but for
     a single OSD, and not including the pg_state_counts.
@@ -426,15 +427,14 @@ class OSDDetail(RPCView):
         return Response(OSDDetailSerializer(osd).data)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet, RoleLimitedViewSet):
     """
     The Calamari UI/API user account information.
 
     You may pass 'me' as the user ID to refer to the currently logged in user,
     otherwise the user ID is a numeric ID.
 
-    Because all users are superusers, everybody can see each others accounts
-    using this resource.  However, users can only modify their own account (i.e.
+    Users can only modify their own account (i.e.
     the user being modified must be the user associated with the current login session).
     """
     queryset = User.objects.all()

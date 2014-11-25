@@ -6,9 +6,8 @@ import shlex
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException, PermissionDenied
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
-from django.contrib.auth.decorators import login_required
 
 from calamari_rest.parsers.v2 import CrushMapParser
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
@@ -18,8 +17,10 @@ from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer,
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
+from rest_framework.permissions import IsAuthenticated
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
+from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
@@ -40,8 +41,8 @@ if log.level <= logging.DEBUG:
         logging.getLogger('sqlalchemy.engine').addHandler(handler)
 
 
+@permission_classes((IsAuthenticated, IsRoleAllowed))
 @api_view(['GET'])
-@login_required
 def grains(request):
     """
 The salt grains for the host running Calamari server.  These are variables
