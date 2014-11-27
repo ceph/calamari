@@ -470,6 +470,9 @@ def get_heartbeats():
             # exclude it from report
             pass
         else:
+            if not service_data:
+                pass
+
             service_name = "%s-%s.%s" % (service_data['cluster'], service_data['type'], service_data['id'])
 
             services[service_name] = service_data
@@ -510,7 +513,11 @@ def service_status(socket_path):
     """
     Given an admin socket path, learn all we can about that service
     """
-    cluster_name, service_type, service_id = re.match("^(.+)-(mon|osd|mds)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
+    try:
+        cluster_name, service_type, service_id = \
+            re.match("^(.+?)-(.+?)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
+    except AttributeError:
+        return None
 
     status = None
     # Interrogate the service for its FSID
