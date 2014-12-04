@@ -5,7 +5,7 @@ from ceph_ctl import ExternalCephControl
 class TestableExternalCephControl(ExternalCephControl):
     def __init__(self):
         # Override the __init__ in the base-class to avoid config parsing
-        self.default_pools = {'foo', 'bar'}
+        self.default_pools = set(['foo', 'bar'])
 
 
 class TestExternalCephControl(TestCase):
@@ -38,15 +38,15 @@ class TestExternalCephControl(TestCase):
         self.assertEqual(self.ext_ceph_ctl._check_osds_in_and_up(osds), True)
 
     def test_default_pools_only(self):
-        pools = {'foo', 'bar'}
+        pools = set(['foo', 'bar'])
         self.assertTrue(self.ext_ceph_ctl._check_default_pools_only(pools))
 
     def test_default_pools_only_too_few(self):
-        pools = {'foo'}
+        pools = set(['foo'])
         self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(pools))
 
     def test_default_pools_only_too_many(self):
-        pools = {'foo', 'bar', 'baz'}
+        pools = set(['foo', 'bar', 'baz'])
         self.assertFalse(self.ext_ceph_ctl._check_default_pools_only(pools))
 
     def test_pg_stat_less_active_and_clean(self):

@@ -2,7 +2,7 @@ import logging
 import time
 from tests.server_testcase import ServerTestCase, OSD_RECOVERY_PERIOD
 from tests.utils import wait_until_true, WaitTimeout, scalable_wait_until_true
-from unittest import SkipTest
+from nose.exc import SkipTest
 
 log = logging.getLogger(__name__)
 

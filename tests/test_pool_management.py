@@ -1,6 +1,6 @@
 
 import logging
-from unittest import SkipTest
+from nose.exc import SkipTest
 from tests.server_testcase import RequestTestCase
 
 log = logging.getLogger(__name__)
@@ -228,7 +228,7 @@ class TestPoolManagement(RequestTestCase):
                 pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
                 self.assertEqual(
                     pool['min_size'], expected,
-                    msg="set min_size {}, expected result {}, got result {}".
+                    msg="set min_size {0}, expected {1}, got {2}".
                     format(val, expected, pool['min_size'])
                 )
                 # TODO: call out to the ceph cluster to check the

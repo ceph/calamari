@@ -11,7 +11,7 @@ from utils import wait_until_true, run_once
 import json
 import urllib2
 
-from django.utils.unittest.case import SkipTest
+from nose.exc import SkipTest
 from tests.config import TestConfig
 
 config = TestConfig()
@@ -166,7 +166,7 @@ class ExternalCephControl(CephControl):
 
         # TODO parse this out of the cluster.yaml
         self.cluster_name = 'ceph'
-        self.default_pools = {'data', 'metadata', 'rbd'}
+        self.default_pools = set(['data', 'metadata', 'rbd'])
 
         self.cluster_distro = None
         if config.has_option('testing', 'cluster_distro'):
