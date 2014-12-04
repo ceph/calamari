@@ -14,7 +14,7 @@ from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
 from tests.config import TestConfig
-from unittest import SkipTest
+from nose.exc import SkipTest
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class CalamariControl(object):
     def api_url(self):
         if config.has_option('testing', 'api_url'):
             return config.get('testing', 'api_url')
-        return 'http://{}/api/v2/'.format(self.get_calamari_node())
+        return 'http://{0}/api/v2/'.format(self.get_calamari_node())
 
     @property
     def api_username(self):
