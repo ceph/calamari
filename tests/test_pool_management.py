@@ -23,7 +23,7 @@ class TestPoolManagement(RequestTestCase):
                 return pool
         return None
 
-    def _create(self, cluster_id, pool_name, pg_num=64, optionals={}):
+    def _create(self, cluster_id, pool_name, pg_num=64, optionals=None):
         # Check that the pool we're going to create doesn't already exist
         self.assertEqual(self._filter_pool(self.api.get("cluster/%s/pool" % cluster_id).json(), pool_name), None)
 
@@ -32,7 +32,8 @@ class TestPoolManagement(RequestTestCase):
             'name': pool_name,
             'pg_num': pg_num
         }
-        args.update(optionals)
+        if optionals:
+            args.update(optionals)
 
         # TODO fix this default value
         if 'hashpspool' in args:
