@@ -170,7 +170,17 @@ def initialize(args):
 
 def change_password(args):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
-    execute_from_command_line(["", "changepassword", args.username])
+    if args.password:
+        from django.contrib.auth import get_user_model
+        user_model = get_user_model()
+        try:
+            user = user_model.objects.get(username=args.username)
+            user.set_password(args.password)
+            user.save()
+        except user_model.DoesNotExist:
+            log.error("User '%s' does not exist." % args.username)
+    else:
+        execute_from_command_line(["", "changepassword", args.username])
 
 
 def clear(args):
@@ -220,6 +230,9 @@ Calamari setup tool.
 
     passwd_parser = subparsers.add_parser('change_password',
                                           help="Reset the password for a Calamari user account")
+    passwd_parser.add_argument('--password', dest="password",
+                               help="New password",
+                               required=False)
     passwd_parser.add_argument('username')
     passwd_parser.set_defaults(func=change_password)
 
