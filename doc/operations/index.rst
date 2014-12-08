@@ -15,6 +15,7 @@ Contents
    :maxdepth: 2
 
    server_install
+   users
    minion_connect
    troubleshooting
    reporting_bugs
