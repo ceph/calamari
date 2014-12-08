@@ -79,6 +79,40 @@ def run_local_salt(sls, message):
         log.debug("Skipping {message} configuration, SLS not found".format(message=message))
 
 
+def add_user(args):
+    from django.db import IntegrityError
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+    try:
+        user_model.objects.create_user(args.username, args.email, args.password)
+    except IntegrityError, e:
+        log.error(str(e))
+
+
+def create_admin_users(args):
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+
+    if args.admin_username and args.admin_password and args.admin_email:
+        if not user_model.objects.filter(username=args.admin_username).exists():
+            log.info("Creating user '%s'" % args.admin_username)
+            user_model.objects.create_superuser(
+                username=args.admin_username,
+                password=args.admin_password,
+                email=args.admin_email
+            )
+    else:
+        if not user_model.objects.filter(is_superuser=True).count():
+            # When prompting for details, it's good to let the user know what the account
+            # is (especially that's a web UI one, not a linux system one)
+            log.info("You will now be prompted for login details for the administrative "
+                     "user account.  This is the account you will use to log into the web interface "
+                     "once setup is complete.")
+            # Prompt for user details
+            execute_from_command_line(["", "createsuperuser"])
+
+
 def initialize(args):
     """
     This command exists to:
@@ -116,33 +150,14 @@ def initialize(args):
         Base.metadata.create_all(engine)
         command.stamp(alembic_config, "head")
 
-    # Django's database
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+
+    # Django's database
     with quiet():
         execute_from_command_line(["", "syncdb", "--noinput"])
 
-    from django.contrib.auth import get_user_model
-
+    create_admin_users(args)
     log.info("Initializing web interface...")
-    user_model = get_user_model()
-
-    if args.admin_username and args.admin_password and args.admin_email:
-        if not user_model.objects.filter(username=args.admin_username).exists():
-            log.info("Creating user '%s'" % args.admin_username)
-            user_model.objects.create_superuser(
-                username=args.admin_username,
-                password=args.admin_password,
-                email=args.admin_email
-            )
-    else:
-        if not user_model.objects.all().count():
-            # When prompting for details, it's good to let the user know what the account
-            # is (especially that's a web UI one, not a linux system one)
-            log.info("You will now be prompted for login details for the administrative "
-                     "user account.  This is the account you will use to log into the web interface "
-                     "once setup is complete.")
-            # Prompt for user details
-            execute_from_command_line(["", "createsuperuser"])
 
     # Django's static files
     with quiet():
@@ -218,6 +233,19 @@ Calamari setup tool.
                                    required=False)
     initialize_parser.set_defaults(func=initialize)
 
+    add_user_parser = subparsers.add_parser('add_user',
+                                            help="Create user accounts")
+    add_user_parser.add_argument('--username', dest="username",
+                                 help="Username for account",
+                                 required=True)
+    add_user_parser.add_argument('--password', dest="password",
+                                 help="Password for account",
+                                 required=False)
+    add_user_parser.add_argument('--email', dest="email",
+                                 help="Email for account",
+                                 required=True)
+    add_user_parser.set_defaults(func=add_user)
+
     passwd_parser = subparsers.add_parser('change_password',
                                           help="Reset the password for a Calamari user account")
     passwd_parser.add_argument('username')
@@ -234,7 +262,8 @@ Calamari setup tool.
             args.func(args)
         else:
             log.error('Need root privileges to run')
-    except:
+    except Exception, e:
+        log.error(str(e))
         debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
         open(debug_filename, 'w').write(json.dumps({
             'argv': sys.argv,
