@@ -10,6 +10,7 @@ import os
 import sys
 from StringIO import StringIO
 import subprocess
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import execute_from_command_line
 import pwd
 from django.utils.crypto import get_random_string
@@ -47,6 +48,10 @@ SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 RELAX_SALT_PERMS_SLS = "/opt/calamari/salt-local/relax_salt_perms.sls"
 
 
+class CalamariUserError(Exception):
+    pass
+
+
 @contextmanager
 def quiet():
     sys.stdout = StringIO()
@@ -79,15 +84,53 @@ def run_local_salt(sls, message):
         log.debug("Skipping {message} configuration, SLS not found".format(message=message))
 
 
-def add_user(args):
-    from django.db import IntegrityError
+def create_default_roles():
+    from django.contrib.auth.models import Group
+    Group.objects.get_or_create(name='readonly')
+    Group.objects.get_or_create(name='read/write')
+
+
+def assign_role(args):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Group
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(username=args.username)
+    except user_model.DoesNotExist, e:
+        log.error('User %s does not exist' % args.username)
+        raise CalamariUserError(str(e))
+
+    user.groups = []
+    user.is_superuser = False
+
+    if args.role_name == 'superuser':
+        user.is_superuser = True
+    else:
+        try:
+            role = Group.objects.get(name=args.role_name)
+        except ObjectDoesNotExist, e:
+            log.error('Role %s does not exist' % args.role_name)
+            raise CalamariUserError(str(e))
+
+        user.groups.add(role)
+
+    user.save()
+
+
+def add_user(args):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.db import IntegrityError
     from django.contrib.auth import get_user_model
     user_model = get_user_model()
     try:
         user_model.objects.create_user(args.username, args.email, args.password)
     except IntegrityError, e:
-        log.error(str(e))
+        log.error('User with username %s already exists' % args.username)
+        raise CalamariUserError(str(e))
+
+    args.role_name = 'read/write'
+    assign_role(args)
 
 
 def create_admin_users(args):
@@ -156,6 +199,7 @@ def initialize(args):
     with quiet():
         execute_from_command_line(["", "syncdb", "--noinput"])
 
+    create_default_roles()
     create_admin_users(args)
     log.info("Initializing web interface...")
 
@@ -246,6 +290,16 @@ Calamari setup tool.
                                  required=True)
     add_user_parser.set_defaults(func=add_user)
 
+    assign_role_parser = subparsers.add_parser('assign_role',
+                                               help="Assign a role to an existing user")
+    assign_role_parser.add_argument('--username', dest="username",
+                                    help="Username for account",
+                                    required=True)
+    assign_role_parser.add_argument('--role', dest="role_name",
+                                    help="Role to assign to user, one of readonly, read/write, superuser",
+                                    required=True)
+    assign_role_parser.set_defaults(func=assign_role)
+
     passwd_parser = subparsers.add_parser('change_password',
                                           help="Reset the password for a Calamari user account")
     passwd_parser.add_argument('username')
@@ -263,6 +317,9 @@ Calamari setup tool.
         else:
             log.error('Need root privileges to run')
     except Exception, e:
+        if args.func in (assign_role, add_user) and isinstance(e, CalamariUserError):
+            sys.exit(1)
+
         log.error(str(e))
         debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
         open(debug_filename, 'w').write(json.dumps({
