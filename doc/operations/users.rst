@@ -49,14 +49,7 @@ Assigning a role to a user:
 
 .. code-block:: bash
 
-    calamari-ctl mod_user --username alice --role readonly
+    calamari-ctl assign_role --username alice --role readonly
 
-Users and roles for a Many to One relationship. Users only have one role. A user may only be assigned one role at a time.
+Users and roles form a Many to One relationship. Users only have one role. A user may only be assigned one role at a time.
 
-Open questions:
-^^^^^^^^^^^^^^^
-
-* How does a user change their password?
-* How does an admin modify a user?
-* How does an admin get a list of users?
-* What other things are essential for this interface?
