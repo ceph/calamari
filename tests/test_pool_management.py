@@ -1,6 +1,6 @@
 
 import logging
-from unittest import SkipTest
+from nose.exc import SkipTest
 from tests.server_testcase import RequestTestCase
 
 log = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class TestPoolManagement(RequestTestCase):
                 return pool
         return None
 
-    def _create(self, cluster_id, pool_name, pg_num=64, optionals={}):
+    def _create(self, cluster_id, pool_name, pg_num=64, optionals=None):
         # Check that the pool we're going to create doesn't already exist
         self.assertEqual(self._filter_pool(self.api.get("cluster/%s/pool" % cluster_id).json(), pool_name), None)
 
@@ -32,7 +32,8 @@ class TestPoolManagement(RequestTestCase):
             'name': pool_name,
             'pg_num': pg_num
         }
-        args.update(optionals)
+        if optionals:
+            args.update(optionals)
 
         # TODO fix this default value
         if 'hashpspool' in args:
@@ -228,7 +229,7 @@ class TestPoolManagement(RequestTestCase):
                 pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
                 self.assertEqual(
                     pool['min_size'], expected,
-                    msg="set min_size {}, expected result {}, got result {}".
+                    msg="set min_size {0}, expected {1}, got {2}".
                     format(val, expected, pool['min_size'])
                 )
                 # TODO: call out to the ceph cluster to check the

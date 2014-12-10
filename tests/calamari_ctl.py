@@ -9,11 +9,12 @@ import xmlrpclib
 import signal
 import errno
 import psutil
+import yaml
 from requests import ConnectionError
 from tests.http_client import AuthenticatedHttpClient
 from tests.utils import wait_until_true, WaitTimeout
 from tests.config import TestConfig
-from unittest import SkipTest
+from nose.exc import SkipTest
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ class CalamariControl(object):
 
     def __init__(self):
         log.info("CalamariControl.__init__")
+        with open(config.get('testing', 'external_cluster_path')) as f:
+            self.cluster_config = yaml.load(f)
         self._api = None
 
     def start(self):
@@ -47,7 +50,9 @@ class CalamariControl(object):
 
     @property
     def api_url(self):
-        return config.get('testing', 'api_url')
+        if config.has_option('testing', 'api_url'):
+            return config.get('testing', 'api_url')
+        return 'http://{0}/api/v2/'.format(self.get_calamari_node())
 
     @property
     def api_username(self):
@@ -300,6 +305,9 @@ class EmbeddedCalamariControl(CalamariControl):
                 if rc != 0:
                     raise RuntimeError("supervisord did not terminate cleanly: %s %s %s" % (rc, stdout, stderr))
 
+    def get_calamari_node(self):
+        return 'localhost'
+
 
 class ExternalCalamariControl(CalamariControl):
     """
@@ -314,3 +322,16 @@ class ExternalCalamariControl(CalamariControl):
 
     def restart(self):
         raise SkipTest('I don\'t reset external calamari')
+
+    def _find_node_with_role(self, role):
+        for target, roles in self.cluster_config['cluster'].iteritems():
+            if role in roles['roles']:
+                return target.split('@')[1]
+
+    def get_calamari_node(self):
+        # legislate that 'client.0' is the calamari server, a fairly-
+        # common assumption within teuthology.
+        # XXX maybe this should be "calamari_server" in the config
+        # so there's less ambiguity?  The only real special thing
+        # is that the ceph task sets up a client key for 'client.*'.
+        return self._find_node_with_role('client.0')
