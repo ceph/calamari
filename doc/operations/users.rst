@@ -26,22 +26,23 @@ Creating a user:
 
 .. code-block:: bash
 
-   calamari-ctl add_user --username alice --email aprogrammer@planetearth.org 
+   calamari-ctl add_user alice --email aprogrammer@planetearth.org
 
 This will add alice as a read/write user by default. Notice that we set no password. Alice is currently a locked account. Accounts without passwords are not allowed access.
 
 .. code-block:: bash
 
-    calamari-ctl change_password --username alice
+    calamari-ctl change_password alice
 
 Username is required to be unique.
 
-Removing a user:
-^^^^^^^^^^^^^^^^
+Disable/enable a user:
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
-    calmari-ctl rm_user --username alice
+    calmari-ctl disable_user alice
+    calmari-ctl enable_user alice
 
 
 Assigning a role to a user:
@@ -49,7 +50,7 @@ Assigning a role to a user:
 
 .. code-block:: bash
 
-    calamari-ctl assign_role --username alice --role readonly
+    calamari-ctl assign_role alice --role readonly
 
 Users and roles form a Many to One relationship. Users only have one role. A user may only be assigned one role at a time.
 
