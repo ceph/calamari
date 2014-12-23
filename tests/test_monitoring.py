@@ -2,6 +2,7 @@ import logging
 import time
 from tests.server_testcase import ServerTestCase, OSD_RECOVERY_PERIOD
 from tests.utils import wait_until_true, WaitTimeout, scalable_wait_until_true
+from nose.exc import SkipTest
 
 log = logging.getLogger(__name__)
 
@@ -145,6 +146,8 @@ class TestMonitoring(ServerTestCase):
         """
         cluster_id = self._wait_for_cluster()
         mon_fqdns = self.ceph_ctl.get_service_fqdns(cluster_id, 'mon')
+        if len(mon_fqdns) < 3:
+            raise SkipTest("Not enough monitors to test one down")
 
         def update_time():
             return self.api.get("cluster/%s" % cluster_id).json()['update_time']
