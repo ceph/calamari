@@ -133,6 +133,28 @@ def add_user(args):
     assign_role(args)
 
 
+def disable_user(args):
+    change_user_active_status(args.username, False)
+
+
+def enable_user(args):
+    change_user_active_status(args.username, True)
+
+
+def change_user_active_status(username, active):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.db import IntegrityError
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(username=username)
+        user.is_active = active
+        user.save()
+    except IntegrityError, e:
+        log.error('User with username %s cannot be deleted' % username)
+        raise CalamariUserError(str(e))
+
+
 def create_admin_users(args):
     from django.contrib.auth import get_user_model
     user_model = get_user_model()
@@ -276,6 +298,16 @@ def clear(args):
     log.info("Complete.  Now run `%s initialize`" % os.path.basename(sys.argv[0]))
 
 
+def add_user_subparser(subparsers, func, help_text):
+    """
+    Parameterize subparsers that require a positional username argument
+    """
+    user_parser = subparsers.add_parser(func.__name__, help=help_text)
+    user_parser.set_defaults(func=func)
+    user_parser.add_argument('username')
+    return user_parser
+
+
 def main():
     parser = argparse.ArgumentParser(description="""
 Calamari setup tool.
@@ -303,42 +335,28 @@ Calamari setup tool.
                                    required=False)
     initialize_parser.set_defaults(func=initialize)
 
-    add_user_parser = subparsers.add_parser('add_user',
-                                            help="Create user accounts")
-    add_user_parser.add_argument('--username', dest="username",
-                                 help="Username for account",
-                                 required=True)
+    add_user_parser = add_user_subparser(subparsers, add_user, "Create user accounts")
     add_user_parser.add_argument('--password', dest="password",
                                  help="Password for account",
                                  required=False)
     add_user_parser.add_argument('--email', dest="email",
                                  help="Email for account",
                                  required=True)
-    add_user_parser.set_defaults(func=add_user)
 
-    assign_role_parser = subparsers.add_parser('assign_role',
-                                               help="Assign a role to an existing user")
-    assign_role_parser.add_argument('--username', dest="username",
-                                    help="Username for account",
-                                    required=True)
+    assign_role_parser = add_user_subparser(subparsers, assign_role, "Assign a role to an existing user")
     assign_role_parser.add_argument('--role', dest="role_name",
                                     help="Role to assign to user, one of readonly, read/write, superuser",
                                     required=True)
-    assign_role_parser.set_defaults(func=assign_role)
 
-    passwd_parser = subparsers.add_parser('change_password',
-                                          help="Reset the password for a Calamari user account")
+    passwd_parser = add_user_subparser(subparsers, change_password, "Reset the password for a Calamari user account")
     passwd_parser.add_argument('--password', dest="password",
                                help="New password",
                                required=False)
-    passwd_parser.add_argument('username')
-    passwd_parser.set_defaults(func=change_password)
+    add_user_subparser(subparsers, disable_user, "Disable a user")
+    add_user_subparser(subparsers, enable_user, "Enable a user")
 
-    rename_parser = subparsers.add_parser('rename_user',
-                                          help="Rename a user")
-    rename_parser.add_argument('username')
+    rename_parser = add_user_subparser(subparsers, rename_user, "Rename a user")
     rename_parser.add_argument('new_username')
-    rename_parser.set_defaults(func=rename_user)
 
     clear_parser = subparsers.add_parser('clear', help="Clear the Calamari database")
     clear_parser.add_argument('--yes-i-am-sure', dest="yes_i_am_sure", action='store_true', default=False)
