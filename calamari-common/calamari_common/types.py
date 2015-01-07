@@ -94,7 +94,7 @@ class OsdMap(VersionedSyncObject):
                         parent_map[child_id].append(node)
                         has_been_mapped.add((child_id, node['id']))
         log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
-        return parent_map
+        return dict(parent_map)
 
     @property
     @memoize
