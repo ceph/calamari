@@ -44,7 +44,16 @@ class ValidatingSerializer(serializers.Serializer):
         # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
         filtered_data = {}
         for field, value in self.init_data.iteritems():
-            filtered_data[field] = self.data[field]
+            # TODO HACK this assumes that we are dealing with a nested serializer field
+            # see http://tracker.ceph.com/issues/10557
+            # and http://tracker.ceph.com/issues/10556
+            if isinstance(self.fields[field], serializers.Serializer) and self.fields[field].many:
+                filtered_data[field] = []
+                for datum in self.data[field]:
+                    datum = dict(datum) if isinstance(datum, dict) else datum
+                    filtered_data[field].append(datum)
+            else:
+                filtered_data[field] = self.data[field]
 
         return filtered_data
 
