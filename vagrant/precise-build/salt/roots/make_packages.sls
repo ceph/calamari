@@ -1,35 +1,37 @@
+{% import 'setvars' as vars %}
+
 build-diamond:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: make deb
-    - cwd: /home/vagrant/Diamond
+    - cwd: {{vars.builddir}}/Diamond
     - require:
-      - git: /git/Diamond
+      - git: {{vars.gitpath}}/Diamond
 
 build-repo:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: make precise
-    - cwd: /home/vagrant/calamari/repobuild
+    - cwd: {{vars.builddir}}/calamari/repobuild
     - require:
-      - git: /git/calamari
+      - git: {{vars.gitpath}}/calamari
       - cmd: build-diamond
 
 build-calamari-server:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: make dpkg
-    - cwd: /home/vagrant/calamari
+    - cwd: {{vars.builddir}}/calamari
     - require:
-      - git: /git/calamari
+      - git: {{vars.gitpath}}/calamari
 
-{% for path in ('calamari/repobuild/calamari-repo-precise.tar.gz',
+{% for path in ('calamari/repobuild/calamari-repo-*.tar.gz',
                 'calamari-server_*.deb',
                 'Diamond/build/diamond_*.deb') %}
 
 cp-artifacts-to-share {{ path }}:
   cmd.run:
-    - name: cp {{ path }} /git/
-    - cwd: /home/vagrant/
+    - name: cp {{ path }} {{vars.pkgdest}}
+    - cwd: {{vars.builddir}}
 
 {% endfor %}
