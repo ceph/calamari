@@ -1,15 +1,3 @@
-install_salt:
-    pkgrepo.managed:
-    - humanname: salt PPA
-    - name: deb http://ppa.launchpad.net/saltstack/salt/ubuntu precise main
-    - dist: precise
-    - file: /etc/apt/sources.list.d/saltstack.list
-    - keyid: 0E27C0A6
-    - keyserver: keyserver.ubuntu.com
-    pkg.latest:
-    - name: salt-master
-    - refresh: True
-
 build_deps:
   pkg.installed:
     - pkgs:
