@@ -1,35 +1,37 @@
+{% import 'setvars' as vars %}
+
 build-diamond:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: make rpm
-    - cwd: /home/vagrant/Diamond
+    - cwd: {{vars.builddir}}/Diamond
     - require:
-      - git: /git/Diamond
+      - git: {{vars.gitpath}}/Diamond
 
 build-repo:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: make rhel7
-    - cwd: /home/vagrant/calamari/repobuild
+    - cwd: {{vars.builddir}}/calamari/repobuild
     - require:
-      - git: /git/calamari
+      - git: {{vars.gitpath}}/calamari
       - cmd: build-diamond
 
 build-calamari-server:
   cmd.run:
-    - user: vagrant
+    - user: {{vars.username}}
     - name: ./build-rpm.sh
-    - cwd: /home/vagrant/calamari
+    - cwd: {{vars.builddir}}/calamari
     - require:
-      - git: /git/calamari
+      - git: {{vars.gitpath}}/calamari
 
-{% for path in ('calamari/repobuild/calamari-repo-rhel7.tar.gz',
-                'rpmbuild/RPMS/x86_64/calamari-server-*.rpm',
-                'Diamond/dist/diamond-*.noarch.rpm') %}
+{% for path in ('calamari/repobuild/calamari-repo-*.tar.gz',
+                'rpmbuild/RPMS/*/calamari-server-*.rpm',
+                'Diamond/dist/diamond-*.rpm') %}
 
 cp-artifacts-to-share {{ path }}:
   cmd.run:
-    - name: cp {{ path }} /git/
-    - cwd: /home/vagrant/
+    - name: cp {{ path }} {{vars.pkgdest}}
+    - cwd: {{vars.builddir}}
 
 {% endfor %}

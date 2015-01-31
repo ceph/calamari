@@ -18,6 +18,15 @@ install:
     - for m in rest-api minion-sim cthulhu calamari-web calamari-common ; do cd $m ; python setup.py develop ; cd .. ; done
     - cd dev ; python ./configure.py ; cd ..
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize --admin-username admin --admin-password admin --admin-email admin@admin.com
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode add_user calamari --email cal@mari.com
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role readonly
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role "read/write"
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role superuser
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode add_user calamari --email cal@mari.com || echo "It checks user already exists"
+
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role not_calamari --role readonly || echo "It checks that user exists"
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role not_readonly || echo "It checks that role exists"
 
 script:
     - "make lint"
