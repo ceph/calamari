@@ -11,7 +11,7 @@
 # common
 #################################################################################
 Name:		calamari-server
-Summary:        Inktank package containing the Calamari management webapp
+Summary:        Manage and monitor Ceph with a REST API
 Group:   	System/Filesystems
 BuildRequires:  postgresql-libs
 Requires:       httpd
@@ -40,7 +40,6 @@ Source0: 	%{name}_%{version}.tar.gz
 make DESTDIR=${RPM_BUILD_ROOT} install-rpm
 
 %description -n calamari-server
-Inktank package containing the Calamari management webapp
 Calamari is a webapp to monitor and control a Ceph cluster via a web
 browser. 
 
