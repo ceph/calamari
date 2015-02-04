@@ -16,7 +16,7 @@ VERSION=$(lsb_release -r -s)
 case $ID in
     "CentOS"|"RedHatEnterpriseServer")
         case $VERSION in
-            "7.0") ret="rhel7" ;;
+            "7.0"|"7.0.1406) ret="rhel7" ;;
             "6.5"|"6.4"|"6.3") ret="el6" ;;
             *) echo "$0: unhandled EL version $VERSION"; exit 1 ;;
         esac ;;
