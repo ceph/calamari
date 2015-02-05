@@ -23,7 +23,8 @@ Using Vagrant
 4. ``vagrant up``
 
 The result will be a virtual machine that you can connect to using ``vagrant ssh``, containing
-a git clone of Calamari with a fully populated virtualenv.  Activate the virtualenv
+a git clone of Calamari with a fully populated virtualenv.  Activate the virtualenv contained
+in the env directory. After this head over to the instructions on `Running the server`_.
 
 There is a screencast of this process: https://www.youtube.com/watch?v=Nil70DgL2zg
 
