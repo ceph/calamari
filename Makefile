@@ -255,12 +255,12 @@ unit-tests: dev/calamari.conf
 lint:
 	@echo "target: $@"
 	echo "Checking code style:" && \
-		flake8 cthulhu/ --ignore=E501 &&\
-		flake8 rest-api/ --ignore=E501 &&\
-		flake8 calamari-common/ --ignore=E501 &&\
-		flake8 calamari-web/ --ignore=E501 &&\
-		flake8 tests/ --ignore=E501 &&\
-		flake8 salt/srv/salt/_modules/ --ignore=E501 &&\
+		flake8 cthulhu/ --ignore=E501,E402,E731 &&\
+		flake8 rest-api/ --ignore=E501,E402,E731 &&\
+		flake8 calamari-common/ --ignore=E501,E402,E731 &&\
+		flake8 calamari-web/ --ignore=E501,E402,E731 &&\
+		flake8 tests/ --ignore=E501,E402,E731 &&\
+		flake8 salt/srv/salt/ --ignore=E501,E402,E731 &&\
 		echo "OK"
 
 check: unit-tests lint
