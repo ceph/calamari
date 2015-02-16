@@ -3,6 +3,7 @@ from mock import MagicMock, patch
 
 from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
 from cthulhu.manager.user_request import RadosRequest
+import json
 
 
 class TestCrushNodeFactory(TestCase):
@@ -68,6 +69,7 @@ class TestCrushNodeFactory(TestCase):
 
     @patch('cthulhu.manager.user_request.LocalClient', fake_salt)
     def test_create_new_host(self):
+        self.factory._get_hostname_where_osd_runs = lambda x: 'figment001'
         attribs = {'name': 'fake',
                    'bucket_type': 'host',
                    "items": [{"id": 2,
@@ -92,10 +94,14 @@ class TestCrushNodeFactory(TestCase):
                ('osd crush reweight', {'name': 'osd.2', 'weight': 0.0}),
                ('osd crush remove', {'name': 'osd.2'}),
                ('osd crush add', {'args': ['host=fake'], 'id': 2, 'weight': 0.0}),
+               ('config-key put', {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
+                                   'val': json.dumps({'parent_type': 'host', 'parent_name': 'fake', 'hostname': 'figment001'})}),
                ('osd crush reweight', {'name': 'osd.2', 'weight': 22}),
                ('osd crush reweight', {'name': 'osd.3', 'weight': 0.0}),
                ('osd crush remove', {'name': 'osd.3'}),
                ('osd crush add', {'args': ['host=fake'], 'id': 3, 'weight': 0.0}),
+               ('config-key put', {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
+                                   'val': json.dumps({'parent_type': 'host', 'parent_name': 'fake', 'hostname': 'figment001'})}),
                ('osd crush reweight', {'name': 'osd.3', 'weight': 33})]])
 
     @patch('cthulhu.manager.user_request.LocalClient', fake_salt)
@@ -199,6 +205,7 @@ class TestCrushNodeFactory(TestCase):
 
     @patch('cthulhu.manager.user_request.LocalClient', fake_salt)
     def test_update_rename_relink_to_parent(self):
+        self.factory._get_hostname_where_osd_runs = lambda x: 'figment001'
         attribs = {'name': 'renamed',
                    'bucket_type': 'rack',
                    "items": [{"id": 2,
@@ -221,10 +228,14 @@ class TestCrushNodeFactory(TestCase):
             ('osd crush reweight', {'name': 'osd.2', 'weight': 0.0}),
             ('osd crush remove', {'name': 'osd.2'}),
             ('osd crush add', {'args': ['rack=renamed'], 'id': 2, 'weight': 0.0}),
+            ('config-key put', {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
+                                'val': json.dumps({'parent_type': 'rack', 'parent_name': 'renamed', 'hostname': 'figment001'})}),
             ('osd crush reweight', {'name': 'osd.2', 'weight': 22}),
             ('osd crush reweight', {'name': 'osd.3', 'weight': 0.0}),
             ('osd crush remove', {'name': 'osd.3'}),
             ('osd crush add', {'args': ['rack=renamed'], 'id': 3, 'weight': 0.0}),
+            ('config-key put', {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
+                                'val': json.dumps({'parent_type': 'rack', 'parent_name': 'renamed', 'hostname': 'figment001'})}),
             ('osd crush reweight', {'name': 'osd.3', 'weight': 33}),
             ('osd crush remove', {'name': 'rack1'}),
         ]
