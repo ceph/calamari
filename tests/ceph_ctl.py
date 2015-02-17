@@ -7,7 +7,7 @@ import psutil
 from itertools import chain
 import yaml
 from subprocess import Popen, PIPE
-from utils import wait_until_true, run_once
+from utils import scalable_wait_until_true, run_once
 import json
 import urllib2
 
@@ -206,11 +206,9 @@ class ExternalCephControl(CephControl):
         self.reset_crush_map()
         self.reset_all_osds(self._list_osds())
 
-        # Ensure all OSDs are initially up: assertion per #7813
-        self._wait_for_state(self._list_osds,
-                             self._check_osds_in_and_up)
-
         self.reset_all_pools(self._list_pools())
+
+        self.wait_till_osds_up_and_in()
 
         # Ensure there are initially no pools but the default ones. assertion per #7813
         self._wait_for_state(self._list_pools,
@@ -219,6 +217,11 @@ class ExternalCephControl(CephControl):
         # wait till all PGs are active and clean assertion per #7813
         self._wait_for_state(self._list_pgs,
                              self._check_pgs_active_and_clean)
+
+    def wait_till_osds_up_and_in(self):
+        # Ensure all OSDs are initially up: assertion per #7813
+        self._wait_for_state(self._list_osds,
+                             self._check_osds_in_and_up)
 
     def get_service_fqdns(self, fsid, service_type):
         fqdns = []
@@ -261,7 +264,7 @@ class ExternalCephControl(CephControl):
 
     def _wait_for_state(self, command, state):
         log.info('Waiting for {state} on cluster'.format(state=state))
-        wait_until_true(lambda: state(command()))
+        scalable_wait_until_true(lambda: state(command()))
 
     def _list_pgs(self):
         # TODO stop scraping this, defer this because pg stat -f json-pretty is anything but
@@ -347,6 +350,12 @@ class ExternalCephControl(CephControl):
                 cluster=self.cluster_name, command=command, id=int(osd_id)
             )
         )
+        log.info(output)
+
+    def restart_osd(self, fsid, fqdn, osd_id):
+        output = self._run_command(
+            fqdn,
+            "sudo service ceph restart osd.{id}".format(id=osd_id))
         log.info(output)
 
 

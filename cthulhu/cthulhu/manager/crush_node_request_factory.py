@@ -1,7 +1,9 @@
 from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.user_request import OsdMapModifyingRequest
-from calamari_common.types import OsdMap, BucketNotEmptyError
+from cthulhu.manager.server_monitor import ServiceId
+from calamari_common.types import OSD, OsdMap, BucketNotEmptyError
 import logging
+import json
 
 
 log = logging.getLogger('cthulhu.crush_node_factory')
@@ -14,6 +16,9 @@ class CrushNodeRequestFactory(RequestFactory):
     def __init__(self, monitor):
         super(CrushNodeRequestFactory, self).__init__(monitor)
         self.osd_map = self._cluster_monitor.get_sync_object(OsdMap)
+        # HERE we have access to the cluster_monitor and likely the server monitor
+        self._server_monitor = monitor._servers
+        self.fsid = self._cluster_monitor.fsid
 
     def update(self, node_id, attributes):
         # TODO report Not Modified http://tracker.ceph.com/issues/9764
@@ -22,7 +27,7 @@ class CrushNodeRequestFactory(RequestFactory):
         name, bucket_type, items = [attributes[key] for key in ('name', 'bucket_type', 'items')]
         commands = []
 
-        # TODO change to use rename-bucket when #9526 lands in ceph
+        # TODO change to use rename-bucket when #9526 lands in ceph 0.89
         if name != current_node['name'] or bucket_type != current_node['type_name']:
             commands.append(add_bucket(name, bucket_type))
             if parent is not None:
@@ -75,12 +80,20 @@ class CrushNodeRequestFactory(RequestFactory):
                 child = self.osd_map.get_tree_node(id)['name']
                 commands.append(move_bucket(child, name, bucket_type))
             else:  # OSD
+                # probe on_osd_map in server_moditor when running
+                hostname = self._get_hostname_where_osd_runs(id)
+
                 child = 'osd.{id}'.format(id=id)
                 commands.append(reweight_osd(child, 0.0))
                 commands.append(remove_bucket(child, None))
-                commands.append(move_osd(id, name, bucket_type))
+                commands += move_osd(hostname, id, name, bucket_type)
                 commands.append(reweight_osd(child, item['weight']))
         return commands
+
+    def _get_hostname_where_osd_runs(self, osd_id):
+        return self._server_monitor.get_by_service(ServiceId(self.fsid,
+                                                             OSD,
+                                                             str(osd_id))).hostname
 
 
 def add_bucket(name, bucket_type):
@@ -101,13 +114,27 @@ def reweight_osd(name, weight):
             )
 
 
-def move_osd(osd_id, parent_name, parent_type):
-    return ('osd crush add', {'args': ['{type}={name}'.format(type=parent_type,
-                                                              name=parent_name)],
-                              'id': osd_id,
-                              'weight': 0.0,
-                              }
-            )
+def move_osd(hostname, osd_id, parent_name, parent_type):
+
+    osd_crush_location = {'parent_type': parent_type,
+                          'parent_name': parent_name,
+                          'hostname': hostname}
+
+    return (('osd crush add', {'args': ['{type}={name}'.format(type=parent_type,
+                                                               name=parent_name)],
+                               'id': osd_id,
+                               'weight': 0.0,
+                               }
+             ),
+            # TODO do something about not modified, we don't want to store obvious stuff in teh keystore
+            # for hostname in the cache what we need to do here is work out what the parent is (host)?
+            # and then figure out it's hostname, we know these things in /api/v2/cluster/fsid/server
+            # the osd cephx key has limited access to this info already see ceph/src/mon/MonCap.cc:139
+            # look for this in the log log.debug("Warning: failed to process CRUSH host->osd mapping")
+            ('config-key put', {'key': 'daemon-private/osd.{id}/v1/calamari/osd_crush_location'.format(id=osd_id),
+                                'val': json.dumps(osd_crush_location)
+                                }
+             ))
 
 
 def move_bucket(name, parent_name, parent_type):
