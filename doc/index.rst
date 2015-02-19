@@ -2,7 +2,13 @@
 Calamari
 ========
 
-Welcome to the Calamari documentation.
+Calamari is a management and monitoring service for Ceph, exposing a high level REST API.
+
+Calamari source: https://github.com/ceph/calamari
+
+Calamari mailing list: http://lists.ceph.com/listinfo.cgi/ceph-calamari-ceph.com
+
+Calamari issue tracker: http://tracker.ceph.com/projects/calamari
 
 **For users**: :doc:`operations/index`
 
