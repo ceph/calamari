@@ -102,7 +102,7 @@ service httpd start
 # part of the installation process
 echo "Thank you for installing Calamari."
 echo ""
-echo "Please run 'sudo calamari-ctl initialize' to complete the installation."
+echo "Please run 'calamari-ctl initialize' as root to complete the installation."
 exit 0
 
 %preun -n calamari-server
