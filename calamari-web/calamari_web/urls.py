@@ -1,6 +1,6 @@
 from django.conf.urls import patterns, include, url
 
-from settings import STATIC_ROOT, GRAPHITE_API_PREFIX, CONTENT_DIR
+from settings import STATIC_ROOT
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -25,18 +25,6 @@ urlpatterns = patterns(
     url(r'^dashboard/(?P<path>.*)$', 'calamari_web.views.dashboard',
         {'document_root': '%s/dashboard/' % STATIC_ROOT},
         name='dashboard'),
-
-    url(r'^render/?', include('graphite.render.urls')),
-    url(r'^metrics/?', include('graphite.metrics.urls')),
-    url(r'^%s/dashboard/?' % GRAPHITE_API_PREFIX.lstrip('/'), include('graphite.dashboard.urls')),
-
-    # XXX this is a hack to make graphite visible where the 1.x GUI expects it,
-    url(r'^graphite/render/?', include('graphite.render.urls')),
-    url(r'^graphite/metrics/?', include('graphite.metrics.urls')),
-
-    # XXX this is a hack to make graphite dashboard work in dev mode (full installation
-    # serves this part with apache)
-    url('^content/(?P<path>.*)$', 'django.views.static.serve', {'document_root': CONTENT_DIR}),
 
     # XXX this is a hack to serve apt repo in dev mode (Full installation serves this with apache)
     url(r'^static/precise/(?P<path>.*)$', 'django.views.static.serve',
@@ -82,8 +70,3 @@ def patch_views(mod):
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message="django.conf.urls.defaults is deprecated")
-
-import graphite.metrics.urls
-import graphite.dashboard.urls
-patch_views(graphite.metrics.urls)
-patch_views(graphite.dashboard.urls)

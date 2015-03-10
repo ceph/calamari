@@ -131,10 +131,6 @@ INSTALLED_APPS = (
     'calamari_web',
     'rest_framework',
     'calamari_rest',
-    'graphite.render',
-    'graphite.account',
-    'graphite.metrics',
-    'graphite.dashboard'
 )
 
 try:
