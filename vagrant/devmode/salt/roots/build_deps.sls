@@ -3,16 +3,16 @@ build_deps:
     - pkgs:
       - python-virtualenv
       - git
-      - python-dev
+      - python-devel
       - swig
-      - libzmq3-dev
-      - g++
-      - python-cairo
-      - python-m2crypto
+      - zeromq3
+      - gcc-c++
+      - pycairo
+      - python-m2ext
       - make
-      - postgresql-9.1
-      - postgresql-server-dev-9.1
+      - postgresql
+      - postgresql-server
+      - postgresql-devel
       - python-pip
-      - libevent-dev
-      - libmysqlclient-dev
-      - python-libvirt
+      - libevent-devel
+      - openssl-devel
