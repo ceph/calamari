@@ -64,7 +64,7 @@ For RH systems:
 
 1. Create a virtualenv (if you are on ubuntu and using systemwide installs of
    cairo and m2crypto, then pass *--system-site-packages*)
-2. Install dependencies with ``pip install -r requirements/{debian,rh}/requirements.txt`` and ``pip install -r requirements/{debian,rh}/requirements.force.txt``.
+2. Install dependencies with ``pip install -r requirements/{2.6,2.7}/requirements.txt`` and ``pip install -r requirements/{2.6,2.7}/requirements.force.txt``. Where {2.6,2.7} should represent the system version of python.
 3. Install graphite and carbon, which require some special command lines:
 
 ::

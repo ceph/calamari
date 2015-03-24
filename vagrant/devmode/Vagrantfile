@@ -14,8 +14,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.synced_folder "../../", "/calamari.git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
-  config.vm.provision :salt do |salt|
-    salt.minion_config = "salt/minion"
-    salt.run_highstate = true
-  end
+  config.vm.provision "shell",
+    inline: "/bin/bash /calamari.git/vps_bootstrap.sh"
+
 end
