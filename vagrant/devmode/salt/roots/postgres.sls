@@ -1,6 +1,6 @@
 {% if grains['os_family'] == 'RedHat' %}
 
-{% if grains['osrelease'] == '21' %}
+{% if grains['osrelease'] == '21' or grains['osmajorrelease'] == '7' %}
 # work around https://github.com/saltstack/salt/pull/12316; use new
 # command postgresql-setup anyway
 
