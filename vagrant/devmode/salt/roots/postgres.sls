@@ -29,7 +29,7 @@ postgresql_initdb:
 postgresql:
     cmd:
         - run
-        - name: systemctl enable postgresql || true; systemctl stop postgresql || true; systemctl start postgresql || true
+        - name: systemctl enable postgresql.service || true; systemctl stop postgresql.service || true; systemctl start postgresql.service || true
         - require:
             - cmd: postgresql_status
 
