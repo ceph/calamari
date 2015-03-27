@@ -14,8 +14,10 @@ postgresql_initdb:
     cmd:
         - run
         - name: postgresql-setup initdb
+        - require:
+            - cmd: postgresql
         - onfail:
-           - cmd: postgresql_status
+            - cmd: postgresql_status
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:
