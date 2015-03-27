@@ -4,20 +4,12 @@
 # work around https://github.com/saltstack/salt/pull/12316; use new
 # command postgresql-setup anyway
 
-postgresql_status:
-    cmd:
-        - run
-        - user: postgres
-        - name: pg_ctl status -D /var/lib/pgsql/data
-
 postgresql_initdb:
     cmd:
         - run
         - name: postgresql-setup initdb
-        - require:
-            - cmd: postgresql
-        - onfail:
-            - cmd: postgresql_status
+        - unless:
+          - sudo su - postgres sh -c "pg_ctl status -D /var/lib/pgsql/data"
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:
@@ -33,7 +25,7 @@ postgresql:
         - run
         - name: systemctl enable postgresql.service || true; systemctl stop postgresql.service || true; systemctl start postgresql.service || true
         - require:
-            - cmd: postgresql_status
+            - cmd: postgresql_initdb
 
 calamariuser:
     postgres_user.present:
