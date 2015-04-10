@@ -227,7 +227,7 @@ def transform_crushmap(data, operation):
             args = ["crushtool", "-d", f.name]
         else:
             return 1, '', 'Did not specify get or set'
-        
+
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
         return p.returncode, stdout, stderr
@@ -405,7 +405,6 @@ def get_cluster_object(cluster_name, sync_type, since):
             assert ret == 0
             data['crush_map_text'] = stdout
 
-
     return {
         'type': sync_type,
         'fsid': fsid,
@@ -471,6 +470,9 @@ def get_heartbeats():
             # exclude it from report
             pass
         else:
+            if not service_data:
+                continue
+
             service_name = "%s-%s.%s" % (service_data['cluster'], service_data['type'], service_data['id'])
 
             services[service_name] = service_data
@@ -511,17 +513,27 @@ def service_status(socket_path):
     """
     Given an admin socket path, learn all we can about that service
     """
-    cluster_name, service_type, service_id = re.match("^(.+)-(mon|osd|mds)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
-    # Interrogate the service for its FSID
-    config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
-    fsid = config['fsid']
+    try:
+        cluster_name, service_type, service_id = \
+            re.match("^(.+?)-(.+?)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
+    except AttributeError:
+        return None
 
     status = None
-    if service_type == 'mon':
+    # Interrogate the service for its FSID
+    if service_type != 'mon':
+        try:
+            fsid = json.loads(admin_socket(socket_path, ['status'], 'json'))['cluster_fsid']
+        except AdminSocketError:
+            # older osd/mds daemons don't support 'status'; try our best
+            config = json.loads(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
+            fsid = config['fsid']
+    else:
         # For mons, we send some extra info here, because if they're out
         # of quorum we may not find out from the cluster heartbeats, so
         # need to use the service heartbeats to detect that.
         status = json.loads(admin_socket(socket_path, ['mon_status'], 'json'))
+        fsid = status['monmap']['fsid']
 
     version_response = admin_socket(socket_path, ['version'], 'json')
     if version_response is not None:
