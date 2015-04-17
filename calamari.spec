@@ -13,6 +13,7 @@
 Name:		calamari-server
 Summary:        Manage and monitor Ceph with a REST API
 Group:   	System/Filesystems
+BuildRequires:  httpd
 BuildRequires:  postgresql-libs
 Requires:       httpd
 Requires:	mod_wsgi
