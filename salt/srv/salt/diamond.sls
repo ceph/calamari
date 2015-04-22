@@ -35,20 +35,6 @@ diamond-network-config:
     - require:
         - pkg: diamond
 
-{% if grains['os'] == 'RedHat' and grains['osrelease'] == '7' %}
-# work around https://github.com/saltstack/salt/pull/12316
-diamond:
-  pkg:
-    - installed
-    - skip_verify: true
-  cmd:
-    - name: systemctl restart diamond
-    - watch:
-      - pkg: diamond
-      - file: diamond-network-config
-      - file: diamond-ceph-config
-      - file: diamond-config
-{% else %}
 diamond:
   pkg:
     - installed
@@ -64,5 +50,4 @@ diamond:
       - file: diamond-config
 {% if grains['os'] == 'Debian' or grains['os'] == 'Ubuntu' %}
       - file: diamond-init-config
-{% endif %}
 {% endif %}
