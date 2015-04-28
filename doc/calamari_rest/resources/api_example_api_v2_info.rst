@@ -12,7 +12,7 @@ api/v2/info
      "registered": "N/A", 
      "hostname": "localhost", 
      "ipaddr": "127.0.0.1", 
-     "fqdn": "localhost", 
+     "fqdn": "localhost.localdomain", 
      "version": "dev", 
      "bootstrap_ubuntu": "wget -O - http://localhost:8000/bootstrap | sudo python", 
      "bootstrap_url": "http://localhost:8000/bootstrap"

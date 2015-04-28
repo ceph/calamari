@@ -8,18 +8,6 @@ api/v2/key
 
    [
      {
-       "status": "pre", 
-       "id": "vpm061.front.sepia.ceph.com"
-     }, 
-     {
-       "status": "pre", 
-       "id": "vpm113.front.sepia.ceph.com"
-     }, 
-     {
-       "status": "pre", 
-       "id": "vpm145.front.sepia.ceph.com"
-     }, 
-     {
        "status": "accepted", 
        "id": "figment000.cluster0.com"
      }, 

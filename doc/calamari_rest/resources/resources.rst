@@ -31,9 +31,9 @@ api/v2/cluster/\<fsid\>/crush_rule_set                     :ref:`Crush Rule Se
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/cluster/\<fsid\>/crush_rule                         :ref:`Crush Rule <CrushRuleViewSet>`                  :doc:`Example <api_example_api_v2_cluster__fsid__crush_rule>`                     Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
-api/v2/cluster/\<fsid\>/crush_type                         :ref:`Crush Type <CrushTypeViewSet>`                                                                                                    Yes                       
+api/v2/cluster/\<fsid\>/crush_type                         :ref:`Crush Type <CrushTypeViewSet>`                  :doc:`Example <api_example_api_v2_cluster__fsid__crush_type>`                     Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
-api/v2/cluster/\<fsid\>/crush_type/\<type_id\>             :ref:`Crush Type <CrushTypeViewSet>`                                                                                                    Yes                       
+api/v2/cluster/\<fsid\>/crush_type/\<type_id\>             :ref:`Crush Type <CrushTypeViewSet>`                  :doc:`Example <api_example_api_v2_cluster__fsid__crush_type__type_id_>`           Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/server/\<fqdn\>/debug_job                           :ref:`Debug Job <DebugJob>`                                                                                                                     Yes               
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
@@ -42,6 +42,10 @@ api/v2/event                                               :ref:`Event <EventVie
 api/v2/cluster/\<fsid\>/event                              :ref:`Event <EventViewSet>`                           :doc:`Example <api_example_api_v2_cluster__fsid__event>`                          Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/server/\<fqdn\>/event                               :ref:`Event <EventViewSet>`                           :doc:`Example <api_example_api_v2_server__fqdn__event>`                           Yes                       
+---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
+api/v2/hardware                                            :ref:`Hardware <HardwareViewSet>`                     :doc:`Example <api_example_api_v2_hardware>`                                      Yes                       
+---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
+api/v2/hardware/\<hardware_id\>                            :ref:`Hardware <HardwareViewSet>`                     :doc:`Example <api_example_api_v2_hardware__hardware_id_>`                        Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
 api/v2/info                                                :ref:`Info <Info>`                                    :doc:`Example <api_example_api_v2_info>`                                          Yes                       
 ---------------------------------------------------------- ----------------------------------------------------- --------------------------------------------------------------------------------- --- --- ---- ----- ------ 
@@ -514,6 +518,48 @@ message  string   False                  One line human readable description
 
 
 
+.. _HardwareViewSet:
+
+Hardware
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+This resource represents hardware that we know backs various ceph services.
+It allows us to see the status of hardware that affects ceph.
+
+This allows us to make the connection between failing hardware and
+the effect it has on cluster performance.
+    
+
+URLs
+____
+
+================================================================================== === === ==== ===== ====== 
+URL                                                                                GET PUT POST PATCH DELETE 
+================================================================================== === === ==== ===== ====== 
+:doc:`api/v2/hardware <api_example_api_v2_hardware>`                               Yes                       
+---------------------------------------------------------------------------------- --- --- ---- ----- ------ 
+:doc:`api/v2/hardware/\<hardware_id\> <api_example_api_v2_hardware__hardware_id_>` Yes                       
+================================================================================== === === ==== ===== ====== 
+
+
+Fields
+______
+
+=========== =============== ======== ====== ====== ======================================================================== 
+Name        Type            Readonly Create Modify Description                                                              
+=========== =============== ======== ====== ====== ======================================================================== 
+hardware_id string          False                  a unique identifier for the hardware                                     
+----------- --------------- -------- ------ ------ ------------------------------------------------------------------------ 
+status      multiple choice False                  result of last health check. one of (OK, WARN, ERROR)                    
+----------- --------------- -------- ------ ------ ------------------------------------------------------------------------ 
+services    field           False                  List of Ceph services affected by the status of this hardware            
+----------- --------------- -------- ------ ------ ------------------------------------------------------------------------ 
+update_time datetime        False                  The time at which the last status update from this hardware was received 
+=========== =============== ======== ====== ====== ======================================================================== 
+
+
+
 .. _Info:
 
 Info
@@ -746,29 +792,31 @@ URL                                                                             
 Fields
 ______
 
-============== =========== ======== ====== ======= ============================================================================ 
-Name           Type        Readonly Create Modify  Description                                                                  
-============== =========== ======== ====== ======= ============================================================================ 
-uuid           uuid string True                    Globally unique ID for this OSD                                              
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-up             boolean     False           Allowed Whether the OSD is running from the point of view of the rest of the cluster 
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-in             boolean     False           Allowed Whether the OSD is 'in' the set of OSDs which will be used to store data     
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-id             integer     True                    ID of this OSD within this cluster                                           
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-reweight       float       False           Allowed CRUSH weight factor                                                          
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-server         string      True                    FQDN of server this OSD was last running on                                  
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-pools          field       True                    List of pool IDs which use this OSD for storage                              
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-valid_commands string      True                    List of commands that can be applied to this OSD                             
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-public_addr    string      True                    Public/frontend IP address                                                   
--------------- ----------- -------- ------ ------- ---------------------------------------------------------------------------- 
-cluster_addr   string      True                    Cluster/backend IP address                                                   
-============== =========== ======== ====== ======= ============================================================================ 
+=================== =========== ======== ====== ======= =================================================================================================================== 
+Name                Type        Readonly Create Modify  Description                                                                                                         
+=================== =========== ======== ====== ======= =================================================================================================================== 
+uuid                uuid string True                    Globally unique ID for this OSD                                                                                     
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+up                  boolean     False           Allowed Whether the OSD is running from the point of view of the rest of the cluster                                        
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+in                  boolean     False           Allowed Whether the OSD is 'in' the set of OSDs which will be used to store data                                            
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+id                  integer     True                    ID of this OSD within this cluster                                                                                  
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+reweight            float       False           Allowed CRUSH weight factor                                                                                                 
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+server              string      True                    FQDN of server this OSD was last running on                                                                         
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+pools               field       True                    List of pool IDs which use this OSD for storage                                                                     
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+valid_commands      string      True                    List of commands that can be applied to this OSD                                                                    
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+public_addr         string      True                    Public/frontend IP address                                                                                          
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+cluster_addr        string      True                    Cluster/backend IP address                                                                                          
+------------------- ----------- -------- ------ ------- ------------------------------------------------------------------------------------------------------------------- 
+crush_node_ancestry field       True                    An ordered list of CRUSH node ids that represent a path from the parent node of this OSD up to the root of the tree 
+=================== =========== ======== ====== ======= =================================================================================================================== 
 
 
 
@@ -1076,8 +1124,7 @@ User
     You may pass 'me' as the user ID to refer to the currently logged in user,
     otherwise the user ID is a numeric ID.
 
-    Because all users are superusers, everybody can see each others accounts
-    using this resource.  However, users can only modify their own account (i.e.
+    Users can only modify their own account (i.e.
     the user being modified must be the user associated with the current login session).
     
 
@@ -1266,9 +1313,11 @@ Examples
 
    api_example_api_v2_server__fqdn_
 
-   api_example_api_v2_cluster__fsid__server__fqdn_
+   api_example_api_v2_hardware__hardware_id_
 
    api_example_api_v2_cluster__fsid__osd__osd_id_
+
+   api_example_api_v2_cluster__fsid__server__fqdn_
 
    api_example_api_v2_cluster__fsid__mon__mon_id__status
 
@@ -1291,6 +1340,8 @@ Examples
    api_example_api_v2_cluster__fsid__osd
 
    api_example_api_v2_cluster__fsid__crush_type__type_id_
+
+   api_example_api_v2_hardware
 
    api_example_api_v2_cluster__fsid__osd__osd_id__command
 

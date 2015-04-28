@@ -8,82 +8,108 @@ api/v2/grains
 
    {
      "kernel": "Linux", 
-     "domain": "", 
-     "zmqversion": "4.0.4", 
-     "kernelrelease": "3.13.0-24-generic", 
-     "pythonpath": [
-       "/home/vagrant/calamari/calamari-web", 
-       "/home/vagrant/calamari/webapp/calamari", 
-       "/home/vagrant/calamari/env/src/coverage", 
-       "/home/vagrant/calamari/env/src/whisper", 
-       "/home/vagrant/calamari/rest-api", 
-       "/home/vagrant/calamari/minion-sim", 
-       "/home/vagrant/calamari/cthulhu", 
-       "/home/vagrant/calamari/calamari-web", 
-       "/home/vagrant/calamari/calamari-common", 
-       "/home/vagrant/calamari/env/lib/python2.7", 
-       "/home/vagrant/calamari/env/lib/python2.7/plat-x86_64-linux-gnu", 
-       "/home/vagrant/calamari/env/lib/python2.7/lib-tk", 
-       "/home/vagrant/calamari/env/lib/python2.7/lib-old", 
-       "/home/vagrant/calamari/env/lib/python2.7/lib-dynload", 
-       "/usr/lib/python2.7", 
-       "/usr/lib/python2.7/plat-x86_64-linux-gnu", 
-       "/usr/lib/python2.7/lib-tk", 
-       "/home/vagrant/calamari/env/local/lib/python2.7/site-packages", 
-       "/usr/local/lib/python2.7/site-packages", 
-       "/usr/local/lib/python2.7/dist-packages", 
-       "/usr/lib/python2.7/dist-packages", 
-       "/home/vagrant/calamari/calamari-web/calamari_web/thirdparty"
-     ], 
+     "domain": "localdomain", 
+     "zmqversion": "3.2.2", 
+     "kernelrelease": "3.19.1-201.fc21.x86_64", 
+     "selinux": {
+       "enforced": "Enforcing", 
+       "enabled": true
+     }, 
      "ip_interfaces": {
        "lo": [
          "127.0.0.1"
        ], 
+       "docker0": [
+         "172.17.42.1"
+       ], 
+       "enp0s25": [
+         "192.168.1.48"
+       ], 
+       "virbr0-nic": [], 
        "virbr0": [
-         "192.168.122.1"
-       ], 
-       "tun0": [
-         "10.99.118.70"
-       ], 
-       "eth1": [
-         "192.168.1.21"
-       ], 
-       "eth0": [
-         "192.168.4.141"
+         "192.168.124.1"
        ]
      }, 
-     "mem_total": 2001, 
+     "mem_total": 7856, 
      "saltversioninfo": [
        2014, 
-       1, 
-       13, 
+       7, 
+       0, 
        0
      ], 
-     "id": "", 
-     "osrelease": "14.04", 
-     "ps": "ps -efHww", 
-     "server_id": 0, 
-     "lsb_distrib_description": "Ubuntu 14.04 LTS", 
+     "id": "172.17.42.1_master", 
+     "osrelease": "21", 
+     "ps": "ps -efH", 
+     "locale_info": {
+       "defaultlanguage": "en_US", 
+       "defaultencoding": "UTF-8"
+     }, 
+     "fqdn": "localhost.localdomain", 
+     "ip6_interfaces": {
+       "lo": [
+         "::1"
+       ], 
+       "docker0": [], 
+       "enp0s25": [
+         "fe80::baac:6fff:fe83:5a36"
+       ], 
+       "virbr0-nic": [], 
+       "virbr0": [
+         "fe80::5054:ff:febb:415f"
+       ]
+     }, 
      "num_cpus": 2, 
      "hwaddr_interfaces": {
        "lo": "00:00:00:00:00:00", 
-       "virbr0": "86:71:cb:51:b0:d6", 
-       "eth1": "00:0c:29:06:63:21", 
-       "eth0": "00:0c:29:06:63:17"
+       "docker0": "56:84:7a:fe:97:99", 
+       "enp0s25": "b8:ac:6f:83:5a:36", 
+       "virbr0-nic": "52:54:00:bb:41:5f", 
+       "virbr0": "52:54:00:bb:41:5f"
      }, 
-     "virtual": "VMware", 
-     "osfullname": "Ubuntu", 
+     "ip4_interfaces": {
+       "lo": [
+         "127.0.0.1"
+       ], 
+       "docker0": [
+         "172.17.42.1"
+       ], 
+       "enp0s25": [
+         "192.168.1.48"
+       ], 
+       "virbr0-nic": [], 
+       "virbr0": [
+         "192.168.124.1"
+       ]
+     }, 
+     "osfullname": "Fedora", 
      "master": "", 
-     "ipv4": [
-       "10.99.118.70", 
-       "127.0.0.1", 
-       "192.168.1.21", 
-       "192.168.122.1", 
-       "192.168.4.141"
-     ], 
-     "ipv6": [
-       "::1", 
-       "fe80::20c:29ff:fe06:6317"
+     "lsb_distrib_id": "Fedora", 
+     "pythonpath": [
+       "/home/gmeno/calamari/calamari-web", 
+       "/home/gmeno/calamari/webapp/calamari", 
+       "/home/gmeno/calamari/env/src/coverage", 
+       "/home/gmeno/calamari/env/src/whisper", 
+       "/home/gmeno/calamari/rest-api", 
+       "/home/gmeno/calamari/minion-sim", 
+       "/home/gmeno/calamari/cthulhu", 
+       "/home/gmeno/calamari/calamari-web", 
+       "/home/gmeno/calamari/calamari-common", 
+       "/home/gmeno/calamari/env/lib64/python27.zip", 
+       "/home/gmeno/calamari/env/lib64/python2.7", 
+       "/home/gmeno/calamari/env/lib64/python2.7/plat-linux2", 
+       "/home/gmeno/calamari/env/lib64/python2.7/lib-tk", 
+       "/home/gmeno/calamari/env/lib64/python2.7/lib-old", 
+       "/home/gmeno/calamari/env/lib64/python2.7/lib-dynload", 
+       "/usr/lib64/python2.7", 
+       "/usr/lib/python2.7", 
+       "/home/gmeno/calamari/env/lib/python2.7/site-packages", 
+       "/usr/lib64/python2.7/site-packages", 
+       "/usr/lib64/python2.7/site-packages/gtk-2.0", 
+       "/usr/lib/python2.7/site-packages", 
+       "/home/gmeno/calamari/calamari-web/calamari_web/thirdparty", 
+       "/usr/lib/python2.7/site-packages/git/ext/gitdb", 
+       "/usr/lib64/python2.7/site-packages/gitdb/ext/async", 
+       "/usr/lib64/python2.7/site-packages/gitdb/ext/smmap"
      ], 
      "cpu_flags": [
        "fpu", 
@@ -105,88 +131,91 @@ api/v2/grains
        "pse36", 
        "clflush", 
        "dts", 
+       "acpi", 
        "mmx", 
        "fxsr", 
        "sse", 
        "sse2", 
        "ss", 
+       "ht", 
+       "tm", 
+       "pbe", 
        "syscall", 
        "nx", 
-       "pdpe1gb", 
-       "rdtscp", 
        "lm", 
        "constant_tsc", 
        "arch_perfmon", 
        "pebs", 
        "bts", 
+       "rep_good", 
        "nopl", 
-       "xtopology", 
-       "tsc_reliable", 
-       "nonstop_tsc", 
        "aperfmperf", 
-       "eagerfpu", 
        "pni", 
-       "pclmulqdq", 
+       "dtes64", 
+       "monitor", 
+       "ds_cpl", 
+       "vmx", 
+       "smx", 
+       "est", 
+       "tm2", 
        "ssse3", 
-       "fma", 
        "cx16", 
-       "pcid", 
+       "xtpr", 
+       "pdcm", 
        "sse4_1", 
-       "sse4_2", 
-       "x2apic", 
-       "movbe", 
-       "popcnt", 
-       "aes", 
        "xsave", 
-       "avx", 
-       "f16c", 
-       "rdrand", 
-       "hypervisor", 
        "lahf_lm", 
-       "ida", 
-       "arat", 
-       "epb", 
-       "xsaveopt", 
-       "pln", 
-       "pts", 
        "dtherm", 
-       "fsgsbase", 
-       "smep"
+       "tpr_shadow", 
+       "vnmi", 
+       "flexpriority"
      ], 
-     "localhost": "localhost", 
-     "lsb_distrib_id": "Ubuntu", 
+     "localhost": "localhost.localdomain", 
+     "ipv4": [
+       "127.0.0.1", 
+       "172.17.42.1", 
+       "192.168.1.48", 
+       "192.168.124.1"
+     ], 
      "fqdn_ip4": [
-       "127.0.1.1", 
        "127.0.0.1"
      ], 
      "fqdn_ip6": [
        "::1"
      ], 
-     "nodename": "localhost", 
-     "saltversion": "2014.1.13", 
-     "lsb_distrib_release": "14.04", 
-     "saltpath": "/usr/lib/python2.7/dist-packages/salt", 
+     "nodename": "localhost.localdomain", 
+     "saltversion": "2014.7.0", 
+     "osfinger": "Fedora-21", 
+     "ipv6": [
+       "::1", 
+       "fe80::5054:ff:febb:415f", 
+       "fe80::baac:6fff:fe83:5a36"
+     ], 
+     "saltpath": "/usr/lib/python2.7/site-packages/salt", 
+     "cpu_model": "Intel(R) Core(TM)2 Duo CPU     E8400  @ 3.00GHz", 
+     "osmajorrelease": "21", 
+     "os_family": "RedHat", 
+     "oscodename": "Twenty One", 
+     "gpus": [], 
      "pythonversion": [
        2, 
        7, 
-       6, 
+       8, 
        "final", 
        0
      ], 
-     "host": "localhost", 
-     "os_family": "Debian", 
-     "oscodename": "trusty", 
-     "defaultencoding": "UTF-8", 
-     "osfinger": "Ubuntu-14.04", 
      "num_gpus": 0, 
-     "cpu_model": "Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz", 
-     "fqdn": "localhost", 
-     "osarch": "amd64", 
+     "virtual": "physical", 
+     "server_id": 1680656098, 
+     "host": "localhost", 
+     "pythonexecutable": "/home/gmeno/calamari/env/bin/python", 
+     "osarch": "x86_64", 
      "cpuarch": "x86_64", 
-     "lsb_distrib_codename": "trusty", 
-     "gpus": [], 
-     "path": "/home/vagrant/calamari/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/home/vagrant/plan9port/bin", 
-     "os": "Ubuntu", 
-     "defaultlanguage": "en_US"
+     "osrelease_info": [
+       21
+     ], 
+     "path": "/home/gmeno/calamari/env/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/gmeno/.local/bin:/home/gmeno/bin", 
+     "machine_id": "0cafd1f2829a46b88ed9d77b2e05109d", 
+     "os": "Fedora"
    }
 

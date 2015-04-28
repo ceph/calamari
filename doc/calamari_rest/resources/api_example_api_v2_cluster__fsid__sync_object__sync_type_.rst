@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/sync_object/<sync_type>
 ==========================================================
 
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/config
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/config
 ----------------------------------------------------------------------
 
 .. code-block:: json
@@ -628,53 +628,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/config
      "filestore_fiemap": "false"
    }
 
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mon_map
------------------------------------------------------------------------
-
-.. code-block:: json
-
-   {
-     "quorum": [
-       0, 
-       1, 
-       2
-     ], 
-     "created": "2014-11-06T15:14:34.316557", 
-     "modified": "2014-11-06T15:14:34.316541", 
-     "epoch": 0, 
-     "mons": [
-       {
-         "name": "figment000", 
-         "rank": 0, 
-         "addr": ""
-       }, 
-       {
-         "name": "figment001", 
-         "rank": 1, 
-         "addr": ""
-       }, 
-       {
-         "name": "figment002", 
-         "rank": 2, 
-         "addr": ""
-       }
-     ], 
-     "fsid": "dce20d46-f010-4883-988c-4a6d8bd15793"
-   }
-
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mds_map
------------------------------------------------------------------------
-
-.. code-block:: json
-
-   {
-     "info": {}, 
-     "up": {}, 
-     "max_mds": 1, 
-     "in": []
-   }
-
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/pg_summary
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/pg_summary
 --------------------------------------------------------------------------
 
 .. code-block:: json
@@ -734,7 +688,41 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/pg_summary
      }
    }
 
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mon_status
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/mon_map
+-----------------------------------------------------------------------
+
+.. code-block:: json
+
+   {
+     "quorum": [
+       0, 
+       1, 
+       2
+     ], 
+     "created": "2015-04-28T12:52:18.364360", 
+     "modified": "2015-04-28T12:52:18.364353", 
+     "epoch": 0, 
+     "mons": [
+       {
+         "name": "figment000", 
+         "rank": 0, 
+         "addr": ""
+       }, 
+       {
+         "name": "figment001", 
+         "rank": 1, 
+         "addr": ""
+       }, 
+       {
+         "name": "figment002", 
+         "rank": 2, 
+         "addr": ""
+       }
+     ], 
+     "fsid": "3591a5c6-bc7d-446c-8915-95d8c08b25d7"
+   }
+
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/mon_status
 --------------------------------------------------------------------------
 
 .. code-block:: json
@@ -748,8 +736,8 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mon_status
          1, 
          2
        ], 
-       "created": "2014-11-06T15:14:34.316557", 
-       "modified": "2014-11-06T15:14:34.316541", 
+       "created": "2015-04-28T12:52:18.364360", 
+       "modified": "2015-04-28T12:52:18.364353", 
        "epoch": 0, 
        "mons": [
          {
@@ -768,7 +756,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mon_status
            "addr": ""
          }
        ], 
-       "fsid": "dce20d46-f010-4883-988c-4a6d8bd15793"
+       "fsid": "3591a5c6-bc7d-446c-8915-95d8c08b25d7"
      }, 
      "rank": 0, 
      "quorum": [
@@ -778,22 +766,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/mon_status
      ]
    }
 
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/health
-----------------------------------------------------------------------
-
-.. code-block:: json
-
-   {
-     "overall_status": "HEALTH_OK", 
-     "health": {
-       "health_services": []
-     }, 
-     "detail": [], 
-     "timechecks": {}, 
-     "summary": []
-   }
-
-api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/osd_map
 -----------------------------------------------------------------------
 
 .. code-block:: json
@@ -987,7 +960,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
      "osds": [
        {
          "down_at": 0, 
-         "uuid": "9b2e324f-109d-449e-af60-f5f0b8fa5af0", 
+         "uuid": "8df297fb-b194-4444-8655-7fc04310f339", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1007,7 +980,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "065fb1d7-4a50-4141-a091-ae4551b6c381", 
+         "uuid": "d990ea44-bb88-4d8c-a8f7-36135a158c85", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1027,7 +1000,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "426dcd12-fc70-4e1b-b9e0-4ad49ef21673", 
+         "uuid": "07452dc8-dee0-42b5-bdce-fd623099cbf8", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1047,7 +1020,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "863f6f4b-99da-413f-b7c1-a68b9deeef9f", 
+         "uuid": "75d19ee1-ac73-498a-b158-351e4cda1b89", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1067,7 +1040,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "55d6e022-56e6-46ce-b336-255d3d34b184", 
+         "uuid": "62f7d041-ac92-4753-ba43-f2a33fd8804e", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1087,7 +1060,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "275861f9-dd1f-4bd0-a36a-1143c0878895", 
+         "uuid": "8a6f4100-5e5c-4e21-a2fc-8ba51c93b0c8", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1107,7 +1080,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "2c86f528-ffff-44ed-a190-de649946a6e7", 
+         "uuid": "4e8750f1-5eb7-42b5-b568-6fe9ea2e737b", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1127,7 +1100,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "ff9deff7-b352-4f78-acd6-80e8fac40faa", 
+         "uuid": "6b26bb57-2d8d-4cb6-97ee-4d516489efa9", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1147,7 +1120,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "fb8e2720-815c-4343-ae7e-4ffd33158926", 
+         "uuid": "70343ec0-2e59-42b3-93c2-ab1330fc0131", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1167,7 +1140,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "7fa61048-93a8-436f-aa81-bba0e6d446dc", 
+         "uuid": "edfabc74-7f06-434e-b155-fc0000fcdd34", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1187,7 +1160,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "c019af21-368b-415b-ac94-b8d46cbb095d", 
+         "uuid": "37fbd8c1-e7e0-4d55-ba15-85bfa25c5469", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1207,7 +1180,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
        }, 
        {
          "down_at": 0, 
-         "uuid": "a601c5fb-eae4-4565-abce-d14c45dba37d", 
+         "uuid": "5770f847-e3a6-4513-813c-e052aae56b0a", 
          "heartbeat_front_addr": "", 
          "heartbeat_back_addr": "", 
          "lost_at": 0, 
@@ -1440,7 +1413,7 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
          }
        ]
      }, 
-     "epoch": 2, 
+     "epoch": 1, 
      "flags": "", 
      "pools": [
        {
@@ -1529,37 +1502,35 @@ api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/sync_object/osd_map
          "snap_epoch": 0, 
          "last_change": "1", 
          "read_tier": -1
-       }, 
-       {
-         "flags_names": "", 
-         "tier_of": -1, 
-         "pg_placement_num": 64, 
-         "quota_max_bytes": 0, 
-         "size": 2, 
-         "snap_seq": 0, 
-         "auid": 0, 
-         "pg_num": 64, 
-         "type": 1, 
-         "crush_ruleset": 2, 
-         "pool_name": "newname", 
-         "snap_mode": "selfmanaged", 
-         "tiers": [], 
-         "min_size": 1, 
-         "crash_replay_interval": 0, 
-         "object_hash": 2, 
-         "write_tier": -1, 
-         "properties": [], 
-         "pool": 3, 
-         "removed_snaps": "[]", 
-         "cache_mode": "none", 
-         "pool_snaps": {}, 
-         "quota_max_objects": 0, 
-         "flags": 0, 
-         "snap_epoch": 0, 
-         "last_change": "1", 
-         "read_tier": -1
        }
      ], 
-     "fsid": "dce20d46-f010-4883-988c-4a6d8bd15793"
+     "fsid": "3591a5c6-bc7d-446c-8915-95d8c08b25d7"
+   }
+
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/health
+----------------------------------------------------------------------
+
+.. code-block:: json
+
+   {
+     "overall_status": "HEALTH_OK", 
+     "health": {
+       "health_services": []
+     }, 
+     "detail": [], 
+     "timechecks": {}, 
+     "summary": []
+   }
+
+api/v2/cluster/3591a5c6-bc7d-446c-8915-95d8c08b25d7/sync_object/mds_map
+-----------------------------------------------------------------------
+
+.. code-block:: json
+
+   {
+     "info": {}, 
+     "up": {}, 
+     "max_mds": 1, 
+     "in": []
    }
 

@@ -13,7 +13,7 @@ from calamari_rest.parsers.v2 import CrushMapParser
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
-    CliSerializer
+    CliSerializer, HardwareSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
@@ -799,6 +799,24 @@ server then the FQDN will be modified to its correct value.
     def destroy(self, request, fqdn):
         self.client.server_delete(fqdn)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class HardwareViewSet(RPCViewSet):
+    """
+This resource represents hardware that we know backs various ceph services.
+It allows us to see the status of hardware that affects ceph.
+
+This allows us to make the connection between failing hardware and
+the effect it has on cluster performance.
+    """
+    serializer_class = HardwareSerializer
+
+    def retrieve(self, request, hardware_id):
+        return Response({})
+
+    def list(self, request):
+        return Response({})
+
 
 
 class EventViewSet(DatabaseViewSet, PaginatedMixin):

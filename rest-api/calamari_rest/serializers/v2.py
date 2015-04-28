@@ -316,6 +316,23 @@ class SimpleServerSerializer(serializers.Serializer):
                                  "on this server")
 
 
+class HardwareSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('hardware_id', 'status', 'services', 'update_time')
+
+    # Identifying information
+
+    hardware_id = serializers.CharField(help_text="a unique identifier for the hardware")
+    status = serializers.ChoiceField(required=False,
+                                     help_text="result of last health check. one of (OK, WARN, ERROR)",
+                                     choices=list(enumerate(('OK', 'WARN', 'ERROR'))),
+                                     default=0)
+    services = ServiceSerializer(many=True, help_text="List of Ceph services affected by the status of this hardware")
+    update_time = serializers.DateTimeField(
+        help_text="The time at which the last status update from this hardware was received"
+    )
+
+
 class ServerSerializer(SimpleServerSerializer):
     class Meta:
         fields = ('fqdn', 'hostname', 'services', 'frontend_addr', 'backend_addr',
