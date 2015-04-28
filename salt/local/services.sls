@@ -4,7 +4,7 @@
   {% set apache_service = 'apache' %}
 {% endif %}
 
-{% if grains['os'] == 'RedHat' and grains['osrelease'] == '7.0' %}
+{% if grains['os'] == 'RedHat' and grains['osrelease'].startswith('7') %}
 # Work around https://github.com/saltstack/salt/pull/12316
 {{ apache_service }}:
   cmd:
