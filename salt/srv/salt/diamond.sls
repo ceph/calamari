@@ -42,6 +42,7 @@ diamond:
     - installed
     - skip_verify: true
   cmd:
+    - run
     - name: systemctl restart diamond
     - watch:
       - pkg: diamond
