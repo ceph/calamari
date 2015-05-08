@@ -91,6 +91,7 @@ class EmbeddedCephControl(CephControl):
         osds_per_host = 4
 
         from minion_sim.sim import MinionSim
+
         for i in range(0, cluster_count):
             domain = "cluster%d.com" % i
             config_dir = tempfile.mkdtemp()
@@ -190,6 +191,14 @@ class ExternalCephControl(CephControl):
 
     def configure(self, server_count, cluster_count=1):
         log.debug('external configure')
+        if cluster_count != 1:
+            raise SkipTest('ExternalCephControl does not do multiple clusters')
+
+        if config.has_option('testing', 'bootstrap'):
+            bootstrap = config.getboolean('testing', 'bootstrap')
+        else:
+            bootstrap = True
+
         if cluster_count != 1:
             raise SkipTest('ExternalCephControl does not do multiple clusters')
 

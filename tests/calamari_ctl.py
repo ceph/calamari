@@ -314,6 +314,11 @@ class ExternalCalamariControl(CalamariControl):
     Already got a calamari instance running, and you want to point
     the tests at that?  Use this class.
     """
+    def __init__(self):
+        super(ExternalCalamariControl, self).__init__()
+        with open(config.get('testing', 'external_cluster_path')) as f:
+            self.cluster_config = yaml.load(f)
+
     def start(self):
         pass
 
