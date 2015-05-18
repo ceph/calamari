@@ -13,6 +13,7 @@
 Name:		calamari-server
 Summary:        Manage and monitor Ceph with a REST API
 Group:   	System/Filesystems
+BuildRequires:  httpd
 BuildRequires:  postgresql-libs
 Requires:       httpd
 Requires:	mod_wsgi
@@ -44,7 +45,12 @@ Calamari is a webapp to monitor and control a Ceph cluster via a web
 browser. 
 
 %files -n calamari-server
-/opt/calamari/
+/opt/calamari/alembic
+/opt/calamari/conf
+/opt/calamari/salt
+/opt/calamari/salt-local
+/opt/calamari/venv
+%attr (-, apache, apache) /opt/calamari/webapp/calamari
 %{_sysconfdir}/salt/master.d/calamari.conf
 %{_sysconfdir}/graphite/
 %{_sysconfdir}/supervisor/conf.d/calamari.conf
@@ -56,27 +62,16 @@ browser.
 %dir %attr (755, apache, apache) /var/log/graphite
 %dir /var/lib/calamari
 %dir /var/lib/cthulhu
-%dir /var/lib/graphite
-%dir /var/lib/graphite/log
-%dir /var/lib/graphite/log/webapp
-%dir /var/lib/graphite/whisper
+%dir %attr(-, apache, apache) /var/lib/graphite
+%dir %attr(-, apache, apache) /var/lib/graphite/log
+%dir %attr(-, apache, apache) /var/lib/graphite/log/webapp
+%dir %attr(-, apache, apache) /var/lib/graphite/whisper
 
 %post -n calamari-server
 calamari_httpd()
 {
-	d=$(pwd)
-
-	# allow apache access to all
-	chown -R apache.apache /opt/calamari/webapp/calamari
-
-	# apache shouldn't need to write, but it does because
-	# graphite creates index on read
-	chown -R apache.apache /var/lib/graphite
-
 	# centos64
 	mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.orig
-        chown -R apache:apache /var/log/calamari
-	cd $d
 
 	# Load our salt config
 	service salt-master restart
