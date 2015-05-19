@@ -25,7 +25,11 @@ try:
     from salt.config import master_config  # noqa
     from salt.utils.master import MasterPillarUtil  # noqa
     from salt.config import client_config  # noqa
-    from salt.loader import _create_loader
+    try:
+        from salt.loader import _create_loader
+    except ImportError:
+        # Salt removed this in b0e1425
+        from salt.loader import static_loader as _create_loader
 except ImportError:
     condition_kwarg = None
     LocalClient = None
