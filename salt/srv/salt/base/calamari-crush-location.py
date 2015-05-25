@@ -17,22 +17,25 @@ def get_last_crush_location(osd_id):
     returns None if we cannot contact the mon or there is nothing recorded
     '''
 
+    errors = []
     key = 'daemon-private/osd.%s/v1/calamari/osd_crush_location' % osd_id
     osd_keyring = '/var/lib/ceph/osd/ceph-%s/keyring' % osd_id
     admin_keyring = '/etc/ceph/ceph.client.admin.keyring'
-    commands = (['sudo', 'ceph', '--name', 'osd.%s' % osd_id, '--keyring', osd_keyring, 'config-key', 'get', key],
+    commands = (['ceph', '--name', 'osd.%s' % osd_id, '--keyring', osd_keyring, 'config-key', 'get', key],
                 ['sudo', 'ceph', '--keyring', admin_keyring, 'config-key', 'get', key],
                 )
     for c in commands:
         proc = Popen(c, stdout=PIPE, stderr=PIPE)
         out, err = proc.communicate()
         if proc.returncode != 0:
-            log.error("Error {0} running {1}:'{2}'".format(
+            errors.append("Error {0} running {1}:'{2}'".format(
                 proc.returncode, 'ceph config-key get', err.strip()
             ))
         else:
-            log.info(err)
             return json.loads(out.strip())
+
+    for e in errors:
+        log.error(e)
 
 
 def get_osd_location(osd_id):
@@ -44,12 +47,16 @@ def get_osd_location(osd_id):
     if current_hostname.find('.') != -1:
         current_hostname = current_hostname.split('.')[0]
 
-    last_location = get_last_crush_location(osd_id)
-    if last_location is not None and current_hostname == last_location.get('hostname'):
-        try:
-            return '{type}={node}'.format(type=last_location['parent_type'], node=last_location['parent_name'])
-        except KeyError:
-            log.error('Bad osd location info from config-key store')
+    try:
+        last_location = get_last_crush_location(osd_id)
+    except OSError:
+        log.error('Failed to get last crush location. Defaulting to current host %s' % current_hostname)
+    else:
+        if last_location is not None and current_hostname == last_location.get('hostname'):
+            try:
+                return '{type}={node}'.format(type=last_location['parent_type'], node=last_location['parent_name'])
+            except KeyError:
+                log.error('Bad osd location info from config-key store')
 
     return 'host={host}'.format(host=current_hostname)
 
