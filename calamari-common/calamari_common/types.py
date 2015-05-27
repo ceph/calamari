@@ -213,7 +213,10 @@ class OsdMap(VersionedSyncObject):
         osds = dict([(osd_id, []) for osd_id in self.osds_by_id.keys()])
         for pool_id in self.pools_by_id.keys():
             for in_pool_id in self.osds_by_pool[pool_id]:
-                osds[in_pool_id].append(pool_id)
+                try:
+                    osds[in_pool_id].append(pool_id)
+                except KeyError:
+                    log.warning("OSD {0} is present in CRUSH map, but not in OSD map")
 
         return osds
 
