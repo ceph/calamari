@@ -7,12 +7,23 @@
 %{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %endif
 
+%if 0%{?fedora} || 0%{?rhel}
+# get selinux policy version
+%{!?_selinux_policy_version: %global _selinux_policy_version %(sed -e 's,.*selinux-policy-\\([^/]*\\)/.*,\\1,' /usr/share/selinux/devel/policyhelp 2>/dev/null || echo 0.0.0)}
+%global selinux_types %(%{__awk} '/^#[[:space:]]*SELINUXTYPE=/,/^[^#]/ { if ($3 == "-") printf "%s ", $2 }' /etc/selinux/config 2>/dev/null)
+%global selinux_variants %([ -z "%{selinux_types}" ] && echo mls targeted || echo %{selinux_types})
+%endif
+
 #################################################################################
 # common
 #################################################################################
 Name:		calamari-server
 Summary:        Manage and monitor Ceph with a REST API
 Group:   	System/Filesystems
+BuildRequires:  postgresql-devel
+BuildRequires:  python-setuptools
+BuildRequires:  python-virtualenv
+BuildRequires:  redhat-lsb-core
 BuildRequires:  httpd
 BuildRequires:  postgresql-libs
 Requires:       httpd
@@ -28,6 +39,16 @@ Requires:	postgresql
 Requires:	postgresql-libs
 Requires:	postgresql-server
 Requires:	python-setuptools
+%if 0%{?rhel} || 0%{?fedora}
+# SELinux deps
+BuildRequires:  checkpolicy
+BuildRequires:  selinux-policy-devel
+BuildRequires:  /usr/share/selinux/devel/policyhelp
+BuildRequires:  hardlink
+Requires:       policycoreutils, libselinux-utils
+Requires(post): selinux-policy >= %{_selinux_policy_version}, policycoreutils
+Requires(postun): policycoreutils
+%endif
 Version: 	%{version}
 Release: 	%{?revision}%{?dist}
 License: 	LGPL-2.1+
@@ -37,8 +58,30 @@ Source0: 	%{name}_%{version}.tar.gz
 %prep
 %setup -q -n %{name}-%{version}
 
+%build
+%if 0%{?fedora} || 0%{?rhel}
+cd selinux
+for selinuxvariant in %{selinux_variants}
+do
+make NAME=${selinuxvariant} -f /usr/share/selinux/devel/Makefile
+mv calamari-server.pp calamari-server.pp.${selinuxvariant}
+make NAME=${selinuxvariant} -f /usr/share/selinux/devel/Makefile clean
+done
+cd -
+%endif
+
 %install
 make DESTDIR=${RPM_BUILD_ROOT} install-rpm
+%if 0%{?fedora} || 0%{?rhel}
+# Install SELinux policy
+for selinuxvariant in %{selinux_variants}
+do
+	install -d %{buildroot}%{_datadir}/selinux/${selinuxvariant}
+	install -p -m 644 selinux/calamari-server.pp.${selinuxvariant} \
+	%{buildroot}%{_datadir}/selinux/${selinuxvariant}/calamari-server.pp
+done
+/usr/sbin/hardlink -cv %{buildroot}%{_datadir}/selinux
+%endif
 
 %description -n calamari-server
 Calamari is a webapp to monitor and control a Ceph cluster via a web
@@ -66,8 +109,31 @@ browser.
 %dir %attr(-, apache, apache) /var/lib/graphite/log
 %dir %attr(-, apache, apache) /var/lib/graphite/log/webapp
 %dir %attr(-, apache, apache) /var/lib/graphite/whisper
+%if 0%{?fedora} || 0%{?rhel}
+%doc selinux/*
+%{_datadir}/selinux/*/calamari-server.pp
+%endif
 
 %post -n calamari-server
+
+%if 0%{?fedora} || 0%{?rhel}
+calamari_selinux()
+{
+	# Set some SELinux booleans
+	setsebool httpd_can_network_connect=on
+	setsebool httpd_can_network_connect_db=on
+
+	# Load the policy
+	for selinuxvariant in %{selinux_variants}
+	do
+		/usr/sbin/semodule -s ${selinuxvariant} -i \
+		%{_datadir}/selinux/${selinuxvariant}/calamari-server.pp &> /dev/null || :
+	done
+}
+
+calamari_selinux
+%endif
+
 calamari_httpd()
 {
 	# centos64
@@ -115,6 +181,15 @@ exit 0
 # Remove anything left behind in the calamari and graphite
 # virtual environment  directories, if this is a "last-instance" call
 if [ $1 == 0 ] ; then
+	%if 0%{?fedora} || 0%{?rhel}
+	for selinuxvariant in %{selinux_variants}
+	do
+		/usr/sbin/semodule -s ${selinuxvariant} -r calamari-server &> /dev/null || :
+	done
+	# Turn off some sebools
+	setsebool httpd_can_network_connect=off
+	setsebool httpd_can_network_connect_db=off
+	%endif
 	rm -rf /opt/graphite
 	rm -rf /opt/calamari
 	rm -rf /var/log/graphite
