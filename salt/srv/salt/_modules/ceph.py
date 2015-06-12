@@ -471,7 +471,7 @@ def get_heartbeats():
             pass
         else:
             if not service_data:
-                pass
+                continue
 
             service_name = "%s-%s.%s" % (service_data['cluster'], service_data['type'], service_data['id'])
 
