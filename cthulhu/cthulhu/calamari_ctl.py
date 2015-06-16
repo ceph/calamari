@@ -177,6 +177,7 @@ def create_admin_users(args):
             # Prompt for user details
             execute_from_command_line(["", "createsuperuser"])
 
+
 def update_connected_minions():
     message = "Updating already connected nodes."
     log.info(message)
@@ -187,6 +188,7 @@ def update_connected_minions():
     log.debug("{message} salt stderr: {err}".format(message=message, err=err))
     if p.returncode != 0:
         raise RuntimeError("{message} failed with rc={rc}".format(message=message, rc=p.returncode))
+
 
 def initialize(args):
     """
