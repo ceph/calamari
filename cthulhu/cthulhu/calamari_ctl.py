@@ -177,6 +177,7 @@ def create_admin_users(args):
             # Prompt for user details
             execute_from_command_line(["", "createsuperuser"])
 
+
 def update_connected_minions():
     message = "Updating already connected nodes."
     log.info(message)
