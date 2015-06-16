@@ -22,3 +22,5 @@ build_deps:
       - python-crypto
       - redhat-lsb-core
       - httpd
+      - hardlink
+      - selinux-policy-core
