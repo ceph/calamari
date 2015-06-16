@@ -10,7 +10,7 @@
 
 {%    set gitpath = 'git://github.com/ceph' %}
 {%    set builddir = salt['environ.get']('WORKSPACE', salt['user.info'](username)['home']) %}
-{%    set pkgdest = builddir %}
+{%    set pkgdest = builddir  + '/pkgs' %}
 
 {% endif %}
 
