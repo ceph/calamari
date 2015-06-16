@@ -177,6 +177,17 @@ def create_admin_users(args):
             # Prompt for user details
             execute_from_command_line(["", "createsuperuser"])
 
+def update_connected_minions():
+    message = "Updating already connected nodes."
+    log.info(message)
+    p = subprocess.Popen(["salt", "'*'", "state.highstate"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    log.debug("{message} salt stdout: {out}".format(message=message, out=out))
+    log.debug("{message} salt stderr: {err}".format(message=message, err=err))
+    if p.returncode != 0:
+        raise RuntimeError("{message} failed with rc={rc}".format(message=message, rc=p.returncode))
+
 
 def initialize(args):
     """
@@ -240,6 +251,9 @@ def initialize(args):
 
     # Start services, configure to run on boot
     run_local_salt(sls=SERVICES_SLS, message='services')
+
+    # During an upgrade: update minions that were connected previously
+    update_connected_minions()
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
