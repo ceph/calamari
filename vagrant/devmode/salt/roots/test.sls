@@ -1,6 +1,6 @@
 
 test:
   cmd.run:
-    - user: vagrant
+    - user: {{ pillar['username'] }}
     - name: "echo foo > out.txt"
     - cwd: "/tmp/"

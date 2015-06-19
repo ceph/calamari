@@ -31,3 +31,4 @@ repobuild/lists
 repobuild/dists
 repobuild/pool
 repobuild/db
+install_salt.sh
