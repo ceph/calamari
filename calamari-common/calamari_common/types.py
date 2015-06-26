@@ -67,6 +67,7 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
+            self.crush_node_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
     def _filter_crush_nodes(self, nodes):
