@@ -16,6 +16,16 @@ a high level REST API.
 This repository contains the Calamari server-side code.  There is an accompanying
 user interface built on the Calamari REST API at https://github.com/ceph/calamari-clients
 
+Getting Packages
+----------------
+
+http://download.ceph.com/calamari
+
+A high level guide to installing Calamari from packages is available here: http://calamari.readthedocs.org/en/latest/operations/index.html
+
+Check the `mailing list archives <http://lists.ceph.com/pipermail/ceph-calamari-ceph.com/>`_ for
+recent discussions of commonly encountered issues, and post your questions there.  Check back here
+for more comprehensive guidance for end-users in the near future.
 
 For developers
 --------------
@@ -26,21 +36,6 @@ For developers
 4. ...and send a `pull request <https://help.github.com/articles/using-pull-requests>`_
 
 
-For users
----------
-
-Calamari was only recently released as open source software, and this repository is for the moment
-mainly aimed at developers.  However, early adopters are welcome to try getting Calamari up and
-running, and feedback to the mailing list will certainly be appreciated.
-
-Pre-built Calamari packages are not available here, but scripts are included to build your own: http://calamari.readthedocs.org/en/latest/development/building_packages.html
-
-A high level guide to installing Calamari from packages you have built is available here: http://calamari.readthedocs.org/en/latest/operations/index.html
-
-Check the `mailing list archives <http://lists.ceph.com/pipermail/ceph-calamari-ceph.com/>`_ for
-recent discussions of commonly encountered issues, and post your questions there.  Check back here
-for more comprehensive guidance for end-users in the near future.
-
 Resources
 ---------
 
@@ -49,3 +44,5 @@ Calamari developer documentation: http://calamari.readthedocs.org
 Calamari mailing list: http://lists.ceph.com/listinfo.cgi/ceph-calamari-ceph.com
 
 Calamari issue tracker: http://tracker.ceph.com/projects/calamari
+
+Calamari packages http://download.ceph.com/calamari
