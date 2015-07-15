@@ -339,6 +339,38 @@
             "osd": 5
         }
     ],
+    "osd_metadata": [
+        {
+            "backend_filestore_partition_path": "/dev/sdb1",
+            "backend_filestore_dev_node": "sdb",
+            "osd": 0
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sdc1",
+            "backend_filestore_dev_node": "sdc",
+            "osd": 1
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sdd1",
+            "backend_filestore_dev_node": "sdd",
+            "osd": 2
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sde1",
+            "backend_filestore_dev_node": "sde",
+            "osd": 3
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sdf1",
+            "backend_filestore_dev_node": "sdf",
+            "osd": 4
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sdg1",
+            "backend_filestore_dev_node": "sdg",
+            "osd": 5
+        }
+    ],
     "crush": {
         "rules": [
             {
