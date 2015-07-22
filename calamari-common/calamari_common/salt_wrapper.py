@@ -11,6 +11,25 @@ environment.
 import gevent
 import logging
 
+from calamari_common.config import CalamariConfig
+
+FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
+log = logging.getLogger(__name__)
+config = CalamariConfig()
+
+# log to cthulhu.log
+handler = logging.FileHandler(config.get('cthulhu', 'log_path'))
+handler.setFormatter(logging.Formatter(FORMAT))
+log.addHandler(handler)
+
+# log to calamari.log
+handler = logging.FileHandler(config.get('calamari_web', 'log_path'))
+handler.setFormatter(logging.Formatter(FORMAT))
+log.addHandler(handler)
+
+log.addHandler(logging.StreamHandler())
+
+log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 
 try:
     try:
@@ -28,17 +47,13 @@ try:
     try:
         from salt.loader import _create_loader
     except ImportError:
-        # Salt removed this in b0e1425
+        # static_loader added in a422fa42
+        # _create_loader removed in b0e1425
         from salt.loader import static_loader as _create_loader
-except ImportError:
-    condition_kwarg = None
-    LocalClient = None
-    MasterEvent = None
-    Key = None
-    master_config = None
-    MasterPillarUtil = None
-    client_config = lambda x: None
-    _create_loader = None
+except ImportError, e:
+    #log failure everywhere and give up
+    log.exception(e)
+    raise e
 
 
 class SaltEventSource(object):
