@@ -33,10 +33,10 @@ log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 
 try:
     try:
-        from salt.client import condition_kwarg
+        from salt.client import condition_kwarg  # noqa
     except ImportError:
         # Salt moved this in 382dd5e
-        from salt.utils.args import condition_input as condition_kwarg
+        from salt.utils.args import condition_input as condition_kwarg  # noqa
 
     from salt.client import LocalClient  # noqa
     from salt.utils.event import MasterEvent  # noqa
