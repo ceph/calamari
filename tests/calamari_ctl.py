@@ -38,8 +38,6 @@ class CalamariControl(object):
 
     def __init__(self):
         log.info("CalamariControl.__init__")
-        with open(config.get('testing', 'external_cluster_path')) as f:
-            self.cluster_config = yaml.load(f)
         self._api = None
 
     def start(self):
