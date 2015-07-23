@@ -5,9 +5,11 @@ virtualenv:
 python:
     - "2.7"
 before_install:
+    - sudo apt-get -y install python-software-properties
+    - sudo add-apt-repository -y ppa:saltstack/salt
     - sudo apt-get update
-    - curl -L http://bootstrap.saltstack.org | sudo sh -s
 install:
+    - sudo apt-get -y install salt-master salt-minion salt-common
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/build_deps.sls
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/postgres.sls
     - pip install pyzmq==14.1.1 --install-option="--zmq=bundled"
