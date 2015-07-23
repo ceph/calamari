@@ -45,13 +45,13 @@ try:
     from salt.utils.master import MasterPillarUtil  # noqa
     from salt.config import client_config  # noqa
     try:
-        from salt.loader import _create_loader
+        from salt.loader import _create_loader  # noqa
     except ImportError:
         # static_loader added in a422fa42
         # _create_loader removed in b0e1425
-        from salt.loader import static_loader as _create_loader
+        from salt.loader import static_loader as _create_loader  # noqa
 except ImportError, e:
-    #log failure everywhere and give up
+    # log failure everywhere and give up
     log.exception(e)
     raise e
 
