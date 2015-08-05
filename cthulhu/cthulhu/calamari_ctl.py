@@ -179,9 +179,15 @@ def create_admin_users(args):
 
 
 def update_connected_minions():
+    from cthulhu.manager import config
+    from calamari_common.salt_wrapper import Key, master_config
+    if len(Key(master_config(config.get('cthulhu', 'salt_config_path'))).list_keys()['minions']) == 0:
+        # no minions to update
+        return
+
     message = "Updating already connected nodes."
     log.info(message)
-    p = subprocess.Popen(["salt", "'*'", "state.highstate"],
+    p = subprocess.Popen(["salt", "*", "state.highstate"],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     log.debug("{message} salt stdout: {out}".format(message=message, out=out))
