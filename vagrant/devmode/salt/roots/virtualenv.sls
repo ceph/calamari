@@ -29,6 +29,7 @@ pip_pkgs:
     - activate: true
     - requirements: /home/vagrant/calamari/requirements/2.7/requirements.txt
     - download_cache: /vagrant/pip_cache
+    - env_vars: SWIG_FEATURES=-cpperraswarn
     - require:
       - virtualenv: virtualenv
       - pip: pyzmq

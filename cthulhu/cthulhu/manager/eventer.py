@@ -245,7 +245,7 @@ class Eventer(gevent.greenlet.Greenlet):
 
     def _on_osd_map(self, fsid, new, old):
         old_osd_ids = set([o['osd'] for o in old.data['osds']])
-        new_osd_ids = set([o['osd'] for o in old.data['osds']])
+        new_osd_ids = set([o['osd'] for o in new.data['osds']])
         deleted_osds = old_osd_ids - new_osd_ids
         created_osds = new_osd_ids - old_osd_ids
 

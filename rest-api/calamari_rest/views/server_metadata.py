@@ -20,6 +20,21 @@ config = CalamariConfig()
 CONCURRENT_GRAIN_LOADS = 16
 
 
+def get_grains_from_loader():
+    # Use salt to get an interesting subset of the salt grains (getting
+    # everything is a bit slow)
+    master_conf = master_config(config.get('cthulhu', 'salt_config_path'))
+    load = _create_loader(master_conf, 'grains', 'grain')
+    # static_loader returns a dict object, _create_loader returns
+    # a Loader object. Handle both cases.
+    if isinstance(load, dict):
+        funcs = load
+    else:
+        funcs = load.gen_functions()
+
+    return funcs
+
+
 def get_local_grains():
     """
     Return the salt grains for this host that we are running
@@ -35,12 +50,8 @@ def get_local_grains():
         main.__file__ = 'workaround'
         # <<
 
-        # Use salt to get an interesting subset of the salt grains (getting
-        # everything is a bit slow)
         grains = {}
-        c = master_config(config.get('cthulhu', 'salt_config_path'))
-        l = _create_loader(c, 'grains', 'grain')
-        funcs = l.gen_functions()
+        funcs = get_grains_from_loader()
         for key in [k for k in funcs.keys() if k.startswith('core.')]:
             ret = funcs[key]()
             if isinstance(ret, dict):

@@ -212,7 +212,7 @@ clean:
 # want in sources.
 
 FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
-FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
 
 dist:
 	@echo "target: $@"

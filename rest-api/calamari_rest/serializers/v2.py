@@ -44,7 +44,16 @@ class ValidatingSerializer(serializers.Serializer):
         # like http://www.django-rest-framework.org/api-guide/serializers#dynamically-modifying-fields
         filtered_data = {}
         for field, value in self.init_data.iteritems():
-            filtered_data[field] = self.data[field]
+            # TODO HACK this assumes that we are dealing with a nested serializer field
+            # see http://tracker.ceph.com/issues/10557
+            # and http://tracker.ceph.com/issues/10556
+            if isinstance(self.fields[field], serializers.Serializer) and self.fields[field].many:
+                filtered_data[field] = []
+                for datum in self.data[field]:
+                    datum = dict(datum) if isinstance(datum, dict) else datum
+                    filtered_data[field].append(datum)
+            else:
+                filtered_data[field] = self.data[field]
 
         return filtered_data
 
@@ -115,7 +124,7 @@ class PoolSerializer(ValidatingSerializer):
 
 class OsdSerializer(ValidatingSerializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry')
         create_allowed = ()
         create_required = ()
         modify_allowed = ('up', 'in', 'reweight')
@@ -132,6 +141,7 @@ class OsdSerializer(ValidatingSerializer):
 
     public_addr = serializers.CharField(read_only=True, help_text="Public/frontend IP address")
     cluster_addr = serializers.CharField(read_only=True, help_text="Cluster/backend IP address")
+    crush_node_ancestry = serializers.Field(help_text="An ordered list of CRUSH node ids that represent a path from the parent node of this OSD up to the root of the tree")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
@@ -174,6 +184,55 @@ class CrushRuleSerializer(serializers.Serializer):
         help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule")
     steps = serializers.Field(help_text="List of operations used to select OSDs")
     osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
+
+
+class CrushTypeSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('id', 'name')
+
+    name = serializers.CharField(
+        help_text="Human readable type name, not a unique identifier"
+    )
+    id = serializers.IntegerField(
+        help_text="The id used to identify the type within the CRUSH map, unique",
+        source="type_id"
+    )
+
+
+class NodeItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    weight = serializers.FloatField()
+    pos = serializers.IntegerField()
+
+    class Meta:
+        fields = ('id', 'weight', 'pos')
+
+
+class CrushNodeSerializer(ValidatingSerializer):
+    class Meta:
+        fields = ('bucket_type', 'name', 'id', 'weight', 'alg', 'hash', 'items')
+        create_allowed = ('bucket_type', 'name', 'items', 'id')
+        create_required = ()
+        modify_allowed = ('bucket_type', 'name', 'items')
+        modify_required = ()
+
+    # TODO need to validate that this is a valid type ? use choice field?
+    bucket_type = serializers.CharField(help_text="Buckets facilitate a hierarchy of nodes and leaves. Node (or non-leaf) buckets typically represent physical locations in a hierarchy. e.g. host, rack, datacenter",
+                                        source="type_name",
+                                        )
+    name = serializers.CharField(label='bucket-name', help_text="unique name")
+    id = serializers.IntegerField(required=False, help_text="unique ID expressed as an integer (optional)")
+    weight = serializers.FloatField(required=False, help_text="the relative capacity/capability of the item(s)")
+    alg = serializers.ChoiceField(required=False,
+                                  help_text="bucket algorithm",
+                                  choices=list(enumerate(('straw', 'uniform', 'list', 'tree'))),
+                                  default=0)
+    _hash = serializers.IntegerField(required=False, help_text="hash algorithm", default=0)
+    items = NodeItemSerializer(required=False, many=True, help_text="A bucket may have one or more items. The items may consist of node buckets or leaves. Items may have a weight that reflects the relative weight of the item.")
+
+
+CrushNodeSerializer.base_fields['hash'] = CrushNodeSerializer.base_fields['_hash']
+CrushNodeSerializer.base_fields['bucket_type'] = CrushNodeSerializer.base_fields['bucket_type']
 
 
 class CrushRuleSetSerializer(serializers.Serializer):

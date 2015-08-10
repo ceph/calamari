@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from calamari_common.util import memoize
 
 import logging
@@ -56,6 +56,7 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
+            self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -66,11 +67,50 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
+            self.crush_node_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
+
+    def _filter_crush_nodes(self, nodes):
+        crush_nodes = {}
+        for node in nodes:
+            for item in node['items']:
+                item['weight'] = float(item['weight']) / 0x10000
+
+            node['weight'] = float(node['weight']) / 0x10000
+            crush_nodes[node['id']] = node
+        return crush_nodes
+
+    @property
+    @memoize
+    def parent_bucket_by_node_id(self):
+        """
+        Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
+        """
+        parent_map = defaultdict(list)
+        if self.data is not None:
+            has_been_mapped = set()
+            for node in self.data['tree']['nodes']:
+                for child_id in node.get('children', []):
+                    if (child_id, node['id']) not in has_been_mapped:
+                        parent_map[child_id].append(node)
+                        has_been_mapped.add((child_id, node['id']))
+        log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
+        return dict(parent_map)
+
+    @property
+    @memoize
+    def crush_type_by_id(self):
+        return dict((n["type_id"], n) for n in self.data['crush']['types'])
 
     @memoize
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
+
+    def get_tree_node(self, node_id):
+        try:
+            return self.crush_node_by_id[node_id]
+        except KeyError:
+            raise NotFound(CRUSH_NODE, node_id)
 
     def _get_crush_rule_osds(self, rule):
         nodes_by_id = self.get_tree_nodes_by_id()
@@ -174,7 +214,10 @@ class OsdMap(VersionedSyncObject):
         osds = dict([(osd_id, []) for osd_id in self.osds_by_id.keys()])
         for pool_id in self.pools_by_id.keys():
             for in_pool_id in self.osds_by_pool[pool_id]:
-                osds[in_pool_id].append(pool_id)
+                try:
+                    osds[in_pool_id].append(pool_id)
+                except KeyError:
+                    log.warning("OSD {0} is present in CRUSH map, but not in OSD map")
 
         return osds
 
@@ -222,6 +265,10 @@ class NotFound(Exception):
         return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
 
 
+class BucketNotEmptyError(Exception):
+    pass
+
+
 MON = 'mon'
 OSD = 'osd'
 MDS = 'mds'
@@ -229,6 +276,8 @@ POOL = 'pool'
 OSD_MAP = 'osd_map'
 CRUSH_MAP = 'crush_map'
 CRUSH_RULE = 'crush_rule'
+CRUSH_NODE = 'crush_node'
+CRUSH_TYPE = 'crush_type'
 CLUSTER = 'cluster'
 SERVER = 'server'
 

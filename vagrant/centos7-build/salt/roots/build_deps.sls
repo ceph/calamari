@@ -9,7 +9,7 @@ build_deps:
       - python-virtualenv
       - python-devel
       - swig
-      - zeromq-devel
+      - zeromq3-devel
       - pycairo-devel
       - make
       - postgresql-devel
@@ -21,3 +21,7 @@ build_deps:
       - m2crypto
       - python-crypto
       - redhat-lsb-core
+      - httpd
+      - selinux-policy-devel
+      - selinux-policy-doc
+

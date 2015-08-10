@@ -13,8 +13,8 @@ calamari-server
 
 ::
 
-    git clone git@github.com:ceph/calamari.git
-    git clone git@github.com:ceph/Diamond.git --branch=calamari
+    git clone https://github.com/ceph/calamari.git
+    git clone https://github.com/ceph/Diamond.git --branch=calamari
     cd calamari/vagrant/precise-build
     vagrant up
     vagrant ssh -c 'sudo salt-call state.highstate'
@@ -31,7 +31,7 @@ calamari-clients
 
 ::
 
-  git clone git@github.com:ceph/calamari-clients.git
+  git clone https://github.com/ceph/calamari-clients.git
   cd calamari-clients/vagrant/precise-build
   vagrant up
   vagrant ssh -c 'sudo salt-call state.highstate'
@@ -39,7 +39,7 @@ calamari-clients
 .. note::
 
     The ``precise-build`` vagrant configuration is the only one that actually builds the UI: the
-    other configurtions in this folder simply take the output from ``precise-build`` and repackage
+    other configurations in this folder simply take the output from ``precise-build`` and repackage
     it for another distribution.
 
 Build results
@@ -78,8 +78,8 @@ Troubleshooting
 ---------------
 
 First a general note: while the vagrant environments are automatically provisioned
-with salt during "vagrant up", this isn't foolproof.  If something seems wrong,
-check for errors like this:
+with salt during "vagrant up", this isn't foolproof.  If something seems wrong
+or built packages are not seen in the directory above mentioned, try this:
 
 .. code-block:: bash
 

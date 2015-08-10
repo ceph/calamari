@@ -17,7 +17,7 @@ class UserRequestBase(object):
     A request acts on one or more Ceph-managed objects, i.e.
     mon, mds, osd, pg.
 
-    Amist the terminology mess of 'jobs', 'commands', 'operations', this class
+    Amidst the terminology mess of 'jobs', 'commands', 'operations', this class
     is named for clarity: it's an operation at an end-user level of
     granularity, something that might be a button in the UI.
 

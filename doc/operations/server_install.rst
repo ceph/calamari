@@ -9,14 +9,14 @@ the Ceph servers you will connect (see :doc:`minion_connect`).
 .. note::
 
     These instructions are for Ubuntu, but the general procedure will be the same
-    for any other linux distribution for which you have successfully built Calamari
+    for any other linux distribution for which packages exist.
     packages.
 
 Prerequisites
 -------------
 
 * An internet connection to download dependencies
-* ``.deb`` packages for calamari-server and calamari-clients (see :doc:`/development/building_packages`)
+* ``.deb`` packages for calamari-server and calamari-clients (see http://download.ceph.com/calamari or :doc:`/development/building_packages`)
 
 Installing dependencies
 -----------------------
@@ -24,6 +24,9 @@ Installing dependencies
 Follow the instructions at http://docs.saltstack.com/en/latest/topics/installation/ubuntu.html
 to enable the SaltStack PPA package repository and install the ``salt-master`` and ``salt-minion``
 packages.
+
+Note: Calamari does not currently support 2015.5 salt please consider using 2014.7 instead
+Also it is important for salt-master and minion versions to match.
 
 Install the remaining dependencies using ``apt``:
 

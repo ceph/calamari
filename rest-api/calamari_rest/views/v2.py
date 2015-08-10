@@ -6,22 +6,24 @@ import shlex
 from django.http import Http404
 from rest_framework.exceptions import ParseError, APIException, PermissionDenied
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
-from django.contrib.auth.decorators import login_required
 
 from calamari_rest.parsers.v2 import CrushMapParser
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
+from rest_framework.permissions import IsAuthenticated
 from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
+from calamari_rest.permissions import IsRoleAllowed
+from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
-from calamari_common.types import CRUSH_MAP, CRUSH_RULE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
+from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
     OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
@@ -39,8 +41,8 @@ if log.level <= logging.DEBUG:
         logging.getLogger('sqlalchemy.engine').addHandler(handler)
 
 
+@permission_classes((IsAuthenticated, IsRoleAllowed))
 @api_view(['GET'])
-@login_required
 def grains(request):
     """
 The salt grains for the host running Calamari server.  These are variables
@@ -103,6 +105,54 @@ Allows retrieval and replacement of a crushmap as a whole
         return Response(self.client.update(fsid, CRUSH_MAP, None, request.DATA))
 
 
+class CrushNodeViewSet(RPCViewSet):
+    """
+The CRUSH algorithm distributes data objects among storage devices according to a per-device weight value, approximating a uniform probability distribution. CRUSH distributes objects and their replicas according to the hierarchical cluster map you define. Your CRUSH map represents the available storage devices and the logical elements that contain them.
+    """
+
+    serializer_class = CrushNodeSerializer
+
+    def create(self, request, fsid):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.create(fsid, CRUSH_NODE, serializer.get_data())
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request, fsid):
+        crush_nodes = self.client.list(fsid, CRUSH_NODE, {})
+        return Response(self.serializer_class(crush_nodes).data)
+
+    def retrieve(self, request, fsid, node_id):
+        crush_node = self.client.get(fsid, CRUSH_NODE, int(node_id))
+        if crush_node:
+            return Response(self.serializer_class(DataObject(crush_node)).data)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, fsid, node_id):
+        delete_response = self.client.delete(fsid, CRUSH_NODE, int(node_id), status=status.HTTP_202_ACCEPTED)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
+
+    def update(self, request, fsid, node_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            updates = serializer.get_data()
+
+            response = self.client.update(fsid, CRUSH_NODE, int(node_id), updates)
+            assert 'request_id' in response
+            return Response(response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class CrushRuleViewSet(RPCViewSet):
     """
 A CRUSH ruleset is a collection of CRUSH rules which are applied
@@ -138,6 +188,22 @@ A CRUSH rule is used by Ceph to decide where to locate placement groups on OSDs.
         }) for (rd_id, rd_rules) in rulesets_data.items()]
 
         return Response(CrushRuleSetSerializer(rulesets, many=True).data)
+
+
+class CrushTypeViewSet(RPCViewSet):
+    """
+By default these include root, datacenter, room, row, pod, pdu, rack, chassis and host, but those types can be customized to be anything appropriate by modifying the CRUSH map.
+By convention, there is one leaf bucket type and it is type 0; however, you may give it any name you like (e.g., osd, disk, drive, storage, etc.)
+    """
+    serializer_class = CrushTypeSerializer
+
+    def list(self, request, fsid):
+        crush_types = self.client.list(fsid, CRUSH_TYPE, {})
+        return Response(self.serializer_class(crush_types).data)
+
+    def retrieve(self, request, fsid, type_id):
+        crush_type = self.client.get(fsid, CRUSH_TYPE, int(type_id))
+        return Response(self.serializer_class(DataObject(crush_type)).data)
 
 
 class SaltKeyViewSet(RPCViewSet):
@@ -415,7 +481,7 @@ but those without static defaults will be set to null.
 
     def _validate_semantics(self, fsid, pool_id, data):
         errors = defaultdict(list)
-        self._check_name_unique(fsid, data, errors)
+        self._check_name_unique(fsid, pool_id, data, errors)
         self._check_crush_ruleset(fsid, data, errors)
         self._check_pgp_less_than_pg_num(data, errors)
         self._check_pg_nums_dont_decrease(fsid, pool_id, data, errors)
@@ -453,8 +519,9 @@ but those without static defaults will be set to null.
         if 'pgp_num' in data and 'pg_num' in data and data['pg_num'] < data['pgp_num']:
             errors['pgp_num'].append('must be >= to pg_num')
 
-    def _check_name_unique(self, fsid, data, errors):
-        if 'name' in data and data['name'] in [x.pool_name for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]]:
+    def _check_name_unique(self, fsid, pool_id, data, errors):
+        pool_name_to_id = dict([(x.pool_name, x.pool) for x in [PoolDataObject(p) for p in self.client.list(fsid, POOL, {})]])
+        if pool_name_to_id.get(data.get('name')) not in (None, pool_id):
             errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
 
@@ -502,6 +569,7 @@ Filtering is available on this resource:
 
         # Get data
         osds = self.client.list(fsid, OSD, list_filter, async=True)
+        parent_map = self.client.get_sync_object(fsid, 'osd_map', ['parent_bucket_by_node_id'], async=True)
         osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'], async=True)
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'], async=True)
         osds = osds.get()
@@ -511,6 +579,7 @@ Filtering is available on this resource:
         osd_commands = self.client.get_valid_commands(fsid, OSD, [x['osd'] for x in osds], async=True)
 
         # Preparation complete, await all data to serialize result
+        parent_map = parent_map.get()
         osd_to_pools = osd_to_pools.get()
         crush_nodes = crush_nodes.get()
         server_info = server_info.get()
@@ -531,9 +600,8 @@ Filtering is available on this resource:
 
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
-
-        for o in osds:
             o.update(osd_commands[o['osd']])
+            o.update({'crush_node_ancestry': lookup_ancestry(o['osd'], parent_map)})
 
         return Response(self.serializer_class([DataObject(o) for o in osds], many=True).data)
 
@@ -549,6 +617,8 @@ Filtering is available on this resource:
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
         osd.update(osd_commands[int(osd_id)])
+        parent_map = self.client.get_sync_object(fsid, 'osd_map', ['parent_bucket_by_node_id'])
+        osd.update({'crush_node_ancestry': lookup_ancestry(osd['osd'], parent_map)})
 
         return Response(self.serializer_class(DataObject(osd)).data)
 

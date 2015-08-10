@@ -10,9 +10,9 @@ api/v2/info
      "bootstrap_rhel": "curl http://localhost:8000/bootstrap | sudo python", 
      "license": "N/A", 
      "registered": "N/A", 
-     "hostname": "precise64", 
-     "ipaddr": "127.0.1.1", 
-     "fqdn": "precise64", 
+     "hostname": "localhost", 
+     "ipaddr": "127.0.0.1", 
+     "fqdn": "localhost", 
      "version": "dev", 
      "bootstrap_ubuntu": "wget -O - http://localhost:8000/bootstrap | sudo python", 
      "bootstrap_url": "http://localhost:8000/bootstrap"

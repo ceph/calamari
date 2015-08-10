@@ -32,7 +32,8 @@ else:
     from graphite.render.attime import parseATTime
     from graphite.render.datalib import fetchData
 
-from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
+from calamari_rest.views.rpc_view import DataObject, RPCViewSet
+from calamari_rest.viewsets import RoleLimitedViewSet
 from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
 from calamari_rest.views.server_metadata import get_local_grains
 
@@ -96,7 +97,7 @@ def get_latest_graphite(metric):
         return None
 
 
-class Space(RPCView):
+class Space(RPCViewSet):
     serializer_class = ClusterSpaceSerializer
 
     def get(self, request, fsid):
@@ -107,18 +108,36 @@ class Space(RPCView):
                 return None
 
         df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
-        space = {
-            'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
-            'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
-            'free_bytes': to_bytes(get_latest_graphite(df_path('total_avail')))
-        }
+        # Check for old vs. new stats (changed in Ceph Firefly)
+        # see Ceph commit ee2dbdb0f5e54fe6f9c5999c032063b084424c4c
+        # Old:          New:
+        # total_used    total_used_bytes
+        # total_space   total_bytes
+        # total_avail   total_avail_bytes
+        #
+        # the old stats are in terms of kB (must multiply to get bytes);
+        # the new ones are already in bytes.  Check new versions first
+        # so that old relics in the database after upgrade stop being
+        # used.
+        if get_latest_graphite(df_path('total_used_bytes')) is not None:
+            space = {
+                'used_bytes': get_latest_graphite(df_path('total_used_bytes')),
+                'capacity_bytes': get_latest_graphite(df_path('total_bytes')),
+                'free_bytes': get_latest_graphite(df_path('total_avail_bytes'))
+            }
+        else:
+            space = {
+                'used_bytes': to_bytes(get_latest_graphite(df_path('total_used'))),
+                'capacity_bytes': to_bytes(get_latest_graphite(df_path('total_space'))),
+                'free_bytes': to_bytes(get_latest_graphite(df_path('total_avail')))
+            }
 
         return Response(ClusterSpaceSerializer(DataObject({
             'space': space
         })).data)
 
 
-class Health(RPCView):
+class Health(RPCViewSet):
     serializer_class = ClusterHealthSerializer
 
     def get(self, request, fsid):
@@ -130,7 +149,7 @@ class Health(RPCView):
         })).data)
 
 
-class HealthCounters(RPCView):
+class HealthCounters(RPCViewSet):
     serializer_class = ClusterHealthCountersSerializer
 
     PG_FIELDS = ['pgid', 'acting', 'up', 'state']
@@ -301,7 +320,7 @@ class HealthCounters(RPCView):
         })).data)
 
 
-class OSDList(RPCView):
+class OSDList(RPCViewSet):
     """
     Provides an object which includes a list of all OSDs, and
     some summary counters (pg_state_counts)
@@ -413,7 +432,7 @@ class OSDList(RPCView):
         return Response(OSDListSerializer(osd_list).data)
 
 
-class OSDDetail(RPCView):
+class OSDDetail(RPCViewSet):
     """
     This is the same data that is provided in the OSD list, but for
     a single OSD, and not including the pg_state_counts.
@@ -426,15 +445,14 @@ class OSDDetail(RPCView):
         return Response(OSDDetailSerializer(osd).data)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet, RoleLimitedViewSet):
     """
     The Calamari UI/API user account information.
 
     You may pass 'me' as the user ID to refer to the currently logged in user,
     otherwise the user ID is a numeric ID.
 
-    Because all users are superusers, everybody can see each others accounts
-    using this resource.  However, users can only modify their own account (i.e.
+    Users can only modify their own account (i.e.
     the user being modified must be the user associated with the current login session).
     """
     queryset = User.objects.all()

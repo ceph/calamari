@@ -663,9 +663,13 @@ class ServerMonitor(greenlet.Greenlet):
                 # Go find the OSD in the OSD map and tell me its frontend and backend addrs
                 osd_map = cluster.get_sync_object_data(OsdMap)
                 if osd_map is not None:
-                    osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id][0]
-                    frontend_addr = osd['public_addr'].split(":")[0]
-                    backend_addr = osd['cluster_addr'].split(":")[0]
+                    osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id]
+                    # osd can be empty at this point if the OSD is DNE (it's
+                    # in server_state.services, but not in the osd_map)
+                    if len(osd) > 0:
+                        osd = osd[0]
+                        frontend_addr = osd['public_addr'].split(":")[0]
+                        backend_addr = osd['cluster_addr'].split(":")[0]
 
         return {
             'fqdn': server_state.fqdn,

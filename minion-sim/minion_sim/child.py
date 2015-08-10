@@ -5,6 +5,10 @@ import msgpack
 import yaml
 from minion_sim.log import log
 import time
+try:
+    from salt.cli import daemons
+except ImportError:
+    daemons = None
 
 # Because salt minion will be calling functions
 # defined in this module
@@ -121,6 +125,16 @@ def main():
                     pass
                 elif prefix == "osd set":
                     cluster.set_osd_flags(args['key'])
+                elif prefix == "osd crush add":
+                    cluster.crush_add(args)
+                elif prefix == "osd crush add-bucket":
+                    cluster.crush_add_bucket(args)
+                elif prefix == "osd crush move":
+                    cluster.crush_move(args)
+                elif prefix == "osd crush remove":
+                    cluster.crush_remove(args)
+                elif prefix == "osd crush reweight":
+                    cluster.crush_reweight(args)
                 else:
                     raise NotImplementedError()
             except Exception as e:
@@ -201,6 +215,19 @@ def main():
 
     try:
         minion = salt.Minion()
+    except Exception as e:
+        if isinstance(e, AttributeError):
+            #Minion() moved from salt to salt.cli.daemons in 2015 releases of salt
+            try:
+                minion = daemons.Minion()
+            except:
+                log.exception("Could not get daemons.Minion instance for %s" % fqdn)
+                raise
+        else:
+            log.exception("Could not get salt.Minion instance for %s" % fqdn)
+            raise
+
+    try:
         minion.start()
     except Exception as e:
         if not isinstance(e, SystemExit):

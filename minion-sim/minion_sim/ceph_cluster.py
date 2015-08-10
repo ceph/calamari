@@ -952,6 +952,7 @@ class CephClusterState(object):
             self._objects = dict()
             self._pg_stats = {}
             self._osd_stats = {}
+        self.crush_node_id = -100
 
     def load(self):
         assert self._filename is not None
@@ -1314,6 +1315,64 @@ class CephCluster(CephClusterState):
     def set_osd_flags(self, osd_flags):
         self._objects['osd_map']['flags'] = osd_flags
         self._objects['osd_map']['epoch'] += 1
+
+    def crush_add(self, args):
+        log.info("Crush add {a}".format(a=args))
+        self._objects['osd_map']['epoch'] += 1
+
+    def crush_add_bucket(self, args):
+        log.info("Crush add_bucket {a}".format(a=args))
+        new_bucket = {'id': self.crush_node_id,
+                      'items': [],
+                      'weight': 0.100,
+                      'name': args['name'],
+                      'type_name': args['type']}
+        self._objects['osd_map']['crush']['buckets'].append(new_bucket)
+        new_node = {'children': [],
+                    'id': self.crush_node_id,
+                    'name': args['name'],
+                    'weight': 0.100,
+                    'type': args['type']}
+        self._objects['osd_map']['tree']['nodes'].append(new_node)
+        self._objects['osd_map']['epoch'] += 1
+        self.crush_node_id -= 1
+
+    def crush_move(self, args):
+        log.info("Crush move {a}".format(a=args))
+        parent_name = args['args'][0].split('=')[1]
+        parent_bucket, parent_node = self._find_crush_node(parent_name)
+
+        child_bucket, child_node = self._find_crush_node(args['name'])
+
+        parent_bucket['items'].append({'id': child_bucket['id'], 'weight': child_bucket['weight'], 'pos': 0})
+        parent_node['children'].append(child_node['id'])
+        self._objects['osd_map']['epoch'] += 1
+
+    def crush_remove(self, args):
+        log.info("Crush remove {a}".format(a=args))
+        self._remove_crush_node(args['name'])
+        self._objects['osd_map']['epoch'] += 1
+
+    def crush_reweight(self, args):
+        log.info("Crush reweight {a}".format(a=args))
+        self._objects['osd_map']['epoch'] += 1
+
+    def _find_crush_node(self, name):
+        target_bucket = target_node = None
+        for bucket in self._objects['osd_map']['crush']['buckets']:
+            if bucket['name'] == name:
+                target_bucket = bucket
+
+        for node in self._objects['osd_map']['tree']['nodes']:
+            if node['id'] == target_bucket['id']:
+                target_node = node
+
+        return target_bucket, target_node
+
+    def _remove_crush_node(self, name):
+        bucket, node = self._find_crush_node(name)
+        self._objects['osd_map']['crush']['buckets'].remove(bucket)
+        self._objects['osd_map']['tree']['nodes'].remove(node)
 
     def _create_pgs(self, pool_id, new_ids):
         pool = [p for p in self._objects['osd_map']['pools'] if p['pool'] == pool_id][0]

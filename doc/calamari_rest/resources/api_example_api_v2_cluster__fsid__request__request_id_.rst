@@ -1,19 +1,19 @@
 Examples for api/v2/cluster/<fsid>/request/<request_id>
 =======================================================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/request/624f3dea-adb0-44eb-a624-6671ac046e96
+api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/request/34b86742-c026-484c-bba6-a60e71e06275
 ------------------------------------------------------------------------------------------------
 
 .. code-block:: json
 
    {
      "status": "Waiting for OSD map epoch 2", 
-     "requested_at": "2014-09-17T19:36:43.809711+00:00", 
+     "requested_at": "2014-11-06T21:15:15.547623+00:00", 
      "headline": "Creating pool 'newname'", 
      "error_message": "", 
      "completed_at": null, 
      "state": "submitted", 
      "error": false, 
-     "id": "624f3dea-adb0-44eb-a624-6671ac046e96"
+     "id": "34b86742-c026-484c-bba6-a60e71e06275"
    }
 

@@ -1,7 +1,7 @@
 Examples for api/v2/cluster/<fsid>/pool
 =======================================
 
-api/v2/cluster/cd50fad9-74d7-4579-9acc-f0d1e4d014b4/pool
+api/v2/cluster/dce20d46-f010-4883-988c-4a6d8bd15793/pool
 --------------------------------------------------------
 
 .. code-block:: json
