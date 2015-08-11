@@ -11,6 +11,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # salt master on this VM.
   config.vm.network "public_network"
 
+  config.vm.hostname = 'vagrant-ubuntu-trusty-64'
   config.vm.synced_folder "../../", "/calamari.git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
   config.vm.provision "shell",
