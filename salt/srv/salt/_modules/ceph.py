@@ -404,16 +404,19 @@ def get_cluster_object(cluster_name, sync_type, since):
             ret, stdout, outs = transform_crushmap(raw, 'get')
             assert ret == 0
             data['crush_map_text'] = stdout
+            data['osd_metadata'] = []
 
             for osd_entry in data['osds']:
                 osd_id = osd_entry['osd']
-                command = "osd metadata %s" % osd_id
-                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs,
+                command = "osd metadata"
+		argdict = {'id': osd_id}
+		argdict.update(kwargs)
+                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
                                               timeout=RADOS_TIMEOUT)
                 assert ret == 0
                 updated_osd_metadata = json.loads(raw)
                 updated_osd_metadata['osd'] = osd_id
-                data['osd_metadata'].update(updated_osd_metadata)
+                data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,
