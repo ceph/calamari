@@ -49,7 +49,7 @@ modify-ceph.conf:
 
 install-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy install vagrant-ubuntu-trusty-64 # get this from the pillar
+    - name: /var/cluster/env/bin/ceph-deploy install --dev next vagrant-ubuntu-trusty-64 # get this from the pillar
     - cwd: /var/cluster
     - require:
         - cmd: modify-ceph.conf
