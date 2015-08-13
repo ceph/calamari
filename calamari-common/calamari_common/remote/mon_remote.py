@@ -20,8 +20,8 @@ log = logging.getLogger('calamari.remote.mon')
 
 HEARTBEAT_PERIOD = 10
 
-SRC_DIR = "/home/john/git/ceph/src"
-SOCKET_DIR = None
+SRC_DIR = "/etc/ceph"
+SOCKET_DIR = "/var/run/ceph"
 LOG_DIR = None
 
 if SRC_DIR and not SOCKET_DIR:
