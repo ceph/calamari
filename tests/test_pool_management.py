@@ -207,6 +207,8 @@ class TestPoolManagement(RequestTestCase):
         # Some non-default values
         mods = self._non_default_args(cluster_id)
         for var, val in mods.items():
+            if var == 'min_size':
+                continue  # need to set size first. this will fail if it is not in range of 1-size
             # Sanity check we really are changing something, that the new val is diff
             self.assertNotEqual(pool[var], val, '%s did not change' % (var))
             try:
