@@ -317,6 +317,54 @@ def ceph_command(cluster_name, command_args):
     }
 
 
+def rbd_command(pool_name, command_args):
+    """
+    Run a rbd CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param pool_name: Ceph pool name, or None to run without --pool argument
+    :param command_args: Command line, excluding the leading 'rbd' part.
+    """
+
+    if pool_name:
+        args = ["rbd", "--pool", pool_name] + command_args
+    else:
+        args = ["rbd"] + command_args
+
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
+
+
+def radosgw_admin_command(command_args):
+    """
+    Run a radosgw-admin CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param command_args: Command line, excluding the leading 'radosgw-admin' part.
+    """
+
+    args = ["radosgw-admin"] + command_args
+
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
+
+
 def _get_config(cluster_name):
     """
     Given that a mon is running on this server, query its admin socket to get
