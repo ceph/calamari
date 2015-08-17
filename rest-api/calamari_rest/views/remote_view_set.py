@@ -41,6 +41,8 @@ adding new management functionality.
         where the job runs (where running includes running and returning an error)
         """
 
+        # TODO: in order to support radosgw-admin commands we might need to be able to identify running RGW services
+        # alternatively it may be possible to run radosgw-admin on a mon node that isn't running the RGW service
         mon_fqdns = self._get_up_mon_servers(fsid)
 
         client = salt.client.LocalClient(config.get('cthulhu', 'salt_config_path'))
