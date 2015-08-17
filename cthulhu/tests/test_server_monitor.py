@@ -3,14 +3,18 @@
 import os
 import mock
 from tests.util import load_fixture
+from tests.config import TestConfig
 
 os.environ.setdefault("CALAMARI_CONFIG", os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf"))
 
 from django.utils.unittest.case import TestCase
+from django.utils.unittest.case import skipIf
 from mock import Mock
 
 from cthulhu.manager.server_monitor import ServerMonitor, ServiceId
 
+
+config = TestConfig()
 
 OSD_MAP = load_fixture('osd_map.json')
 MON_MAP = load_fixture('mon_map.json')
@@ -66,6 +70,7 @@ class TestServiceDetection(TestCase):
     def tearDown(self):
         super(TestServiceDetection, self).tearDown()
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_managed_servers(self):
         """
         That managed servers (those sending salt messages) generate
@@ -90,6 +95,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_unmanaged_servers(self):
         """
         That when only the mons are sending salt messages, we generate
@@ -113,6 +119,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_unmanaged_managed_transition(self):
         """
         That when a pesky user doesn't initially install salt on OSD servers
@@ -146,6 +153,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_unmanaged_service_relocate(self):
         """
         That when an OSD disappears from one server's salt.services output
@@ -175,6 +183,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '0')
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_delete_managed(self):
         """
         That when a managed server is removed, it no longer appears
@@ -198,6 +207,7 @@ class TestServiceDetection(TestCase):
         self.assertListEqual([s.id for s in sm.fsid_services[FSID]], [ServiceId(FSID, 'mon', MON_HOSTNAME)])
         self.assertListEqual(sm.hostname_to_server.keys(), [MON_HOSTNAME])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_remove_osd(self):
         """
         That when an OSD is disappears from the OSD map, it is also removed
@@ -221,6 +231,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'mon', MON_HOSTNAME)
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_remove_mon(self):
         """
         That when a mon disappears from the mon map, ServerMonitor notices
@@ -243,6 +254,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'osd', '1')
         ])
 
+    @skipIf(config.get('testing', 'ceph_control') == 'converged', "")
     def test_remove_mds(self):
         """
         That when an mds disappears from the mds map, ServerMonitor notices
