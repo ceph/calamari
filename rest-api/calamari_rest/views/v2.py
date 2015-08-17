@@ -1050,16 +1050,16 @@ useful to show users data from the /status sub-url, which returns the
 
 class CliViewSet(RemoteViewSet):
     """
-Access the `ceph` CLI tool remotely.
+Access the `ceph`, `rbd`, and `radosgw-admin` CLI tools remotely.
 
 To achieve the same result as running "ceph osd dump" at a shell, an
 API consumer may POST an object in either of the following formats:
 
 ::
 
-    {'command': ['osd', 'dump']}
+    {'command': ['ceph', 'osd', 'dump']}
 
-    {'command': 'osd dump'}
+    {'command': 'ceph osd dump'}
 
 
 The response will be a 200 status code if the command executed, regardless
