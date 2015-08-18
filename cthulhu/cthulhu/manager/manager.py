@@ -30,7 +30,6 @@ from cthulhu.manager.eventer import Eventer
 from cthulhu.manager.request_collection import RequestCollection
 from cthulhu.manager import request_collection
 from cthulhu.manager.rpc import RpcThread
-from cthulhu.manager.notifier import NotificationThread
 from cthulhu.manager import config, salt_config
 from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceState
 
@@ -166,7 +165,6 @@ class Manager(object):
         self._discovery_thread = TopLevelEvents(self)
         self._process_monitor = ProcessMonitorThread()
 
-        self.notifier = NotificationThread()
         if sqlalchemy is not None:
             try:
                 # Prepare persistence
@@ -234,7 +232,6 @@ class Manager(object):
         self._rpc_thread.stop()
         self._discovery_thread.stop()
         self._process_monitor.stop()
-        self.notifier.stop()
         self.eventer.stop()
         self._request_ticker.stop()
 
@@ -277,7 +274,7 @@ class Manager(object):
         # I want the most recent version of every sync_object
         fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid, SyncObject.cluster_name).distinct(SyncObject.fsid)]
         for fsid, name in fsids:
-            cluster_monitor = ClusterMonitor(fsid, name, self.notifier, self.persister, self.servers,
+            cluster_monitor = ClusterMonitor(fsid, name, self.persister, self.servers,
                                              self.eventer, self.requests)
             self.clusters[fsid] = cluster_monitor
 
@@ -326,7 +323,6 @@ class Manager(object):
         self._rpc_thread.start()
         self._discovery_thread.start()
         self._process_monitor.start()
-        self.notifier.start()
         self.persister.start()
         self.eventer.start()
         self._request_ticker.start()
@@ -338,7 +334,6 @@ class Manager(object):
         self._rpc_thread.join()
         self._discovery_thread.join()
         self._process_monitor.join()
-        self.notifier.join()
         self.persister.join()
         self.eventer.join()
         self._request_ticker.join()
@@ -349,7 +344,7 @@ class Manager(object):
     def on_discovery(self, minion_id, heartbeat_data):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
         cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
-                                         self.notifier, self.persister, self.servers, self.eventer, self.requests)
+                                         self.persister, self.servers, self.eventer, self.requests)
         self.clusters[heartbeat_data['fsid']] = cluster_monitor
 
         # Run before passing on the heartbeat, because otherwise the
