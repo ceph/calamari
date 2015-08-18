@@ -8,6 +8,7 @@ are the instructions for setting up a development instance of Calamari that runs
 user from your development workstation.
 
 .. _using-vagrant:
+
 Using Vagrant
 -------------
 
