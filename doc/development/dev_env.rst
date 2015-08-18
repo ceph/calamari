@@ -7,6 +7,7 @@ These are *not* the instructions for installing Calamari, or for building Calama
 are the instructions for setting up a development instance of Calamari that runs as an unprivileged
 user from your development workstation.
 
+.. _using-vagrant:
 Using Vagrant
 -------------
 
