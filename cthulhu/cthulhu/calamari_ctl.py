@@ -16,13 +16,8 @@ from django.core.management import execute_from_command_line
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 
-from calamari_common.db.base import Base
 from calamari_common.config import CalamariConfig
 
-# Import sqlalchemy objects so that create_all sees them
-from cthulhu.persistence.sync_objects import SyncObject  # noqa
-from cthulhu.persistence.servers import Server, Service  # noqa
-from calamari_common.db.event import Event  # noqa
 from cthulhu.log import FORMAT
 
 # The log is very verbose by default, filtered at handler level
@@ -65,6 +60,7 @@ def _initialize_db(args, config):
     from alembic import command
     from sqlalchemy import create_engine
     from calamari_common.config import AlembicConfig
+    from calamari_common.db.base import Base
 
     # Configure postgres database
     if os.path.exists(POSTGRES_SLS):
