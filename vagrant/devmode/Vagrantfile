@@ -9,7 +9,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Use a bridged network so that external Ceph servers can connect to
   # salt master on this VM.
-  config.vm.network "public_network"
+  config.vm.network "public_network", bridge: [
+    "en0: Wi-Fi (AirPort)",  # without this `vagrant up` will pause for interface selection
+  ]
 
   config.vm.hostname = 'vagrant-ubuntu-trusty-64'
   config.vm.synced_folder "../../", "/calamari.git"
