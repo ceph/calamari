@@ -35,7 +35,7 @@ munge-hosts-file:
 
 new-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy new vagrant-ubuntu-trusty-64 # get this from the pillar
+    - name: /var/cluster/env/bin/ceph-deploy new {{ grains['fqdn'] }}
     - cwd: /var/cluster
     - require:
         - pip: ceph-deploy
@@ -49,7 +49,7 @@ modify-ceph.conf:
 
 install-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy install vagrant-ubuntu-trusty-64 # get this from the pillar
+    - name: /var/cluster/env/bin/ceph-deploy install {{ grains['fqdn'] }}
     - cwd: /var/cluster
     - require:
         - cmd: modify-ceph.conf
