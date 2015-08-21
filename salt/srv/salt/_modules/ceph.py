@@ -409,8 +409,8 @@ def get_cluster_object(cluster_name, sync_type, since):
             for osd_entry in data['osds']:
                 osd_id = osd_entry['osd']
                 command = "osd metadata"
-		argdict = {'id': osd_id}
-		argdict.update(kwargs)
+                argdict = {'id': osd_id}
+                argdict.update(kwargs)
                 ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
                                               timeout=RADOS_TIMEOUT)
                 assert ret == 0
