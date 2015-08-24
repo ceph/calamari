@@ -57,6 +57,7 @@ class OsdMap(VersionedSyncObject):
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
+            self.metadata_by_id = dict([(m['osd'], m) for m in data['osd_metadata']])
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -68,6 +69,7 @@ class OsdMap(VersionedSyncObject):
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
             self.crush_node_by_id = {}
+            self.metadata_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
     def _filter_crush_nodes(self, nodes):

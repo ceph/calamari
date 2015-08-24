@@ -572,6 +572,7 @@ Filtering is available on this resource:
         parent_map = self.client.get_sync_object(fsid, 'osd_map', ['parent_bucket_by_node_id'], async=True)
         osd_to_pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools'], async=True)
         crush_nodes = self.client.get_sync_object(fsid, 'osd_map', ['osd_tree_node_by_id'], async=True)
+        osd_metadata = self.client.get_sync_object(fsid, 'osd_map', ['metadata_by_id'], async=True)
         osds = osds.get()
 
         # Get data depending on OSD list
@@ -582,6 +583,7 @@ Filtering is available on this resource:
         parent_map = parent_map.get()
         osd_to_pools = osd_to_pools.get()
         crush_nodes = crush_nodes.get()
+        osd_metadata = osd_metadata.get()
         server_info = server_info.get()
         osd_commands = osd_commands.get()
 
@@ -600,6 +602,14 @@ Filtering is available on this resource:
 
         for o in osds:
             o['pools'] = osd_to_pools[o['osd']]
+            try:
+                o['backend_device_node'] = osd_metadata[o['osd']]['backend_filestore_dev_node']
+            except KeyError:
+                o['backend_device_node'] = None
+            try:
+                o['backend_partition_path'] = osd_metadata[o['osd']]['backend_filestore_partition_path']
+            except KeyError:
+                o['backend_partition_path'] = None
             o.update(osd_commands[o['osd']])
             o.update({'crush_node_ancestry': lookup_ancestry(o['osd'], parent_map)})
 
@@ -614,6 +624,16 @@ Filtering is available on this resource:
 
         pools = self.client.get_sync_object(fsid, 'osd_map', ['osd_pools', int(osd_id)])
         osd['pools'] = pools
+
+        osd_metadata = self.client.get_sync_object(fsid, 'osd_map', ['metadata_by_id', int(osd_id)])
+        try:
+            osd['backend_device_node'] = osd_metadata['backend_filestore_dev_node']
+        except KeyError:
+            osd['backend_device_node'] = None
+        try:
+            osd['backend_partition_path'] = osd_metadata['backend_filestore_partition_path']
+        except KeyError:
+            osd['backend_partition_path'] = None
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
         osd.update(osd_commands[int(osd_id)])

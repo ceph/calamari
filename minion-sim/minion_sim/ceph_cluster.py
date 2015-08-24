@@ -1048,6 +1048,7 @@ class CephClusterState(object):
             'max_osd': osd_count,
             'epoch': 1,
             'osds': [],
+            'osd_metadata': [],
             'pools': [],
             'crush': DEFAULT_CRUSH,
             'crush_map_text': DEFAULT_CRUSH_MAP_TEXT,
@@ -1073,6 +1074,11 @@ class CephClusterState(object):
                 'heartbeat_back_addr': "",
                 'heartbeat_front_addr': "",
                 "state": ["exists", "up"]
+            })
+            self._objects['osd_map']['osd_metadata'].append({
+                'osd': osd_id,
+                'backend_filestore_partition_path': "/dev/sda1",
+                'backend_filestore_dev_node': "sda"
             })
             self._osd_stats[osd_id] = {
                 'total_bytes': osd_size
