@@ -7,10 +7,21 @@ VAGRANTFILE_API_VERSION = "2"
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "boxcutter/ubuntu1404"
 
+  config.vm.provider "vmware_fusion" do |v|
+    v.vmx["memsize"] = "1024"
+  end
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+  end
+
   # Use a bridged network so that external Ceph servers can connect to
   # salt master on this VM.
-  config.vm.network "public_network"
+  config.vm.network "public_network", bridge: [
+    "en0: Wi-Fi (AirPort)",  # without this `vagrant up` will pause for interface selection
+  ]
 
+  config.vm.hostname = 'vagrant-ubuntu-trusty-64'
   config.vm.synced_folder "../../", "/calamari.git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
   config.vm.provision "shell",

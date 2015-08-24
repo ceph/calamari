@@ -163,6 +163,8 @@ class ExternalCephControl(CephControl):
         self.cluster_name = 'ceph'
         self.default_pools = set(['data', 'metadata', 'rbd'])
 
+        self.ceph_control = config.get('testing', 'ceph_control')
+
         self.cluster_distro = None
         if config.has_option('testing', 'cluster_distro'):
             self.cluster_distro = config.get('testing', 'cluster_distro')
@@ -171,12 +173,15 @@ class ExternalCephControl(CephControl):
         log.debug(target)
         log.debug(command)
         user_at_host = next(t for t in self.config['cluster'].iterkeys() if t.split('@')[1] == target)
-        proc = Popen([
-            'ssh',
-            '-oStrictHostKeyChecking=no',
-            '-oUserKnownHostsFile=/dev/null',
-            user_at_host,
-            command], stdout=PIPE, stderr=PIPE)
+        if self.ceph_control == 'converged':
+            proc = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
+        elif self.ceph_control == 'external':
+            proc = Popen([
+                'ssh',
+                '-oStrictHostKeyChecking=no',
+                '-oUserKnownHostsFile=/dev/null',
+                user_at_host,
+                command], stdout=PIPE, stderr=PIPE)
         out, err = proc.communicate()
         if proc.returncode != 0:
             log.error("stdout: %s" % out)

@@ -22,11 +22,37 @@ the server tests very simply:
 
 .. code-block:: bash
 
+    # set these values in the [testing] section of calamari/tests/test.conf
+    calamari_control = embedded
+    ceph_control = embedded 
+
+.. code-block:: bash
+
     calamari $ nosetests tests/
 
 Note that these take some time to execute: since these are not unit tests, they
 incur lots of the real-life overheads of a full blown system, and some tests
 incur walltime waits to exercise certain paths.
+
+Testing against a converged ceph cluster
+----------------------------------------
+
+In this section we'll setup a variant of the tests where a Ceph MON and OSD are 
+running on the same node as an instance of devmode Calamari.
+
+Theory of operation
+^^^^^^^^^^^^^^^^^^^
+
+This setup allows us to rapidly test the real interfaces of librados with different
+versions of Ceph. It is not representitive of a supported deployment of Ceph since there
+are no provisions for data durability if the MON or OSD crash much will be lost.
+
+Step 0: Setup devmode
+^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`using-vagrant` for instructions.
+Ceph will be automatically setup by initialiting a devmode vagrant.
+Tests will automatically run as part of the provisioning process.
 
 Testing against a real live ceph cluster
 ----------------------------------------
