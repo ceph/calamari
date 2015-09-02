@@ -1,7 +1,8 @@
 VERSION ?= $(shell ./get-versions.sh VERSION)
 REVISION ?= $(shell ./get-versions.sh REVISION)
 DIST ?= unstable
-BPTAG ?= ""
+CODENAME ?= $(shell lsb_release -sc)
+BPTAG ?= ""# backport tag starts with ~ and applies to debian only
 DEBEMAIL ?= dan.mick@inktank.com
 FLAVOR ?= $(shell ./get-flavor.sh)
 
@@ -24,9 +25,15 @@ build: version build-venv
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
 	@echo "target: $@"
-	DEBEMAIL=$(DEBEMAIL) dch \
-                --newversion $(VERSION)-$(REVISION)$(BPTAG) \
-                -D $(DIST) --force-bad-version --force-distribution "$(DATESTR)"
+	if [ "$(shell lsb_release -si)" = "Ubuntu" ] ; then \
+		DEBEMAIL=$(DEBEMAIL) dch \
+			--newversion $(VERSION)-$(REVISION)$(CODENAME) \
+			-D $(DIST) --force-bad-version --force-distribution "$(DATESTR)" ; \
+	else \
+		DEBEMAIL=$(DEBEMAIL) dch \
+			--newversion $(VERSION)-$(REVISION)$(BPTAG) \
+			-D $(DIST) --force-bad-version --force-distribution "$(DATESTR)" ; \
+	fi
 
 venv:
 	if [ ! -d $(SRC)/venv ] ; then \
