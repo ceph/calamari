@@ -6,7 +6,7 @@ PACKAGE_VERSION ?= 1
 CODENAME ?= $(shell lsb_release -sc)
 # You must set BPTAG when DCH_VERSION does not match a git tag
 BPTAG ?= "" # ~bpoNN+M where NN is the Debian major version and M is the 'package revision'
-DEBEMAIL ?= dan.mick@inktank.com
+DEBEMAIL ?= dmick@redhat.com
 FLAVOR ?= $(shell ./get-flavor.sh)
 
 # debian upstream tarballs: {name}_{version}.orig.tar.gz
