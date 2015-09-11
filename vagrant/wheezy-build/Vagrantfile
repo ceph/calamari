@@ -5,8 +5,7 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box_url = "https://dl.dropboxusercontent.com/u/197673519/debian-7.2.0.box"
-  config.vm.box = "wheezy64"
+  config.vm.box = "debian/wheezy64"
 
   config.vm.provider "virtualbox" do |v|
     v.memory = 1024
