@@ -158,14 +158,13 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
     another to listen to user requests.
     """
 
-    def __init__(self, fsid, cluster_name, notifier, persister, servers, eventer, requests):
+    def __init__(self, fsid, cluster_name, persister, servers, eventer, requests):
         super(ClusterMonitor, self).__init__()
 
         self.fsid = fsid
         self.name = cluster_name
         self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
-        self._notifier = notifier
         self._persister = persister
         self._servers = servers
         self._eventer = eventer
