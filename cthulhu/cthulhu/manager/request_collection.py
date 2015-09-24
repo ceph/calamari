@@ -176,7 +176,7 @@ class RequestCollection(object):
             requests = self.get_all(state=UserRequest.SUBMITTED)
             for request in requests:
                 if request.fsid != fsid:
-                    pass
+                    continue
 
                 try:
                     # If this is one of the types that this request
