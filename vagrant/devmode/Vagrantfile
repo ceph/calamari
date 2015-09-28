@@ -24,7 +24,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.hostname = 'vagrant-ubuntu-trusty-64'
   config.vm.synced_folder "../../", "/calamari.git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
-  config.vm.provision "shell",
-    inline: "/bin/bash /calamari.git/vps_bootstrap.sh"
+  config.vm.provision "shell" do |s|
+    s.path = "../../vps_bootstrap.sh"
+    s.args = ['vagrant', '/home/vagrant']
+  end
 
 end
