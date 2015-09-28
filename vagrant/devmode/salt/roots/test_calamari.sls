@@ -53,6 +53,7 @@ supervisord:
     cmd.run:
         - name: source env/bin/activate; supervisord -c dev/supervisord.conf
         - cwd: /home/vagrant/calamari
+        - unless: pgrep supervisord
 
 nosetests:
     cmd.run:
