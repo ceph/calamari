@@ -14,51 +14,53 @@ salt-minion:
 
 config-tests-converged:
     cmd.run:
-        - name: sed 's/embedded/external/;s/ceph_control = external/ceph_control = converged/' -i /home/vagrant/calamari/tests/test.conf
+        - name: sed 's/embedded/external/;s/ceph_control = external/ceph_control = converged/' -i {{ pillar['home'] }}/calamari/tests/test.conf
 
 config-tests-no-bootstrap:
     cmd.run:
-        - name: echo 'bootstrap = False' >> /home/vagrant/calamari/tests/tests.conf
+        - name: echo 'bootstrap = False' >> {{ pillar['home'] }}/calamari/tests/tests.conf
 
-/home/vagrant/teuthology/archive:
+{{ pillar['home'] }}/teuthology/archive:
     file.directory:
-    - user: vagrant
-    - group: vagrant
+    - user: {{ pillar['username'] }}
+    - group: {{ pillar['username'] }}
     - dir_mode: 755
     - file_mode: 644
+    - makedirs: True
     - recurse:
         - user
         - group
         - mode
 
-/home/vagrant/teuthology/archive/info.yaml:
+{{ pillar['home'] }}/teuthology/archive/info.yaml:
     file.managed:
-        - user: vagrant
-        - group: vagrant
+        - user: {{ pillar['username'] }}
+        - group: {{ pillar['username'] }}
         - file_mode: 644
         - contents_pillar: infoyaml
         - contents_newline: False
         - require:
-            - file: /home/vagrant/teuthology/archive
+            - file: {{ pillar['home'] }}/teuthology/archive
 
 make-check:
     cmd.run:
         - name: source env/bin/activate; make check
-        - cwd: /home/vagrant/calamari
+        - cwd: {{ pillar['home'] }}/calamari
         - require:
             - cmd: supervisord
 
 supervisord:
     cmd.run:
         - name: source env/bin/activate; supervisord -c dev/supervisord.conf
-        - cwd: /home/vagrant/calamari
+        - cwd: {{ pillar['home'] }}/calamari
+        - unless: pgrep supervisord
 
 nosetests:
     cmd.run:
         - name: source env/bin/activate; nosetests tests
-        - cwd: /home/vagrant/calamari
+        - cwd: {{ pillar['home'] }}/calamari
         - require:
             - cmd: make-check
             - cmd: config-tests-converged
             - cmd: config-tests-no-bootstrap
-            - file: /home/vagrant/teuthology/archive/info.yaml
+            - file: {{ pillar['home'] }}/teuthology/archive/info.yaml
