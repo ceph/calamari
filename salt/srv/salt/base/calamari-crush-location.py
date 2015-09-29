@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.WARN)
 log = logging.getLogger('calamari_osd_location')
 
 
-def get_last_crush_location(osd_id):
+def get_last_crush_location(cluster, osd_id):
     '''
     Ask the config-key store in a ceph monitor for osd_id's last known location
     returns None if we cannot contact the mon or there is nothing recorded
@@ -19,8 +19,8 @@ def get_last_crush_location(osd_id):
 
     errors = []
     key = 'daemon-private/osd.%s/v1/calamari/osd_crush_location' % osd_id
-    osd_keyring = '/var/lib/ceph/osd/ceph-%s/keyring' % osd_id
-    admin_keyring = '/etc/ceph/ceph.client.admin.keyring'
+    osd_keyring = '/var/lib/ceph/osd/%(cluster)-%(osd_id)s/keyring' % {'cluster': cluster, 'osd_id': osd_id}
+    admin_keyring = '/etc/ceph/%s.client.admin.keyring' % cluster
     commands = (['ceph', '--name', 'osd.%s' % osd_id, '--keyring', osd_keyring, 'config-key', 'get', key],
                 ['sudo', 'ceph', '--keyring', admin_keyring, 'config-key', 'get', key],
                 )
@@ -38,7 +38,7 @@ def get_last_crush_location(osd_id):
         log.error(e)
 
 
-def get_osd_location(osd_id):
+def get_osd_location(cluster, osd_id):
     '''
     Returns osd_id's last known location or host=$(hostname -s) if the host has changed or
     there is no last location
@@ -48,7 +48,7 @@ def get_osd_location(osd_id):
         current_hostname = current_hostname.split('.')[0]
 
     try:
-        last_location = get_last_crush_location(osd_id)
+        last_location = get_last_crush_location(cluster, osd_id)
     except OSError:
         log.error('Failed to get last crush location. Defaulting to current host %s' % current_hostname)
     else:
@@ -69,7 +69,7 @@ Calamari setup tool.
     parser.add_argument('--cluster',
                         dest="cluster",
                         action='store',
-                        default=False,
+                        default='ceph',
                         help="ceph cluster to operate on",
                         required=False)
     parser.add_argument('--id',
@@ -87,7 +87,7 @@ Calamari setup tool.
 
     args = parser.parse_args()
 
-    print get_osd_location(args.id)
+    print get_osd_location(args.cluster, args.id)
 
 if __name__ == '__main__':
     sys.exit(main())
