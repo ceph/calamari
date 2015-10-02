@@ -109,5 +109,5 @@ def main():
     gevent.signal(signal.SIGINT, shutdown)
 
     while not complete.is_set():
-        cthulhu.on_tick()
+        cthulhu.eventer.on_tick()
         complete.wait(timeout=5)
