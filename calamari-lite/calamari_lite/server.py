@@ -98,7 +98,7 @@ def main():
 
     app = get_internal_wsgi_application()
     wsgi = WSGIServer(('0.0.0.0', 8002), app)
-    wsgi.start()
+    wsgi.serve_forever()
 
     complete = gevent.event.Event()
 
