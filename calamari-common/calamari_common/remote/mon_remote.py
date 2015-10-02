@@ -416,10 +416,7 @@ def ceph_command(cluster_name, command_args):
     :param command_args: Command line, excluding the leading 'ceph' part.
     """
 
-    if SRC_DIR:
-        ceph = [os.path.join(SRC_DIR, "ceph"), "-c", os.path.join(SRC_DIR, "ceph.conf")]
-    else:
-        ceph = ['ceph']
+    ceph = ['ceph']
 
     if cluster_name:
         args = ceph + ["--cluster", cluster_name] + command_args
