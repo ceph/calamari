@@ -103,7 +103,7 @@ class ProcessMonitorThread(gevent.greenlet.Greenlet):
     def _run(self):
         log.info("Running {0}".format(self.__class__.__name__))
         while not self._complete.is_set():
-            self._emit_stats()
+            # self._emit_stats()
             self._complete.wait(self.MONITOR_PERIOD)
 
         self._close()
