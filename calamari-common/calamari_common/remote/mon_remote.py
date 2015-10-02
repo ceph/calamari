@@ -767,6 +767,7 @@ class MsgGenerator(gevent.Greenlet):
         # process and RPC to it.
         from gevent import monkey
         monkey.patch_all()
+        monkey.patch_subprocess()
 
     def register(self, instance):
         if instance not in self._instances:
@@ -788,7 +789,7 @@ class MsgGenerator(gevent.Greenlet):
             raise Unavailable()
 
         jid = uuid.uuid4().__str__()
-        self._jobs[jid] = gevent.spawn(lambda: run_job_thread(jid, cmd, args))
+        self._jobs[jid] = gevent.spawn(lambda: run_job_thread(self, jid, cmd, args))
         return jid
 
     def _run(self):
@@ -834,6 +835,7 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         self.hostname = socket.gethostname()
 
         self._events = Queue()
+        self.register()
 
 
     def put(self, msg_event):
