@@ -720,6 +720,11 @@ def run_job(cmd, args):
             args['cluster_name'],
             args['sync_type'],
             args['since'])
+    elif cmd == "ceph.rados_commands":
+        return rados_commands(
+            args['fsid'],
+            args['cluster_name'],
+            args['commands'],)
     else:
         raise NotImplemented(cmd)
 
