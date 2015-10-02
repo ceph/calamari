@@ -30,10 +30,7 @@ if SRC_DIR and not SOCKET_DIR:
 if SRC_DIR and not LOG_DIR:
     LOG_DIR = os.path.join(SRC_DIR, "out")
 
-if SRC_DIR:
-    SOCKET_PREFIX = ""
-else:
-    SOCKET_PREFIX = "{cluster_name}-"
+SOCKET_PREFIX = "{cluster_name}-"
 
 RADOS_TIMEOUT = 20
 RADOS_NAME = 'client.admin'
@@ -555,11 +552,12 @@ def get_heartbeats():
         log.debug("Querying {0}".format(filename))
         try:
             service_data = service_status(filename)
-        except rados.Error:
+        except rados.Error, e:
             # Failed to get info for this service, stale socket or unresponsive,
             # exclude it from report
-            pass
+            log.debug('get_heartbeat: %s ' % str(e))
         else:
+            log.debug('get_heartbeat: service_data %s ' % str(service_data))
             service_name = "%s-%s.%s" % (service_data['cluster'], service_data['type'], service_data['id'])
 
             services[service_name] = service_data
@@ -569,6 +567,7 @@ def get_heartbeats():
                 # A mon in quorum is elegible to emit a cluster heartbeat
                 mon_sockets[service_data['fsid']] = filename
 
+    log.debug("get_heartbeats mon_sockets %s" % str(mon_sockets))
     # Installed Ceph version (as oppose to per-service running ceph version)
     ceph_version_str = get_ceph_version()
     if ceph_version_str:
@@ -582,8 +581,9 @@ def get_heartbeats():
         try:
             cluster_handle = rados_connect(fsid_names[fsid])
             cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
-        except rados.Error:
+        except rados.Error, e:
             # Something went wrong getting data for this cluster, exclude it from our report
+            log.debug('get_heartbeat: %s ' % str(e)) 
             pass
 
     server_heartbeat = {
@@ -948,8 +948,9 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
                 pass
             else:
                 log.debug("listen: ev: %s" % ev.kind)
-                if ev.kind == HEARTBEAT and on_heartbeat:
-                    on_heartbeat(self.fqdn, ev.data)
+                if ev.kind == HEARTBEAT and on_heartbeat and ev.data:
+                    for fsid, cluster_heartbeat in ev.data.iteritems():
+                        on_heartbeat(self.fqdn, cluster_heartbeat)
                 elif ev.kind == SERVER_HEARTBEAT and on_server_heartbeat:
                     on_server_heartbeat(self.fqdn, ev.data)
                 elif ev.kind == JOB and on_job:
