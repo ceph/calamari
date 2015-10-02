@@ -81,24 +81,7 @@ class CalamariControl(object):
             r.raise_for_status()
 
     def authorize_keys(self, minion_ids):
-        def _fqdns_present():
-            found_ids = [m['id'] for m in self.api.get("key").json()]
-            all_present = len(set(minion_ids) & set(found_ids)) == len(minion_ids)
-
-            log.debug("checking keys, looking for %s found %s (%s)" % (minion_ids, found_ids, all_present))
-
-            return all_present
-
-        wait_until_true(_fqdns_present, timeout=KEY_WAIT_PERIOD * len(minion_ids))
-
-        for minion_id in minion_ids:
-            if self.api.get("key/%s" % minion_id).json()['status'] == 'accepted':
-                # skip already accepted minions (happens running against external calamari instance)
-                log.debug("Key for %s is already authorised" % minion_id)
-                continue
-            log.debug("Authorising key for %s" % minion_id)
-            r = self.api.patch("key/%s" % minion_id, {'status': 'accepted'})
-            r.raise_for_status()
+        pass
 
     def configure(self, no_clusters=True):
         """
@@ -120,21 +103,7 @@ class CalamariControl(object):
         way to get around that is to provision a fully fresh instance
         for each test.
         """
-
-        if no_clusters:
-            # Initially there should be no clusters
-            response = self.api.get("cluster")
-            response.raise_for_status()
-            for cluster in response.json():
-                response = self.api.delete("cluster/%s" % cluster['id'])
-                response.raise_for_status()
-                log.debug("Deleted cluster %s" % cluster['id'])
-
-            # By extension, no servers
-            for server in self.api.get("server").json():
-                response = self.api.delete("server/%s" % server['fqdn'])
-                response.raise_for_status()
-                log.debug("Deleted server %s" % server['fqdn'])
+        pass
 
 
 class EmbeddedCalamariControl(CalamariControl):
