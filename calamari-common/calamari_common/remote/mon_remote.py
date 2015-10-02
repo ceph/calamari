@@ -62,8 +62,13 @@ def md5(raw):
 
 
 def get_ceph_version():
-    # TODO: a salt-less query for install ceph package version
-    return None
+    result = ceph_command(None, ['--version'])
+    try:
+        version = result['out'].split(' ')[2]
+    except (KeyError, AttributeError):
+        version = None
+
+    return version
 
 
 def rados_connect(cluster_name):
