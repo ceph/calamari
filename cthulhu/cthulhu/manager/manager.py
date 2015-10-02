@@ -226,6 +226,8 @@ class Manager(object):
         self._request_ticker.stop()
 
     def _expunge(self, fsid):
+        if sqlalchemy is None:
+            return
         session = Session()
         session.query(SyncObject).filter_by(fsid=fsid).delete()
         session.commit()
