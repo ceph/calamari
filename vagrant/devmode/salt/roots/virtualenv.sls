@@ -31,3 +31,15 @@ pip_pkgs:
     - require:
       - virtualenv: virtualenv
       - pip: pyzmq
+
+devel_pip_pkgs:
+  pip:
+    - installed
+    - user: vagrant
+    - bin_env: /home/vagrant/calamari/env
+    - activate: true
+    - requirements: /home/vagrant/calamari/requirements/devel.txt
+    - download_cache: /vagrant/pip_cache
+    - require:
+      - virtualenv: virtualenv
+      - pip: pyzmq
