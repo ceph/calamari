@@ -25,18 +25,7 @@ pip_pkgs:
     - installed
     - user: {{ pillar['username'] }}
     - bin_env: {{ pillar['home'] }}/calamari/env
-    - requirements: {{ pillar['home'] }}/calamari/requirements/2.7/requirements.txt
-    - download_cache: {{ pillar['home'] }}/pip_cache
-    - require:
-      - virtualenv: virtualenv
-      - pip: pyzmq
-
-pip_force_pkgs:
-  pip:
-    - installed
-    - user: {{ pillar['username'] }}
-    - bin_env: {{ pillar['home'] }}/calamari/env
-    - requirements: {{ pillar['home'] }}/calamari/requirements/2.7/requirements.force.txt
+    - requirements: {{ pillar['home'] }}/calamari/requirements/lite.txt
     - ignore_installed: true
     - download_cache: {{ pillar['home'] }}/pip_cache
     - require:
