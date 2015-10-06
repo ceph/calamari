@@ -44,7 +44,7 @@ except ImportError:
     # could create version here if we wanted to be fancier
     VERSION = 'dev'
 
-from calamari_rest.views.rpc_view import RPCView, DataObject, RPCViewSet
+from calamari_rest.views.rpc_view import DataObject, RPCViewSet
 from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
     PoolSerializer, ServerSerializer, InfoSerializer
