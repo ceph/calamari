@@ -2,7 +2,6 @@
 base:
   '*':
       - build_deps
-      - postgres
       - git_clone
       - virtualenv
       - configs
