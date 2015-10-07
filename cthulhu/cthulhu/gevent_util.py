@@ -1,5 +1,3 @@
-from gevent import getcurrent
-from functools import wraps
 from contextlib import contextmanager
 
 
