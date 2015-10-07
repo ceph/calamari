@@ -171,6 +171,7 @@ def change_password(args):
 
 def clear(args):
     from sqlalchemy import create_engine
+    from calamari_common.db.base import Base
 
     if not args.yes_i_am_sure:
         log.warn("This will remove all stored Calamari monitoring status and history.  Use '--yes-i-am-sure' to proceed")
