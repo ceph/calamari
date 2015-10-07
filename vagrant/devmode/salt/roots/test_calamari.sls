@@ -44,7 +44,7 @@ config-tests-no-bootstrap:
 
 make-check:
     cmd.run:
-        - user: vagrant
+        - user: {{ pillar['username'] }}
         - name: source env/bin/activate; make check
         - cwd: {{ pillar['home'] }}/calamari
         - require:
@@ -59,7 +59,7 @@ supervisord:
 
 nosetests:
     cmd.run:
-        - user: vagrant
+        - user: {{ pillar['username'] }}
         - name: source env/bin/activate; nosetests tests
         - cwd: {{ pillar['home'] }}/calamari
         - require:
