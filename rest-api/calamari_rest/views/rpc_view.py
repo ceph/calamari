@@ -27,7 +27,6 @@ except ImportError:
 
 from calamari_common.config import CalamariConfig
 from calamari_common.types import NotFound
-from calamari_rest.viewsets import RoleLimitedViewSet
 from rest_framework.viewsets import ViewSet
 config = CalamariConfig()
 
