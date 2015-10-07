@@ -1,3 +1,4 @@
 django-nose
 mock
 pytz
+flake8
