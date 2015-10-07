@@ -85,6 +85,7 @@ def rados_connect(cluster_name):
 
     return cluster_handle
 
+
 # This function borrowed from /usr/bin/ceph: we should
 # get ceph's python code into site-packages so that we
 # can borrow things like this.
@@ -243,62 +244,6 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
             return outbuf
 
 
-# This function borrowed from /usr/bin/ceph: we should
-# get ceph's python code into site-packages so that we
-# can borrow things like this.
-def admin_socket(asok_path, cmd, fmt=''):
-    """
-    Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
-    path to the admin socket; cmd is a list of strings
-    """
-
-    def do_sockio(path, cmd):
-        """ helper: do all the actual low-level stream I/O """
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(path)
-        try:
-            sock.sendall(cmd + '\0')
-            len_str = sock.recv(4)
-            if len(len_str) < 4:
-                raise RuntimeError("no data returned from admin socket")
-            l, = struct.unpack(">I", len_str)
-            ret = ''
-
-            got = 0
-            while got < l:
-                bit = sock.recv(l - got)
-                ret += bit
-                got += len(bit)
-
-        except Exception as e:
-            raise AdminSocketError('exception: ' + str(e))
-        return ret
-
-    try:
-        cmd_json = do_sockio(asok_path,
-                             json.dumps({"prefix": "get_command_descriptions"}))
-    except Exception as e:
-        raise AdminSocketError('exception getting command descriptions: ' + str(e))
-
-    if cmd == 'get_command_descriptions':
-        return cmd_json
-
-    sigdict = parse_json_funcsigs(cmd_json, 'cli')
-    valid_dict = validate_command(sigdict, cmd)
-    if not valid_dict:
-        raise AdminSocketError('invalid command')
-
-    if fmt:
-        valid_dict['format'] = fmt
-
-    try:
-        ret = do_sockio(asok_path, json.dumps(valid_dict))
-    except Exception as e:
-        raise AdminSocketError('exception: ' + str(e))
-
-    return ret
-
-
 SYNC_TYPES = ['mon_status',
               'mon_map',
               'osd_map',
@@ -306,58 +251,6 @@ SYNC_TYPES = ['mon_status',
               'pg_summary',
               'health',
               'config']
-
-
-def md5(raw):
-    hasher = hashlib.md5()
-    hasher.update(raw)
-    return hasher.hexdigest()
-
-
-def pg_summary(pgs_brief):
-    """
-    Convert an O(pg count) data structure into an O(osd count) digest listing
-    the number of PGs in each combination of states.
-    """
-
-    osds = {}
-    pools = {}
-    all_pgs = {}
-    for pg in pgs_brief:
-        for osd in pg['acting']:
-            try:
-                osd_stats = osds[osd]
-            except KeyError:
-                osd_stats = {}
-                osds[osd] = osd_stats
-
-            try:
-                osd_stats[pg['state']] += 1
-            except KeyError:
-                osd_stats[pg['state']] = 1
-
-        pool = int(pg['pgid'].split('.')[0])
-        try:
-            pool_stats = pools[pool]
-        except KeyError:
-            pool_stats = {}
-            pools[pool] = pool_stats
-
-        try:
-            pool_stats[pg['state']] += 1
-        except KeyError:
-            pool_stats[pg['state']] = 1
-
-        try:
-            all_pgs[pg['state']] += 1
-        except KeyError:
-            all_pgs[pg['state']] = 1
-
-    return {
-        'by_osd': osds,
-        'by_pool': pools,
-        'all': all_pgs
-    }
 
 
 def rados_commands(fsid, cluster_name, commands):
@@ -585,7 +478,7 @@ def get_heartbeats():
             cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
         except rados.Error, e:
             # Something went wrong getting data for this cluster, exclude it from our report
-            log.debug('get_heartbeat: %s ' % str(e)) 
+            log.debug('get_heartbeat: %s ' % str(e))
             pass
 
     server_heartbeat = {
@@ -837,7 +730,6 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         self._events = Queue()
         self.register()
 
-
     def put(self, msg_event):
         self._events.put(msg_event)
 
@@ -971,6 +863,5 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
                            ev.data['fun_args'])
                 elif ev.kind == RUNNING_JOBS and on_running_jobs:
                     on_running_jobs(self.fqdn, ev.data)
-
 
         log.info("listen: complete")
