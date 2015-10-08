@@ -386,6 +386,7 @@ def get_cluster_object(cluster_name, sync_type, since):
                                           timeout=RADOS_TIMEOUT)
             assert ret == 0
             data['crush'] = json.loads(raw)
+            data['osd_metadata'] = []
 
     return {
         'type': sync_type,
