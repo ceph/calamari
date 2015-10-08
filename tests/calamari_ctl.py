@@ -204,7 +204,7 @@ class EmbeddedCalamariControl(CalamariControl):
                     else:
                         os.unlink(f)
 
-            lingering_salt = [p for p in psutil.get_process_list() if _is_stale(p)]
+            lingering_salt = [p for p in psutil.process_iter() if _is_stale(p)]
             for p in lingering_salt:
                 log.warn("Killing stale process: %s" % p.pid)
                 p.kill()
