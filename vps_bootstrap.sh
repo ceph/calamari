@@ -9,7 +9,7 @@ else
     curl -o install_salt.sh -L https://bootstrap.saltstack.com
 fi
 
-sudo sh install_salt.sh -G -P git v2014.7.6
+sudo sh install_salt.sh -G -P git v2015.8.0
 
 pushd /calamari.git
 pillar_data="{"\"username\":\"$1\"", "\"home\":\"$2\""}"
