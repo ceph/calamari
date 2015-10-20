@@ -19,9 +19,9 @@ config.vm.box = "boxcutter/centos71"
   config.vm.synced_folder "../../../", "/git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
   config.vm.provision :salt do |salt|
+    salt.bootstrap_options = "-F -c /tmp -P"
     salt.minion_config = "salt/minion"
-    salt.run_highstate = false 
-    salt.bootstrap_script = "../urllib-bootstrap-salt.sh"
+    salt.run_highstate = false
   end
   config.vm.network :forwarded_port, guest: 22, host: 2201, id: "ssh", auto_correct: true
 end
