@@ -20,7 +20,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder "../../../", "/git"
   config.vm.synced_folder "salt/roots/", "/srv/salt/"
   config.vm.provision :salt do |salt|
-    salt.bootstrap_script = "../urllib-bootstrap-salt.sh"
+    salt.bootstrap_options = "-F -c /tmp -P"
     salt.minion_config = "salt/minion"
     salt.run_highstate = false
   end
