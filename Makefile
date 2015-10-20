@@ -124,9 +124,9 @@ fixup-venv: build-venv-carbon build-venv-reqs
 
 # when this repo contained the Javascript code, it was difficult to make
 # source packages work right; it might be easier now
-dpkg: set_deb_version
+dpkg: dist set_deb_version
 	@echo "target: $@"
-	dpkg-buildpackage -b -us -uc
+	dpkg-buildpackage -us -uc
 
 install-common: install-conf install-venv install-salt install-alembic install-scripts
 	@echo "target: $@"
