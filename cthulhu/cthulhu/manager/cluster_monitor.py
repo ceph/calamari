@@ -387,7 +387,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     def _set_favorite(self, minion_id):
         assert minion_id != self._favorite_mon
-        self._requests.fail_all(minion_id)
+        self._requests.fail_all(self._favorite_mon, self.fsid)
 
         self._favorite_mon = minion_id
 

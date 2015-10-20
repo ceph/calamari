@@ -141,12 +141,14 @@ class RequestCollection(object):
                 # any guarantees because running nodes may be out of touch with the calamari server.
 
     @nosleep
-    def fail_all(self, failed_minion):
+    def fail_all(self, failed_minion, fsid):
         """
         For use when we lose contact with the minion that was in use for running
         requests: assume all these requests are never going to return now.
         """
         for request in self.get_all(UserRequest.SUBMITTED):
+            if request.fsid != fsid:
+                continue
             with self._update_index(request):
                 request.set_error("Lost contact with server %s" % failed_minion)
                 if request.jid:
