@@ -47,4 +47,4 @@ widgets like IOPs and Usage are blank**
     sudo service apache2 restart  # initd systems
     sudo systemctl httpd restart  # systemd systems
 
-* repeat steps in :ref:`get-logs`
+* repeat steps in :ref: `get-logs`
