@@ -28,6 +28,8 @@ widgets like IOPs and Usage are blank**
   backtrace, and seek help via the mailing list or issue tracker.
 
 
+.. _get-logs:
+
 **The Calamari API is returning an HTTP 500 error**
 
 * Run ``tail -f /var/log/calamari/*``
@@ -38,8 +40,10 @@ widgets like IOPs and Usage are blank**
 
 * set ``log_level = DEBUG`` for services listed in ``/etc/calamari/calamari.conf``
 * restart these services with 
-``sudo supervisorctl restart cthulhu
-sudo service apache2 restart
-sudo systemctl httpd restart``
 
+.. code-block:: bash
+    sudo supervisorctl restart cthulhu
+    sudo service apache2 restart  # initd systems
+    sudo systemctl httpd restart  # systemd systems
 
+* repeat steps in :ref:`get-logs` 
