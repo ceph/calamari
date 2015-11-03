@@ -30,8 +30,8 @@ widgets like IOPs and Usage are blank**
 
 .. _get-logs:
 
-The Calamari API is returning an HTTP 500 error**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The Calamari API is returning an HTTP 500 error
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * Run ``tail -f /var/log/calamari/*``
 * Re-request the resource that is erroring.
@@ -48,4 +48,4 @@ The Calamari API is returning an HTTP 500 error**
     sudo service apache2 restart  # initd systems
     sudo systemctl httpd restart  # systemd systems
 
-* repeat steps in :ref: `get-logs`
+* repeat steps in :ref:`get-logs`
