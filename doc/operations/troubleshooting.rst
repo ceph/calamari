@@ -27,3 +27,19 @@ widgets like IOPs and Usage are blank**
 * Check ``/var/log/calamari/calamari.log`` for a detailed error message and
   backtrace, and seek help via the mailing list or issue tracker.
 
+
+**The Calamari API is returning an HTTP 500 error**
+
+* Run ``tail -f /var/log/calamari/*``
+* Re-request the resource that is erroring.
+* include all output from the tail command when asking for help
+
+**I tried tail -f on the logs and I'm not seeing much**
+
+* set ``log_level = DEBUG`` for services listed in ``/etc/calamari/calamari.conf``
+* restart these services with 
+``sudo supervisorctl restart cthulhu
+sudo service apache2 restart
+sudo systemctl httpd restart``
+
+
