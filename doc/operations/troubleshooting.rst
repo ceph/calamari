@@ -43,7 +43,7 @@ The Calamari API is returning an HTTP 500 error
 * include all output from the tail command when asking for help
 
 I tried tail -f on the logs and I'm not seeing much
-===================================================
+---------------------------------------------------
 
 * set ``log_level = DEBUG`` for services listed in ``/etc/calamari/calamari.conf``
 * restart these services with 
