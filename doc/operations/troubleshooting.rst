@@ -1,6 +1,6 @@
 
 Troubleshooting Calamari Server
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+===============================
 
 Note: the guidance here is about troubleshooting the Calamari monitoring layer, not
 Ceph in general, see the `ceph documentation <https://ceph.com/docs/master/>`_ for
