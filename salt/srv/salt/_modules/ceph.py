@@ -317,7 +317,7 @@ def ceph_command(cluster_name, command_args):
     }
 
 
-def rbd_command(pool_name, command_args):
+def rbd_command(command_args, pool_name=None):
     """
     Run a rbd CLI operation directly.  This is a fallback to allow
     manual execution of arbitrary commands in case the user wants to
