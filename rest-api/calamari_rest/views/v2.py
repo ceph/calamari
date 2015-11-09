@@ -1089,7 +1089,24 @@ not a problem.
             command = shlex.split(command)
 
         name = self.client.get_cluster(fsid)['name']
-        result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        principle = command[0]
+
+        try:
+            if principle == 'ceph':
+                command.pop(0)
+                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+            elif principle == 'rbd':
+                command.pop(0)
+                result = self.run_mon_job(fsid, "ceph.rbd_command", [command])
+            elif principle == 'radosgw-admin':
+                command.pop(0)
+                result = self.run_mon_job(fsid, "ceph.radosgw_admin_command", [command])
+            else:
+                # Try the default 'ceph' target to maintain backwards compatibility
+                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        except Exception as ex:
+            raise APIException("Error in cli command: %s" % ex)
+
         log.debug("CliViewSet: result = '%s'" % result)
 
         if not isinstance(result, dict):
