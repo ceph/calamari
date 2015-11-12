@@ -61,8 +61,8 @@ browser.
 %dir /var/lib/graphite/log
 %dir /var/lib/graphite/log/webapp
 %dir /var/lib/graphite/whisper
-%attr (755, apache, apache) /var/log/calamari
-%attr (755, apache, apache) /var/log/graphite
+%dir %attr (755, apache, apache) /var/log/calamari
+%dir %attr (755, apache, apache) /var/log/graphite
 
 %post -n calamari-server
 calamari_httpd()
