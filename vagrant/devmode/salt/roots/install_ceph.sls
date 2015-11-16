@@ -35,7 +35,7 @@ munge-hosts-file:
 
 new-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy new {{ grains['fqdn'] }}
+    - name: /var/cluster/env/bin/ceph-deploy new vagrant
     - cwd: /var/cluster
     - require:
         - pip: ceph-deploy
@@ -49,7 +49,7 @@ modify-ceph.conf:
 
 install-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy install {{ grains['fqdn'] }}
+    - name: /var/cluster/env/bin/ceph-deploy install --testing vagrant
     - cwd: /var/cluster
     - require:
         - cmd: modify-ceph.conf
@@ -74,7 +74,7 @@ mon-create:
 
 osd-prepare:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy osd prepare {{ grains['fqdn'] }}:/var/cluster/osd
+    - name: /var/cluster/env/bin/ceph-deploy osd prepare vagrant:/var/cluster/osd
     - cwd: /var/cluster
     - require:
         - cmd: mon-create
@@ -82,7 +82,7 @@ osd-prepare:
 
 osd-activate:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy osd activate {{ grains['fqdn'] }}:/var/cluster/osd
+    - name: /var/cluster/env/bin/ceph-deploy osd activate vagrant:/var/cluster/osd
     - cwd: /var/cluster
     - require:
         - cmd: osd-prepare
