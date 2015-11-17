@@ -100,6 +100,8 @@ build-venv-reqs: venv
 	../venv/bin/python ./setup.py install && \
 	cd ../cthulhu ; \
 	../venv/bin/python ./setup.py install && \
+	cd ../calamari-lite ; \
+	../venv/bin/python ./setup.py install && \
 	cd ../venv ; )
 
 fixup-venv: build-venv-carbon build-venv-reqs
