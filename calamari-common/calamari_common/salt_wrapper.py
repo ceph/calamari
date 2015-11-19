@@ -11,25 +11,34 @@ environment.
 import gevent
 import logging
 
+from calamari_common.config import CalamariConfig
+
+FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
+log = logging.getLogger('calamari')
 
 try:
-    from salt.client import condition_kwarg  # noqa
-except ImportError:
-    # Salt moved this in 382dd5e
-    from salt.utils.args import condition_input as condition_kwarg  # noqa
+    try:
+        from salt.client import condition_kwarg  # noqa
+    except ImportError:
+        # Salt moved this in 382dd5e
+        from salt.utils.args import condition_input as condition_kwarg  # noqa
 
-from salt.client import LocalClient  # noqa
-from salt.utils.event import MasterEvent  # noqa
-from salt.key import Key  # noqa
-from salt.config import master_config  # noqa
-from salt.utils.master import MasterPillarUtil  # noqa
-from salt.config import client_config  # noqa
-try:
-    from salt.loader import _create_loader  # noqa
-except ImportError:
-    # static_loader added in a422fa42
-    # _create_loader removed in b0e1425
-    from salt.loader import static_loader as _create_loader  # noqa
+    from salt.client import LocalClient  # noqa
+    from salt.utils.event import MasterEvent  # noqa
+    from salt.key import Key  # noqa
+    from salt.config import master_config  # noqa
+    from salt.utils.master import MasterPillarUtil  # noqa
+    from salt.config import client_config  # noqa
+    try:
+        from salt.loader import _create_loader  # noqa
+    except ImportError:
+        # static_loader added in a422fa42
+        # _create_loader removed in b0e1425
+        from salt.loader import static_loader as _create_loader  # noqa
+except ImportError, e:
+    # log failure everywhere and give up
+    log.exception(e)
+    raise e
 
 
 class SaltEventSource(object):
