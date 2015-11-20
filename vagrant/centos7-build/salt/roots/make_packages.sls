@@ -1,22 +1,5 @@
 {% import 'setvars' as vars %}
 
-build-diamond:
-  cmd.run:
-    - user: {{vars.username}}
-    - name: make rpm
-    - cwd: {{vars.builddir}}/Diamond
-    - require:
-      - git: {{vars.gitpath}}/Diamond
-
-build-repo:
-  cmd.run:
-    - user: {{vars.username}}
-    - name: make el6
-    - cwd: {{vars.builddir}}/calamari/repobuild
-    - require:
-      - git: {{vars.gitpath}}/calamari
-      - cmd: build-diamond
-
 build-calamari-server:
   cmd.run:
     - user: {{vars.username}}
