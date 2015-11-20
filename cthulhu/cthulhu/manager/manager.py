@@ -37,18 +37,7 @@ from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceSt
 
 # sqlalchemy is optional: without it, all database writes will
 # be silently dropped.
-try:
-    import sqlalchemy
-except ImportError:
-    sqlalchemy = None
-else:
-    import sqlalchemy.exc
-    from sqlalchemy import create_engine
-
-    from cthulhu.persistence.sync_objects import SyncObject
-    from cthulhu.persistence.persister import Persister, Session
-    from cthulhu.persistence.servers import Server, Service
-
+sqlalchemy = None
 
 # Manhole module optional for debugging.
 try:
