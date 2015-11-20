@@ -23,5 +23,11 @@ config.vm.box = "boxcutter/centos71"
     salt.minion_config = "salt/minion"
     salt.run_highstate = false
   end
-  config.vm.network :forwarded_port, guest: 22, host: 2201, id: "ssh", auto_correct: true
+  # Use a bridged network so that external Ceph servers can connect to
+  # salt master on this VM.
+  config.vm.network "public_network", bridge: [
+    "en0: Wi-Fi (AirPort)",  # without this `vagrant up` will pause for interface selection
+  ]
+
+  config.vm.hostname = 'vagrant-ubuntu-trusty-64'
 end

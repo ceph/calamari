@@ -79,6 +79,7 @@ build-venv-reqs: venv
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
+	./bin/python ./bin/pip install -r \
 	  $(SRC)/requirements/lite.txt && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
