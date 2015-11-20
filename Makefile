@@ -79,19 +79,7 @@ build-venv-reqs: venv
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
-	./bin/python ./bin/pip install \
-	  --install-option="--zmq=bundled" \
-	  'pyzmq==14.2.0' && \
-	./bin/python ./bin/pip install \
-	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
-	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
-	./bin/python ./bin/pip install -I -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
-	./bin/python ./bin/pip install \
-	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
-	  https://github.com/ceph/graphite-web/tarball/calamari && \
+	  $(SRC)/requirements/lite.txt && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
