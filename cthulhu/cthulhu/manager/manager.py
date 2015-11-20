@@ -303,14 +303,6 @@ class Manager(object):
     def start(self):
         log.info("%s starting" % self.__class__.__name__)
 
-        # Before we start listening to the outside world, recover
-        # our last known state from persistent storage
-        try:
-            self._recover()
-        except:
-            log.exception("Recovery failed")
-            os._exit(-1)
-
         self._rpc_thread.bind()
         self._rpc_thread.start()
         self._discovery_thread.start()
