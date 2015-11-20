@@ -80,7 +80,7 @@ build-venv-reqs: venv
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/lite.txt && \
+	           $(SRC)/requirements/$${pyver}/requirements.production.txt && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
