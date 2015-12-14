@@ -396,11 +396,13 @@ Calamari setup tool.
 
         log.error(str(e))
         debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
-        open(debug_filename, 'w').write(json.dumps({
-            'argv': sys.argv,
-            'log': open(log_tmp.name, 'r').read(),
-            'backtrace': traceback.format_exc()
-        }, indent=2))
+        trace = ''.join(traceback.format_exc())
+        with open(debug_filename, 'w') as debug_file:
+            debug_file.write(' '.join(sys.argv))
+            debug_file.write('\n')
+            debug_file.write(open(log_tmp.name, 'r').read())
+            debug_file.write('\n')
+            debug_file.write(trace)
         log.error("We are sorry, an unexpected error occurred.  Debugging information has\n"
                   "been written to a file at '{0}', please include this when seeking technical\n"
                   "support.".format(debug_filename))
