@@ -14,22 +14,7 @@ import logging
 from calamari_common.config import CalamariConfig
 
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
-log = logging.getLogger(__name__)
-config = CalamariConfig()
-
-# log to cthulhu.log
-handler = logging.FileHandler(config.get('cthulhu', 'log_path'))
-handler.setFormatter(logging.Formatter(FORMAT))
-log.addHandler(handler)
-
-# log to calamari.log
-handler = logging.FileHandler(config.get('calamari_web', 'log_path'))
-handler.setFormatter(logging.Formatter(FORMAT))
-log.addHandler(handler)
-
-log.addHandler(logging.StreamHandler())
-
-log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
+log = logging.getLogger('calamari')
 
 try:
     try:

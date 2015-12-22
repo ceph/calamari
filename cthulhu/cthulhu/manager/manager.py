@@ -37,18 +37,7 @@ from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceSt
 
 # sqlalchemy is optional: without it, all database writes will
 # be silently dropped.
-try:
-    import sqlalchemy
-except ImportError:
-    sqlalchemy = None
-else:
-    import sqlalchemy.exc
-    from sqlalchemy import create_engine
-
-    from cthulhu.persistence.sync_objects import SyncObject
-    from cthulhu.persistence.persister import Persister, Session
-    from cthulhu.persistence.servers import Server, Service
-
+sqlalchemy = None
 
 # Manhole module optional for debugging.
 try:
@@ -302,14 +291,6 @@ class Manager(object):
 
     def start(self):
         log.info("%s starting" % self.__class__.__name__)
-
-        # Before we start listening to the outside world, recover
-        # our last known state from persistent storage
-        try:
-            self._recover()
-        except:
-            log.exception("Recovery failed")
-            os._exit(-1)
 
         self._rpc_thread.bind()
         self._rpc_thread.start()

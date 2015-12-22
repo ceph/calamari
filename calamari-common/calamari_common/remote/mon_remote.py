@@ -73,9 +73,11 @@ def get_ceph_version():
 
 def rados_connect(cluster_name):
     if SRC_DIR:
-        conf_file = os.path.join(SRC_DIR, "ceph.conf")
+        conf_file = os.path.join(SRC_DIR, cluster_name + ".conf")
     else:
         conf_file = ''
+
+    log.debug('rados_connect getting handle for: %s' %str(conf_file) )
 
     cluster_handle = rados.Rados(
         name=RADOS_NAME,
@@ -479,7 +481,7 @@ def get_heartbeats():
             cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
         except rados.Error, e:
             # Something went wrong getting data for this cluster, exclude it from our report
-            log.debug('get_heartbeat: %s ' % str(e))
+            log.debug('get_heartbeat during rados_connect on cluster %s %s ' % (str(fsid_names[fsid]), str(e)))
             pass
 
     server_heartbeat = {
