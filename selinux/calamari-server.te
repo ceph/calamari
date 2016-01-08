@@ -1,22 +1,22 @@
 
-module calamari-server 1.0;
+module calamari 1.0;
 
 require {
 	type var_log_t;
-	type httpd_log_t;
+	type postgresql_port_t;
 	type httpd_t;
 	type mmcc_port_t;
 	class tcp_socket name_connect;
-	class file { rename open };
+	class file open;
 }
 
 #============= httpd_t ==============
 
-#!!!! This avc is allowed in the current policy
-allow httpd_t httpd_log_t:file rename;
+#!!!! This avc can be allowed using the boolean 'httpd_can_network_connect'
+allow httpd_t mmcc_port_t:tcp_socket name_connect;
 
 #!!!! This avc is allowed in the current policy
-allow httpd_t mmcc_port_t:tcp_socket name_connect;
+allow httpd_t postgresql_port_t:tcp_socket name_connect;
 
 #!!!! This avc is allowed in the current policy
 allow httpd_t var_log_t:file open;
