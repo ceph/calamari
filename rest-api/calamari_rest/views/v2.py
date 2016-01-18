@@ -1099,8 +1099,7 @@ not a problem.
                 command.pop(0)
                 result = self.run_mon_job(fsid, "ceph.rbd_command", [command])
             elif principle == 'radosgw-admin':
-                command.pop(0)
-                result = self.run_mon_job(fsid, "ceph.radosgw_admin_command", [command])
+                raise APIException("radosgw-admin calls are not yet supported %s" % str(result))
             else:
                 # Try the default 'ceph' target to maintain backwards compatibility
                 result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
