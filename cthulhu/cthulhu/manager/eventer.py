@@ -315,7 +315,7 @@ class Eventer(gevent.greenlet.Greenlet):
         deleted_osds = old_osd_ids - new_osd_ids
         created_osds = new_osd_ids - old_osd_ids
 
-        def osd_event(severity, msg, osd_id):
+        def osd_event(severity, msg, osd_id, osd_uuid):
             self._emit_to_salt_bus(
                 SEVERITIES[severity],
                 msg.format(
@@ -326,7 +326,8 @@ class Eventer(gevent.greenlet.Greenlet):
                 fsid=fsid,
                 fqdn=self._get_fqdn(fsid, 'osd', osd_id),
                 service_type='osd',
-                service_id=str(osd_id)
+                service_id=str(osd_id),
+                osd_uuid=osd_uuid
             )
 
             self._emit(
@@ -343,11 +344,11 @@ class Eventer(gevent.greenlet.Greenlet):
 
         # Generate events for removed OSDs
         for osd_id in deleted_osds:
-            osd_event(INFO, "OSD {name}.{id}{on_server} removed from the cluster map", osd_id)
+            osd_event(INFO, "OSD {name}.{id}{on_server} removed from the cluster map", osd_id, old.osds_by_id[osd_id]['uuid'])
 
         # Generate events for added OSDs
         for osd_id in created_osds:
-            osd_event(INFO, "OSD {name}.{id}{on_server} added to the cluster map", osd_id)
+            osd_event(INFO, "OSD {name}.{id}{on_server} added to the cluster map", osd_id, new.osds_by_id[osd_id]['uuid'])
 
         # Generate events for changed OSDs
         for osd_id in old_osd_ids & new_osd_ids:
@@ -355,9 +356,9 @@ class Eventer(gevent.greenlet.Greenlet):
             new_osd = new.osds_by_id[osd_id]
             if old_osd['up'] != new_osd['up']:
                 if bool(new_osd['up']):
-                    osd_event(RECOVERY, "OSD {name}.{id} came up{on_server}", osd_id)
+                    osd_event(RECOVERY, "OSD {name}.{id} came up{on_server}", osd_id, new.osds_by_id[osd_id]['uuid'])
                 else:
-                    osd_event(WARNING, "OSD {name}.{id} went down{on_server}", osd_id)
+                    osd_event(WARNING, "OSD {name}.{id} went down{on_server}", osd_id, new.osds_by_id[osd_id]['uuid'])
 
                     # TODO: aggregate OSD notifications by server so that we can say things
                     # like "all the OSDs on server X went down" or "2/3 OSDs on server X went down"
