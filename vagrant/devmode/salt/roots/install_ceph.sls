@@ -61,6 +61,19 @@ mon-create:
     - require:
         - cmd: install-cluster
 
+{% set myuser = salt['user.info']('ceph')['name'] %}
+{% if myuser == 'ceph'  %}
+/var/cluster/osd:
+    file.directory:
+    - user: ceph
+    - group: ceph
+    - dir_mode: 755
+    - file_mode: 644
+    - recurse:
+        - user
+        - group
+        - mode
+{% else %}
 /var/cluster/osd:
     file.directory:
     - user: root
@@ -71,6 +84,7 @@ mon-create:
         - user
         - group
         - mode
+{% endif %}
 
 osd-prepare:
   cmd.run:
