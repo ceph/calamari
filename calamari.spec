@@ -105,6 +105,8 @@ browser.
 %dir %attr (755, apache, apache) /var/log/graphite
 %dir /var/lib/calamari
 %dir /var/lib/cthulhu
+%dir %attr (755, apache, apache) /var/log/calamari
+%dir %attr (755, apache, apache) /var/log/graphite
 %dir %attr(-, apache, apache) /var/lib/graphite
 %dir %attr(-, apache, apache) /var/lib/graphite/log
 %dir %attr(-, apache, apache) /var/lib/graphite/log/webapp
