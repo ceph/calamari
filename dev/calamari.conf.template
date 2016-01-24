@@ -25,6 +25,7 @@ db_name = calamari
 db_user = calamari
 db_password = 27HbZwr*g
 db_host = localhost
+db_port = 5432
 secret_key_path = {{calamari_root}}/dev/secret.key
 username = {{calamari_user}}
 static_root = {{calamari_root}}/webapp/content/

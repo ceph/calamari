@@ -57,6 +57,7 @@ class OsdMap(VersionedSyncObject):
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
+            self.metadata_by_id = dict([(m['osd'], m) for m in data['osd_metadata']])
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -67,6 +68,8 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
+            self.crush_node_by_id = {}
+            self.metadata_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
     def _filter_crush_nodes(self, nodes):
@@ -213,7 +216,10 @@ class OsdMap(VersionedSyncObject):
         osds = dict([(osd_id, []) for osd_id in self.osds_by_id.keys()])
         for pool_id in self.pools_by_id.keys():
             for in_pool_id in self.osds_by_pool[pool_id]:
-                osds[in_pool_id].append(pool_id)
+                try:
+                    osds[in_pool_id].append(pool_id)
+                except KeyError:
+                    log.warning("OSD {0} is present in CRUSH map, but not in OSD map")
 
         return osds
 

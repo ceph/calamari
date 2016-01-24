@@ -74,6 +74,9 @@ ___________________
 Follow the instructions at http://docs.saltstack.com/en/latest/topics/installation/ubuntu.html
 to enable the SaltStack PPA package repository and install the ``salt-minion`` package.
 
+Note: Calamari does not currently support 2015.5 salt please consider using 2014.7 instead
+Also it is important for salt-master and minion versions to match.
+
 After installing ``salt-minion``, create a config file at ``/etc/salt/minion.d/calamari.conf``
 with the following format:
 

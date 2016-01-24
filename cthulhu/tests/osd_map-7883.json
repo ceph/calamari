@@ -8187,6 +8187,848 @@
             "osd": 167
         }
     ], 
+    "osd_metadata": [
+        {
+            "backend_filestore_partition_path": "/dev/sdb1",
+            "backend_filestore_dev_node": "sdb",
+            "osd": 0
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdc1",
+            "backend_filestore_dev_node": "sdc",
+            "osd": 1
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdd1",
+            "backend_filestore_dev_node": "sdd",
+            "osd": 2
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sde1",
+            "backend_filestore_dev_node": "sde",
+            "osd": 3
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdf1",
+            "backend_filestore_dev_node": "sdf",
+            "osd": 4
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdg1",
+            "backend_filestore_dev_node": "sdg",
+            "osd": 5
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdh1",
+            "backend_filestore_dev_node": "sdh",
+            "osd": 6
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdi1",
+            "backend_filestore_dev_node": "sdi",
+            "osd": 7
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdj1",
+            "backend_filestore_dev_node": "sdj",
+            "osd": 8
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdk1",
+            "backend_filestore_dev_node": "sdk",
+            "osd": 9
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdl1",
+            "backend_filestore_dev_node": "sdl",
+            "osd": 10
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdm1",
+            "backend_filestore_dev_node": "sdm",
+            "osd": 11
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdn1",
+            "backend_filestore_dev_node": "sdn",
+            "osd": 12
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdo1",
+            "backend_filestore_dev_node": "sdo",
+            "osd": 13
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdp1",
+            "backend_filestore_dev_node": "sdp",
+            "osd": 14
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdq1",
+            "backend_filestore_dev_node": "sdq",
+            "osd": 15
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdr1",
+            "backend_filestore_dev_node": "sdr",
+            "osd": 16
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sds1",
+            "backend_filestore_dev_node": "sds",
+            "osd": 17
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdt1",
+            "backend_filestore_dev_node": "sdt",
+            "osd": 18
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdu1",
+            "backend_filestore_dev_node": "sdu",
+            "osd": 19
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdv1",
+            "backend_filestore_dev_node": "sdv",
+            "osd": 20
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdw1",
+            "backend_filestore_dev_node": "sdw",
+            "osd": 21
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdx1",
+            "backend_filestore_dev_node": "sdx",
+            "osd": 22
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdy1",
+            "backend_filestore_dev_node": "sdy",
+            "osd": 23
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdz1",
+            "backend_filestore_dev_node": "sdz",
+            "osd": 24
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdab1",
+            "backend_filestore_dev_node": "sdab",
+            "osd": 25
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdac1",
+            "backend_filestore_dev_node": "sdac",
+            "osd": 26
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdad1",
+            "backend_filestore_dev_node": "sdad",
+            "osd": 27
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdae1",
+            "backend_filestore_dev_node": "sdae",
+            "osd": 28
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaf1",
+            "backend_filestore_dev_node": "sdaf",
+            "osd": 29
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdag1",
+            "backend_filestore_dev_node": "sdag",
+            "osd": 30
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdah1",
+            "backend_filestore_dev_node": "sdah",
+            "osd": 31
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdai1",
+            "backend_filestore_dev_node": "sdai",
+            "osd": 32
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaj1",
+            "backend_filestore_dev_node": "sdaj",
+            "osd": 33
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdak1",
+            "backend_filestore_dev_node": "sdak",
+            "osd": 34
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdal1",
+            "backend_filestore_dev_node": "sdal",
+            "osd": 35
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdam1",
+            "backend_filestore_dev_node": "sdam",
+            "osd": 36
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdan1",
+            "backend_filestore_dev_node": "sdan",
+            "osd": 37
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdao1",
+            "backend_filestore_dev_node": "sdao",
+            "osd": 38
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdap1",
+            "backend_filestore_dev_node": "sdap",
+            "osd": 39
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaq1",
+            "backend_filestore_dev_node": "sdaq",
+            "osd": 40
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdar1",
+            "backend_filestore_dev_node": "sdar",
+            "osd": 41
+        },
+        {
+            "backend_filestore_partition_path": "/dev/sdat1",
+            "backend_filestore_dev_node": "sdat",
+            "osd": 42
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdau1",
+            "backend_filestore_dev_node": "sdau",
+            "osd": 43
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaw1",
+            "backend_filestore_dev_node": "sdaw",
+            "osd": 44
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdax1",
+            "backend_filestore_dev_node": "sdax",
+            "osd": 45
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sday1",
+            "backend_filestore_dev_node": "sday",
+            "osd": 46
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaz1",
+            "backend_filestore_dev_node": "sdaz",
+            "osd": 47
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdaa1",
+            "backend_filestore_dev_node": "sdaa",
+            "osd": 48
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdba1",
+            "backend_filestore_dev_node": "sdba",
+            "osd": 49
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbb1",
+            "backend_filestore_dev_node": "sdbb",
+            "osd": 50
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbc1",
+            "backend_filestore_dev_node": "sdbc",
+            "osd": 51
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbd1",
+            "backend_filestore_dev_node": "sdbd",
+            "osd": 52
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbe1",
+            "backend_filestore_dev_node": "sdbe",
+            "osd": 53
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbf1",
+            "backend_filestore_dev_node": "sdbf",
+            "osd": 54
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbg1",
+            "backend_filestore_dev_node": "sdbg",
+            "osd": 55
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbh1",
+            "backend_filestore_dev_node": "sdbh",
+            "osd": 56
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbi1",
+            "backend_filestore_dev_node": "sdbi",
+            "osd": 57
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbj1",
+            "backend_filestore_dev_node": "sdbj",
+            "osd": 58
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbk1",
+            "backend_filestore_dev_node": "sdbk",
+            "osd": 59
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbl1",
+            "backend_filestore_dev_node": "sdbl",
+            "osd": 60
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbm1",
+            "backend_filestore_dev_node": "sdbm",
+            "osd": 61
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbn1",
+            "backend_filestore_dev_node": "sdbn",
+            "osd": 62
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbo1",
+            "backend_filestore_dev_node": "sdbo",
+            "osd": 63
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbp1",
+            "backend_filestore_dev_node": "sdbp",
+            "osd": 64
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbq1",
+            "backend_filestore_dev_node": "sdbq",
+            "osd": 65
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbr1",
+            "backend_filestore_dev_node": "sdbr",
+            "osd": 66
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbs1",
+            "backend_filestore_dev_node": "sdbs",
+            "osd": 67
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbt1",
+            "backend_filestore_dev_node": "sdbt",
+            "osd": 68
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbu1",
+            "backend_filestore_dev_node": "sdbu",
+            "osd": 69
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbv1",
+            "backend_filestore_dev_node": "sdbv",
+            "osd": 70
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbw1",
+            "backend_filestore_dev_node": "sdbw",
+            "osd": 71
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbx1",
+            "backend_filestore_dev_node": "sdbx",
+            "osd": 72
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdby1",
+            "backend_filestore_dev_node": "sdby",
+            "osd": 73
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdbz1",
+            "backend_filestore_dev_node": "sdbz",
+            "osd": 74
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdca1",
+            "backend_filestore_dev_node": "sdca",
+            "osd": 75
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcb1",
+            "backend_filestore_dev_node": "sdcb",
+            "osd": 76
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcc1",
+            "backend_filestore_dev_node": "sdcc",
+            "osd": 77
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcd1",
+            "backend_filestore_dev_node": "sdcd",
+            "osd": 78
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdce1",
+            "backend_filestore_dev_node": "sdce",
+            "osd": 79
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcf1",
+            "backend_filestore_dev_node": "sdcf",
+            "osd": 80
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcg1",
+            "backend_filestore_dev_node": "sdcg",
+            "osd": 81
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdch1",
+            "backend_filestore_dev_node": "sdch",
+            "osd": 82
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdci1",
+            "backend_filestore_dev_node": "sdci",
+            "osd": 83
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcj1",
+            "backend_filestore_dev_node": "sdcj",
+            "osd": 84
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdck1",
+            "backend_filestore_dev_node": "sdck",
+            "osd": 85
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcl1",
+            "backend_filestore_dev_node": "sdcl",
+            "osd": 86
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcm1",
+            "backend_filestore_dev_node": "sdcm",
+            "osd": 87
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcn1",
+            "backend_filestore_dev_node": "sdcn",
+            "osd": 88
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdco1",
+            "backend_filestore_dev_node": "sdco",
+            "osd": 89
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcp1",
+            "backend_filestore_dev_node": "sdcp",
+            "osd": 90
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcq1",
+            "backend_filestore_dev_node": "sdcq",
+            "osd": 91
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcr1",
+            "backend_filestore_dev_node": "sdcr",
+            "osd": 92
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcs1",
+            "backend_filestore_dev_node": "sdcs",
+            "osd": 93
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdct1",
+            "backend_filestore_dev_node": "sdct",
+            "osd": 94
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcu1",
+            "backend_filestore_dev_node": "sdcu",
+            "osd": 95
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcv1",
+            "backend_filestore_dev_node": "sdcv",
+            "osd": 96
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcw1",
+            "backend_filestore_dev_node": "sdcw",
+            "osd": 97
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcx1",
+            "backend_filestore_dev_node": "sdcx",
+            "osd": 98
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcy1",
+            "backend_filestore_dev_node": "sdcy",
+            "osd": 99
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdcz1",
+            "backend_filestore_dev_node": "sdcz",
+            "osd": 100
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdda1",
+            "backend_filestore_dev_node": "sdda",
+            "osd": 101
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddb1",
+            "backend_filestore_dev_node": "sddb",
+            "osd": 102
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddc1",
+            "backend_filestore_dev_node": "sddc",
+            "osd": 103
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddd1",
+            "backend_filestore_dev_node": "sddd",
+            "osd": 104
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sdde1",
+            "backend_filestore_dev_node": "sdde",
+            "osd": 105
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddf1",
+            "backend_filestore_dev_node": "sddf",
+            "osd": 106
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddg1",
+            "backend_filestore_dev_node": "sddg",
+            "osd": 107
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddh1",
+            "backend_filestore_dev_node": "sddh",
+            "osd": 108
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddi1",
+            "backend_filestore_dev_node": "sddi",
+            "osd": 109
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddj1",
+            "backend_filestore_dev_node": "sddj",
+            "osd": 110
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddk1",
+            "backend_filestore_dev_node": "sddk",
+            "osd": 111
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddl1",
+            "backend_filestore_dev_node": "sddl",
+            "osd": 112
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddm1",
+            "backend_filestore_dev_node": "sddm",
+            "osd": 113
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddn1",
+            "backend_filestore_dev_node": "sddn",
+            "osd": 114
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddo1",
+            "backend_filestore_dev_node": "sddo",
+            "osd": 115
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddp1",
+            "backend_filestore_dev_node": "sddp",
+            "osd": 116
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddq1",
+            "backend_filestore_dev_node": "sddq",
+            "osd": 117
+        }, 
+        {
+            "backend_filestore_partition_path": "/dev/sddr1",
+            "backend_filestore_dev_node": "sddr",
+            "osd": 118
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 119
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 120
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 121
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 122
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 123
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 124
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 125
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 126
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 127
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 128
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 129
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 130
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 131
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 132
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 133
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 134
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 135
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 136
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 137
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 138
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 139
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 140
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 141
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 142
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 143
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 144
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 145
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 146
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 147
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 148
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 149
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 150
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 151
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 152
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 153
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 154
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 155
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 156
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 157
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 158
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 159
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 160
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 161
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 162
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 163
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 164
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 165
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 166
+        }, 
+        {
+            "backend_filestore_partition_path": "unknown",
+            "backend_filestore_dev_node": "unknown",
+            "osd": 167
+        }
+    ], 
     "blacklist": [], 
     "epoch": 1611, 
     "pg_temp": [], 
