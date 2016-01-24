@@ -1050,16 +1050,16 @@ useful to show users data from the /status sub-url, which returns the
 
 class CliViewSet(RemoteViewSet):
     """
-Access the `ceph` CLI tool remotely.
+Access the `ceph`, `rbd`, and `radosgw-admin` CLI tools remotely.
 
 To achieve the same result as running "ceph osd dump" at a shell, an
 API consumer may POST an object in either of the following formats:
 
 ::
 
-    {'command': ['osd', 'dump']}
+    {'command': ['ceph', 'osd', 'dump']}
 
-    {'command': 'osd dump'}
+    {'command': 'ceph osd dump'}
 
 
 The response will be a 200 status code if the command executed, regardless
@@ -1089,7 +1089,23 @@ not a problem.
             command = shlex.split(command)
 
         name = self.client.get_cluster(fsid)['name']
-        result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        principle = command[0]
+
+        try:
+            if principle == 'ceph':
+                command.pop(0)
+                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+            elif principle == 'rbd':
+                command.pop(0)
+                result = self.run_mon_job(fsid, "ceph.rbd_command", [command])
+            elif principle == 'radosgw-admin':
+                raise APIException("radosgw-admin calls are not yet supported %s" % str(result))
+            else:
+                # Try the default 'ceph' target to maintain backwards compatibility
+                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+        except Exception as ex:
+            raise APIException("Error in cli command: %s" % ex)
+
         log.debug("CliViewSet: result = '%s'" % result)
 
         if not isinstance(result, dict):
