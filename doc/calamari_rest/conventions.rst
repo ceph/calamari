@@ -79,7 +79,7 @@ of a list, where the list of results is in the ``results`` attribute and the tot
 objects available is in the ``count`` attribute.
 
 To control the page returned and the page size returned, use the ``page`` (counting from 1) and
-``page_count`` parameters respectively.  For example, the following contrived example returns
+``page_size`` parameters respectively.  For example, the following contrived example returns
 only the first two events for a cluster:
 
 ::
