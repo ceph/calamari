@@ -7,6 +7,8 @@ These are *not* the instructions for installing Calamari, or for building Calama
 are the instructions for setting up a development instance of Calamari that runs as an unprivileged
 user from your development workstation.
 
+.. _using-vagrant:
+
 Using Vagrant
 -------------
 
@@ -23,7 +25,8 @@ Using Vagrant
 4. ``vagrant up``
 
 The result will be a virtual machine that you can connect to using ``vagrant ssh``, containing
-a git clone of Calamari with a fully populated virtualenv.  Activate the virtualenv
+a git clone of Calamari with a fully populated virtualenv.  Activate the virtualenv contained
+in the env directory. After this head over to the instructions on `Running the server`_.
 
 There is a screencast of this process: https://www.youtube.com/watch?v=Nil70DgL2zg
 
@@ -63,7 +66,7 @@ For RH systems:
 
 1. Create a virtualenv (if you are on ubuntu and using systemwide installs of
    cairo and m2crypto, then pass *--system-site-packages*)
-2. Install dependencies with ``pip install -r requirements/{debian,rh}/requirements.txt`` and ``pip install -r requirements/{debian,rh}/requirements.force.txt``.
+2. Install dependencies with ``SWIG_FEATURES=-cpperraswarn pip install -r requirements/{2.6,2.7}/requirements.txt`` and ``pip install -r requirements/{2.6,2.7}/requirements.force.txt``. Where {2.6,2.7} should represent the system version of python.
 3. Install graphite and carbon, which require some special command lines:
 
 ::

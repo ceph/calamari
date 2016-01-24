@@ -5,6 +5,10 @@ import msgpack
 import yaml
 from minion_sim.log import log
 import time
+try:
+    from salt.cli import daemons
+except ImportError:
+    daemons = None
 
 # Because salt minion will be calling functions
 # defined in this module
@@ -211,6 +215,19 @@ def main():
 
     try:
         minion = salt.Minion()
+    except Exception as e:
+        if isinstance(e, AttributeError):
+            #Minion() moved from salt to salt.cli.daemons in 2015 releases of salt
+            try:
+                minion = daemons.Minion()
+            except:
+                log.exception("Could not get daemons.Minion instance for %s" % fqdn)
+                raise
+        else:
+            log.exception("Could not get salt.Minion instance for %s" % fqdn)
+            raise
+
+    try:
         minion.start()
     except Exception as e:
         if not isinstance(e, SystemExit):

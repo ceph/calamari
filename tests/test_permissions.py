@@ -13,11 +13,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 class TestPermissions(ServerTestCase):
     def setUp(self):
         # TODO could we subclass django test case and get this for free?
-        self.change_role('admin', 'superuser')
         super(TestPermissions, self).setUp()
+        self.change_role(self.calamari_ctl.api_username, 'superuser')
 
     def tearDown(self):
-        self.change_role('admin', 'superuser')
+        self.change_role(self.calamari_ctl.api_username, 'superuser')
         super(TestPermissions, self).tearDown()
 
     def change_role(self, user, role):
@@ -52,7 +52,7 @@ class TestPermissions(ServerTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn('PATCH', response.headers.get('allow'))
 
-        self.change_role('admin', 'readonly')
+        self.change_role(self.calamari_ctl.api_username, 'readonly')
 
         # TODO expand this to cover all endpoints
         for url in ("cluster/{0}/osd/0",

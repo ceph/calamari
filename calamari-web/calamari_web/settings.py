@@ -24,6 +24,7 @@ DATABASES = {
         'USER': config.get("calamari_web", "db_user"),
         'PASSWORD': config.get("calamari_web", "db_password"),
         'HOST': config.get("calamari_web", "db_host"),
+        'PORT': config.get("calamari_web", "db_port"),
     }
 }
 

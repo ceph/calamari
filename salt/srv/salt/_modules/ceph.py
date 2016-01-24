@@ -317,6 +317,54 @@ def ceph_command(cluster_name, command_args):
     }
 
 
+def rbd_command(command_args, pool_name=None):
+    """
+    Run a rbd CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param pool_name: Ceph pool name, or None to run without --pool argument
+    :param command_args: Command line, excluding the leading 'rbd' part.
+    """
+
+    if pool_name:
+        args = ["rbd", "--pool", pool_name] + command_args
+    else:
+        args = ["rbd"] + command_args
+
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
+
+
+def radosgw_admin_command(command_args):
+    """
+    Run a radosgw-admin CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param command_args: Command line, excluding the leading 'radosgw-admin' part.
+    """
+
+    args = ["radosgw-admin"] + command_args
+
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
+
+
 def _get_config(cluster_name):
     """
     Given that a mon is running on this server, query its admin socket to get
@@ -404,6 +452,19 @@ def get_cluster_object(cluster_name, sync_type, since):
             ret, stdout, outs = transform_crushmap(raw, 'get')
             assert ret == 0
             data['crush_map_text'] = stdout
+            data['osd_metadata'] = []
+
+            for osd_entry in data['osds']:
+                osd_id = osd_entry['osd']
+                command = "osd metadata"
+                argdict = {'id': osd_id}
+                argdict.update(kwargs)
+                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
+                                              timeout=RADOS_TIMEOUT)
+                assert ret == 0
+                updated_osd_metadata = json.loads(raw)
+                updated_osd_metadata['osd'] = osd_id
+                data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,

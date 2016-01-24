@@ -36,7 +36,7 @@ else:
 
 if config.get('testing', 'ceph_control') == 'embedded':
     CEPH_CTL = EmbeddedCephControl
-elif config.get('testing', 'ceph_control') == 'external':
+elif config.get('testing', 'ceph_control') in ('external', 'converged'):
     CEPH_CTL = ExternalCephControl
 else:
     raise NotImplementedError()

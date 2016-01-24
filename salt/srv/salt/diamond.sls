@@ -35,7 +35,7 @@ diamond-network-config:
     - require:
         - pkg: diamond
 
-{% if grains['os'] == 'RedHat' and grains['osrelease'].startswith('7') %}
+{% if grains['os_family'] == 'RedHat' and grains['osrelease'].startswith('7') %}
 # work around https://github.com/saltstack/salt/pull/12316
 diamond:
   pkg:

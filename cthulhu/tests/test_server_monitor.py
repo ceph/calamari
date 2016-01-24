@@ -4,7 +4,7 @@ import os
 import mock
 from tests.util import load_fixture
 
-os.environ['CALAMARI_CONFIG'] = os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf")
+os.environ.setdefault("CALAMARI_CONFIG", os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf"))
 
 from django.utils.unittest.case import TestCase
 from mock import Mock

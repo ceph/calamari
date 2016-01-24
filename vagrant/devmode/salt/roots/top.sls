@@ -8,3 +8,5 @@ base:
       - configs
       - install_mods
       - init_calamari
+      - install_ceph
+      - test_calamari

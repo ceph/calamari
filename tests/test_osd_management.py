@@ -72,7 +72,7 @@ class TestOsdManagement(RequestTestCase):
         That we can apply ceph commands to an OSD
         """
         commands = ['scrub', 'deep_scrub', 'repair']
-        osd_id = 1
+        osd_id = 0
         fsid = self._wait_for_cluster()
 
         osd_url = "cluster/%s/osd/%s" % (fsid, osd_id)

@@ -65,9 +65,6 @@ class TestCrushNodeManagement(RequestTestCase):
                      {"id": -2,
                       "weight": real_weights[-2],
                       "pos": 0},
-                     {"id": -3,
-                      "weight": real_weights[-3],
-                      "pos": 1}
                  ]
                  }
         r = self.api.patch("cluster/{fsid}/crush_node/{node_id}".format(fsid=cluster_id, node_id=rack_id), crush)
