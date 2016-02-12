@@ -318,10 +318,12 @@ def ceph_command(cluster_name, command_args):
     else:
         args = ceph + command_args
 
+    log.info('ceph_command {0}'.format(str(args)))
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     status = p.returncode
 
+    log.info('ceph_command {0} {1} {2}'.format(str(status), stdout, stderr))
     return {
         'out': stdout,
         'err': stderr,
@@ -611,6 +613,7 @@ class MsgEvent(object):
 
 
 def run_job(cmd, args):
+    log.info('run_job helper {0} {1}'.format(cmd, str(args)))
     if cmd == "ceph.get_cluster_object":
         return get_cluster_object(
             args['cluster_name'],
@@ -744,13 +747,14 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         try:
             return run_job(cmd, args)
         except:
-            raise Unavailable()
+            raise Unavailable(cmd)
 
     def run_job(self, fqdn, cmd, args):
         """
         Start running a python function from our remote module,
         and return the job ID
         """
+	log.info('MonRemote.run_job {0}'.format(str(cmd)))
         return self._generator.run_job(fqdn, cmd, args)
 
     def get_local_metadata(self):

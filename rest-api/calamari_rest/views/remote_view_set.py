@@ -65,6 +65,7 @@ adding new management functionality.
         Attempt to run a Salt job on a specific server.
         """
         try:
+            log.info('running job {0}'.format(str(job_cmd)))
             return remote.run_job_sync(fqdn, job_cmd, job_args)
         except Unavailable:
             raise ServiceUnavailable("Server '{0}' not responding".format(fqdn))
