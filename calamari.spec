@@ -32,8 +32,6 @@ Requires:       cairo
 Requires:       pycairo
 Requires:	logrotate
 Requires:       supervisor
-Requires:       salt-master
-Requires:       salt-minion
 Requires:       redhat-lsb-core
 Requires:	postgresql
 Requires:	postgresql-libs
@@ -140,9 +138,6 @@ calamari_httpd()
 {
 	# centos64
 	mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.orig
-
-	# Load our salt config
-	service salt-master restart
 
 	# concatenate our config chunk with supervisord.conf
 	echo "### START calamari-server ###" >> /etc/supervisord.conf
