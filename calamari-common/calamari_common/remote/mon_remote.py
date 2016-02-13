@@ -330,6 +330,32 @@ def ceph_command(cluster_name, command_args):
         'status': status
     }
 
+def rbd_command(command_args, pool_name=None):
+    """
+    Run a rbd CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param pool_name: Ceph pool name, or None to run without --pool argument
+    :param command_args: Command line, excluding the leading 'rbd' part.
+    """
+
+    if pool_name:
+        args = ["rbd", "--pool", pool_name] + command_args
+    else:
+        args = ["rbd"] + command_args
+
+    log.info('rbd_command {0}'.format(str(args)))
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+    log.info('rbd_command {0} {1} {2}'.format(str(status), stdout, stderr))
+
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
 
 def get_cluster_object(cluster_name, sync_type, since):
     # TODO: for the synced objects that support it, support
@@ -624,6 +650,13 @@ def run_job(cmd, args):
             args['fsid'],
             args['cluster_name'],
             args['commands'],)
+    elif cmd == "ceph.ceph_command":
+        return ceph_command(
+            None,
+            args[1],)
+    elif cmd == "ceph.rbd_command":
+        return rbd_command(
+            args[0],)
     else:
         raise NotImplemented(cmd)
 
