@@ -26,7 +26,7 @@ GRACE_PERIOD = 30
 CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
-EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
+EMIT_EVENTS_TO_SALT_EVENT_BUS = False
 EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
 
 
