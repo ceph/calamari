@@ -1,7 +1,6 @@
 import argparse
 import hashlib
 import logging
-import os
 import gc
 import time
 import signal
@@ -38,6 +37,12 @@ from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceSt
 # sqlalchemy is optional: without it, all database writes will
 # be silently dropped.
 sqlalchemy = None
+create_engine = None
+SyncObject = None
+Session = None
+Persister = None
+Service = None
+Server = None
 
 # Manhole module optional for debugging.
 try:
@@ -147,7 +152,7 @@ class Manager(object):
         if sqlalchemy is not None:
             try:
                 # Prepare persistence
-                engine = create_engine(config.get('cthulhu', 'db_path'))
+                engine = create_engine(config.get('cthulhu', 'db_path'))  # noqa
                 Session.configure(bind=engine)
 
                 self.persister = Persister()

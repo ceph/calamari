@@ -77,7 +77,7 @@ def rados_connect(cluster_name):
     else:
         conf_file = ''
 
-    log.debug('rados_connect getting handle for: %s' %str(conf_file) )
+    log.debug('rados_connect getting handle for: %s' % str(conf_file))
 
     cluster_handle = rados.Rados(
         name=RADOS_NAME,
@@ -332,6 +332,7 @@ def ceph_command(cluster_name, command_args):
         'status': status
     }
 
+
 def rbd_command(command_args, pool_name=None):
     """
     Run a rbd CLI operation directly.  This is a fallback to allow
@@ -360,6 +361,7 @@ def rbd_command(command_args, pool_name=None):
         'err': stderr,
         'status': status
     }
+
 
 def get_cluster_object(cluster_name, sync_type, since):
     # TODO: for the synced objects that support it, support
@@ -791,7 +793,7 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         Start running a python function from our remote module,
         and return the job ID
         """
-	log.info('MonRemote.run_job {0}'.format(str(cmd)))
+        log.info('MonRemote.run_job {0}'.format(str(cmd)))
         return self._generator.run_job(fqdn, cmd, args)
 
     def get_local_metadata(self):
