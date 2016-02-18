@@ -322,6 +322,8 @@ def ceph_command(cluster_name, command_args):
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     status = p.returncode
+    stdout.close()
+    stderr.close()
 
     log.info('ceph_command {0} {1} {2}'.format(str(status), stdout, stderr))
     return {
@@ -349,6 +351,8 @@ def rbd_command(command_args, pool_name=None):
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     status = p.returncode
+    stdout.close()
+    stderr.close()
     log.info('rbd_command {0} {1} {2}'.format(str(status), stdout, stderr))
 
     return {
