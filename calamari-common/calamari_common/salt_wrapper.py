@@ -11,8 +11,6 @@ environment.
 import gevent
 import logging
 
-from calamari_common.config import CalamariConfig
-
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
 log = logging.getLogger('calamari')
 
