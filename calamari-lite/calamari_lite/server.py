@@ -13,6 +13,10 @@ import os
 from gevent.wsgi import WSGIServer
 from cthulhu.manager.manager import Manager
 import zerorpc
+import logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger()
+log.setLevel(logging.INFO)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
