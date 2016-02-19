@@ -11,7 +11,7 @@ meld3
 
 # Gevent 1.0.x requires cython but doesn't do a good job of depending on it
 cython==0.19.2
-gevent>=1.0
+gevent==1.1rc3
 greenlet>=0.3.2
 
 # Cthulhu

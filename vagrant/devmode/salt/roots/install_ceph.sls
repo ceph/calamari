@@ -63,8 +63,8 @@ mon-create:
 
 /var/cluster/osd:
     file.directory:
-    - user: root
-    - group: root
+    - user: ceph
+    - group: ceph
     - dir_mode: 755
     - file_mode: 644
     - recurse:
