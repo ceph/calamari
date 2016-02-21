@@ -57,7 +57,7 @@ class OsdMap(VersionedSyncObject):
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
-            self.metadata_by_id = self._map_osd_metadata(data.get('osd_metadata', []))
+            self.metadata_by_id = self._map_osd_metadata(data)
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -72,8 +72,9 @@ class OsdMap(VersionedSyncObject):
             self.metadata_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
-    def _map_osd_metadata(self, metadata):
-        osd_id_to_metadata = {}
+    def _map_osd_metadata(self, data):
+        osd_id_to_metadata = dict([(o['osd'], {}) for o in data['osds']])
+        metadata = data.get('osd_metadata', [])
         if len(metadata) == 0:
             log.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
 
