@@ -43,7 +43,7 @@ diamond:
     - skip_verify: true
   cmd:
     - run
-    - name: systemctl restart diamond
+    - name: /etc/init.d/diamond restart
     - watch:
       - pkg: diamond
       - file: diamond-network-config
