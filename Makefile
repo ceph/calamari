@@ -25,6 +25,22 @@ all: build
 
 build: version build-venv
 
+# Similar to the set in build-venv-reqs, but installs to the global python
+# site dir, not inside a venv.  This allows using distro-supplied dependencies
+# instead of embedding everything
+build-lsb: version
+	for p in \
+		calamari-common \
+		rest-api \
+		calamari-web \
+		cthulhu \
+		calamari-lite \
+	; do \
+		cd $$p ; \
+		python setup.py install --prefix=/usr --root=$(DESTDIR) ; \
+		cd .. ; \
+	done
+
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
 	@echo "target: $@"
@@ -124,6 +140,11 @@ install-common: install-conf install-venv install-salt install-alembic install-s
 
 install-rpm: build install-common install-rh-conf
 	@echo "target: $@"
+
+install-lsb: build-lsb install-conf
+	@echo "target: $@"
+	$(INSTALL) -D -m 0644 conf/calamari.service \
+		$(DESTDIR)/usr/lib/systemd/system/calamari.service
 
 # for deb
 install: build
