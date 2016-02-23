@@ -441,7 +441,8 @@ but those without static defaults will be set to null.
             # pools to a filesystem, we should check that those data pools have this set.
             'crash_replay_interval': 0,
             'quota_max_objects': 0,
-            'quota_max_bytes': 0
+            'quota_max_bytes': 0,
+            'type': 'replicated'
         })
 
         return Response(PoolSerializer(defaults).data)
