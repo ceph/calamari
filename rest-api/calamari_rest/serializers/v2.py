@@ -75,9 +75,9 @@ class ClusterSerializer(serializers.Serializer):
 class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
+                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes', 'type', 'erasure_code_profile')
         create_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool', 'type', 'erasure_code_profile')
         create_required = ('name', 'pg_num')
         modify_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                           'quota_max_objects', 'quota_max_bytes', 'hashpspool')
@@ -119,6 +119,10 @@ class PoolSerializer(ValidatingSerializer):
                                                  help_text="Quota limit on object count (0 is unlimited)")
     quota_max_bytes = serializers.IntegerField(required=False,
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
+
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type")
+
+    erasure_code_profile = serializers.CharField(required=False, help_text="This profile configures how to split data in K pieces and create M coding chunks. names can include these characters [A-Za-z0-9-_.]")
 
 
 class OsdSerializer(ValidatingSerializer):
