@@ -89,10 +89,6 @@ class ShallowCarbonCache(gevent.Greenlet):
 
 
 def main():
-    # Instruct salt to use the gevent version of ZMQ
-    import zmq.green
-    import salt.utils.event
-    salt.utils.event.zmq = zmq.green
 
     carbon = ShallowCarbonCache()
     carbon.start()
