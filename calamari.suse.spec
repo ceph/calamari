@@ -1,7 +1,7 @@
 #
 # spec file for package calamari
 #
-# Copyright (c) 2014 SUSE LINUX Products GmbH, Nuernberg, Germany.
+# Copyright (c) 2016 SUSE LINUX GmbH, Nuernberg, Germany.
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -20,23 +20,23 @@ Name:           calamari
 Summary:        Manage and monitor Ceph with a REST API
 License:        LGPL-2.1+
 Group:          System/Filesystems
-Version:        1.3+git.1456160171.f7475e3
+Version:        1.3+git.1456408184.9f2ca76
 Release:        0
 Url:            http://ceph.com/
 Source0:        %{name}-%{version}.tar.gz
-Provides:       calamari-server = %{version}
-Obsoletes:      calamari-server < %{version}
+# Don't allow installation alongside "big" calamari
+Conflicts:      calamari-server
 # Force no database usage
 Conflicts:      python-SQLAlchemy
 Conflicts:      python-alembic
 Requires:       logrotate
+Requires:       python-dateutil
 Requires:       python-django < 1.7
 Requires:       python-djangorestframework
-Requires:       python-dateutil
-Requires:       python-zerorpc
 Requires:       python-gevent >= 1.0
 Requires:       python-pytz
 Requires:       python-setuptools
+Requires:       python-zerorpc
 %{?systemd_requires}
 BuildRequires:  fdupes
 BuildRequires:  python-devel
@@ -55,6 +55,10 @@ BuildArch:      noarch
 %description
 Calamari is a REST API for monitoring and controlling a Ceph cluster.
 It is intended to be used by other frontent GUIs.
+
+This calamari package is to be installed and run directly on Ceph MONs,
+as opposed to previous versions which were packaged as calamari-server
+and run on a separate host, using salt to talk to the cluster.
 
 %prep
 %setup -q
