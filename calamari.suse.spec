@@ -31,7 +31,7 @@ Conflicts:      python-SQLAlchemy
 Conflicts:      python-alembic
 Requires:       logrotate
 Requires:       python-dateutil
-Requires:       python-django < 1.7
+Requires:       python-django
 Requires:       python-djangorestframework
 Requires:       python-gevent >= 1.0
 Requires:       python-pytz
