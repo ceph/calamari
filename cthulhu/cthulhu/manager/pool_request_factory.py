@@ -149,7 +149,10 @@ class PoolRequestFactory(RequestFactory):
                 ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def create(self, attributes):
-        commands = [('osd pool create', {'pool': attributes['name'], 'pg_num': attributes['pg_num']})]
+        commands = [('osd pool create', {'pool': attributes['name'],
+                                         'pg_num': attributes['pg_num'],
+                                         'pool_type': attributes['type'],
+                                         'erasure_code_profile': attributes['erasure_code_profile']})]
 
         # Calculate appropriate min_size, including default if none given
         req_size = attributes.get('size', 0)
