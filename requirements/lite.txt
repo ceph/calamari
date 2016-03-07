@@ -21,3 +21,4 @@ python-dateutil==2.2
 zerorpc==0.4.4
 jinja2
 pytz
+psutil
