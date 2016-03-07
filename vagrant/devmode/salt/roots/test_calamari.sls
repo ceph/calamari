@@ -1,5 +1,5 @@
-{% set username = salt['cmd.run']('echo $USER') %}¬
-{% set home = salt['cmd.run']('echo $HOME') %}¬
+{% set username = salt['cmd.run']('echo $USER') %}
+{% set home = salt['cmd.run']('echo $HOME') %}
 
 /etc/salt/minion.d/calamari.conf:
   file.managed:
