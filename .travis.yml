@@ -36,4 +36,4 @@ install:
 script:
     - "make lint"
     - "make unit-tests"
-    - "cd doc && make html"
+    - "nosetests tests/test_pool_management.py"
