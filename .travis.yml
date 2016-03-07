@@ -32,4 +32,4 @@ install:
 script:
     - "make lint"
     - "make unit-tests"
-    - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/test_calamari.sls
+    - sudo salt-call --retcode-passthrough --local state.sls test_calamari pillar="{"\"username\":\"$USER\"", "\"home\":\"$HOME\""}"
