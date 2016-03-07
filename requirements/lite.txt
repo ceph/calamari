@@ -19,3 +19,5 @@ M2crypto==0.22.3
 pyzmq>=14.2.0
 python-dateutil==2.2
 zerorpc==0.4.4
+jinja2
+pytz
