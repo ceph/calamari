@@ -32,4 +32,6 @@ install:
 script:
     - "make lint"
     - "make unit-tests"
+    - "find . -name dev/supervisord.conf"
+    - "pwd"
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/test_calamari.sls
