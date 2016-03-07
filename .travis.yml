@@ -27,7 +27,6 @@ install:
     - cd dev ; python ./configure.py ; cd ..
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize --admin-username admin --admin-password admin --admin-email admin@admin.com
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl initialize
-    - find $HOME
     - ls -al /etc/ceph
 
 script:
