@@ -45,7 +45,7 @@ make-check:
     cmd.run:
         - user: {{ username }}
         - name: source env/bin/activate; make check
-        - cwd: {{ home }}/calamari
+        - cwd: {{ home }}
         - require:
             - cmd: supervisord
 
@@ -53,14 +53,14 @@ supervisord:
     cmd.run:
         - user: root
         - name: source env/bin/activate; supervisord -c dev/supervisord.conf
-        - cwd: {{ home }}/calamari
+        - cwd: {{ home }}
         - unless: pgrep supervisord
 
 nosetests:
     cmd.run:
         - user: {{ username }}
         - name: source env/bin/activate; nosetests tests
-        - cwd: {{ home }}/calamari
+        - cwd: {{ home }
         - require:
             - cmd: make-check
             - file: {{ home }}/teuthology/archive/info.yaml
