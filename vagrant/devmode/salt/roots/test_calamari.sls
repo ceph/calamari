@@ -1,5 +1,5 @@
 {% set username = salt['cmd.run']('echo $USER') %}
-{% set home = salt['cmd.run']('echo $PWD') %}
+{% set home = salt['cmd.run']('echo $PWD"/build/ceph/calamari"') %}
 
 thing:
   cmd.run:
