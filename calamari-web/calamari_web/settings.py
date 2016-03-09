@@ -118,7 +118,7 @@ MIDDLEWARE_CLASSES = (
     'calamari_web.middleware.AngularCSRFRename',
     'django.middleware.csrf.CsrfViewMiddleware',
     # No authentication ATM
-    #'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
