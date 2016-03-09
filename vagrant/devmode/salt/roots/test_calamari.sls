@@ -1,3 +1,10 @@
+{% set username = salt['cmd.run']('echo $USER') %}
+{% set home = salt['cmd.run']('echo $PWD"/build/ceph/calamari"') %}
+
+thing:
+  cmd.run:
+    - name: "echo ''':: {{ home }} :: '''"
+
 /etc/salt/minion.d/calamari.conf:
   file.managed:
     - user: root
@@ -12,10 +19,10 @@ salt-minion:
         - watch:
             - file: /etc/salt/minion.d/calamari.conf
 
-{{ pillar['home'] }}/teuthology/archive:
+{{ home }}/teuthology/archive:
     file.directory:
-    - user: {{ pillar['username'] }}
-    - group: {{ pillar['username'] }}
+    - user: {{ username }}
+    - group: {{ username }}
     - dir_mode: 755
     - file_mode: 644
     - makedirs: True
@@ -24,21 +31,21 @@ salt-minion:
         - group
         - mode
 
-{{ pillar['home'] }}/teuthology/archive/info.yaml:
+{{ home }}/teuthology/archive/info.yaml:
     file.managed:
-        - user: {{ pillar['username'] }}
-        - group: {{ pillar['username'] }}
+        - user: {{ username }}
+        - group: {{ username }}
         - file_mode: 644
         - contents_pillar: infoyaml
         - contents_newline: False
         - require:
-            - file: {{ pillar['home'] }}/teuthology/archive
+            - file: {{ home }}/teuthology/archive
 
 make-check:
     cmd.run:
-        - user: {{ pillar['username'] }}
+        - user: {{ username }}
         - name: source env/bin/activate; make check
-        - cwd: {{ pillar['home'] }}/calamari
+        - cwd: {{ home }}
         - require:
             - cmd: supervisord
 
@@ -46,14 +53,14 @@ supervisord:
     cmd.run:
         - user: root
         - name: source env/bin/activate; supervisord -c dev/supervisord.conf
-        - cwd: {{ pillar['home'] }}/calamari
+        - cwd: {{ home }}
         - unless: pgrep supervisord
 
 nosetests:
     cmd.run:
-        - user: {{ pillar['username'] }}
+        - user: {{ username }}
         - name: source env/bin/activate; nosetests tests
-        - cwd: {{ pillar['home'] }}/calamari
+        - cwd: {{ home }}
         - require:
             - cmd: make-check
-            - file: {{ pillar['home'] }}/teuthology/archive/info.yaml
+            - file: {{ home }}/teuthology/archive/info.yaml
