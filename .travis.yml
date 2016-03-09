@@ -17,8 +17,8 @@ install:
     - sudo apt-get -y install salt-minion salt-common python-jinja2
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/build_deps.sls
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/install_ceph.sls
-    - virtualenv --system-site-packages venv
-    - source venv/bin/activate
+    - virtualenv --system-site-packages env
+    - source env/bin/activate
     - pip install -r requirements/lite.txt
     - pip install flake8
     - pip install django-nose
