@@ -60,7 +60,7 @@ nosetests:
     cmd.run:
         - user: {{ username }}
         - name: source env/bin/activate; nosetests tests
-        - cwd: {{ home }
+        - cwd: {{ home }}
         - require:
             - cmd: make-check
             - file: {{ home }}/teuthology/archive/info.yaml
