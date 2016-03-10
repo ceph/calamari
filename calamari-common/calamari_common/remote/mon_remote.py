@@ -14,6 +14,7 @@ from gevent import socket
 import os
 import msgpack
 import json
+import tempfile
 
 import logging
 log = logging.getLogger('calamari.remote.mon')
@@ -255,20 +256,55 @@ SYNC_TYPES = ['mon_status',
               'config']
 
 
+def transform_crushmap(data, operation):
+    """
+    Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
+    respectively
+    returns (0 on success, transformed crushmap, errors)
+    """
+    # write data to a tempfile because crushtool can't handle stdin :(
+    with tempfile.NamedTemporaryFile(delete=True) as f:
+        f.write(data)
+        f.flush()
+
+        if operation == 'set':
+            args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
+        elif operation == 'get':
+            args = ["crushtool", "-d", f.name]
+        else:
+            return 1, '', 'Did not specify get or set'
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return p.returncode, stdout, stderr
+
+
 def rados_commands(fsid, cluster_name, commands):
     """
     Passing in both fsid and cluster_name, because the caller
     should always know both, and it saves this function the trouble
     of looking up one from the other.
     """
+
+    import rados
+    from ceph_argparse import json_command
+
     # Open a RADOS session
-    cluster_handle = rados_connect(cluster_name)
+    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
+    cluster_handle.connect()
+
     results = []
 
     # Each command is a 2-tuple of a prefix followed by an argument dictionary
     for i, (prefix, argdict) in enumerate(commands):
         argdict['format'] = 'json'
-        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
+        if prefix == 'osd setcrushmap':
+            ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
+            if ret != 0:
+                raise RuntimeError(outs)
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+        else:
+            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
         if ret != 0:
             return {
                 'error': True,
@@ -368,11 +404,15 @@ def get_cluster_object(cluster_name, sync_type, since):
     # fetching older-than-present versions to allow the master
     # to backfill its history.
 
+    import rados
+    from ceph_argparse import json_command
+
     # Check you're asking me for something I know how to give you
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    cluster_handle = rados_connect(cluster_name)
+    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
+    cluster_handle.connect()
 
     ret, outbuf, outs = json_command(cluster_handle,
                                      prefix='status',
@@ -422,7 +462,27 @@ def get_cluster_object(cluster_name, sync_type, since):
                                           timeout=RADOS_TIMEOUT)
             assert ret == 0
             data['crush'] = json.loads(raw)
+
+            ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
+                                          timeout=RADOS_TIMEOUT)
+            assert ret == 0
+
+            ret, stdout, outs = transform_crushmap(raw, 'get')
+            assert ret == 0
+            data['crush_map_text'] = stdout
             data['osd_metadata'] = []
+
+            for osd_entry in data['osds']:
+                osd_id = osd_entry['osd']
+                command = "osd metadata"
+                argdict = {'id': osd_id}
+                argdict.update(kwargs)
+                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
+                                              timeout=RADOS_TIMEOUT)
+                assert ret == 0
+                updated_osd_metadata = json.loads(raw)
+                updated_osd_metadata['osd'] = osd_id
+                data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,
@@ -911,3 +971,78 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
                     on_running_jobs(self.fqdn, ev.data)
 
         log.info("listen: complete")
+
+
+BASE = "/var/log"
+
+
+def _resolve(base, subpath):
+    path = os.path.normpath(os.path.realpath(os.path.join(base, subpath)))
+    if not path.startswith(base):
+        raise ValueError("Forbidden to us subpath with ../ or symlinks outside base")
+    else:
+        return path
+
+
+def _is_log_file(path):
+    """
+    Checks for indications this isn't a log file of interest,
+    such as not being a normal file, ending in a number, ending in .gz
+    """
+    if not os.path.isfile(path):
+        return False
+
+    if path.endswith(".gz") or path.endswith(".bz2") or path.endswith(".zip"):
+        return False
+
+    if re.match(".+\d+$", path):
+        return False
+
+    return True
+
+
+def list_logs(subpath):
+    """
+    Recursively list log files within /var/log, or
+    a subpath therein if subpath is not '.'
+
+    :return a list of strings which are paths relative to /var/log
+    """
+
+    path = _resolve(BASE, subpath)
+    if not os.path.isdir(path):
+        raise IOError("'%s' not found or not a directory" % subpath)
+
+    files = os.listdir(path)
+    files = [os.path.join(path, f) for f in files]
+
+    log_files = [f for f in files if _is_log_file(f)]
+    log_files = [r[len(BASE) + 1:] for r in log_files]
+
+    sub_dirs = [f for f in files if os.path.isdir(f)]
+    sub_dirs = [f[len(BASE) + 1:] for f in sub_dirs]
+    for subdir in sub_dirs:
+        log_files.extend(list_logs(subdir))
+
+    return log_files
+
+
+def tail(subpath, n_lines):
+    """
+    Return a string of the last n_lines lines of a log file
+
+    :param subpath: Path relative to the log directory e.g. ceph/ceph.log
+    :param n_lines: Number of lines
+    :return a string containing n_lines or fewer lines
+    """
+    path = _resolve(BASE, subpath)
+    if not os.path.isfile(path):
+        raise IOError("'%s' not found or not an ordinary file" % path)
+
+    # To emit exception if they pass something naughty, rather than have `tail`
+    # experience an error
+    n_lines = int(n_lines)
+
+    p = subprocess.Popen(["tail", "-n", str(n_lines), path], stdout=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    return stdout
