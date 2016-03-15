@@ -175,20 +175,24 @@ class OsdConfigSerializer(ValidatingSerializer):
 OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
 
 
-class CrushRuleSerializer(serializers.Serializer):
+class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
+        create_allowed = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        create_required = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        modify_allowed = ('name', 'ruleset', 'min_size', 'max_size', 'steps')
+        modify_required = ()
 
-    id = serializers.IntegerField(source='rule_id')
-    name = serializers.CharField(source='rule_name', help_text="Human readable name")
-    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member")
-    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type")
+    id = serializers.IntegerField(source='rule_id', required=False)
+    name = serializers.CharField(source='rule_name', help_text="Human readable name", required=False)
+    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member", required=False)
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type", required=False)
     min_size = serializers.IntegerField(
-        help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule")
+        help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule", required=False)
     max_size = serializers.IntegerField(
-        help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule")
+        help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule", required=False)
     steps = serializers.Field(help_text="List of operations used to select OSDs")
-    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
+    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement", required=False)
 
 
 class CrushTypeSerializer(serializers.Serializer):

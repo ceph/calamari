@@ -11,11 +11,12 @@ from cthulhu.manager import config
 from cthulhu.gevent_util import nosleep, nosleep_mgr
 from cthulhu.log import log
 from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
+from cthulhu.manager.crush_rule_request_factory import CrushRuleRequestFactory
 from cthulhu.manager.crush_request_factory import CrushRequestFactory
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from calamari_common.types import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
+from calamari_common.types import CRUSH_NODE, CRUSH_RULE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from cthulhu.util import now
 
 remote = get_remote()
@@ -184,6 +185,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._request_factories = {
             CRUSH_MAP: CrushRequestFactory,
             CRUSH_NODE: CrushNodeRequestFactory,
+            CRUSH_RULE: CrushRuleRequestFactory,
             OSD: OsdRequestFactory,
             POOL: PoolRequestFactory
         }

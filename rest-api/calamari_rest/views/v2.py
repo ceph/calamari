@@ -177,6 +177,56 @@ together to a pool.
             rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
         return Response(CrushRuleSerializer([DataObject(r) for r in rules], many=True).data)
 
+    def retrieve(self, request, fsid, rule_id):
+        crush_rule = self.client.get(fsid, CRUSH_RULE, int(rule_id))
+        osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+        crush_rule['osd_count'] = len(osds_by_rule_id[crush_rule['rule_id']])
+        return Response(self.serializer_class(DataObject(crush_rule)).data)
+
+    def create(self, request, fsid):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            rule_data = serializer.get_data()
+            rule_data['steps'] = request.DATA['steps']
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.create(fsid, CRUSH_RULE, rule_data)
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, fsid, rule_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            rule_data = serializer.get_data()
+            # TODO should we allow name to be changed?
+            osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+            crush_rule = self.client.get(fsid, CRUSH_RULE, int(rule_id))
+            crush_rule['osd_count'] = len(osds_by_rule_id[crush_rule['rule_id']])
+            defaults = self.serializer_class(DataObject(crush_rule)).data
+            rule_data['steps'] = request.DATA['steps']
+            defaults.update(rule_data)
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.update(fsid, CRUSH_RULE, int(rule_id), defaults)
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, fsid, rule_id):
+        delete_response = self.client.delete(fsid, CRUSH_RULE, rule_id, status=status.HTTP_202_ACCEPTED)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
+
 
 class CrushRuleSetViewSet(RPCViewSet):
     """
