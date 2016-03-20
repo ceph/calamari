@@ -120,7 +120,7 @@ class PoolSerializer(ValidatingSerializer):
     quota_max_bytes = serializers.IntegerField(required=False,
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
-    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type")
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type", required=False)
 
     erasure_code_profile = serializers.CharField(required=False, help_text="This profile configures how to split data in K pieces and create M coding chunks. names can include these characters [A-Za-z0-9-_.]")
 
