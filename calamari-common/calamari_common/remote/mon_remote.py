@@ -72,21 +72,29 @@ def get_ceph_version():
     return version
 
 
-def rados_connect(cluster_name):
-    if SRC_DIR:
-        conf_file = os.path.join(SRC_DIR, cluster_name + ".conf")
-    else:
-        conf_file = ''
+class ClusterHandle():
 
-    log.debug('rados_connect getting handle for: %s' % str(conf_file))
+    def __init__(self, cluster_name):
+        self.cluster_name = cluster_name
 
-    cluster_handle = rados.Rados(
-        name=RADOS_NAME,
-        clustername=cluster_name,
-        conffile=conf_file)
-    cluster_handle.connect(timeout=RADOS_TIMEOUT)
+    def __enter__(self):
+        if SRC_DIR:
+            conf_file = os.path.join(SRC_DIR, self.cluster_name + ".conf")
+        else:
+            conf_file = ''
 
-    return cluster_handle
+        log.debug('rados_connect getting handle for: %s' % str(conf_file))
+
+        self.cluster_handle = rados.Rados(
+            name=RADOS_NAME,
+            clustername=self.cluster_name,
+            conffile=conf_file)
+        self.cluster_handle.connect(timeout=RADOS_TIMEOUT)
+
+        return self.cluster_handle
+
+    def __exit__(self, *args):
+        self.cluster_handle.shutdown()
 
 
 # This function borrowed from /usr/bin/ceph: we should
@@ -286,46 +294,43 @@ def rados_commands(fsid, cluster_name, commands):
     of looking up one from the other.
     """
 
-    import rados
     from ceph_argparse import json_command
 
-    # Open a RADOS session
-    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
-    cluster_handle.connect()
+    with ClusterHandle(ClusterHandle(cluster_name)) as cluster_handle:
 
-    results = []
+        results = []
 
-    # Each command is a 2-tuple of a prefix followed by an argument dictionary
-    for i, (prefix, argdict) in enumerate(commands):
-        argdict['format'] = 'json'
-        if prefix == 'osd setcrushmap':
-            ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
+        # Each command is a 2-tuple of a prefix followed by an argument dictionary
+        for i, (prefix, argdict) in enumerate(commands):
+            argdict['format'] = 'json'
+            if prefix == 'osd setcrushmap':
+                ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
+                if ret != 0:
+                    raise RuntimeError(outs)
+                ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+            else:
+                ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
             if ret != 0:
-                raise RuntimeError(outs)
-            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
-        else:
-            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
-        if ret != 0:
-            return {
-                'error': True,
-                'results': results,
-                'error_status': outs,
-                'versions': cluster_status(cluster_handle, cluster_name)['versions'],
-                'fsid': fsid
-            }
-        if outbuf:
-            results.append(json.loads(outbuf))
-        else:
-            results.append(None)
+                return {
+                    'error': True,
+                    'results': results,
+                    'error_status': outs,
+                    'versions': cluster_status(cluster_handle, cluster_name)['versions'],
+                    'fsid': fsid
+                }
+            if outbuf:
+                results.append(json.loads(outbuf))
+            else:
+                results.append(None)
 
-    # For all RADOS commands, we include the cluster map versions
-    # in the response, so that the caller knows which versions to
-    # wait for in order to see the consequences of their actions.
-    # TODO: not all commands will require version info on completion, consider making
-    # this optional.
-    # TODO: we should endeavor to return something clean even if we can't talk to RADOS
-    # enough to get version info
-    versions = cluster_status(cluster_handle, cluster_name)['versions']
+        # For all RADOS commands, we include the cluster map versions
+        # in the response, so that the caller knows which versions to
+        # wait for in order to see the consequences of their actions.
+        # TODO: not all commands will require version info on completion, consider making
+        # this optional.
+        # TODO: we should endeavor to return something clean even if we can't talk to RADOS
+        # enough to get version info
+        versions = cluster_status(cluster_handle, cluster_name)['versions']
 
     # Success
     return {
@@ -404,85 +409,82 @@ def get_cluster_object(cluster_name, sync_type, since):
     # fetching older-than-present versions to allow the master
     # to backfill its history.
 
-    import rados
     from ceph_argparse import json_command
 
     # Check you're asking me for something I know how to give you
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
-    cluster_handle.connect()
+    with ClusterHandle(ClusterHandle(cluster_name)) as cluster_handle:
+        ret, outbuf, outs = json_command(cluster_handle,
+                                         prefix='status',
+                                         argdict={'format': 'json'},
+                                         timeout=RADOS_TIMEOUT)
+        status = json.loads(outbuf)
+        fsid = status['fsid']
 
-    ret, outbuf, outs = json_command(cluster_handle,
-                                     prefix='status',
-                                     argdict={'format': 'json'},
-                                     timeout=RADOS_TIMEOUT)
-    status = json.loads(outbuf)
-    fsid = status['fsid']
-
-    if sync_type == 'config':
-        # Special case for config, get this via admin socket instead of librados
-        raw = _get_config(cluster_name)
-        version = md5(raw)
-        data = json.loads(raw)
-    else:
-        command, kwargs, version_fn = {
-            'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
-            'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
-            'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
-            'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-            'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
-            'health': ('health', {'detail': ''}, lambda d, r: md5(r))
-        }[sync_type]
-        kwargs['format'] = 'json'
-        ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs, timeout=RADOS_TIMEOUT)
-        assert ret == 0
-
-        if sync_type == 'pg_summary':
-            data = pg_summary(json.loads(raw))
-            version = version_fn(data, raw)
-        else:
+        if sync_type == 'config':
+            # Special case for config, get this via admin socket instead of librados
+            raw = _get_config(cluster_name)
+            version = md5(raw)
             data = json.loads(raw)
-            version = version_fn(data, raw)
-
-        # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
-        # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
-        # send back to the calamari server.
-        if sync_type == 'osd_map':
-            ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
-                'format': 'json',
-                'epoch': version
-            }, timeout=RADOS_TIMEOUT)
-            assert ret == 0
-            data['tree'] = json.loads(raw)
-            # FIXME: crush dump does not support an epoch argument, so this is potentially
-            # from a higher-versioned OSD map than the one we've just read
-            ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs,
-                                          timeout=RADOS_TIMEOUT)
-            assert ret == 0
-            data['crush'] = json.loads(raw)
-
-            ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
-                                          timeout=RADOS_TIMEOUT)
+        else:
+            command, kwargs, version_fn = {
+                'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
+                'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
+                'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
+                'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
+                'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
+                'health': ('health', {'detail': ''}, lambda d, r: md5(r))
+            }[sync_type]
+            kwargs['format'] = 'json'
+            ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs, timeout=RADOS_TIMEOUT)
             assert ret == 0
 
-            ret, stdout, outs = transform_crushmap(raw, 'get')
-            assert ret == 0
-            data['crush_map_text'] = stdout
-            data['osd_metadata'] = []
+            if sync_type == 'pg_summary':
+                data = pg_summary(json.loads(raw))
+                version = version_fn(data, raw)
+            else:
+                data = json.loads(raw)
+                version = version_fn(data, raw)
 
-            for osd_entry in data['osds']:
-                osd_id = osd_entry['osd']
-                command = "osd metadata"
-                argdict = {'id': osd_id}
-                argdict.update(kwargs)
-                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
+            # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
+            # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
+            # send back to the calamari server.
+            if sync_type == 'osd_map':
+                ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
+                    'format': 'json',
+                    'epoch': version
+                }, timeout=RADOS_TIMEOUT)
+                assert ret == 0
+                data['tree'] = json.loads(raw)
+                # FIXME: crush dump does not support an epoch argument, so this is potentially
+                # from a higher-versioned OSD map than the one we've just read
+                ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs,
                                               timeout=RADOS_TIMEOUT)
                 assert ret == 0
-                updated_osd_metadata = json.loads(raw)
-                updated_osd_metadata['osd'] = osd_id
-                data['osd_metadata'].append(updated_osd_metadata)
+                data['crush'] = json.loads(raw)
+
+                ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
+                                              timeout=RADOS_TIMEOUT)
+                assert ret == 0
+
+                ret, stdout, outs = transform_crushmap(raw, 'get')
+                assert ret == 0
+                data['crush_map_text'] = stdout
+                data['osd_metadata'] = []
+
+                for osd_entry in data['osds']:
+                    osd_id = osd_entry['osd']
+                    command = "osd metadata"
+                    argdict = {'id': osd_id}
+                    argdict.update(kwargs)
+                    ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
+                                                  timeout=RADOS_TIMEOUT)
+                    assert ret == 0
+                    updated_osd_metadata = json.loads(raw)
+                    updated_osd_metadata['osd'] = osd_id
+                    data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,
@@ -571,8 +573,8 @@ def get_heartbeats():
     cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         try:
-            cluster_handle = rados_connect(fsid_names[fsid])
-            cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
+            with ClusterHandle(fsid_names[fsid]) as cluster_handle:
+                cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
         except rados.Error, e:
             # Something went wrong getting data for this cluster, exclude it from our report
             log.debug('get_heartbeat during rados_connect on cluster %s %s ' % (str(fsid_names[fsid]), str(e)))
