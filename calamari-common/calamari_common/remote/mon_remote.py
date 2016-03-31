@@ -296,7 +296,7 @@ def rados_commands(fsid, cluster_name, commands):
 
     from ceph_argparse import json_command
 
-    with ClusterHandle(ClusterHandle(cluster_name)) as cluster_handle:
+    with ClusterHandle(cluster_name) as cluster_handle:
 
         results = []
 
@@ -415,7 +415,7 @@ def get_cluster_object(cluster_name, sync_type, since):
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    with ClusterHandle(ClusterHandle(cluster_name)) as cluster_handle:
+    with ClusterHandle(cluster_name) as cluster_handle:
         ret, outbuf, outs = json_command(cluster_handle,
                                          prefix='status',
                                          argdict={'format': 'json'},
