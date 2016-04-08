@@ -670,6 +670,14 @@ Filtering is available on this resource:
                 o['backend_partition_path'] = osd_metadata[o['osd']]['backend_filestore_partition_path']
             except KeyError:
                 o['backend_partition_path'] = None
+            try:
+                o['osd_data'] = osd_metadata[o['osd']]['osd_data']
+            except KeyError:
+                o['osd_data'] = None
+            try:
+                o['osd_journal'] = osd_metadata[o['osd']]['osd_journal']
+            except KeyError:
+                o['osd_journal'] = None
             o.update(osd_commands[o['osd']])
             o.update({'crush_node_ancestry': lookup_ancestry(o['osd'], parent_map)})
 
@@ -694,6 +702,14 @@ Filtering is available on this resource:
             osd['backend_partition_path'] = osd_metadata['backend_filestore_partition_path']
         except KeyError:
             osd['backend_partition_path'] = None
+        try:
+            osd['osd_data'] = osd_metadata['osd_data']
+        except KeyError:
+            osd['osd_data'] = None
+        try:
+            osd['osd_journal'] = osd_metadata['osd_journal']
+        except KeyError:
+            osd['osd_journal'] = None
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
         osd.update(osd_commands[int(osd_id)])

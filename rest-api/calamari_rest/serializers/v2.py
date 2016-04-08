@@ -127,7 +127,7 @@ class PoolSerializer(ValidatingSerializer):
 
 class OsdSerializer(ValidatingSerializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry', 'backend_partition_path', 'backend_device_node')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry', 'backend_partition_path', 'backend_device_node', 'osd_data', 'osd_journal')
         create_allowed = ()
         create_required = ()
         modify_allowed = ('up', 'in', 'reweight')
@@ -147,6 +147,8 @@ class OsdSerializer(ValidatingSerializer):
     crush_node_ancestry = serializers.Field(help_text="An ordered list of CRUSH node ids that represent a path from the parent node of this OSD up to the root of the tree")
     backend_partition_path = serializers.CharField(read_only=True, help_text="Full path to the storage partition targeted by this OSD")
     backend_device_node = serializers.CharField(read_only=True, help_text="Physical device node that the OSD's targeted partition is provisioned from")
+    osd_data = serializers.CharField(read_only=True, help_text="Full path to the OSD data mountpoint")
+    osd_journal = serializers.CharField(read_only=True, help_text="Full path to the OSD journal mountpoint")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
