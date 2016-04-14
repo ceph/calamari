@@ -66,7 +66,7 @@ def get_ceph_version():
     result = ceph_command(None, ['--version'])
     try:
         version = result['out'].split(' ')[2]
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, IndexError):
         version = None
 
     return version

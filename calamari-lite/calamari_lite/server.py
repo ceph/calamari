@@ -11,12 +11,18 @@ import signal
 from gevent.server import StreamServer
 import os
 from gevent.wsgi import WSGIServer
-from cthulhu.manager.manager import Manager
 import zerorpc
 import logging
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger()
-log.setLevel(logging.INFO)
+from calamari_common.config import CalamariConfig
+config = CalamariConfig()
+
+
+FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
+log = logging.getLogger('calamari')
+handler = logging.FileHandler(config.get('cthulhu', 'log_path'))
+handler.setFormatter(logging.Formatter(FORMAT))
+log.addHandler(handler)
+log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
@@ -90,17 +96,36 @@ class ShallowCarbonCache(gevent.Greenlet):
 
 def main():
 
+    complete = gevent.event.Event()
+    ceph_argparse = None
+    while not ceph_argparse:
+        try:
+            import ceph_argparse
+        except ImportError:
+            log.error('Cannot import ceph_arg_parse module -- please install ceph')
+            complete.wait(timeout=50)
+
+    from cthulhu.manager.manager import Manager
+
     carbon = ShallowCarbonCache()
     carbon.start()
 
     cthulhu = Manager()
-    cthulhu.start()
+    cthulhu_started = False
+
+    while not cthulhu_started:
+        try:
+            if not cthulhu_started:
+                cthulhu_started = cthulhu.start()
+
+        except Exception, e:
+            log.exception('It borked')
+            log.error(str(e))
+            complete.wait(timeout=5)
 
     app = get_internal_wsgi_application()
     wsgi = WSGIServer(('0.0.0.0', 8002), app)
     wsgi.serve_forever()
-
-    complete = gevent.event.Event()
 
     def shutdown():
         complete.set()

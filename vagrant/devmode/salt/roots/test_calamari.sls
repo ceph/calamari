@@ -39,15 +39,7 @@ make-check:
         - user: {{ pillar['username'] }}
         - name: source env/bin/activate; make check
         - cwd: {{ pillar['home'] }}/calamari
-        - require:
-            - cmd: supervisord
 
-supervisord:
-    cmd.run:
-        - user: root
-        - name: source env/bin/activate; supervisord -c dev/supervisord.conf
-        - cwd: {{ pillar['home'] }}/calamari
-        - unless: pgrep supervisord
 
 nosetests:
     cmd.run:
