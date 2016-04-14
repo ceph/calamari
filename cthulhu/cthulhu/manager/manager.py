@@ -306,6 +306,7 @@ class Manager(object):
         self._request_ticker.start()
 
         self.servers.start()
+        return True
 
     def join(self):
         log.info("%s joining" % self.__class__.__name__)
