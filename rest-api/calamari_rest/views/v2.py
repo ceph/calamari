@@ -1030,6 +1030,8 @@ useful to show users data from the /status sub-url, which returns the
 
     def _get_mons(self, fsid):
         mon_status = self.client.get_sync_object(fsid, 'mon_status')
+        quorum_status = self.client.get_sync_object(fsid, 'quorum_status')
+        quorum_leader_name = quorum_status.get('quorum_leader_name')
         if not mon_status:
             raise Http404("No mon data available")
 
@@ -1101,6 +1103,12 @@ useful to show users data from the /status sub-url, which returns the
             # I think the cluster map is lying about there being a quorum at all
             for m in mons:
                 m['in_quorum'] = False
+        else:  # describe that one of the mons is the leader
+            for m in mons:
+                if m.get('name') == quorum_leader_name:
+                    m['leader'] = True
+                else:
+                    m['leader'] = False
 
         return mons
 
