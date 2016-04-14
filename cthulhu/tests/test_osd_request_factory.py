@@ -1,4 +1,4 @@
-from django.utils.unittest import TestCase
+from django.test import TestCase
 from mock import MagicMock, patch
 
 from cthulhu.manager.osd_request_factory import OsdRequestFactory

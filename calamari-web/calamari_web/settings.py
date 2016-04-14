@@ -17,7 +17,12 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
 }
 
 try:
@@ -25,13 +30,11 @@ try:
 except ImportError:
     pass
 else:
-    DATABASES['default'] = {
-        'ENGINE': config.get("calamari_web", "db_engine"),
-        'NAME': config.get("calamari_web", "db_name"),
-        'USER': config.get("calamari_web", "db_user"),
-        'PASSWORD': config.get("calamari_web", "db_password"),
-        'HOST': config.get("calamari_web", "db_host"),
-        'PORT': config.get("calamari_web", "db_port"),
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
     }
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False

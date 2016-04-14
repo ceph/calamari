@@ -1,5 +1,5 @@
-from django.utils.unittest import TestCase
-from django.utils.unittest.case import skipIf
+from django.test import TestCase
+from unittest import skipIf
 
 import os
 

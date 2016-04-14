@@ -1,4 +1,4 @@
-Django==1.5.1
+Django==1.8.12
 Markdown==2.3.1
 argparse==1.2.1
 django-filter==0.6
@@ -8,6 +8,8 @@ requests==1.2.3
 wsgiref==0.1.2
 supervisor
 meld3
+alembic
+sqlalchemy
 
 # Gevent 1.0.x requires cython but doesn't do a good job of depending on it
 cython==0.19.2
