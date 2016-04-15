@@ -37,6 +37,7 @@ RADOS_TIMEOUT = 20
 RADOS_NAME = 'client.admin'
 
 SYNC_TYPES = ['mon_status',
+              'quorum_status',
               'mon_map',
               'osd_map',
               'mds_map',
@@ -255,15 +256,6 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
             return outbuf
 
 
-SYNC_TYPES = ['mon_status',
-              'mon_map',
-              'osd_map',
-              'mds_map',
-              'pg_summary',
-              'health',
-              'config']
-
-
 def transform_crushmap(data, operation):
     """
     Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
@@ -430,6 +422,7 @@ def get_cluster_object(cluster_name, sync_type, since):
             data = json.loads(raw)
         else:
             command, kwargs, version_fn = {
+                'quorum_status': ('quorum_status', {}, lambda d, r: d['election_epoch']),
                 'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
                 'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
                 'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
@@ -636,6 +629,7 @@ def cluster_status(cluster_handle, cluster_name):
     """
     # Get map versions from 'status'
     mon_status = rados_command(cluster_handle, "mon_status")
+    quorum_status = rados_command(cluster_handle, "quorum_status")
     status = rados_command(cluster_handle, "status")
 
     fsid = status['fsid']
@@ -662,6 +656,7 @@ def cluster_status(cluster_handle, cluster_name):
         'fsid': fsid,
         'versions': {
             'mon_status': mon_status['election_epoch'],
+            'quorum_status': quorum_status['election_epoch'],
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,

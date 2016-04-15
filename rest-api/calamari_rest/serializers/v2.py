@@ -379,13 +379,14 @@ class ConfigSettingSerializer(serializers.Serializer):
 
 class MonSerializer(serializers.Serializer):
     class Meta:
-        fields = ('name', 'rank', 'in_quorum', 'server', 'addr')
+        fields = ('name', 'rank', 'in_quorum', 'server', 'addr', 'leader')
 
     name = serializers.CharField(help_text="Human readable name")
     rank = serializers.IntegerField(help_text="Unique of the mon within the cluster")
     in_quorum = serializers.BooleanField(help_text="True if the mon is a member of current quorum")
     server = serializers.CharField(help_text="FQDN of server running the OSD")
     addr = serializers.CharField(help_text="IP address of monitor service")
+    leader = serializers.BooleanField(help_text="True if this monitor is the leader of the quorum. False otherwise")
 
 
 class CliSerializer(serializers.Serializer):
