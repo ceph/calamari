@@ -49,7 +49,7 @@ modify-ceph.conf:
 
 install-cluster:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy install {{ grains['fqdn'] }}
+    - name: /var/cluster/env/bin/ceph-deploy install --release jewel {{ grains['fqdn'] }}
     - cwd: /var/cluster
     - require:
         - cmd: modify-ceph.conf
