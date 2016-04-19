@@ -14,11 +14,14 @@ import time
 
 from django.core.management import execute_from_command_line
 from django.utils.crypto import get_random_string
-from django.contrib.auth import get_user_model
 
 from calamari_common.config import CalamariConfig
 
 from cthulhu.log import FORMAT
+# Import sqlalchemy objects so that create_all sees them
+from cthulhu.persistence.sync_objects import SyncObject  # noqa
+from cthulhu.persistence.servers import Server, Service  # noqa
+from calamari_common.db.event import Event  # noqa
 
 # The log is very verbose by default, filtered at handler level
 log = logging.getLogger('calamari_ctl')
@@ -83,6 +86,7 @@ def _initialize_db(args, config):
         execute_from_command_line(["", "syncdb", "--noinput"])
 
     log.info("Initializing web interface...")
+    from django.contrib.auth import get_user_model
     user_model = get_user_model()
 
     if args.admin_username and args.admin_password and args.admin_email:
