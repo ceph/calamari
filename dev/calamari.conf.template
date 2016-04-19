@@ -4,7 +4,7 @@
 plugin_path = {{calamari_root}}/cthulhu/tests/plugins
 salt_config_path = {{calamari_root}}/dev/etc/salt/master
 alembic_config_path = {{calamari_root}}/dev/alembic.ini
-db_path = postgresql://calamari:27HbZwr*g@localhost/calamari
+db_path = {{calamari_root}}/calamari.sqlite3
 log_path = {{calamari_root}}/dev/cthulhu.log
 log_level = DEBUG
 rpc_url = tcp://127.0.0.1:5050

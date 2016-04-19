@@ -36,13 +36,23 @@ from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceSt
 
 # sqlalchemy is optional: without it, all database writes will
 # be silently dropped.
-sqlalchemy = None
-create_engine = None
-SyncObject = None
-Session = None
-Persister = None
-Service = None
-Server = None
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy = None
+    create_engine = None
+    SyncObject = None
+    Session = None
+    Persister = None
+    Service = None
+    Server = None
+else:
+    import sqlalchemy.exc
+    from sqlalchemy import create_engine
+
+    from cthulhu.persistence.sync_objects import SyncObject
+    from cthulhu.persistence.persister import Persister, Session
+    from cthulhu.persistence.servers import Server, Service
 
 # Manhole module optional for debugging.
 try:
@@ -152,7 +162,7 @@ class Manager(object):
         if sqlalchemy is not None:
             try:
                 # Prepare persistence
-                engine = create_engine(config.get('cthulhu', 'db_path'))  # noqa
+                engine = create_engine('sqlite:///' + config.get('cthulhu', 'db_path'))  # noqa
                 Session.configure(bind=engine)
 
                 self.persister = Persister()

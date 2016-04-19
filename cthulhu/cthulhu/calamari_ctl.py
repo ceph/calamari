@@ -63,7 +63,7 @@ def _initialize_db(args, config):
 
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')
-    engine = create_engine(db_path)
+    engine = create_engine('sqlite:///' + db_path)
     Base.metadata.reflect(engine)
     alembic_config = AlembicConfig()
     if ALEMBIC_TABLE in Base.metadata.tables:
@@ -74,7 +74,9 @@ def _initialize_db(args, config):
         log.info("Initializing database...")
         # Blank database, do initial population
         Base.metadata.create_all(engine)
+        log.info("Initializing database...")
         command.stamp(alembic_config, "head")
+        log.info("Initializing database...")
 
     # Django's database
     with quiet():
@@ -125,7 +127,8 @@ def initialize(args):
 
     try:
         _initialize_db(args, config)
-    except ImportError:
+    except Exception, e:
+        log.error(str(e))
         log.warning("Skipping database configuration")
 
     # Django's static files
