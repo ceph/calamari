@@ -26,7 +26,7 @@ GRACE_PERIOD = 30
 CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
-MINION_CONFIG = str(config.get('cthulhu', 'event_tag_prefix')).replace('master', 'minion')
+MINION_CONFIG = str(config.get('cthulhu', 'salt_config_path')).replace('master', 'minion')
 EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
 EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
 
@@ -70,7 +70,7 @@ class Eventer(gevent.greenlet.Greenlet):
         # Check the config to decide if events has to be pushed to salt event bus.
         # If config is set initialize the salt caller object used to push events.
         if EMIT_EVENTS_TO_SALT_EVENT_BUS:
-            log.error("Events will be emitted to salt event bus")
+            log.debug("Events will be emitted to salt event bus")
             __opts__ = salt.config.minion_config(MINION_CONFIG)
             __opts__['file_client'] = 'local'
             self.caller = salt.client.Caller(mopts=__opts__)
@@ -82,7 +82,7 @@ class Eventer(gevent.greenlet.Greenlet):
         self._complete.set()
 
     def _run(self):
-        log.error("Eventer running")
+        log.debug("Eventer running")
         self._emit(INFO, "Calamari server started")
         self._emit_to_salt_bus(SEVERITIES[INFO], "Calamari server started", "ceph/calamari/started")
         self._flush()
@@ -98,11 +98,11 @@ class Eventer(gevent.greenlet.Greenlet):
         This function emits events to salt event bus, if the config
         value "emit_events_to_salt_event_bus" is set to true.
         """
-        log.error("Eventer running _emit_salt")
+        log.debug("Eventer running _emit_salt")
         if not EMIT_EVENTS_TO_SALT_EVENT_BUS:
             return
 
-        log.error("Eventer running _emit_salt")
+        log.debug("Eventer running _emit_salt")
         res = {}
         res["message"] = message
         res["severity"] = severity
