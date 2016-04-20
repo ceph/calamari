@@ -1,4 +1,4 @@
-from django.utils.unittest import TestCase
+from django.test import TestCase
 from mock import MagicMock
 from cthulhu.manager.rpc import RpcInterface
 

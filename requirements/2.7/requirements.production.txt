@@ -4,7 +4,7 @@
 # anything we will be installing an upstream package,
 # and anything that is only used for development/build.
 
-Django==1.5.1
+Django==1.8.12
 argparse==1.2.1
 django-filter==0.6
 djangorestframework==2.3.12
@@ -15,12 +15,13 @@ cython==0.19.2
 gevent==1.0.2
 greenlet==0.4.9
 psycogreen==1.0
-psycopg2==2.5.2
 manhole==0.6.0
 
 Twisted==11.1.0
 django-tagging==0.3.1
 pytz==2013.8
+alembic
+sqlalchemy
 
 # Cthulhu
 pyzmq==14.2.0

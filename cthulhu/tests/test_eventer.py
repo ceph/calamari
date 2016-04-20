@@ -1,6 +1,6 @@
-from django.utils.unittest import TestCase
+from django.test import TestCase
 from cthulhu.manager.eventer import Eventer
-from django.utils.unittest.case import skipIf
+from unittest import skipIf
 import os
 from mock import MagicMock
 

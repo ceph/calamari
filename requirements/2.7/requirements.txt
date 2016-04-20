@@ -1,4 +1,4 @@
-Django==1.5.1
+Django==1.8.12
 Markdown==2.3.1
 argparse==1.2.1
 django-filter==0.6
@@ -12,8 +12,9 @@ supervisor
 django-nose==1.2
 Sphinx==1.1.3
 psycogreen==1.0
-psycopg2==2.5.2
 manhole==0.6.0
+alembic
+sqlalchemy
 
 # This is only needed for development environments
 # Frozen version because 2.1.0 is broken:

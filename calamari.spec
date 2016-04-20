@@ -24,19 +24,11 @@ BuildRequires:  postgresql-devel
 BuildRequires:  python-setuptools
 BuildRequires:  python-virtualenv
 BuildRequires:  redhat-lsb-core
-BuildRequires:  httpd
 BuildRequires:  postgresql-libs
-Requires:       httpd
-Requires:	mod_wsgi
-Requires:       cairo
-Requires:       pycairo
 Requires:	logrotate
 Requires:       supervisor
 Requires:       redhat-lsb-core
-Requires:	postgresql
-Requires:	postgresql-libs
-Requires:	postgresql-server
-Requires:	python-setuptools
+Requires:	sqlite
 %if 0%{?rhel} || 0%{?fedora}
 # SELinux deps
 BuildRequires:  checkpolicy

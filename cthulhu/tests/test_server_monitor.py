@@ -7,8 +7,8 @@ from tests.config import TestConfig
 
 os.environ.setdefault("CALAMARI_CONFIG", os.path.join(os.path.dirname(__file__), "../../dev/calamari.conf"))
 
-from django.utils.unittest.case import TestCase
-from django.utils.unittest.case import skipIf
+from django.test import TestCase
+from unittest import skipIf
 from mock import Mock
 
 from cthulhu.manager.server_monitor import ServerMonitor, ServiceId
