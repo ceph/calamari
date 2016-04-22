@@ -1,13 +1,5 @@
 {% import 'setvars' as vars %}
 
-build-diamond:
-  cmd.run:
-    - user: {{vars.username}}
-    - name: make deb
-    - cwd: {{vars.builddir}}/Diamond
-    - require:
-      - git: {{vars.gitpath}}/Diamond
-
 build-repo:
   cmd.run:
     - user: {{vars.username}}
