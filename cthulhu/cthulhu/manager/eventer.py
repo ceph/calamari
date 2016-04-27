@@ -6,7 +6,7 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+from calamari_common.types import OsdMap, Health, MonStatus, PgSummary, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
@@ -379,6 +379,46 @@ class Eventer(gevent.greenlet.Greenlet):
                     # with the server, and we haven't already reported the server laggy,
                     # to indicate that our best guess here is that the server itself is down.
 
+    def _on_pool_status(self, fsid, new, old):
+        old_pool_ids = set([o['pool'] for o in old.data['pools']])
+        new_pool_ids = set([o['pool'] for o in new.data['pools']])
+        deleted_pools = old_pool_ids - new_pool_ids
+        created_pools = new_pool_ids - old_pool_ids
+
+        def pool_event(severity, msg, pool_id, tag):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    name=self._manager.clusters[fsid].name,
+                    id=pool_id,
+                    on_server=self._get_on_server(fsid, 'pool', pool_id)
+                ), tag,
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'pool', pool_id),
+                service_type='pool',
+                service_id=str(pool_id),
+            )
+
+            self._emit(
+                severity,
+                msg.format(
+                    name=self._manager.clusters[fsid].name,
+                    id=pool_id,
+                    on_server=self._get_on_server(fsid, 'pool', pool_id)
+                ),
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'pool', pool_id),
+                service_type='pool',
+                service_id=str(pool_id))
+
+        # Generate events for removed pools
+        for pool_id in deleted_pools:
+            pool_event(INFO, "pool {name}.{id}{on_server} removed from the cluster map", pool_id, 'ceph/pool//deleted')
+
+        # Generate events for added pools
+        for pool_id in created_pools:
+            pool_event(INFO, "pool {name}.{id}{on_server} added to the cluster map", pool_id, 'ceph/pool/added')
+
     def _on_mon_status(self, fsid, new, old):
         old_quorum = set(old.data['quorum'])
         new_quorum = set(new.data['quorum'])
@@ -436,6 +476,55 @@ class Eventer(gevent.greenlet.Greenlet):
 
         if old_leader_name != new_leader_name:
             _leader_event(INFO, "Mon '{cluster_name}.{mon_name}' now quorum leader {on_server}", new_leader_name)
+    '''
+    {
+        "all": {
+            "active+clean": 192
+        },
+        "by_osd": {
+            "0": {
+                "active+clean": 192
+            }
+        },
+        "by_pool": {
+            "0": {
+                "active+clean": 64
+            },
+            "1": {
+                "active+clean": 64
+            },
+            "2": {
+                "active+clean": 64
+            }
+        }
+    }
+    '''
+    def _on_pg_summary(self, fsid, new, old):
+        old_leader_name = set(old.data['quorum_leader_name'])
+        new_leader_name = set(new.data['quorum_leader_name'])
+
+        def _pg_event(severity, msg, name):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    cluster_name=self._manager.clusters[fsid].name,
+                    mon_name=name,
+                    on_server=self._get_on_server(fsid, 'mon', name)
+                ), "ceph/mon/leaderChanged",
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'mon', name)
+            )
+
+            self._emit(severity,
+                       msg.format(
+                           cluster_name=self._manager.clusters[fsid].name,
+                           mon_name=name,
+                           on_server=self._get_on_server(fsid, 'mon', name)),
+                       fsid=fsid,
+                       fqdn=self._get_fqdn(fsid, 'mon', name))
+
+        if old_leader_name != new_leader_name:
+            _pg_event(INFO, "Mon '{cluster_name}.{mon_name}' now quorum leader {on_server}", new_leader_name)
 
     def _on_health(self, fsid, new, old):
         # Generate notifications for transitions between HEALTH_OK, HEALTH_WARN, HEALTH_ERR
@@ -492,6 +581,8 @@ class Eventer(gevent.greenlet.Greenlet):
             self._on_mon_status(fsid, new, old)
         elif sync_type == QuorumStatus:
             self._on_quorum_status(fsid, new, old)
+        elif sync_type == PgSummary:
+            self._on_pg_summary(fsid, new, old)
 
         self._flush()
 
