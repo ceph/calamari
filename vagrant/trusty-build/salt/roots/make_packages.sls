@@ -5,8 +5,13 @@ build-calamari-server:
     - user: {{vars.username}}
     - name: make dpkg
     - cwd: {{vars.builddir}}/calamari
+{% if vars.username == 'vagrant' -%}
     - require:
       - git: {{vars.gitpath}}/calamari
+{%- else -%}
+    - require:
+      - file: {{vars.builddir}}/calamari
+{%- endif -%}
 
 {% if vars.username != 'vagrant' %}
 ensure-pkgdest-present:
