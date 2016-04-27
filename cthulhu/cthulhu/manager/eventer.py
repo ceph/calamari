@@ -6,7 +6,7 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
@@ -410,6 +410,33 @@ class Eventer(gevent.greenlet.Greenlet):
         for rank in old_quorum - new_quorum:
             _mon_event(WARNING, "Mon '{cluster_name}.{mon_name}' left quorum{on_server}", rank)
 
+    def _on_quorum_status(self, fsid, new, old):
+        old_leader_name = set(old.data['quorum_leader_name'])
+        new_leader_name = set(new.data['quorum_leader_name'])
+
+        def _leader_event(severity, msg, name):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    cluster_name=self._manager.clusters[fsid].name,
+                    mon_name=name,
+                    on_server=self._get_on_server(fsid, 'mon', name)
+                ), "ceph/mon/leaderChanged",
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'mon', name)
+            )
+
+            self._emit(severity,
+                       msg.format(
+                           cluster_name=self._manager.clusters[fsid].name,
+                           mon_name=name,
+                           on_server=self._get_on_server(fsid, 'mon', name)),
+                       fsid=fsid,
+                       fqdn=self._get_fqdn(fsid, 'mon', name))
+
+        if old_leader_name != new_leader_name:
+            _leader_event(INFO, "Mon '{cluster_name}.{mon_name}' now quorum leader {on_server}", new_leader_name)
+
     def _on_health(self, fsid, new, old):
         # Generate notifications for transitions between HEALTH_OK, HEALTH_WARN, HEALTH_ERR
         old_status = old.data['overall_status']
@@ -463,6 +490,8 @@ class Eventer(gevent.greenlet.Greenlet):
             self._on_health(fsid, new, old)
         elif sync_type == MonStatus:
             self._on_mon_status(fsid, new, old)
+        elif sync_type == QuorumStatus:
+            self._on_quorum_status(fsid, new, old)
 
         self._flush()
 
