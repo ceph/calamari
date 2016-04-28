@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 9),
                lsb-release,
                python-dev,
                python-pip,
-               python-virtualenv
+               virtualenv | python-virtualenv
 
 Package: calamari-server
 Architecture: any
