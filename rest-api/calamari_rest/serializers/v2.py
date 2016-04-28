@@ -1,9 +1,8 @@
 
 from rest_framework import serializers
-from calamari_common.db.event import severity_str, SEVERITIES
 import calamari_rest.serializers.fields as fields
 from calamari_common.types import CRUSH_RULE_TYPE_REPLICATED, CRUSH_RULE_TYPE_ERASURE, USER_REQUEST_COMPLETE, \
-    USER_REQUEST_SUBMITTED, OSD_FLAGS
+    USER_REQUEST_SUBMITTED, OSD_FLAGS, severity_str, SEVERITIES
 
 
 class ValidatingSerializer(serializers.Serializer):
@@ -76,9 +75,9 @@ class ClusterSerializer(serializers.Serializer):
 class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes')
+                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes', 'type', 'erasure_code_profile')
         create_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
-                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool', 'type', 'erasure_code_profile')
         create_required = ('name', 'pg_num')
         modify_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                           'quota_max_objects', 'quota_max_bytes', 'hashpspool')
@@ -121,10 +120,14 @@ class PoolSerializer(ValidatingSerializer):
     quota_max_bytes = serializers.IntegerField(required=False,
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type", required=False)
+
+    erasure_code_profile = serializers.CharField(required=False, help_text="This profile configures how to split data in K pieces and create M coding chunks. names can include these characters [A-Za-z0-9-_.]")
+
 
 class OsdSerializer(ValidatingSerializer):
     class Meta:
-        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry', 'backend_partition_path', 'backend_device_node')
+        fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry', 'backend_partition_path', 'backend_device_node', 'osd_data', 'osd_journal')
         create_allowed = ()
         create_required = ()
         modify_allowed = ('up', 'in', 'reweight')
@@ -144,6 +147,8 @@ class OsdSerializer(ValidatingSerializer):
     crush_node_ancestry = serializers.Field(help_text="An ordered list of CRUSH node ids that represent a path from the parent node of this OSD up to the root of the tree")
     backend_partition_path = serializers.CharField(read_only=True, help_text="Full path to the storage partition targeted by this OSD")
     backend_device_node = serializers.CharField(read_only=True, help_text="Physical device node that the OSD's targeted partition is provisioned from")
+    osd_data = serializers.CharField(read_only=True, help_text="Full path to the OSD data mountpoint")
+    osd_journal = serializers.CharField(read_only=True, help_text="Full path to the OSD journal mountpoint")
 
 # Declarative metaclass definitions are great until you want
 # to use a reserved word
@@ -172,20 +177,24 @@ class OsdConfigSerializer(ValidatingSerializer):
 OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
 
 
-class CrushRuleSerializer(serializers.Serializer):
+class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
+        create_allowed = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        create_required = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        modify_allowed = ('name', 'ruleset', 'min_size', 'max_size', 'steps')
+        modify_required = ()
 
-    id = serializers.IntegerField(source='rule_id')
-    name = serializers.CharField(source='rule_name', help_text="Human readable name")
-    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member")
-    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type")
+    id = serializers.IntegerField(source='rule_id', required=False)
+    name = serializers.CharField(source='rule_name', help_text="Human readable name", required=False)
+    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member", required=False)
+    type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type", required=False)
     min_size = serializers.IntegerField(
-        help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule")
+        help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule", required=False)
     max_size = serializers.IntegerField(
-        help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule")
+        help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule", required=False)
     steps = serializers.Field(help_text="List of operations used to select OSDs")
-    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement")
+    osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement", required=False)
 
 
 class CrushTypeSerializer(serializers.Serializer):
@@ -370,13 +379,14 @@ class ConfigSettingSerializer(serializers.Serializer):
 
 class MonSerializer(serializers.Serializer):
     class Meta:
-        fields = ('name', 'rank', 'in_quorum', 'server', 'addr')
+        fields = ('name', 'rank', 'in_quorum', 'server', 'addr', 'leader')
 
     name = serializers.CharField(help_text="Human readable name")
     rank = serializers.IntegerField(help_text="Unique of the mon within the cluster")
     in_quorum = serializers.BooleanField(help_text="True if the mon is a member of current quorum")
     server = serializers.CharField(help_text="FQDN of server running the OSD")
     addr = serializers.CharField(help_text="IP address of monitor service")
+    leader = serializers.BooleanField(help_text="True if this monitor is the leader of the quorum. False otherwise")
 
 
 class CliSerializer(serializers.Serializer):

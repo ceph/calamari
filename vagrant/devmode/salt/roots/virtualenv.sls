@@ -25,46 +25,20 @@ pip_pkgs:
     - installed
     - user: {{ pillar['username'] }}
     - bin_env: {{ pillar['home'] }}/calamari/env
-    - requirements: {{ pillar['home'] }}/calamari/requirements/2.7/requirements.txt
-    - download_cache: {{ pillar['home'] }}/pip_cache
-    - require:
-      - virtualenv: virtualenv
-      - pip: pyzmq
-
-pip_force_pkgs:
-  pip:
-    - installed
-    - user: {{ pillar['username'] }}
-    - bin_env: {{ pillar['home'] }}/calamari/env
-    - requirements: {{ pillar['home'] }}/calamari/requirements/2.7/requirements.force.txt
+    - requirements: {{ pillar['home'] }}/calamari/requirements/lite.txt
     - ignore_installed: true
     - download_cache: {{ pillar['home'] }}/pip_cache
     - require:
       - virtualenv: virtualenv
       - pip: pyzmq
 
-carbon:
+devel_pip_pkgs:
   pip:
     - installed
     - user: {{ pillar['username'] }}
     - bin_env: {{ pillar['home'] }}/calamari/env
+    - requirements: {{ pillar['home'] }}/calamari/requirements/devel.txt
     - download_cache: {{ pillar['home'] }}/pip_cache
-    - install_options:
-      - "--prefix={{ pillar['home'] }}/calamari/env"
-      - "--install-lib={{ pillar['home'] }}/calamari/env/lib/python2.7/site-packages"
     - require:
-      # Carbon inserts its packages into twisted's folders so it only works
-      # if installed after twisted (graphite packaging is wonky generally)
-      - pip: pip_pkgs
-      - pip: pip_force_pkgs
-
-graphite-web:
-  pip:
-    - name: git+https://github.com/ceph/graphite-web.git@calamari
-    - installed
-    - user: {{ pillar['username'] }}
-    - bin_env: {{ pillar['home'] }}/calamari/env
-    - activate: true
-    - install_options:
-      - "--prefix={{ pillar['home'] }}/calamari/env"
-      - "--install-lib={{ pillar['home'] }}/calamari/env/lib/python2.7/site-packages"
+      - virtualenv: virtualenv
+      - pip: pyzmq

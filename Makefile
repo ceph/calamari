@@ -25,6 +25,22 @@ all: build
 
 build: version build-venv
 
+# Similar to the set in build-venv-reqs, but installs to the global python
+# site dir, not inside a venv.  This allows using distro-supplied dependencies
+# instead of embedding everything
+build-lsb: version
+	for p in \
+		calamari-common \
+		rest-api \
+		calamari-web \
+		cthulhu \
+		calamari-lite \
+	; do \
+		cd $$p ; \
+		python setup.py install --prefix=/usr --root=$(DESTDIR) ; \
+		cd .. ; \
+	done
+
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
 	@echo "target: $@"
@@ -79,19 +95,8 @@ build-venv-reqs: venv
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
-	./bin/python ./bin/pip install \
-	  --install-option="--zmq=bundled" \
-	  'pyzmq==14.2.0' && \
-	./bin/python ./bin/pip install \
-	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
-	./bin/python ./bin/pip install -I -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
-	./bin/python ./bin/pip install \
-	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
-	  https://github.com/ceph/graphite-web/tarball/calamari && \
+	           $(SRC)/requirements/$${pyver}/requirements.production.txt && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
@@ -99,6 +104,8 @@ build-venv-reqs: venv
 	cd ../calamari-web ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../cthulhu ; \
+	../venv/bin/python ./setup.py install && \
+	cd ../calamari-lite ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../venv ; )
 
@@ -133,6 +140,11 @@ install-common: install-conf install-venv install-salt install-alembic install-s
 
 install-rpm: build install-common install-rh-conf
 	@echo "target: $@"
+
+install-lsb: build-lsb install-conf
+	@echo "target: $@"
+	$(INSTALL) -D -m 0644 conf/calamari.service \
+		$(DESTDIR)/usr/lib/systemd/system/calamari.service
 
 # for deb
 install: build
@@ -222,7 +234,7 @@ clean:
 # want in sources.
 
 FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
-FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-lite calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
 
 dist:
 	@echo "target: $@"
@@ -260,7 +272,7 @@ docs: rest-api-generated
 
 unit-tests: dev/calamari.conf
 	@echo "target: $@"
-	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test rest-api/tests cthulhu/tests
+	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test cthulhu/tests
 
 lint:
 	@echo "target: $@"

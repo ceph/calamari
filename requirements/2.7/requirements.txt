@@ -25,8 +25,8 @@ psutil==2.0.0
 
 # Gevent 1.0.x requires cython but doesn't do a good job of depending on it
 cython==0.19.2
-gevent>=1.0
-greenlet>=0.3.2
+gevent==1.0.2
+greenlet==0.4.9
 
 # Stock coverage doesn't play nicely with gevent
 -e git+https://github.com/portante/coverage.git#egg=coverage

@@ -7,11 +7,6 @@ from calamari_common.types import OSD_IMPLEMENTED_COMMANDS, OsdMap
 
 
 class TestOSDFactory(TestCase):
-
-    salt_local_client = MagicMock(run_job=MagicMock())
-    salt_local_client.return_value = salt_local_client
-    salt_local_client.run_job.return_value = {'jid': 12345}
-
     def setUp(self):
         fake_cluster_monitor = MagicMock()
         attributes = {'name': 'I am a fake',
@@ -25,13 +20,23 @@ class TestOSDFactory(TestCase):
     def testCreate(self):
         self.assertNotEqual(OsdRequestFactory(0), None, 'Test creating an OSDRequest')
 
-    @patch('cthulhu.manager.user_request.LocalClient', salt_local_client)
     def testScrub(self):
         scrub = self.osd_request_factory.scrub(0)
         self.assertIsInstance(scrub, RadosRequest, 'Testing Scrub')
 
-        scrub.submit(54321)
-        self.salt_local_client.run_job.assert_called_with(54321, 'ceph.rados_commands', [12345, 'I am a fake', [('osd scrub', {'who': '0'})]])
+        remote_mock = MagicMock()
+
+        def get_remote():
+            return remote_mock
+
+        with patch('cthulhu.manager.user_request.get_remote', get_remote):
+            scrub.submit(54321)
+
+        remote_mock.run_job.assert_called_with(54321,
+                                               'ceph.rados_commands',
+                                               {'fsid': 12345,
+                                                'cluster_name': 'I am a fake',
+                                                'commands': [('osd scrub', {'who': '0'})]})
 
     def testDeepScrub(self):
         deep_scrub = self.osd_request_factory.deep_scrub(0)

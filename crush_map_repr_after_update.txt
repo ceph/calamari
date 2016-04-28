@@ -1,0 +1,71 @@
+# begin crush map
+tunable choose_local_tries 0
+tunable choose_local_fallback_tries 0
+tunable choose_total_tries 50
+tunable chooseleaf_descend_once 1
+tunable straw_calc_version 1
+
+# devices
+device 0 osd.0
+
+# types
+type 0 osd
+type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 region
+type 10 root
+
+# buckets
+host vagrant-ubuntu-trusty-64 {
+    id -2       # do not change unnecessarily
+    # weight 0.038
+    alg straw
+    hash 0  # rjenkins1
+    item osd.0 weight 0.038
+}
+root default {
+    id -1       # do not change unnecessarily
+    # weight 0.038
+    alg straw
+    hash 0  # rjenkins1
+    item vagrant-ubuntu-trusty-64 weight 0.038
+}
+
+# rules
+rule replicated_ruleset {
+    ruleset 0
+    type replicated
+    min_size 1
+    max_size 10
+    step take default
+    step chooseleaf firstn 0 type host
+    step emit
+}
+rule racky_updated {
+    ruleset 1
+    type replicated
+    min_size 2
+    max_size 11
+    step take default
+    step chooseleaf firstn 0 type row
+    step emit
+}
+rule ecrule_updated {
+    ruleset 2
+    type erasure
+    min_size 3
+    max_size 3
+    step set_chooseleaf_tries 6
+    step set_choose_tries 101
+    step take default
+    step chooseleaf indep 0 type rack
+    step emit
+}
+
+# end crush map

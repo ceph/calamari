@@ -38,3 +38,13 @@ calamari_common_mod:
     - cwd: {{ pillar['home'] }}/calamari/calamari-common
     - require:
       - sls: virtualenv
+
+calamari_lite_mod:
+  cmd.run:
+    - user: {{ pillar['username'] }}
+    - name: "source ../env/bin/activate && python setup.py develop"
+    - cwd: /home/vagrant/calamari/calamari-lite
+    - cwd: {{ pillar['home'] }}/calamari/calamari-lite
+    - require:
+      - sls: virtualenv
+
