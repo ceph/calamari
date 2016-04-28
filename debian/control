@@ -23,8 +23,6 @@ Depends: apache2,
          logrotate,
          postgresql,
          python-cairo,
-         salt-master,
-         salt-minion,
          supervisor,
          ${misc:Depends},
          ${python:Depends}
