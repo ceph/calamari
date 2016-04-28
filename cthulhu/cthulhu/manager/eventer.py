@@ -379,6 +379,46 @@ class Eventer(gevent.greenlet.Greenlet):
                     # with the server, and we haven't already reported the server laggy,
                     # to indicate that our best guess here is that the server itself is down.
 
+    def _on_pool_status(self, fsid, new, old):
+        old_pool_ids = set([o['pool'] for o in old.data['pools']])
+        new_pool_ids = set([o['pool'] for o in new.data['pools']])
+        deleted_pools = old_pool_ids - new_pool_ids
+        created_pools = new_pool_ids - old_pool_ids
+
+        def pool_event(severity, msg, pool_id, tag):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    name=self._manager.clusters[fsid].name,
+                    id=pool_id,
+                    on_server=self._get_on_server(fsid, 'pool', pool_id)
+                ), tag,
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'pool', pool_id),
+                service_type='pool',
+                service_id=str(pool_id),
+            )
+
+            self._emit(
+                severity,
+                msg.format(
+                    name=self._manager.clusters[fsid].name,
+                    id=pool_id,
+                    on_server=self._get_on_server(fsid, 'pool', pool_id)
+                ),
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'pool', pool_id),
+                service_type='pool',
+                service_id=str(pool_id))
+
+        # Generate events for removed pools
+        for pool_id in deleted_pools:
+            pool_event(INFO, "pool {name}.{id}{on_server} removed from cluster {name}", pool_id, 'ceph/pool/deleted')
+
+        # Generate events for added pools
+        for pool_id in created_pools:
+            pool_event(INFO, "pool {name}.{id}{on_server} added to cluster {name}", pool_id, 'ceph/pool/added')
+
     def _on_mon_status(self, fsid, new, old):
         old_quorum = set(old.data['quorum'])
         new_quorum = set(new.data['quorum'])
@@ -485,6 +525,7 @@ class Eventer(gevent.greenlet.Greenlet):
             return
 
         if sync_type == OsdMap:
+            self._on_pool_status(fsid, new, old)
             self._on_osd_map(fsid, new, old)
         elif sync_type == Health:
             self._on_health(fsid, new, old)
