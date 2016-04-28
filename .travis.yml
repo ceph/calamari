@@ -19,6 +19,7 @@ install:
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/install_ceph.sls
     - virtualenv --system-site-packages env
     - source env/bin/activate
+    - sudo chown travis:travis -R /home/travis/.cache
     - pip install -r requirements/lite.txt
     - pip install flake8
     - pip install django-nose
