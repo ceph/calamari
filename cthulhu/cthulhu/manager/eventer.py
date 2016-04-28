@@ -6,7 +6,7 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
@@ -26,12 +26,15 @@ GRACE_PERIOD = 30
 CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
-EMIT_EVENTS_TO_SALT_EVENT_BUS = False
+MINION_CONFIG = str(config.get('cthulhu', 'salt_config_path')).replace('master', 'minion')
+EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
 EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
 
 
 if EMIT_EVENTS_TO_SALT_EVENT_BUS:
     try:
+        # TODO move this to import
+        # from calamari_common import Caller
         import salt.client
     except ImportError as e:
         EMIT_EVENTS_TO_SALT_EVENT_BUS = False
@@ -67,7 +70,10 @@ class Eventer(gevent.greenlet.Greenlet):
         # Check the config to decide if events has to be pushed to salt event bus.
         # If config is set initialize the salt caller object used to push events.
         if EMIT_EVENTS_TO_SALT_EVENT_BUS:
-            self.caller = salt.client.Caller()
+            log.debug("Events will be emitted to salt event bus")
+            __opts__ = salt.config.minion_config(MINION_CONFIG)
+            __opts__['file_client'] = 'local'
+            self.caller = salt.client.Caller(mopts=__opts__)
 
         self._events = []
 
@@ -76,6 +82,7 @@ class Eventer(gevent.greenlet.Greenlet):
         self._complete.set()
 
     def _run(self):
+        log.debug("Eventer running")
         self._emit(INFO, "Calamari server started")
         self._emit_to_salt_bus(SEVERITIES[INFO], "Calamari server started", "ceph/calamari/started")
         self._flush()
@@ -91,9 +98,11 @@ class Eventer(gevent.greenlet.Greenlet):
         This function emits events to salt event bus, if the config
         value "emit_events_to_salt_event_bus" is set to true.
         """
+        log.debug("Eventer running _emit_salt")
         if not EMIT_EVENTS_TO_SALT_EVENT_BUS:
             return
 
+        log.debug("Eventer running _emit_salt")
         res = {}
         res["message"] = message
         res["severity"] = severity
@@ -401,6 +410,33 @@ class Eventer(gevent.greenlet.Greenlet):
         for rank in old_quorum - new_quorum:
             _mon_event(WARNING, "Mon '{cluster_name}.{mon_name}' left quorum{on_server}", rank)
 
+    def _on_quorum_status(self, fsid, new, old):
+        old_leader_name = set(old.data['quorum_leader_name'])
+        new_leader_name = set(new.data['quorum_leader_name'])
+
+        def _leader_event(severity, msg, name):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    cluster_name=self._manager.clusters[fsid].name,
+                    mon_name=name,
+                    on_server=self._get_on_server(fsid, 'mon', name)
+                ), "ceph/mon/leaderChanged",
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'mon', name)
+            )
+
+            self._emit(severity,
+                       msg.format(
+                           cluster_name=self._manager.clusters[fsid].name,
+                           mon_name=name,
+                           on_server=self._get_on_server(fsid, 'mon', name)),
+                       fsid=fsid,
+                       fqdn=self._get_fqdn(fsid, 'mon', name))
+
+        if old_leader_name != new_leader_name:
+            _leader_event(INFO, "Mon '{cluster_name}.{mon_name}' now quorum leader {on_server}", new_leader_name)
+
     def _on_health(self, fsid, new, old):
         # Generate notifications for transitions between HEALTH_OK, HEALTH_WARN, HEALTH_ERR
         old_status = old.data['overall_status']
@@ -454,6 +490,8 @@ class Eventer(gevent.greenlet.Greenlet):
             self._on_health(fsid, new, old)
         elif sync_type == MonStatus:
             self._on_mon_status(fsid, new, old)
+        elif sync_type == QuorumStatus:
+            self._on_quorum_status(fsid, new, old)
 
         self._flush()
 
