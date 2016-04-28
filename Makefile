@@ -80,12 +80,9 @@ build-venv-carbon: venv
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
-		./bin/python ./bin/pip install --no-install carbon; \
-		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-			build/carbon/setup.py; \
-		./bin/python ./bin/pip install --no-download \
+		./bin/python ./bin/pip install \
 		  --install-option="--prefix=$(SRC)/venv" \
-		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon; \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon==0.9.15; \
 	fi \
 	)
 
