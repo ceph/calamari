@@ -68,9 +68,23 @@ $(VERSION_PY):
 	echo "VERSION = \"$(VERSION)-$(REVISION)$(BPTAG)\"" > $(VERSION_PY)
 
 # separate targets exist below for debugging; the expected order is
-# "venv -> build-venv-reqs -> fixup-venv"
+# "venv -> build-venv-carbon/build-venv-reqs -> fixup-venv"
 
 build-venv: fixup-venv
+
+# try for idempotency with pip freeze | grep carbon
+build-venv-carbon: venv
+	@echo "target: $@"
+	set -ex; \
+	(export PYTHONDONTWRITEBYTECODE=1; \
+	cd venv; \
+	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
+	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
+		./bin/python ./bin/pip install \
+		  --install-option="--prefix=$(SRC)/venv" \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon==0.9.15; \
+	fi \
+	)
 
 build-venv-reqs: venv
 	@echo "target: $@"
@@ -92,7 +106,7 @@ build-venv-reqs: venv
 	../venv/bin/python ./setup.py install && \
 	cd ../venv ; )
 
-fixup-venv: build-venv-reqs
+fixup-venv: build-venv-carbon build-venv-reqs
 	@echo "target: $@"
 	set -x; \
 	cd venv; \
