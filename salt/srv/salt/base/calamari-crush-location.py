@@ -35,7 +35,7 @@ def get_last_crush_location(cluster, osd_id):
             return json.loads(out.strip())
 
     for e in errors:
-        log.error(e)
+        log.info(e)
 
 
 def get_osd_location(cluster, osd_id):
@@ -50,7 +50,7 @@ def get_osd_location(cluster, osd_id):
     try:
         last_location = get_last_crush_location(cluster, osd_id)
     except OSError:
-        log.error('Failed to get last crush location. Defaulting to current host %s' % current_hostname)
+        log.info('Failed to get last crush location. Defaulting to current host %s' % current_hostname)
     else:
         if last_location is not None and current_hostname == last_location.get('hostname'):
             try:
