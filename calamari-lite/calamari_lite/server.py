@@ -10,7 +10,7 @@ import gevent
 import signal
 from gevent.server import StreamServer
 import os
-from gevent.wsgi import WSGIServer
+from gevent.pywsgi import WSGIServer
 import zerorpc
 import logging
 from calamari_common.config import CalamariConfig
@@ -26,6 +26,10 @@ log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
+ssl = {
+    'certfile':  'server.crt',
+    'keyfile': 'server.key',
+}
 
 class ShallowCarbonCache(gevent.Greenlet):
     def __init__(self):
@@ -124,7 +128,7 @@ def main():
             complete.wait(timeout=5)
 
     app = get_internal_wsgi_application()
-    wsgi = WSGIServer(('0.0.0.0', 8002), app)
+    wsgi = WSGIServer(('0.0.0.0', 8002), app, **ssl)
     wsgi.serve_forever()
 
     def shutdown():
