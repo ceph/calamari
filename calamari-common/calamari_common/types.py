@@ -249,6 +249,10 @@ class QuorumStatus(VersionedSyncObject):
     str = 'quorum_status'
 
 
+class RbdListing(VersionedSyncObject):
+    str = 'rbd_listing'
+
+
 class MonStatus(VersionedSyncObject):
     str = 'mon_status'
 
@@ -301,7 +305,7 @@ CLUSTER = 'cluster'
 SERVER = 'server'
 
 # The objects that ClusterMonitor keeps copies of from the mon
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, QuorumStatus, PgSummary, Health, Config]
+SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, QuorumStatus, RbdListing, PgSummary, Health, Config]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
 USER_REQUEST_COMPLETE = 'complete'
