@@ -35,6 +35,7 @@ Requires:       supervisor
 Requires:       redhat-lsb-core
 Requires:	postgresql
 Requires:	postgresql-libs
+Requires:	openssl
 Requires:	postgresql-server
 Requires:	python-setuptools
 Requires:       salt-minion
