@@ -2,7 +2,7 @@ from django.utils.unittest import TestCase
 from cthulhu.manager.eventer import Eventer
 from django.utils.unittest.case import skipIf
 import os
-from mock import MagicMock, patch
+from mock import MagicMock
 
 
 class TestEventer(TestCase):
@@ -34,8 +34,7 @@ class TestEventer(TestCase):
         self.eventer._on_osd_map(12345, new, old)
         self.assertIn('added to the cluster map', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
 
-    @patch('cthulhu.manager.eventer.salt.client')
-    def test_that_it_emits_quorum_status_events(self, client):
+    def test_that_it_emits_quorum_status_events(self):
         new = MagicMock()
         old = MagicMock()
         old.data = {
@@ -256,3 +255,68 @@ class TestEventer(TestCase):
         self.assertIn('added to cluster', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
         self.eventer._on_pool_status(12345, old, new)
         self.assertIn('removed from cluster', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+
+    def test_that_it_emits_rbd_creation(self):
+        self.eventer._emit = MagicMock()
+        new = MagicMock()
+        old = MagicMock()
+        old.data = {}
+        old.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+        new.data = {}
+        new.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar', u'size': 104857600},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+
+        self.eventer._on_rbd_listing(12345, old, old)
+        self.assertFalse(self.eventer._emit.called)
+
+        self.eventer._on_rbd_listing(12345, new, old)
+        self.assertIn('RBD foobar was added to pool pool_name', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+        self.eventer._on_rbd_listing(12345, old, new)
+        self.assertIn('RBD foobar was removed from pool pool_name', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+
+    def test_that_it_emits_rbd_removal(self):
+        self.eventer._emit = MagicMock()
+        new = MagicMock()
+        old = MagicMock()
+        old.data = {}
+        old.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+        new.data = {}
+        new.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar', u'size': 104857600},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+
+        self.eventer._on_rbd_listing(12345, old, new)
+        self.assertIn('RBD foobar was removed from pool pool_name', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+
+    def test_that_it_emits_rbd_resize(self):
+        self.eventer._emit = MagicMock()
+        new = MagicMock()
+        old = MagicMock()
+        old.data = {}
+        old.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+        new.data = {}
+        new.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 10}]
+
+        self.eventer._on_rbd_listing(12345, new, old)
+        self.assertIn('RBD foobar_9 in pool pool_name was resized to 10', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+
+    def test_that_renames_dont_trigger_emit_resize(self):
+        self.eventer._emit = MagicMock()
+        new = MagicMock()
+        old = MagicMock()
+        old.data = {}
+        old.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar_9', u'size': 104857600}]
+        new.data = {}
+        new.data["pool_name"] = [{u'format': 2, u'image': u'foo', u'size': 10485760},
+                                 {u'format': 2, u'image': u'foobar', u'size': 104857600}]
+
+        self.eventer._on_rbd_listing(12345, new, old)
+        self.assertIn('RBD foobar_9 was removed from pool pool_name', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+        self.assertIn('RBD foobar was added to pool pool_name', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
+        self.assertNotIn('RBD foobar in pool pool_name was resized', '\n'.join([str(x) for x in self.eventer._emit.call_args_list]))
