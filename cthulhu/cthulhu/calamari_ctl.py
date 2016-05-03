@@ -231,7 +231,17 @@ def initialize(args):
     log.info("Restarting services...")
     subprocess.call(['supervisorctl', 'restart', 'cthulhu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    # TODO: optionally generate or install HTTPS certs + hand to apache
+    # Create self-signed SSL certs only if they do not exist
+    if not os.path.exists('/etc/calamari/ssl/private/calamari-lite.key'):
+        subprocess.call([
+            'openssl', 'req', '-new', '-nodes', '-x509', '-subj',
+            "/C=US/ST=Oregon/L=Portland/O=IT/CN=calamari-lite", '-days', '3650',
+            '-keyout', '/etc/calamari/ssl/private/calamari-lite.key', '-out',
+            '/etc/calamari/ssl/certs/calamari-lite-bundled.crt', '-extensions', 'v3_ca'
+        ])
+        # ensure the bundled crt is readable
+        os.chmod('/etc/calamari/ssl/certs/calamari-lite-bundled.crt', 0644)
+
     log.info("Complete.")
 
 
