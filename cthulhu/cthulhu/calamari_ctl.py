@@ -45,7 +45,6 @@ log.addHandler(buffer_handler)
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
 SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
-RELAX_SALT_PERMS_SLS = "/opt/calamari/salt-local/relax_salt_perms.sls"
 
 
 class CalamariUserError(Exception):
@@ -215,7 +214,6 @@ def initialize(args):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
-    run_local_salt(sls=RELAX_SALT_PERMS_SLS, message='salt')
     run_local_salt(sls=POSTGRES_SLS, message='postgres')
 
     # Cthulhu's database
