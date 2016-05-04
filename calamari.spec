@@ -37,6 +37,7 @@ Requires:	postgresql
 Requires:	postgresql-libs
 Requires:	postgresql-server
 Requires:	python-setuptools
+Requires:       salt-minion
 %if 0%{?rhel} || 0%{?fedora}
 # SELinux deps
 BuildRequires:  checkpolicy
