@@ -766,7 +766,7 @@ class MsgGenerator(gevent.Greenlet):
         # librados in its own non-gevent python
         # process and RPC to it.
         from gevent import monkey
-        monkey.patch_all()
+        monkey.patch_all(thread=False)
         monkey.patch_subprocess()
 
     def register(self, instance):
