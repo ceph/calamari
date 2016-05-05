@@ -238,7 +238,6 @@ def initialize(args):
         execute_from_command_line(["", "syncdb", "--noinput"])
 
     create_default_roles()
-    create_admin_users(args)
     log.info("Initializing web interface...")
 
     # Django's static files
