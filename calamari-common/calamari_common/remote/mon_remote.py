@@ -14,6 +14,7 @@ from gevent import socket
 import os
 import msgpack
 import json
+import tempfile
 
 import logging
 log = logging.getLogger('calamari.remote.mon')
@@ -36,6 +37,7 @@ RADOS_TIMEOUT = 20
 RADOS_NAME = 'client.admin'
 
 SYNC_TYPES = ['mon_status',
+              'quorum_status',
               'mon_map',
               'osd_map',
               'mds_map',
@@ -65,25 +67,36 @@ def get_ceph_version():
     result = ceph_command(None, ['--version'])
     try:
         version = result['out'].split(' ')[2]
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, IndexError):
         version = None
 
     return version
 
 
-def rados_connect(cluster_name):
-    if SRC_DIR:
-        conf_file = os.path.join(SRC_DIR, "ceph.conf")
-    else:
-        conf_file = ''
+class ClusterHandle():
 
-    cluster_handle = rados.Rados(
-        name=RADOS_NAME,
-        clustername=cluster_name,
-        conffile=conf_file)
-    cluster_handle.connect(timeout=RADOS_TIMEOUT)
+    def __init__(self, cluster_name):
+        self.cluster_name = cluster_name
 
-    return cluster_handle
+    def __enter__(self):
+        if SRC_DIR:
+            conf_file = os.path.join(SRC_DIR, self.cluster_name + ".conf")
+        else:
+            conf_file = ''
+
+        log.debug('rados_connect getting handle for: %s' % str(conf_file))
+
+        self.cluster_handle = rados.Rados(
+            name=RADOS_NAME,
+            clustername=self.cluster_name,
+            conffile=conf_file)
+        self.cluster_handle.connect(timeout=RADOS_TIMEOUT)
+
+        return self.cluster_handle
+
+    def __exit__(self, *args):
+        self.cluster_handle.shutdown()
+
 
 # This function borrowed from /usr/bin/ceph: we should
 # get ceph's python code into site-packages so that we
@@ -243,121 +256,27 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
             return outbuf
 
 
-# This function borrowed from /usr/bin/ceph: we should
-# get ceph's python code into site-packages so that we
-# can borrow things like this.
-def admin_socket(asok_path, cmd, fmt=''):
+def transform_crushmap(data, operation):
     """
-    Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
-    path to the admin socket; cmd is a list of strings
+    Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
+    respectively
+    returns (0 on success, transformed crushmap, errors)
     """
+    # write data to a tempfile because crushtool can't handle stdin :(
+    with tempfile.NamedTemporaryFile(delete=True) as f:
+        f.write(data)
+        f.flush()
 
-    def do_sockio(path, cmd):
-        """ helper: do all the actual low-level stream I/O """
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(path)
-        try:
-            sock.sendall(cmd + '\0')
-            len_str = sock.recv(4)
-            if len(len_str) < 4:
-                raise RuntimeError("no data returned from admin socket")
-            l, = struct.unpack(">I", len_str)
-            ret = ''
+        if operation == 'set':
+            args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
+        elif operation == 'get':
+            args = ["crushtool", "-d", f.name]
+        else:
+            return 1, '', 'Did not specify get or set'
 
-            got = 0
-            while got < l:
-                bit = sock.recv(l - got)
-                ret += bit
-                got += len(bit)
-
-        except Exception as e:
-            raise AdminSocketError('exception: ' + str(e))
-        return ret
-
-    try:
-        cmd_json = do_sockio(asok_path,
-                             json.dumps({"prefix": "get_command_descriptions"}))
-    except Exception as e:
-        raise AdminSocketError('exception getting command descriptions: ' + str(e))
-
-    if cmd == 'get_command_descriptions':
-        return cmd_json
-
-    sigdict = parse_json_funcsigs(cmd_json, 'cli')
-    valid_dict = validate_command(sigdict, cmd)
-    if not valid_dict:
-        raise AdminSocketError('invalid command')
-
-    if fmt:
-        valid_dict['format'] = fmt
-
-    try:
-        ret = do_sockio(asok_path, json.dumps(valid_dict))
-    except Exception as e:
-        raise AdminSocketError('exception: ' + str(e))
-
-    return ret
-
-
-SYNC_TYPES = ['mon_status',
-              'mon_map',
-              'osd_map',
-              'mds_map',
-              'pg_summary',
-              'health',
-              'config']
-
-
-def md5(raw):
-    hasher = hashlib.md5()
-    hasher.update(raw)
-    return hasher.hexdigest()
-
-
-def pg_summary(pgs_brief):
-    """
-    Convert an O(pg count) data structure into an O(osd count) digest listing
-    the number of PGs in each combination of states.
-    """
-
-    osds = {}
-    pools = {}
-    all_pgs = {}
-    for pg in pgs_brief:
-        for osd in pg['acting']:
-            try:
-                osd_stats = osds[osd]
-            except KeyError:
-                osd_stats = {}
-                osds[osd] = osd_stats
-
-            try:
-                osd_stats[pg['state']] += 1
-            except KeyError:
-                osd_stats[pg['state']] = 1
-
-        pool = int(pg['pgid'].split('.')[0])
-        try:
-            pool_stats = pools[pool]
-        except KeyError:
-            pool_stats = {}
-            pools[pool] = pool_stats
-
-        try:
-            pool_stats[pg['state']] += 1
-        except KeyError:
-            pool_stats[pg['state']] = 1
-
-        try:
-            all_pgs[pg['state']] += 1
-        except KeyError:
-            all_pgs[pg['state']] = 1
-
-    return {
-        'by_osd': osds,
-        'by_pool': pools,
-        'all': all_pgs
-    }
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return p.returncode, stdout, stderr
 
 
 def rados_commands(fsid, cluster_name, commands):
@@ -366,35 +285,44 @@ def rados_commands(fsid, cluster_name, commands):
     should always know both, and it saves this function the trouble
     of looking up one from the other.
     """
-    # Open a RADOS session
-    cluster_handle = rados_connect(cluster_name)
-    results = []
 
-    # Each command is a 2-tuple of a prefix followed by an argument dictionary
-    for i, (prefix, argdict) in enumerate(commands):
-        argdict['format'] = 'json'
-        ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
-        if ret != 0:
-            return {
-                'error': True,
-                'results': results,
-                'error_status': outs,
-                'versions': cluster_status(cluster_handle, cluster_name)['versions'],
-                'fsid': fsid
-            }
-        if outbuf:
-            results.append(json.loads(outbuf))
-        else:
-            results.append(None)
+    from ceph_argparse import json_command
 
-    # For all RADOS commands, we include the cluster map versions
-    # in the response, so that the caller knows which versions to
-    # wait for in order to see the consequences of their actions.
-    # TODO: not all commands will require version info on completion, consider making
-    # this optional.
-    # TODO: we should endeavor to return something clean even if we can't talk to RADOS
-    # enough to get version info
-    versions = cluster_status(cluster_handle, cluster_name)['versions']
+    with ClusterHandle(cluster_name) as cluster_handle:
+
+        results = []
+
+        # Each command is a 2-tuple of a prefix followed by an argument dictionary
+        for i, (prefix, argdict) in enumerate(commands):
+            argdict['format'] = 'json'
+            if prefix == 'osd setcrushmap':
+                ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
+                if ret != 0:
+                    raise RuntimeError(outs)
+                ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+            else:
+                ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
+            if ret != 0:
+                return {
+                    'error': True,
+                    'results': results,
+                    'error_status': outs,
+                    'versions': cluster_status(cluster_handle, cluster_name)['versions'],
+                    'fsid': fsid
+                }
+            if outbuf:
+                results.append(json.loads(outbuf))
+            else:
+                results.append(None)
+
+        # For all RADOS commands, we include the cluster map versions
+        # in the response, so that the caller knows which versions to
+        # wait for in order to see the consequences of their actions.
+        # TODO: not all commands will require version info on completion, consider making
+        # this optional.
+        # TODO: we should endeavor to return something clean even if we can't talk to RADOS
+        # enough to get version info
+        versions = cluster_status(cluster_handle, cluster_name)['versions']
 
     # Success
     return {
@@ -423,9 +351,43 @@ def ceph_command(cluster_name, command_args):
     else:
         args = ceph + command_args
 
+    log.info('ceph_command {0}'.format(str(args)))
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     status = p.returncode
+    p.stdout.close()
+    p.stderr.close()
+
+    log.info('ceph_command {0} {1} {2}'.format(str(status), stdout, stderr))
+    return {
+        'out': stdout,
+        'err': stderr,
+        'status': status
+    }
+
+
+def rbd_command(command_args, pool_name=None):
+    """
+    Run a rbd CLI operation directly.  This is a fallback to allow
+    manual execution of arbitrary commands in case the user wants to
+    do something that is absent or broken in Calamari proper.
+
+    :param pool_name: Ceph pool name, or None to run without --pool argument
+    :param command_args: Command line, excluding the leading 'rbd' part.
+    """
+
+    if pool_name:
+        args = ["rbd", "--pool", pool_name] + command_args
+    else:
+        args = ["rbd"] + command_args
+
+    log.info('rbd_command {0}'.format(str(args)))
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    status = p.returncode
+    p.stdout.close()
+    p.stderr.close()
+    log.info('rbd_command {0} {1} {2}'.format(str(status), stdout, stderr))
 
     return {
         'out': stdout,
@@ -439,60 +401,83 @@ def get_cluster_object(cluster_name, sync_type, since):
     # fetching older-than-present versions to allow the master
     # to backfill its history.
 
+    from ceph_argparse import json_command
+
     # Check you're asking me for something I know how to give you
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    cluster_handle = rados_connect(cluster_name)
+    with ClusterHandle(cluster_name) as cluster_handle:
+        ret, outbuf, outs = json_command(cluster_handle,
+                                         prefix='status',
+                                         argdict={'format': 'json'},
+                                         timeout=RADOS_TIMEOUT)
+        status = json.loads(outbuf)
+        fsid = status['fsid']
 
-    ret, outbuf, outs = json_command(cluster_handle,
-                                     prefix='status',
-                                     argdict={'format': 'json'},
-                                     timeout=RADOS_TIMEOUT)
-    status = json.loads(outbuf)
-    fsid = status['fsid']
-
-    if sync_type == 'config':
-        # Special case for config, get this via admin socket instead of librados
-        raw = _get_config(cluster_name)
-        version = md5(raw)
-        data = json.loads(raw)
-    else:
-        command, kwargs, version_fn = {
-            'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
-            'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
-            'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
-            'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-            'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
-            'health': ('health', {'detail': ''}, lambda d, r: md5(r))
-        }[sync_type]
-        kwargs['format'] = 'json'
-        ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs, timeout=RADOS_TIMEOUT)
-        assert ret == 0
-
-        if sync_type == 'pg_summary':
-            data = pg_summary(json.loads(raw))
-            version = version_fn(data, raw)
-        else:
+        if sync_type == 'config':
+            # Special case for config, get this via admin socket instead of librados
+            raw = _get_config(cluster_name)
+            version = md5(raw)
             data = json.loads(raw)
-            version = version_fn(data, raw)
+        else:
+            command, kwargs, version_fn = {
+                'quorum_status': ('quorum_status', {}, lambda d, r: d['election_epoch']),
+                'mon_status': ('mon_status', {}, lambda d, r: d['election_epoch']),
+                'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
+                'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
+                'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
+                'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
+                'health': ('health', {'detail': ''}, lambda d, r: md5(r))
+            }[sync_type]
+            kwargs['format'] = 'json'
+            ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs, timeout=RADOS_TIMEOUT)
+            assert ret == 0
 
-        # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
-        # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
-        # send back to the calamari server.
-        if sync_type == 'osd_map':
-            ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
-                'format': 'json',
-                'epoch': version
-            }, timeout=RADOS_TIMEOUT)
-            assert ret == 0
-            data['tree'] = json.loads(raw)
-            # FIXME: crush dump does not support an epoch argument, so this is potentially
-            # from a higher-versioned OSD map than the one we've just read
-            ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs,
-                                          timeout=RADOS_TIMEOUT)
-            assert ret == 0
-            data['crush'] = json.loads(raw)
+            if sync_type == 'pg_summary':
+                data = pg_summary(json.loads(raw))
+                version = version_fn(data, raw)
+            else:
+                data = json.loads(raw)
+                version = version_fn(data, raw)
+
+            # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
+            # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
+            # send back to the calamari server.
+            if sync_type == 'osd_map':
+                ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
+                    'format': 'json',
+                    'epoch': version
+                }, timeout=RADOS_TIMEOUT)
+                assert ret == 0
+                data['tree'] = json.loads(raw)
+                # FIXME: crush dump does not support an epoch argument, so this is potentially
+                # from a higher-versioned OSD map than the one we've just read
+                ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs,
+                                              timeout=RADOS_TIMEOUT)
+                assert ret == 0
+                data['crush'] = json.loads(raw)
+
+                ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
+                                              timeout=RADOS_TIMEOUT)
+                assert ret == 0
+
+                ret, stdout, outs = transform_crushmap(raw, 'get')
+                assert ret == 0
+                data['crush_map_text'] = stdout
+                data['osd_metadata'] = []
+
+                for osd_entry in data['osds']:
+                    osd_id = osd_entry['osd']
+                    command = "osd metadata"
+                    argdict = {'id': osd_id}
+                    argdict.update(kwargs)
+                    ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
+                                                  timeout=RADOS_TIMEOUT)
+                    assert ret == 0
+                    updated_osd_metadata = json.loads(raw)
+                    updated_osd_metadata['osd'] = osd_id
+                    data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,
@@ -581,11 +566,11 @@ def get_heartbeats():
     cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         try:
-            cluster_handle = rados_connect(fsid_names[fsid])
-            cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
+            with ClusterHandle(fsid_names[fsid]) as cluster_handle:
+                cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
         except rados.Error, e:
             # Something went wrong getting data for this cluster, exclude it from our report
-            log.debug('get_heartbeat: %s ' % str(e)) 
+            log.debug('get_heartbeat during rados_connect on cluster %s %s ' % (str(fsid_names[fsid]), str(e)))
             pass
 
     server_heartbeat = {
@@ -644,12 +629,13 @@ def cluster_status(cluster_handle, cluster_name):
     """
     # Get map versions from 'status'
     mon_status = rados_command(cluster_handle, "mon_status")
+    quorum_status = rados_command(cluster_handle, "quorum_status")
     status = rados_command(cluster_handle, "status")
 
     fsid = status['fsid']
-    mon_epoch = status['monmap']['epoch']
-    osd_epoch = status['osdmap']['osdmap']['epoch']
-    mds_epoch = status['mdsmap']['epoch']
+    mon_epoch = status.get('monmap', {}).get('epoch')
+    osd_epoch = status.get('osdmap', {}).get('osdmap', {}).get('epoch')
+    mds_epoch = status.get('mdsmap', {}).get('epoch')
 
     # FIXME: even on a healthy system, 'health detail' contains some statistics
     # that change on their own, such as 'last_updated' and the mon space usage.
@@ -670,6 +656,7 @@ def cluster_status(cluster_handle, cluster_name):
         'fsid': fsid,
         'versions': {
             'mon_status': mon_status['election_epoch'],
+            'quorum_status': quorum_status['election_epoch'],
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,
@@ -715,6 +702,7 @@ class MsgEvent(object):
 
 
 def run_job(cmd, args):
+    log.info('run_job helper {0} {1}'.format(cmd, str(args)))
     if cmd == "ceph.get_cluster_object":
         return get_cluster_object(
             args['cluster_name'],
@@ -725,6 +713,13 @@ def run_job(cmd, args):
             args['fsid'],
             args['cluster_name'],
             args['commands'],)
+    elif cmd == "ceph.ceph_command":
+        return ceph_command(
+            None,
+            args[1],)
+    elif cmd == "ceph.rbd_command":
+        return rbd_command(
+            args[0],)
     else:
         raise NotImplemented(cmd)
 
@@ -766,7 +761,7 @@ class MsgGenerator(gevent.Greenlet):
         # librados in its own non-gevent python
         # process and RPC to it.
         from gevent import monkey
-        monkey.patch_all(thread=False)
+        monkey.patch_all()
         monkey.patch_subprocess()
 
     def register(self, instance):
@@ -837,7 +832,6 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         self._events = Queue()
         self.register()
 
-
     def put(self, msg_event):
         self._events.put(msg_event)
 
@@ -849,13 +843,14 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         try:
             return run_job(cmd, args)
         except:
-            raise Unavailable()
+            raise Unavailable(cmd)
 
     def run_job(self, fqdn, cmd, args):
         """
         Start running a python function from our remote module,
         and return the job ID
         """
+        log.info('MonRemote.run_job {0}'.format(str(cmd)))
         return self._generator.run_job(fqdn, cmd, args)
 
     def get_local_metadata(self):
@@ -972,5 +967,79 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
                 elif ev.kind == RUNNING_JOBS and on_running_jobs:
                     on_running_jobs(self.fqdn, ev.data)
 
-
         log.info("listen: complete")
+
+
+BASE = "/var/log"
+
+
+def _resolve(base, subpath):
+    path = os.path.normpath(os.path.realpath(os.path.join(base, subpath)))
+    if not path.startswith(base):
+        raise ValueError("Forbidden to us subpath with ../ or symlinks outside base")
+    else:
+        return path
+
+
+def _is_log_file(path):
+    """
+    Checks for indications this isn't a log file of interest,
+    such as not being a normal file, ending in a number, ending in .gz
+    """
+    if not os.path.isfile(path):
+        return False
+
+    if path.endswith(".gz") or path.endswith(".bz2") or path.endswith(".zip"):
+        return False
+
+    if re.match(".+\d+$", path):
+        return False
+
+    return True
+
+
+def list_logs(subpath):
+    """
+    Recursively list log files within /var/log, or
+    a subpath therein if subpath is not '.'
+
+    :return a list of strings which are paths relative to /var/log
+    """
+
+    path = _resolve(BASE, subpath)
+    if not os.path.isdir(path):
+        raise IOError("'%s' not found or not a directory" % subpath)
+
+    files = os.listdir(path)
+    files = [os.path.join(path, f) for f in files]
+
+    log_files = [f for f in files if _is_log_file(f)]
+    log_files = [r[len(BASE) + 1:] for r in log_files]
+
+    sub_dirs = [f for f in files if os.path.isdir(f)]
+    sub_dirs = [f[len(BASE) + 1:] for f in sub_dirs]
+    for subdir in sub_dirs:
+        log_files.extend(list_logs(subdir))
+
+    return log_files
+
+
+def tail(subpath, n_lines):
+    """
+    Return a string of the last n_lines lines of a log file
+
+    :param subpath: Path relative to the log directory e.g. ceph/ceph.log
+    :param n_lines: Number of lines
+    :return a string containing n_lines or fewer lines
+    """
+    path = _resolve(BASE, subpath)
+    if not os.path.isfile(path):
+        raise IOError("'%s' not found or not an ordinary file" % path)
+
+    # To emit exception if they pass something naughty, rather than have `tail`
+    # experience an error
+    n_lines = int(n_lines)
+
+    p = subprocess.Popen(["tail", "-n", str(n_lines), path], stdout=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    return stdout
