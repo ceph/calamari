@@ -125,6 +125,7 @@ fixup-venv: build-venv-carbon build-venv-reqs
 			ln -s /opt/calamari/venv/$$p local/$$p; \
 		done; \
 	fi
+	find venv/ -path "*gevent*" -name _socket3.py -delete
 
 # when this repo contained the Javascript code, it was difficult to make
 # source packages work right; it might be easier now
