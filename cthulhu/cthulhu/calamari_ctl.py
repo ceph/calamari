@@ -165,15 +165,11 @@ def create_admin_users(args):
                 password=args.admin_password,
                 email=args.admin_email
             )
+
     else:
-        if not user_model.objects.filter(is_superuser=True).count():
-            # When prompting for details, it's good to let the user know what the account
-            # is (especially that's a web UI one, not a linux system one)
-            log.info("You will now be prompted for login details for the administrative "
-                     "user account.  This is the account you will use to log into the web interface "
-                     "once setup is complete.")
-            # Prompt for user details
-            execute_from_command_line(["", "createsuperuser"])
+        log.info("You have not created an admin account for calamari."
+                 "This can be done later by running sudo calamari-ctl add_user <username>"
+                 "sudo calamari-ctl assign_role <username> --role superuser")
 
 
 def initialize(args):
@@ -219,6 +215,7 @@ def initialize(args):
         execute_from_command_line(["", "syncdb", "--noinput"])
 
     create_default_roles()
+    create_admin_users(args)
     log.info("Initializing web interface...")
 
     # Django's static files
