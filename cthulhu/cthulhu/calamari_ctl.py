@@ -44,7 +44,6 @@ log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
-SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
 
 class CalamariUserError(Exception):
@@ -177,24 +176,6 @@ def create_admin_users(args):
             execute_from_command_line(["", "createsuperuser"])
 
 
-def update_connected_minions():
-    from cthulhu.manager import config
-    from calamari_common.salt_wrapper import Key, master_config
-    if len(Key(master_config(config.get('cthulhu', 'salt_config_path'))).list_keys()['minions']) == 0:
-        # no minions to update
-        return
-
-    message = "Updating already connected nodes."
-    log.info(message)
-    p = subprocess.Popen(["salt", "*", "state.highstate"],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    log.debug("{message} salt stdout: {out}".format(message=message, out=out))
-    log.debug("{message} salt stderr: {err}".format(message=message, err=err))
-    if p.returncode != 0:
-        raise RuntimeError("{message} failed with rc={rc}".format(message=message, rc=p.returncode))
-
-
 def initialize(args):
     """
     This command exists to:
@@ -248,16 +229,6 @@ def initialize(args):
     # this user (probably root).  Fix it so that apache can write them later.
     apache_user = pwd.getpwnam(config.get('calamari_web', 'username'))
     os.chown(config.get('calamari_web', 'log_path'), apache_user.pw_uid, apache_user.pw_gid)
-
-    # Handle SQLite case, otherwise no chown is needed
-    if config.get('calamari_web', 'db_engine').endswith("sqlite3"):
-        os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
-
-    # Start services, configure to run on boot
-    run_local_salt(sls=SERVICES_SLS, message='services')
-
-    # During an upgrade: update minions that were connected previously
-    update_connected_minions()
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
