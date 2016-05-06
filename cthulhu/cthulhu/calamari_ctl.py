@@ -5,19 +5,24 @@ import json
 import logging
 import tempfile
 import traceback
+from alembic import command
 import os
 import sys
 from StringIO import StringIO
 import subprocess
-import pwd
-import time
-
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import execute_from_command_line
+import pwd
 from django.utils.crypto import get_random_string
-from django.contrib.auth import get_user_model
+import time
+from calamari_common.config import CalamariConfig, AlembicConfig
+from sqlalchemy import create_engine
+from calamari_common.db.base import Base
 
-from calamari_common.config import CalamariConfig
-
+# Import sqlalchemy objects so that create_all sees them
+from cthulhu.persistence.sync_objects import SyncObject  # noqa
+from cthulhu.persistence.servers import Server, Service  # noqa
+from calamari_common.db.event import Event  # noqa
 from cthulhu.log import FORMAT
 
 # The log is very verbose by default, filtered at handler level
@@ -38,6 +43,11 @@ buffer_handler.setFormatter(logging.Formatter(FORMAT))
 log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
+POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
+
+
+class CalamariUserError(Exception):
+    pass
 
 
 @contextmanager
@@ -55,32 +65,96 @@ def quiet():
         sys.stderr = sys.__stderr__
 
 
-def _initialize_db(args, config):
-    from alembic import command
-    from sqlalchemy import create_engine
-    from calamari_common.config import AlembicConfig
-    from calamari_common.db.base import Base
-
-    # Cthulhu's database
-    db_path = config.get('cthulhu', 'db_path')
-    engine = create_engine(db_path)
-    Base.metadata.reflect(engine)
-    alembic_config = AlembicConfig()
-    if ALEMBIC_TABLE in Base.metadata.tables:
-        log.info("Updating database...")
-        # Database already populated, migrate forward
-        command.upgrade(alembic_config, "head")
+def run_local_salt(sls, message):
+    # Configure postgres database
+    if os.path.exists(sls):
+        log.info("Starting/enabling {message}...".format(message=message))
+        p = subprocess.Popen(["salt-call", "--local", "state.template",
+                              sls],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        log.debug("{message} salt stdout: {out}".format(message=message, out=out))
+        log.debug("{message} salt stderr: {err}".format(message=message, err=err))
+        if p.returncode != 0:
+            raise RuntimeError("salt-call for {message} failed with rc={rc}".format(message=message, rc=p.returncode))
     else:
-        log.info("Initializing database...")
-        # Blank database, do initial population
-        Base.metadata.create_all(engine)
-        command.stamp(alembic_config, "head")
+        # This is the path you take if you're running in a development environment
+        log.debug("Skipping {message} configuration, SLS not found".format(message=message))
 
-    # Django's database
-    with quiet():
-        execute_from_command_line(["", "syncdb", "--noinput"])
 
-    log.info("Initializing web interface...")
+def create_default_roles():
+    from django.contrib.auth.models import Group
+    Group.objects.get_or_create(name='readonly')
+    Group.objects.get_or_create(name='read/write')
+
+
+def assign_role(args):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Group
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(username=args.username)
+    except user_model.DoesNotExist, e:
+        log.error('User %s does not exist' % args.username)
+        raise CalamariUserError(str(e))
+
+    user.groups = []
+    user.is_superuser = False
+
+    if args.role_name == 'superuser':
+        user.is_superuser = True
+    else:
+        try:
+            role = Group.objects.get(name=args.role_name)
+        except ObjectDoesNotExist, e:
+            log.error('Role %s does not exist' % args.role_name)
+            raise CalamariUserError(str(e))
+
+        user.groups.add(role)
+
+    user.save()
+
+
+def add_user(args):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.db import IntegrityError
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+    try:
+        user_model.objects.create_user(args.username, args.email, args.password)
+    except IntegrityError, e:
+        log.error('User with username %s already exists' % args.username)
+        raise CalamariUserError(str(e))
+
+    args.role_name = 'read/write'
+    assign_role(args)
+
+
+def disable_user(args):
+    change_user_active_status(args.username, False)
+
+
+def enable_user(args):
+    change_user_active_status(args.username, True)
+
+
+def change_user_active_status(username, active):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.db import IntegrityError
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(username=username)
+        user.is_active = active
+        user.save()
+    except IntegrityError, e:
+        log.error('User with username %s cannot be deleted' % username)
+        raise CalamariUserError(str(e))
+
+
+def create_admin_users(args):
+    from django.contrib.auth import get_user_model
     user_model = get_user_model()
 
     if args.admin_username and args.admin_password and args.admin_email:
@@ -91,15 +165,11 @@ def _initialize_db(args, config):
                 password=args.admin_password,
                 email=args.admin_email
             )
+
     else:
-        if not user_model.objects.all().count():
-            # When prompting for details, it's good to let the user know what the account
-            # is (especially that's a web UI one, not a linux system one)
-            log.info("You will now be prompted for login details for the administrative "
-                     "user account.  This is the account you will use to log into the web interface "
-                     "once setup is complete.")
-            # Prompt for user details
-            execute_from_command_line(["", "createsuperuser"])
+        log.info("You have not created an admin account for calamari."
+                 "This can be done later by running sudo calamari-ctl add_user <username>"
+                 "sudo calamari-ctl assign_role <username> --role superuser")
 
 
 def initialize(args):
@@ -121,12 +191,32 @@ def initialize(args):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
+    run_local_salt(sls=POSTGRES_SLS, message='postgres')
+
+    # Cthulhu's database
+    db_path = config.get('cthulhu', 'db_path')
+    engine = create_engine(db_path)
+    Base.metadata.reflect(engine)
+    alembic_config = AlembicConfig()
+    if ALEMBIC_TABLE in Base.metadata.tables:
+        log.info("Updating database...")
+        # Database already populated, migrate forward
+        command.upgrade(alembic_config, "head")
+    else:
+        log.info("Initializing database...")
+        # Blank database, do initial population
+        Base.metadata.create_all(engine)
+        command.stamp(alembic_config, "head")
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
-    try:
-        _initialize_db(args, config)
-    except ImportError:
-        log.warning("Skipping database configuration")
+    # Django's database
+    with quiet():
+        execute_from_command_line(["", "syncdb", "--noinput"])
+
+    create_default_roles()
+    create_admin_users(args)
+    log.info("Initializing web interface...")
 
     # Django's static files
     with quiet():
@@ -136,10 +226,6 @@ def initialize(args):
     # this user (probably root).  Fix it so that apache can write them later.
     apache_user = pwd.getpwnam(config.get('calamari_web', 'username'))
     os.chown(config.get('calamari_web', 'log_path'), apache_user.pw_uid, apache_user.pw_gid)
-
-    # Handle SQLite case, otherwise no chown is needed
-    if config.get('calamari_web', 'db_engine').endswith("sqlite3"):
-        os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
@@ -151,13 +237,36 @@ def initialize(args):
 
 def change_password(args):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
-    execute_from_command_line(["", "changepassword", args.username])
+    if args.password:
+        from django.contrib.auth import get_user_model
+        user_model = get_user_model()
+        try:
+            user = user_model.objects.get(username=args.username)
+            user.set_password(args.password)
+            user.save()
+        except user_model.DoesNotExist:
+            log.error("User '%s' does not exist." % args.username)
+    else:
+        execute_from_command_line(["", "changepassword", args.username])
+
+
+def rename_user(args):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
+    from django.contrib.auth import get_user_model
+    user_model = get_user_model()
+    try:
+        user_model.objects.get(username=args.new_username)
+        log.error("New username '%s' is already in use." % args.new_username)
+    except user_model.DoesNotExist:
+        try:
+            user = user_model.objects.get(username=args.username)
+            user.username = args.new_username
+            user.save()
+        except user_model.DoesNotExist:
+            log.error("User '%s' does not exist." % args.username)
 
 
 def clear(args):
-    from sqlalchemy import create_engine
-    from calamari_common.db.base import Base
-
     if not args.yes_i_am_sure:
         log.warn("This will remove all stored Calamari monitoring status and history.  Use '--yes-i-am-sure' to proceed")
         return
@@ -175,10 +284,27 @@ def clear(args):
     log.info("Complete.  Now run `%s initialize`" % os.path.basename(sys.argv[0]))
 
 
+def add_user_subparser(subparsers, func, help_text):
+    """
+    Parameterize subparsers that require a positional username argument
+    """
+    user_parser = subparsers.add_parser(func.__name__, help=help_text)
+    user_parser.set_defaults(func=func)
+    user_parser.add_argument('username')
+    return user_parser
+
+
 def main():
     parser = argparse.ArgumentParser(description="""
 Calamari setup tool.
     """)
+
+    parser.add_argument('--devmode',
+                        dest="devmode",
+                        action='store_true',
+                        default=False,
+                        help="signals that we don't need root privileges to run",
+                        required=False)
 
     subparsers = parser.add_subparsers()
     initialize_parser = subparsers.add_parser('initialize',
@@ -195,10 +321,28 @@ Calamari setup tool.
                                    required=False)
     initialize_parser.set_defaults(func=initialize)
 
-    passwd_parser = subparsers.add_parser('change_password',
-                                          help="Reset the password for a Calamari user account")
-    passwd_parser.add_argument('username')
-    passwd_parser.set_defaults(func=change_password)
+    add_user_parser = add_user_subparser(subparsers, add_user, "Create user accounts")
+    add_user_parser.add_argument('--password', dest="password",
+                                 help="Password for account",
+                                 required=False)
+    add_user_parser.add_argument('--email', dest="email",
+                                 help="Email for account",
+                                 required=True)
+
+    assign_role_parser = add_user_subparser(subparsers, assign_role, "Assign a role to an existing user")
+    assign_role_parser.add_argument('--role', dest="role_name",
+                                    help="Role to assign to user, one of readonly, read/write, superuser",
+                                    required=True)
+
+    passwd_parser = add_user_subparser(subparsers, change_password, "Reset the password for a Calamari user account")
+    passwd_parser.add_argument('--password', dest="password",
+                               help="New password",
+                               required=False)
+    add_user_subparser(subparsers, disable_user, "Disable a user")
+    add_user_subparser(subparsers, enable_user, "Enable a user")
+
+    rename_parser = add_user_subparser(subparsers, rename_user, "Rename a user")
+    rename_parser.add_argument('new_username')
 
     clear_parser = subparsers.add_parser('clear', help="Clear the Calamari database")
     clear_parser.add_argument('--yes-i-am-sure', dest="yes_i_am_sure", action='store_true', default=False)
@@ -207,8 +351,15 @@ Calamari setup tool.
     args = parser.parse_args()
 
     try:
-        args.func(args)
-    except:
+        if args.devmode or os.geteuid() == 0:
+            args.func(args)
+        else:
+            log.error('Need root privileges to run')
+    except Exception, e:
+        if args.func in (assign_role, add_user) and isinstance(e, CalamariUserError):
+            sys.exit(1)
+
+        log.error(str(e))
         debug_filename = "/tmp/{0}.txt".format(time.strftime("%Y-%m-%d_%H%M", time.gmtime()))
         open(debug_filename, 'w').write(json.dumps({
             'argv': sys.argv,

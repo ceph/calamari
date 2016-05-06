@@ -24,6 +24,7 @@ Depends: apache2,
          postgresql,
          python-cairo,
          supervisor,
+         salt-minion,
          ${misc:Depends},
          ${python:Depends}
 Description: Inktank package containing the Calamari management server

@@ -22,3 +22,5 @@ zerorpc==0.4.4
 jinja2
 pytz
 psutil
+alembic
+psycopg2

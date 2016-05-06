@@ -13,4 +13,5 @@ build_deps:
       - python-pip
       - libevent-dev
       - libssl-dev
-
+      - postgresql
+      - postgresql-server-dev-all
