@@ -27,9 +27,10 @@ log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
 ssl = {
-    'certfile':  '/etc/calamari/ssl/certs/calamari-lite-bundled.crt',
+    'certfile': '/etc/calamari/ssl/certs/calamari-lite-bundled.crt',
     'keyfile': '/etc/calamari/ssl/private/calamari-lite.key',
 }
+
 
 class ShallowCarbonCache(gevent.Greenlet):
     def __init__(self):
