@@ -116,6 +116,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'calamari_web.middleware.AngularCSRFRename',
+    'calamari_web.middleware.SSLRedirect',
     'django.middleware.csrf.CsrfViewMiddleware',
     # No authentication ATM
     'django.contrib.auth.middleware.AuthenticationMiddleware',

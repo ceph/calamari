@@ -129,8 +129,11 @@ def main():
             complete.wait(timeout=5)
 
     app = get_internal_wsgi_application()
-    wsgi = WSGIServer(('0.0.0.0', 8002), app, **ssl)
-    wsgi.serve_forever()
+    wsgi = WSGIServer(('0.0.0.0', 8003), app, **ssl)
+    wsgi.start()
+
+    unsecure_wsgi = WSGIServer(('0.0.0.0', 8002), app)
+    unsecure_wsgi.start()
 
     def shutdown():
         complete.set()
