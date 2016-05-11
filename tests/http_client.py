@@ -20,7 +20,8 @@ class AuthenticatedHttpClient(requests.Session):
         self._password = password
         self._api_url = api_url
         self.headers = {
-            'Content-type': "application/json; charset=UTF-8"
+            'Content-type': "application/json; charset=UTF-8",
+            'Referer': self._api_url
         }
 
     @property
@@ -29,23 +30,31 @@ class AuthenticatedHttpClient(requests.Session):
 
     def request(self, method, url, **kwargs):
         url = self._api_url + url
+        kwargs['verify'] = False
         response = super(AuthenticatedHttpClient, self).request(method, url, **kwargs)
         if response.status_code >= 400:
             # For the benefit of test logs
             print "%s: %s" % (response.status_code, response.content)
         return response
 
+    def get(self, url, **kwargs):
+        kwargs['verify'] = False
+        return super(AuthenticatedHttpClient, self).get(url, **kwargs)
+
     def post(self, url, data=None, **kwargs):
+        kwargs['verify'] = False
         if isinstance(data, dict):
             data = json.dumps(data)
         return super(AuthenticatedHttpClient, self).post(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
+        kwargs['verify'] = False
         if isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
         return super(AuthenticatedHttpClient, self).patch(url, data, **kwargs)
 
     def delete(self, url, data=None, **kwargs):
+        kwargs['verify'] = False
         if isinstance(data, dict):
             data = json.dumps(data)
         return super(AuthenticatedHttpClient, self).delete(url, data=data, **kwargs)
@@ -85,5 +94,5 @@ if __name__ == "__main__":
 
     c = AuthenticatedHttpClient(args.uri, args.user, args.password)
     c.login()
-    response = c.request('GET', ''.join(remainder)).json()
+    response = c.request('GET', 'cluster').json()
     print json.dumps(response, indent=2)

@@ -7,7 +7,7 @@ bootstrap = False
 
 cluster_distro = ubuntu
 
-api_url = http://localhost:8002/api/v2/
+api_url = https://localhost:8002/api/v2/
 api_username = admin
 api_password = admin
 
