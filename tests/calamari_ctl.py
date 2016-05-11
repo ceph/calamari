@@ -50,7 +50,7 @@ class CalamariControl(object):
     def api_url(self):
         if config.has_option('testing', 'api_url'):
             return config.get('testing', 'api_url')
-        return 'http://{0}/api/v2/'.format(self.get_calamari_node())
+        return 'https://{0}/api/v2/'.format(self.get_calamari_node())
 
     @property
     def api_username(self):
