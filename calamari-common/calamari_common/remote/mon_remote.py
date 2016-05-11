@@ -42,6 +42,7 @@ SYNC_TYPES = ['mon_status',
               'osd_map',
               'mds_map',
               'pg_summary',
+              'rbd_listing',
               'health',
               'config']
 
@@ -168,6 +169,24 @@ def _get_config(cluster_name):
         raise AdminSocketError("Cannot find mon socket for %s" % cluster_name)
     config_response = admin_socket(mon_socket, ['config', 'show'], 'json')
     return config_response
+
+
+def rbd_listing(cluster_handle):
+    """
+    For each pool list the rbd images
+    return a mapping of pool name to rbd images
+    """
+    listing = {}
+    pools = rados_command(cluster_handle, "osd lspools")
+    for pool in pools:
+        name = pool['poolname']
+        result = rbd_command(['ls', '-l', '--format', 'json'], name)
+        if result['status'] == 0:
+            listing[name] = json.loads(result['out'])
+        else:
+            listing[name] = {}
+
+    return listing
 
 
 def pg_summary(pgs_brief):
@@ -420,6 +439,9 @@ def get_cluster_object(cluster_name, sync_type, since):
             raw = _get_config(cluster_name)
             version = md5(raw)
             data = json.loads(raw)
+        elif sync_type == 'rbd_listing':
+            data = rbd_listing(cluster_handle)
+            version = md5(msgpack.packb(data))
         else:
             command, kwargs, version_fn = {
                 'quorum_status': ('quorum_status', {}, lambda d, r: d['election_epoch']),
@@ -630,6 +652,8 @@ def cluster_status(cluster_handle, cluster_name):
     # Get map versions from 'status'
     mon_status = rados_command(cluster_handle, "mon_status")
     quorum_status = rados_command(cluster_handle, "quorum_status")
+    rbd_list = rbd_listing(cluster_handle)
+    rbd_list_version = md5(msgpack.packb(rbd_list))
     status = rados_command(cluster_handle, "status")
 
     fsid = status['fsid']
@@ -657,6 +681,7 @@ def cluster_status(cluster_handle, cluster_name):
         'versions': {
             'mon_status': mon_status['election_epoch'],
             'quorum_status': quorum_status['election_epoch'],
+            'rbd_listing': rbd_list_version,
             'mon_map': mon_epoch,
             'osd_map': osd_epoch,
             'mds_map': mds_epoch,

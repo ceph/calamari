@@ -6,10 +6,11 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, RbdListing, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
+from distutils.util import strtobool
 
 
 # The tick handler is very cheap (no I/O) so we call
@@ -27,7 +28,7 @@ CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
 MINION_CONFIG = str(config.get('cthulhu', 'salt_config_path')).replace('master', 'minion')
-EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
+EMIT_EVENTS_TO_SALT_EVENT_BUS = strtobool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
 EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
 
 
@@ -477,6 +478,50 @@ class Eventer(gevent.greenlet.Greenlet):
         if old_leader_name != new_leader_name:
             _leader_event(INFO, "Mon '{cluster_name}.{mon_name}' now quorum leader {on_server}", new_leader_name)
 
+    def _on_rbd_listing(self, fsid, new, old):
+        def _transform(listing, key):
+            # We know that we're only dealing with a mapping of pool name to list of rbdimages
+            # where an rbdimage is a dict. containing attributes of rbd ls -l i.e. format, image, size
+            # returns a set of tuples (pool_name, image, size)
+            rbds = []
+            for k, v in listing.iteritems():
+                for rbd in v:
+                    if key == 'size':
+                        rbds.append((k, rbd['image'], rbd[key]))
+                    else:
+                        rbds.append((k, rbd[key]))
+            return set(rbds)
+
+        def _rbd_event(severity, msg, tag):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg,
+                "ceph/rbd",
+                fsid=fsid,
+                fqdn=None
+            )
+
+            self._emit(severity,
+                       msg,
+                       fsid=fsid,
+                       fqdn=None)
+
+        old_rbds = _transform(old.data, 'image')
+        new_rbds = _transform(new.data, 'image')
+        deleted_rbds = old_rbds - new_rbds
+        created_rbds = new_rbds - old_rbds
+        resized_rbds = _transform(new.data, 'size') - _transform(old.data, 'size')
+
+        for r in deleted_rbds:
+            _rbd_event(INFO, "RBD {0} was removed from pool {1}".format(r[1], r[0]), 'ceph/rbd/deleted')
+
+        for r in created_rbds:
+            _rbd_event(INFO, "RBD {0} was added to pool {1}".format(r[1], r[0]), 'ceph/rbd/created')
+
+        for r in resized_rbds:
+            if (r[0], r[1]) not in created_rbds:
+                _rbd_event(INFO, "RBD {0} in pool {1} was resized to {2}".format(r[1], r[0], r[2]), 'ceph/rbd/resized')
+
     def _on_health(self, fsid, new, old):
         # Generate notifications for transitions between HEALTH_OK, HEALTH_WARN, HEALTH_ERR
         old_status = old.data['overall_status']
@@ -533,6 +578,8 @@ class Eventer(gevent.greenlet.Greenlet):
             self._on_mon_status(fsid, new, old)
         elif sync_type == QuorumStatus:
             self._on_quorum_status(fsid, new, old)
+        elif sync_type == RbdListing:
+            self._on_rbd_listing(fsid, new, old)
 
         self._flush()
 
