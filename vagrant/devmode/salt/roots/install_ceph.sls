@@ -43,7 +43,7 @@ new-cluster:
 
 modify-ceph.conf:
     cmd.run:
-        - name: echo '''osd pool default size = 1''' >> /var/cluster/ceph.conf
+        - name: echo '''osd pool default size = 3''' >> /var/cluster/ceph.conf
         - require:
             - cmd: new-cluster
 
@@ -61,7 +61,10 @@ mon-create:
     - require:
         - cmd: install-cluster
 
-/var/cluster/osd:
+
+{% for path in ('1', '2', '3') %}
+
+/var/cluster/osd{{path}}:
     file.directory:
     - user: ceph
     - group: ceph
@@ -72,17 +75,19 @@ mon-create:
         - group
         - mode
 
-osd-prepare:
+osd-prepare{{path}}:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy osd prepare {{ grains['fqdn'] }}:/var/cluster/osd
+    - name: /var/cluster/env/bin/ceph-deploy osd prepare {{ grains['fqdn'] }}:/var/cluster/osd{{path}}
     - cwd: /var/cluster
     - require:
         - cmd: mon-create
-        - file: /var/cluster/osd
+        - file: /var/cluster/osd{{path}}
 
-osd-activate:
+osd-activate{{path}}:
   cmd.run:
-    - name: /var/cluster/env/bin/ceph-deploy osd activate {{ grains['fqdn'] }}:/var/cluster/osd
+    - name: /var/cluster/env/bin/ceph-deploy osd activate {{ grains['fqdn'] }}:/var/cluster/osd{{path}}
     - cwd: /var/cluster
     - require:
-        - cmd: osd-prepare
+        - cmd: osd-prepare{{path}}
+
+{% endfor %}

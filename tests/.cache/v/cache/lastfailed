@@ -1,0 +1,3 @@
+{
+  "test_pool_management.py::TestPoolManagement::test_erasure_coded_pool_http_4XX": true
+}
