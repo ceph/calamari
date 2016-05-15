@@ -635,7 +635,10 @@ def cluster_status(cluster_handle, cluster_name):
     fsid = status['fsid']
     mon_epoch = status.get('monmap', {}).get('epoch')
     osd_epoch = status.get('osdmap', {}).get('osdmap', {}).get('epoch')
-    mds_epoch = status.get('mdsmap', {}).get('epoch')
+    # This got renamed in Jewel, so try to get fsmap, fall back if we're 
+    # dealing with infernalis or less
+    # TODO explicit version check from cluster handle?
+    mds_epoch = status.get('fsmap', status.get('mdsmap', {})).get('epoch')
 
     # FIXME: even on a healthy system, 'health detail' contains some statistics
     # that change on their own, such as 'last_updated' and the mon space usage.
