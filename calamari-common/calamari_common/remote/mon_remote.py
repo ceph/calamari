@@ -474,10 +474,11 @@ def get_cluster_object(cluster_name, sync_type, since):
                     argdict.update(kwargs)
                     ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
                                                   timeout=RADOS_TIMEOUT)
-                    assert ret == 0
-                    updated_osd_metadata = json.loads(raw)
-                    updated_osd_metadata['osd'] = osd_id
-                    data['osd_metadata'].append(updated_osd_metadata)
+                    # TODO I'm not sure this is what I want, but this can fail when a cluster is not healthy
+                    if ret == 0:
+                        updated_osd_metadata = json.loads(raw)
+                        updated_osd_metadata['osd'] = osd_id
+                        data['osd_metadata'].append(updated_osd_metadata)
 
     return {
         'type': sync_type,
