@@ -327,7 +327,7 @@ class ServerMonitor(greenlet.Greenlet):
                                        'status': '{}', 
                                        'id':mon['name']}}
 
-            self.on_server_heartbeat(mon['name'], {'boot_time': 0,  # TODO will None work here?
+            self.on_server_heartbeat(mon['name'], {'boot_time': None,
                                                    'ceph_version': None,
                                                    'services': services}
 
@@ -390,7 +390,11 @@ class ServerMonitor(greenlet.Greenlet):
                 self._persister.update_server(server_state.fqdn, managed=True)
                 log.info("Server %s went from unmanaged to managed" % fqdn)
 
-        boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
+        try:
+            boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
+        except TypeError:
+            boot_time = None
+
         if new_server:
             hostname = self.remote.get_remote_metadata([fqdn])[fqdn].get('host', fqdn)
             server_state = ServerState(fqdn, hostname, managed=True,
