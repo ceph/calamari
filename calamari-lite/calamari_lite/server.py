@@ -27,8 +27,8 @@ log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
 ssl = {
-    'certfile': '/etc/calamari/ssl/certs/calamari-lite-bundled.crt',
-    'keyfile': '/etc/calamari/ssl/private/calamari-lite.key',
+    'certfile': config.get('calamari_web', 'ssl_cert'),
+    'keyfile': config.get('calamari_web', 'ssl_key')
 }
 
 

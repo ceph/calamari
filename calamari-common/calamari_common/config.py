@@ -19,7 +19,9 @@ CONFIG_PATH_VAR = "CALAMARI_CONFIG"
 
 class CalamariConfig(ConfigParser.SafeConfigParser):
     def __init__(self):
-        ConfigParser.SafeConfigParser.__init__(self)
+        defaults = {'ssl_key': '/etc/calamari/ssl/private/calamari-lite.key',
+                    'ssl_cert': '/etc/calamari/ssl/certs/calamari-lite-bundled.crt'}
+        ConfigParser.SafeConfigParser.__init__(self, defaults=defaults)
 
         try:
             self.path = os.environ[CONFIG_PATH_VAR]
