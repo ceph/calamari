@@ -4,7 +4,6 @@ from django.views.static import serve as static_serve
 
 from django.http import HttpResponseRedirect, HttpResponse, \
     HttpResponseServerError, Http404
-from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import requires_csrf_token
 import settings
@@ -16,7 +15,7 @@ config = CalamariConfig()
 
 
 def home(request):
-    return HttpResponseRedirect(reverse('dashboard', kwargs={'path': ''}))
+    return HttpResponseRedirect('/api/v2/')
 
 
 # No need for login_required behaviour if auth is switched off.
