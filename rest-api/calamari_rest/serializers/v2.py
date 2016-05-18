@@ -177,11 +177,22 @@ class OsdConfigSerializer(ValidatingSerializer):
 OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_fields['nodeepscrub']
 
 
+class StepItemSerializer(serializers.Serializer):
+    op = serializers.CharField(source='op', help_text="Human readable name", required=True)
+    type = serializers.CharField(required=False)
+    num = serializers.IntegerField(required=False)
+    item = serializers.IntegerField(required=False)
+    item_name = serializers.CharField(help_text="Human readable name", required=False)
+
+    class Meta:
+        fields = ('op', 'type', 'num', 'item_name', 'item')
+
+
 class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
         create_allowed = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
-        create_required = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        create_required = ('name', 'type', 'min_size', 'max_size', 'steps')
         modify_allowed = ('name', 'ruleset', 'min_size', 'max_size', 'steps')
         modify_required = ()
 
@@ -193,7 +204,7 @@ class CrushRuleSerializer(ValidatingSerializer):
         help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule", required=False)
     max_size = serializers.IntegerField(
         help_text="If a pool makes fewer replicas than this number, CRUSH will NOT select this rule", required=False)
-    steps = serializers.Field(help_text="List of operations used to select OSDs")
+    steps = StepItemSerializer(required=True, many=True, help_text="A bucket may have one or more items. The items may consist of node buckets or leaves. Items may have a weight that reflects the relative weight of the item.")
     osd_count = serializers.IntegerField(help_text="Number of OSDs which are used for data placement", required=False)
 
 
