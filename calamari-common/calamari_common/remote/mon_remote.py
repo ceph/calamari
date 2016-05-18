@@ -263,7 +263,7 @@ def transform_crushmap(data, operation):
     returns (0 on success, transformed crushmap, errors)
     """
     # write data to a tempfile because crushtool can't handle stdin :(
-    with tempfile.NamedTemporaryFile(delete=True) as f:
+    with tempfile.NamedTemporaryFile(delete=False) as f:
         f.write(data)
         f.flush()
 

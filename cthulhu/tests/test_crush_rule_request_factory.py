@@ -145,13 +145,13 @@ class TestCrushRule(UnitTestCase):
         """
         That the correct OSDs are recognised as part of a CRUSH rule
         """
-        self.assertEqual(_serialize_rule(REPLICATED_RULE), REPLICATED_RULE_CRUSH_REPR)
+        self.assertEqual(_serialize_rule(REPLICATED_RULE, 1), REPLICATED_RULE_CRUSH_REPR)
 
     def test_serialize_rule_erasure(self):
         """
         That the correct OSDs are recognised as part of a CRUSH rule
         """
-        self.assertEqual(_serialize_rule(ERASURE_RULE), ERASURE_RULE_CRUSH_REPR)
+        self.assertEqual(_serialize_rule(ERASURE_RULE, 2), ERASURE_RULE_CRUSH_REPR)
 
     def test_merge_rule_and_map_create(self):
         merged = _merge_rule_and_map(CRUSH_REPR_BEFORE_CREATE, ERASURE_RULE)

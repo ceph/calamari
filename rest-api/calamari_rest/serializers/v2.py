@@ -179,10 +179,10 @@ OsdConfigSerializer.base_fields['nodeep-scrub'] = OsdConfigSerializer.base_field
 
 class StepItemSerializer(serializers.Serializer):
     op = serializers.CharField(source='op', help_text="Human readable name", required=True)
-    type = serializers.FloatField()
-    num = serializers.IntegerField()
-    item = serializers.IntegerField()
-    item_name = serializers.CharField(help_text="Human readable name")
+    type = serializers.CharField(required=False)
+    num = serializers.IntegerField(required=False)
+    item = serializers.IntegerField(required=False)
+    item_name = serializers.CharField(help_text="Human readable name", required=False)
 
     class Meta:
         fields = ('op', 'type', 'num', 'item_name', 'item')
@@ -192,7 +192,7 @@ class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
         create_allowed = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
-        create_required = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+        create_required = ('name', 'type', 'min_size', 'max_size', 'steps')
         modify_allowed = ('name', 'ruleset', 'min_size', 'max_size', 'steps')
         modify_required = ()
 
