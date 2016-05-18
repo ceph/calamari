@@ -191,7 +191,11 @@ class StepItemSerializer(serializers.Serializer):
 class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
+<<<<<<< Updated upstream
         create_allowed = ('name', 'ruleset', 'type', 'min_size', 'max_size', 'steps')
+=======
+        create_allowed = ('name', 'type', 'min_size', 'max_size', 'steps')
+>>>>>>> Stashed changes
         create_required = ('name', 'type', 'min_size', 'max_size', 'steps')
         modify_allowed = ('name', 'ruleset', 'min_size', 'max_size', 'steps')
         modify_required = ()

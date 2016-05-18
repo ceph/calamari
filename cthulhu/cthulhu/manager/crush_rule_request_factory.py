@@ -50,7 +50,11 @@ def _merge_rule_and_map(crush_map, rule, rule_name=None):
     '''
     if not rule_name:
         rule_name = rule['name']
+<<<<<<< Updated upstream
     ruleset_id = 0
+=======
+    ruleset_id = -1
+>>>>>>> Stashed changes
     new_head = ''
     new_tail = ''
     head_complete = False

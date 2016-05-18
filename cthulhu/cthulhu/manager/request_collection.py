@@ -35,6 +35,7 @@ class RequestCollection(object):
         self._by_request_id = {}
         self._by_jid = {}
         self._lock = RLock()
+        self._request_queue = []
 
         self._remote = get_remote()
 
@@ -153,13 +154,16 @@ class RequestCollection(object):
                     request.jid = None
                 request.complete()
 
-    def submit(self, request, minion):
+    def submit(self, request, minion, obj_type):
         """
         Submit a request and store it.  Do this in one operation
         to hold the lock over both operations, otherwise a response
         to a job could arrive before the request was filed here.
         """
         with self._lock:
+            if obj_type = 'crush_rule':
+                self._request_queue.append(request, minion, obj_type)
+            if 
             request.submit(minion)
             self._by_request_id[request.id] = request
             self._by_jid[request.jid] = request

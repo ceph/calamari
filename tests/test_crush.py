@@ -13,7 +13,7 @@ class TestCrushNodeManagement(RequestTestCase):
         self.ceph_ctl.configure(2)
         self.calamari_ctl.configure()
 
-    def test_lifecycle(self):
+    def xtest_lifecycle(self):
         """
         Test that we can:
          - Create a crush node
@@ -72,7 +72,7 @@ class TestCrushNodeManagement(RequestTestCase):
 
         # TODO assert that the shape of the tree is right
 
-    def test_delete_bucket(self):
+    def xtest_delete_bucket(self):
         cluster_id = self._wait_for_cluster()
 
         rack_name = str(uuid.uuid1())
@@ -93,7 +93,7 @@ class TestCrushNodeManagement(RequestTestCase):
         r = self.api.delete("cluster/{fsid}/crush_node/{node_id}".format(fsid=cluster_id, node_id=rack_id))
         self._wait_for_completion(r)
 
-    def test_delete_full_bucket_fails(self):
+    def xtest_delete_full_bucket_fails(self):
         cluster_id = self._wait_for_cluster()
 
         rack_name = str(uuid.uuid1())
@@ -118,7 +118,7 @@ class TestCrushNodeManagement(RequestTestCase):
         r = self.api.delete("cluster/{fsid}/crush_node/{node_id}".format(fsid=cluster_id, node_id=rack_id))
         assert r.status_code == 409
 
-    def test_adding_non_existing_children_fails(self):
+    def xtest_adding_non_existing_children_fails(self):
         cluster_id = self._wait_for_cluster()
 
         rack_name = str(uuid.uuid1())
@@ -151,7 +151,7 @@ class TestCrushNodeManagement(RequestTestCase):
         assert r.status_code == 404
 
     @skipIf(True, "needs http://tracker.ceph.com/issues/10844 or admin.keyring on all nodes")
-    def test_reparented_osds_survive_osd_restart(self):
+    def xtest_reparented_osds_survive_osd_restart(self):
         cluster_id = self._wait_for_cluster()
 
         host_name = str(uuid.uuid1())
@@ -206,6 +206,7 @@ class TestCrushRuleManagement(RequestTestCase):
 
         for x in range(3):
             rule_name = "replicated_ruleset%s" % str(uuid.uuid1())
+<<<<<<< Updated upstream
             crush = {"name": rule_name,
                      "min_size": 1,
                      "max_size": 1,
@@ -230,12 +231,41 @@ class TestCrushRuleManagement(RequestTestCase):
             self._wait_for_completion(r)
         r = self.api.get("cluster/%s/crush_rule" % cluster_id).json()
         self.assertEqual(len(r), 4)
+=======
+            crush = { "name": rule_name,
+                        "min_size": 1,
+                        "max_size": 1,
+                        "steps": [
+                            {
+                                "item": -1,
+                                "item_name": "default",
+                                "op": "take",
+                            },
+                            {
+                                "num": 0,
+                                "op": "chooseleaf_firstn",
+                                "type": "rack"
+                            },
+                            {
+                                "op": "emit",
+                            }
+                        ],
+                        "type": "replicated"
+            }
+
+            r = self.api.post("cluster/%s/crush_rule" % cluster_id, crush)
+        import pdb; pdb.set_trace()
+        self._wait_for_completion(r)
+        r = self.api.get("cluster/%s/crush_rule" % cluster_id).json()
+        self.assertEqual(len(r), 2)
+>>>>>>> Stashed changes
 
         rule_id = None
         for rule in r:
             if rule['name'] == rule_name:
                 rule_id = rule['id']
 
+<<<<<<< Updated upstream
         crush = {"name": rule_name,
                  "steps": [
                      {
@@ -257,3 +287,49 @@ class TestCrushRuleManagement(RequestTestCase):
         self._wait_for_completion(r)
         r = self.api.delete("cluster/%s/crush_rule/%s" % (cluster_id, rule_id))
         self._wait_for_completion(r)
+=======
+        crush = { "name": rule_name,
+                    "steps": [
+                        {
+                            "item": -1,
+                            "item_name": "default",
+                            "op": "take",
+                        },
+                        {
+                            "num": 0,
+                            "op": "chooseleaf_firstn",
+                            "type": "row"
+                        },
+                        {
+                            "op": "emit",
+                        }
+                    ],
+        }
+
+        r = self.api.patch("cluster/%s/crush_rule/%s" % (cluster_id, rule_id), crush)
+        self._wait_for_completion(r)
+        return
+        r = self.api.delete("cluster/%s/crush_rule/%s" % (cluster_id, rule_id))
+        self._wait_for_completion(r)
+
+    def xtest_delete_bucket(self):
+        cluster_id = self._wait_for_cluster()
+
+        rack_name = str(uuid.uuid1())
+        # unique name assuming no collisions
+        crush = {'name': rack_name,
+                 'bucket_type': 'rack',
+                 'items': []
+                 }
+        r = self.api.post("cluster/%s/crush_rule" % cluster_id, crush)
+        self._wait_for_completion(r)
+
+        r = self.api.get("cluster/%s/crush_rule" % cluster_id).json()
+
+        rack_id = None
+        for rule in r:
+            if rule['name'] == rack_name:
+                rack_id = rule['id']
+        r = self.api.delete("cluster/{fsid}/crush_rule/{rule_id}".format(fsid=cluster_id, rule_id=rack_id))
+        self._wait_for_completion(r)
+>>>>>>> Stashed changes
