@@ -228,16 +228,18 @@ def initialize(args):
     os.chown(config.get('calamari_web', 'log_path'), apache_user.pw_uid, apache_user.pw_gid)
 
     # Create self-signed SSL certs only if they do not exist
-    if not os.path.exists('/etc/calamari/ssl/private/calamari-lite.key'):
+    ssl_key = config.get('calamari_web', 'ssl_key')
+    ssl_cert = config.get('calamari_web', 'ssl_cert')
+    if not os.path.exists(ssl_key):
         log.info("Generating self-signed SSL certificate...")
         subprocess.call([
             'openssl', 'req', '-new', '-nodes', '-x509', '-subj',
             "/C=US/ST=Oregon/L=Portland/O=IT/CN=calamari-lite", '-days', '3650',
-            '-keyout', '/etc/calamari/ssl/private/calamari-lite.key', '-out',
-            '/etc/calamari/ssl/certs/calamari-lite-bundled.crt', '-extensions', 'v3_ca'
+            '-keyout', ssl_key, '-out',
+            ssl_cert, '-extensions', 'v3_ca'
         ])
         # ensure the bundled crt is readable
-        os.chmod('/etc/calamari/ssl/certs/calamari-lite-bundled.crt', 0644)
+        os.chmod(ssl_cert, 0644)
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")

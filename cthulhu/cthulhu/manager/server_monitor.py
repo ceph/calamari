@@ -317,26 +317,25 @@ class ServerMonitor(greenlet.Greenlet):
         When a new mon map is received, use it to eliminate any mon
         ServiceState records that no longer exist in the real world.
         """
-        log.debug("ServerMonitor.on_mon_map: %s" % str([m['name'] for m in mon_map['mons']))
-        # We're no longer getting these via salt so we fake them 
+        log.debug("ServerMonitor.on_mon_map: %s" % str([m['name'] for m in mon_map['mons']]))
+        # We're no longer getting these via salt so we fake them
         # based on what we know in the mon_map
         for mon in mon_map['mons']:
-            services =  {mon['name']: {'fsid':
-                                       mon_map['fsid'],
-                                       'type': 'mon',
-                                       'status': '{}', 
-                                       'id':mon['name']}}
+            services = {mon['name']: {'fsid':
+                                      mon_map['fsid'],
+                                      'type': 'mon',
+                                      'status': '{}',
+                                      'id': mon['name']}}
 
-            self.on_server_heartbeat(mon['name'], {'boot_time': None,
+            self.on_server_heartbeat(mon['name'], {'boot_time': 0,
                                                    'ceph_version': None,
-                                                   'services': services}
+                                                   'services': services})
 
         map_mons = set([ServiceId(mon_map['fsid'], 'mon', m['name']) for m in mon_map['mons']])
         known_mons = set([
             s.id
             for s in self.fsid_services[mon_map['fsid']] if s.service_type == 'mon'
         ])
-
 
         for stale_mon_id in known_mons - map_mons:
             self.forget_service(self.services[stale_mon_id])
