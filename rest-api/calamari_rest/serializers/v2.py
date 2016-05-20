@@ -125,6 +125,18 @@ class PoolSerializer(ValidatingSerializer):
     erasure_code_profile = serializers.CharField(required=False, help_text="This profile configures how to split data in K pieces and create M coding chunks. names can include these characters [A-Za-z0-9-_.]")
 
 
+class ErasurePoolSerializer(PoolSerializer):
+    class Meta:
+        fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                  'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes', 'type', 'erasure_code_profile')
+        create_allowed = ('name', 'pg_num', 'pgp_num', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool', 'type', 'erasure_code_profile')
+        create_required = ('name', 'pg_num')
+        modify_allowed = ('name', 'pg_num', 'pgp_num', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+                          'quota_max_objects', 'quota_max_bytes', 'hashpspool')
+        modify_required = ()
+
+
 class OsdSerializer(ValidatingSerializer):
     class Meta:
         fields = ('uuid', 'up', 'in', 'id', 'reweight', 'server', 'pools', 'valid_commands', 'public_addr', 'cluster_addr', 'crush_node_ancestry', 'backend_partition_path', 'backend_device_node', 'osd_data', 'osd_journal')

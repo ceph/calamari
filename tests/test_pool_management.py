@@ -72,7 +72,7 @@ class TestPoolManagement(RequestTestCase):
         r = self.api.delete("cluster/%s/pool/%s" % (cluster_id, pool_id))
         self._wait_for_completion(r)
 
-    def test_lifecycle(self):
+    def xtest_lifecycle(self):
         """
         Test that we can:
          - Create a pool
@@ -163,7 +163,7 @@ class TestPoolManagement(RequestTestCase):
             (0, size - size / 2)
         ]
 
-    def test_create_args(self):
+    def xtest_create_args(self):
         """
         Test that when non-default attributes are passed to create, they are
         accepted and reflected on the created pool.
@@ -193,7 +193,7 @@ class TestPoolManagement(RequestTestCase):
             # remove pool to try next minsize value
             self._delete(cluster_id, pool_id)
 
-    def test_modification(self):
+    def xtest_modification(self):
         """
         Check that valid modifications to a pool are accepted and actioned.
         """
@@ -240,7 +240,7 @@ class TestPoolManagement(RequestTestCase):
                 log.exception("Exception updating min_size:%s" % val)
                 raise
 
-    def test_rename(self):
+    def xtest_rename(self):
         """
         What it sounds like:
 
@@ -258,7 +258,7 @@ class TestPoolManagement(RequestTestCase):
         self._assert_visible(cluster_id, pool_name, visible=False)
         self._assert_visible(cluster_id, new_name)
 
-    def test_coherency(self):
+    def xtest_coherency(self):
         """
         Test that once a job modifying a cluster map is complete, subsequent reads
         of the cluster map immediately reflect the change (i.e.  test that cluster map
@@ -279,7 +279,7 @@ class TestPoolManagement(RequestTestCase):
             self._delete(cluster_id, pool_id)
             self._assert_visible(cluster_id, pool_name, visible=False)
 
-    def test_pg_creation(self):
+    def xtest_pg_creation(self):
         """
         Test that when modifying the 'pg_num' attribute, the PGs really are
         created and pgp_num is updated appropriately.  This is a separate
@@ -300,7 +300,7 @@ class TestPoolManagement(RequestTestCase):
         for k, v in updates.items():
             self.assertEqual(pool[k], v, "pool[%s]=%s (should be %s)" % (k, pool[k], v))
 
-    def test_big_pg_creation(self):
+    def xtest_big_pg_creation(self):
         """
         Test that when creating a number of PGs that exceeds mon_osd_max_split_count
         calamari is breaking up the operation so that it succeeds.
@@ -327,3 +327,60 @@ class TestPoolManagement(RequestTestCase):
         pool = self.api.get("cluster/%s/pool/%s" % (cluster_id, pool_id)).json()
         self.assertEqual(pool['pg_num'], new_pg_num)
         self.assertEqual(pool['pgp_num'], new_pg_num)
+
+    def xtest_create_args_ec(self):
+        """
+        Test that when non-default attributes are passed to create, they are
+        accepted and reflected on the created erasure coded pool.
+        """
+
+        cluster_id = self._wait_for_cluster()
+
+        # TODO create the erasure coded crush rules
+        # TODO validate semantics when crushruleset doesn't exists?
+
+        # Some non-default values
+        optionals = self._non_default_args(cluster_id)
+        optionals.pop('size')
+        optionals.pop('min_size')
+        optionals['type'] = 'erasure'
+        pool_name = 'test1'
+        self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+        pool = self.api.get("cluster/%s/pool/%s" %
+                            (cluster_id, pool_id)).json()
+        for var, val in optionals.items():
+            # for min_size, the value set may be modified;
+            # use 'expected' rather than exact 'val'
+            self.assertEqual(pool[var], val,
+                             "pool[%s]!=%s (actually %s)" %
+                             (var, val, pool[var]))
+            # TODO: call out to the ceph cluster to check the
+            # value landed
+        # remove pool to try next minsize value
+        self._delete(cluster_id, pool_id)
+
+    def test_invalid_args_ec(self):
+        """
+        Test that when invalid attributes are passed to create, they are
+        not accepted
+        """
+
+        cluster_id = self._wait_for_cluster()
+
+        # Some non-default values
+        optionals = {}
+        optionals['type'] = 'erasure'
+        optionals['size'] = 1
+        pool_name = 'test1'
+        pg_num = 64
+        # Create the pool
+        args = {
+            'name': pool_name,
+            'pg_num': pg_num,
+            'type': 'erasure',
+            'size': 1  # not allowed
+        }
+        r = self.api.post("cluster/%s/pool" % cluster_id, args)
+        # TODO assert that this throws an appropriate http 4XX
+        # TODO are there other fields that can be applied to create or update ??
