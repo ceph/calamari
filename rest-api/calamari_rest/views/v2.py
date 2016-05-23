@@ -530,7 +530,12 @@ but those without static defaults will be set to null.
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, fsid, pool_id):
-        serializer = self.serializer_class(data=request.DATA)
+        erasure = request.DATA.get('type') == 'erasure'
+        if erasure:
+            serializer = ErasurePoolSerializer(data=request.DATA)
+        else:
+            serializer = self.serializer_class(data=request.DATA)
+
         if serializer.is_valid(request.method):
             response = self._validate_semantics(fsid, pool_id, serializer.get_data())
             if response is not None:
