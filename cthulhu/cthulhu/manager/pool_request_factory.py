@@ -149,6 +149,7 @@ class PoolRequestFactory(RequestFactory):
                 ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
 
     def create(self, attributes):
+
         commands = [('osd pool create', {'pool': attributes['name'],
                                          'pg_num': attributes['pg_num'],
                                          'pool_type': attributes.get('type', 'replicated'),
@@ -165,6 +166,10 @@ class PoolRequestFactory(RequestFactory):
         del post_create_attrs['pg_num']
         if 'pgp_num' in post_create_attrs:
             del post_create_attrs['pgp_num']
+
+        if 'erasure' == attributes.get('type'):
+            del post_create_attrs['size']
+            del post_create_attrs['min_size']
 
         commands.extend(self._pool_attribute_commands(
             attributes['name'],
