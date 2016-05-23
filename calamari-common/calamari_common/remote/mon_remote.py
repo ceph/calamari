@@ -267,16 +267,19 @@ def transform_crushmap(data, operation):
         f.write(data)
         f.flush()
 
+        # write data to a tempfile because crushtool can't handle stdin :(
         if operation == 'set':
-            args = ["crushtool", "-c", f.name, '-o', '/dev/stdout']
+            args = ["crushtool", "-c", '/dev/stdin', '-o', '/dev/stdout']
+            p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate(data)
         elif operation == 'get':
             args = ["crushtool", "-d", f.name]
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
         else:
             return 1, '', 'Did not specify get or set'
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate()
-        return p.returncode, stdout, stderr
+    return p.returncode, stdout, stderr
 
 
 def rados_commands(fsid, cluster_name, commands):
