@@ -13,7 +13,7 @@ from calamari_rest.parsers.v2 import CrushMapParser
 
 from calamari_common.remote import get_remote
 
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
+from calamari_rest.serializers.v2 import ErasurePoolSerializer, PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
     CliSerializer, CrushNodeSerializer, CrushTypeSerializer
@@ -508,7 +508,12 @@ but those without static defaults will be set to null.
         return Response(PoolSerializer(pool).data)
 
     def create(self, request, fsid):
-        serializer = self.serializer_class(data=request.DATA)
+        erasure = request.DATA.get('type') == 'erasure'
+        if erasure:
+            serializer = ErasurePoolSerializer(data=request.DATA)
+        else:
+            serializer = self.serializer_class(data=request.DATA)
+
         if serializer.is_valid(request.method):
             response = self._validate_semantics(fsid, None, serializer.get_data())
             if response is not None:
@@ -525,7 +530,12 @@ but those without static defaults will be set to null.
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, fsid, pool_id):
-        serializer = self.serializer_class(data=request.DATA)
+        erasure = request.DATA.get('type') == 'erasure'
+        if erasure:
+            serializer = ErasurePoolSerializer(data=request.DATA)
+        else:
+            serializer = self.serializer_class(data=request.DATA)
+
         if serializer.is_valid(request.method):
             response = self._validate_semantics(fsid, pool_id, serializer.get_data())
             if response is not None:
