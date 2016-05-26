@@ -43,7 +43,7 @@ buffer_handler.setFormatter(logging.Formatter(FORMAT))
 log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
-POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
+POSTGRES_SLS = "/opt/calamari/salt-local/postgres"
 
 
 class CalamariUserError(Exception):
@@ -68,9 +68,10 @@ def quiet():
 def run_local_salt(sls, message):
     # Configure postgres database
     if os.path.exists(sls):
+        file_root, state = os.path.split(sls)
         log.info("Starting/enabling {message}...".format(message=message))
-        p = subprocess.Popen(["salt-call", "--local", "state.template",
-                              sls],
+        p = subprocess.Popen(["salt-call", "--file-root=%s" % file_root, "--local", "state.sls",
+                              state, "concurrent=True"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         log.debug("{message} salt stdout: {out}".format(message=message, out=out))
