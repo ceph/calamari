@@ -240,7 +240,7 @@ class TestServiceDetection(TestCase):
 
         sm.on_server_heartbeat(MON_FQDN, MON_CEPH_SERVICES)
         sm.on_server_heartbeat(OSD_FQDN, OSD_CEPH_SERVICES)
-        sm.on_mon_map(MON_MAP)
+        sm.on_mon_map(MON_MAP, {'election_epoch': 1})
 
         self.assertListEqual(sm.services.keys(), [
             ServiceId(FSID, 'osd', '0'),
@@ -248,7 +248,7 @@ class TestServiceDetection(TestCase):
             ServiceId(FSID, 'mon', MON_HOSTNAME)
         ])
 
-        sm.on_mon_map(MON_MAP_1_REMOVED)
+        sm.on_mon_map(MON_MAP_1_REMOVED, {'election_epoch': 1})
         self.assertListEqual(sm.services.keys(), [
             ServiceId(FSID, 'osd', '0'),
             ServiceId(FSID, 'osd', '1')
