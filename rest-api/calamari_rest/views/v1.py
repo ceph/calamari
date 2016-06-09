@@ -575,18 +575,19 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = get_remote().get_local_metadata()
-
         try:
-            ipaddr = socket.gethostbyname(grains['fqdn'])
+            hostname = socket.getfqdn()
+            fqdn = socket.gethostname()
+            ipaddr = socket.gethostbyname(hostname)
         except socket.gaierror:
             # It is annoying, but not rare, to have a host
             # that cannot resolve its own name.
             # From a dict of interface name to list of addresses,
             # we pick the first address from the first interface
             # which has some addresses and isn't a loopback.
-            ipaddr = [addrs for name, addrs in grains['ip_interfaces'].items() if
-                      name not in ['lo', 'lo0'] and addrs][0][0]
+            ipaddr = None
+            hostname = None
+            fqdn = None
 
         proto = "https" if request.is_secure() else "http"
         bootstrap_url = "{0}://{1}{2}".format(proto, request.META['HTTP_HOST'], reverse('bootstrap'))
@@ -597,8 +598,8 @@ Provides metadata about the installation of Calamari server in use
             "version": str(VERSION),
             "license": "N/A",
             "registered": "N/A",
-            "hostname": grains['host'],
-            "fqdn": grains['fqdn'],
+            "hostname": hostname,
+            "fqdn": fqdn,
             "ipaddr": ipaddr,
             "bootstrap_url": bootstrap_url,
             "bootstrap_ubuntu": BOOTSTRAP_UBUNTU.format(url=bootstrap_url),
