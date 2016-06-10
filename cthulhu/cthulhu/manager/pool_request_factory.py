@@ -168,8 +168,10 @@ class PoolRequestFactory(RequestFactory):
             del post_create_attrs['pgp_num']
 
         if 'erasure' == attributes.get('type'):
-            del post_create_attrs['size']
-            del post_create_attrs['min_size']
+            if 'size' in post_create_attrs:
+                del post_create_attrs['size']
+            if 'min_size' in post_create_attrs:
+                del post_create_attrs['min_size']
 
         commands.extend(self._pool_attribute_commands(
             attributes['name'],
