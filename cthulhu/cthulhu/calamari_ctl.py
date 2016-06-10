@@ -44,6 +44,7 @@ log.addHandler(buffer_handler)
 
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
+SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
 
 class CalamariUserError(Exception):
@@ -245,6 +246,7 @@ def initialize(args):
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
+    run_local_salt(SERVICES_SLS, message='supervisord')
     subprocess.call(['supervisorctl', 'restart', 'calamari-lite'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     log.info("Complete.")
