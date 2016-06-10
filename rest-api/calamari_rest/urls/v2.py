@@ -16,7 +16,6 @@ urlpatterns = patterns(
     '',
 
     # About the host calamari server is running on
-    url(r'^grains', calamari_rest.views.v2.grains),
     url(r'^info', calamari_rest.views.v1.Info.as_view()),
 
     # Wrapping django auth
@@ -115,17 +114,10 @@ urlpatterns = patterns(
         name='server-debug-job'),
 
     # All about servers
-    url(r'^key$', calamari_rest.views.v2.SaltKeyViewSet.as_view(
-        {'get': 'list', 'patch': 'list_partial_update', 'delete': 'list_destroy'})),
-    url(r'^key/(?P<minion_id>[a-zA-Z0-9-\.]+)',
-        calamari_rest.views.v2.SaltKeyViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'})),
-
     url(r'^server$',
         calamari_rest.views.v2.ServerViewSet.as_view({'get': 'list'})),
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)$',
         calamari_rest.views.v2.ServerViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'})),
-    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/grains$',
-        calamari_rest.views.v2.ServerViewSet.as_view({'get': 'retrieve_grains'})),
 
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/server$',
         calamari_rest.views.v2.ServerClusterViewSet.as_view({'get': 'list'}),
@@ -147,14 +139,6 @@ urlpatterns = patterns(
         calamari_rest.views.v2.EventViewSet.as_view({'get': 'list_cluster'})),
     url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/event$',
         calamari_rest.views.v2.EventViewSet.as_view({'get': 'list_server'})),
-
-    # Log tail
-    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/log$',
-        calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'get_cluster_log'})),
-    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log$',
-        calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'list_server_logs'})),
-    url(r'^server/(?P<fqdn>[a-zA-Z0-9-\.]+)/log/(?P<log_path>.+)$',
-        calamari_rest.views.v2.LogTailViewSet.as_view({'get': 'get_server_log'})),
 
     # Ceph CLI access
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/cli$',
