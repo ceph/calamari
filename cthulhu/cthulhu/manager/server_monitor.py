@@ -314,11 +314,14 @@ class ServerMonitor(greenlet.Greenlet):
         log.debug("ServerMonitor.on_mon_map: %s" % str([m['name'] for m in mon_map['mons']]))
         # We're no longer getting these via salt so we fake them
         # based on what we know in the mon_map
+        if mon_status is None:
+            mon_status = {}
+
         for mon in mon_map['mons']:
             services = {mon['name']: {'fsid':
                                       mon_map['fsid'],
                                       'type': 'mon',
-                                      'status': {'election_epoch': mon_status['election_epoch'],
+                                      'status': {'election_epoch': mon_status.get('election_epoch'),
                                                  'quorum': mon_map['quorum'],
                                                  'rank': mon['rank']},
                                       'id': mon['name']}}
