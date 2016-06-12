@@ -16,7 +16,7 @@ from cthulhu.manager.crush_request_factory import CrushRequestFactory
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
-from calamari_common.types import CRUSH_NODE, CRUSH_RULE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
+from calamari_common.types import CRUSH_NODE, CRUSH_RULE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, MonStatus
 from cthulhu.util import now
 
 remote = get_remote()
@@ -323,7 +323,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             if sync_type == OsdMap:
                 self._servers.on_osd_map(data)
             elif sync_type == MonMap:
-                self._servers.on_mon_map(data)
+                self._servers.on_mon_map(data, self.get_sync_object_data(MonStatus))
             elif sync_type == MdsMap:
                 self._servers.on_mds_map(self.fsid, data)
 

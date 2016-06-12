@@ -306,7 +306,7 @@ class ServerMonitor(greenlet.Greenlet):
             self.forget_service(self.services[stale_mds_id])
 
     @nosleep
-    def on_mon_map(self, mon_map):
+    def on_mon_map(self, mon_map, mon_status):
         """
         When a new mon map is received, use it to eliminate any mon
         ServiceState records that no longer exist in the real world.
@@ -318,7 +318,9 @@ class ServerMonitor(greenlet.Greenlet):
             services = {mon['name']: {'fsid':
                                       mon_map['fsid'],
                                       'type': 'mon',
-                                      'status': '{}',
+                                      'status': {'election_epoch': mon_status['election_epoch'],
+                                                 'quorum': mon_map['quorum'],
+                                                 'rank': mon['rank']},
                                       'id': mon['name']}}
 
             self.on_server_heartbeat(mon['name'], {'boot_time': 0,
