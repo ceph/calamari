@@ -2,9 +2,6 @@
 
 case "$1" in
 	remove)
-		a2dissite calamari.conf > /dev/null
-		a2ensite 000-default > /dev/null
-		service apache2 restart
 		service supervisor restart
 		;;
 	upgrade|deconfigure)
