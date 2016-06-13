@@ -26,8 +26,6 @@ BuildRequires:  python-virtualenv
 BuildRequires:  redhat-lsb-core
 BuildRequires:  httpd
 BuildRequires:  postgresql-libs
-Requires:       httpd
-Requires:	mod_wsgi
 Requires:       cairo
 Requires:       pycairo
 Requires:	logrotate
@@ -138,23 +136,13 @@ calamari_selinux
 
 calamari_httpd()
 {
-	# centos64
-	mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.orig
-
 	# concatenate our config chunk with supervisord.conf
 	echo "### START calamari-server ###" >> /etc/supervisord.conf
 	cat /etc/supervisor/conf.d/calamari.conf >> /etc/supervisord.conf
 	echo "### END calamari-server ###" >> /etc/supervisord.conf
-
-	# Load our supervisor config
-	service supervisord stop
-	sleep 3
-	service supervisord start
 }
 
 calamari_httpd
-service httpd stop || true
-service httpd start
 
 # Prompt the user to proceed with the final script-driven
 # part of the installation process
@@ -168,8 +156,6 @@ if [ $1 == 0 ] ; then
 	rm /etc/httpd/conf.d/calamari.conf
 	rm /etc/httpd/conf.d/wsgi.conf
 	mv /etc/httpd/conf.d/welcome.conf.orig /etc/httpd/conf.d/welcome.conf
-	service httpd stop || true
-	service httpd start || true
 	service supervisord stop
 	sed -i '/^### START calamari-server/,/^### END calamari-server/d' /etc/supervisord.conf
 	service supervisord start
