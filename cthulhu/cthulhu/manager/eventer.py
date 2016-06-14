@@ -451,8 +451,8 @@ class Eventer(gevent.greenlet.Greenlet):
             _mon_event(WARNING, "Mon '{cluster_name}.{mon_name}' left quorum{on_server}", rank)
 
     def _on_quorum_status(self, fsid, new, old):
-        old_leader_name = set(old.data['quorum_leader_name'])
-        new_leader_name = set(new.data['quorum_leader_name'])
+        old_leader_name = str(old.data['quorum_leader_name'])
+        new_leader_name = str(new.data['quorum_leader_name'])
 
         def _leader_event(severity, msg, name):
             self._emit_to_salt_bus(
