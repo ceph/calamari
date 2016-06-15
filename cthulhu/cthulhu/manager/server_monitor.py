@@ -10,6 +10,7 @@ import datetime
 import traceback
 from dateutil import tz
 import logging
+import socket
 
 from gevent import greenlet
 from gevent import event
@@ -325,10 +326,20 @@ class ServerMonitor(greenlet.Greenlet):
                                                  'quorum': mon_map['quorum'],
                                                  'rank': mon['rank']},
                                       'id': mon['name']}}
+            mon_addr = mon.get('addr')
+            mon_name = mon['name']
+            if mon_addr is not None:
+                mon_addr = mon_addr.split('/')[0]  # deal with CIRD notation
+                mon_addr, mon_port = mon_addr.split(':')
+                mon_socket_addr = (mon_addr, int(mon_port))
+                try:
+                    mon_name = socket.getfqdn(socket.getnameinfo(mon_socket_addr, 0)[0])
+                except socket.gaierror:
+                    pass
 
-            self.on_server_heartbeat(mon['name'], {'boot_time': 0,
-                                                   'ceph_version': None,
-                                                   'services': services})
+            self.on_server_heartbeat(mon_name, {'boot_time': 0,
+                                                'ceph_version': None,
+                                                'services': services})
 
         map_mons = set([ServiceId(mon_map['fsid'], 'mon', m['name']) for m in mon_map['mons']])
         known_mons = set([
