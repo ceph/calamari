@@ -165,8 +165,7 @@ class ServerMonitor(greenlet.Greenlet):
 
     def get_hostname_to_osds(self, osd_map):
         """
-        Map 'hostname' to OSD: hostname in this context actually means
-        CRUSH node name where node is of type 'host'.
+        Map ('fqdn', 'hostname') to OSD
 
         In a default Ceph deployment this will indeed be the hostname, but
         a logical server can have multiple CRUSH nodes with arbitrary names.
@@ -192,7 +191,24 @@ class ServerMonitor(greenlet.Greenlet):
             log.error("get_hostname_to_osds unable to get osd_metadata")
 
         for osd in osd_metadata:
-                osd_id_to_host[osd['id']] = osd['hostname']
+            fqdn = osd['hostname']
+            if fqdn.find('.') == -1:
+                # fqdn isn't an fqdn ask socket
+                osd_addr = osd['back_addr']
+                if osd_addr is not None:
+                        osd_addr = osd_addr.split('/')[0]  # deal with CIDR notation
+                        osd_addr, osd_port = osd_addr.split(':')
+                        osd_socket_addr = (osd_addr, int(osd_port))
+                try:
+                    fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, 0)[0])
+                    try:
+                        hostname = fqdn[0:fqdn.index('.')]
+                    except ValueError:
+                        hostname = fqdn
+                except socket.gaierror:
+                    pass
+
+                osd_id_to_host[osd['id']] = (fqdn, hostname)
 
         for osd in osd_map['osds']:
             try:
@@ -243,7 +259,7 @@ class ServerMonitor(greenlet.Greenlet):
         log.debug("ServerMonitor.on_osd_map: got service data for %s servers" % len(hostname_to_osds))
 
         osds_in_map = set()
-        for hostname, osds in hostname_to_osds.items():
+        for (fqdn, hostname), osds in hostname_to_osds.items():
             id_to_osd = dict([(ServiceId(osd_map['fsid'], 'osd', str(o['osd'])), o) for o in osds])
             osds_in_map |= set(id_to_osd.keys())
 
@@ -269,7 +285,7 @@ class ServerMonitor(greenlet.Greenlet):
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
-                server_state = ServerState(hostname, hostname, managed=False,
+                server_state = ServerState(fqdn, hostname, managed=False,
                                            last_contact=None, boot_time=None, ceph_version=None)
                 self.inject_server(server_state)
                 self._persister.create_server(
@@ -329,7 +345,7 @@ class ServerMonitor(greenlet.Greenlet):
             mon_addr = mon.get('addr')
             mon_name = mon['name']
             if mon_addr is not None:
-                mon_addr = mon_addr.split('/')[0]  # deal with CIRD notation
+                mon_addr = mon_addr.split('/')[0]  # deal with CIDR notation
                 mon_addr, mon_port = mon_addr.split(':')
                 mon_socket_addr = (mon_addr, int(mon_port))
                 try:
@@ -406,6 +422,10 @@ class ServerMonitor(greenlet.Greenlet):
 
         if new_server:
             hostname = self.remote.get_remote_metadata([fqdn])[fqdn].get('host', fqdn)
+            try:
+                hostname = fqdn[0:fqdn.index('.')]
+            except ValueError:
+                hostname = fqdn
             server_state = ServerState(fqdn, hostname, managed=True,
                                        last_contact=now(), boot_time=boot_time,
                                        ceph_version=server_heartbeat['ceph_version'])
