@@ -260,13 +260,17 @@ class RequestCollection(object):
         completion so that it can progress.
         """
         with self._lock:
-            log.debug("on_completion: jid=%s success=%s result=%s" % (jid, success, result))
+            result_logging = result  # make result less log-spammy
+            sync_type = result.get('type')
+            if sync_type in ('osd_map',):
+                del(result_logging['data'])
+            log.debug("on_completion: jid=%s success=%s result=%s" % (jid, success, result_logging))
 
             try:
                 request = self.get_by_jid(jid)
                 log.debug("on_completion: jid %s belongs to request %s" % (jid, request.id))
             except KeyError:
-                log.warning("on_completion: unknown jid {0}, return: {1}".format(jid, result))
+                log.warning("on_completion: unknown jid {0}, return: {1}".format(jid, result_logging))
                 return
 
             if not success:
@@ -274,7 +278,7 @@ class RequestCollection(object):
                     request.jid = None
 
                     # This indicates a failure at the salt level, i.e. job threw an exception
-                    log.error("Remote execution failed for request %s: %s" % (request.id, result))
+                    log.error("Remote execution failed for request %s: %s" % (request.id, result_logging))
                     if isinstance(result, dict):
                         # Handler ran and recorded an error for us
                         request.set_error(result['error_status'])
