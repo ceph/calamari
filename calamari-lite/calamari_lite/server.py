@@ -12,17 +12,10 @@ from gevent.server import StreamServer
 import os
 from gevent.pywsgi import WSGIServer
 import zerorpc
-import logging
 from calamari_common.config import CalamariConfig
+from cthulhu.log import log
 config = CalamariConfig()
 
-
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s %(message)s"
-log = logging.getLogger('calamari')
-handler = logging.FileHandler(config.get('cthulhu', 'log_path'))
-handler.setFormatter(logging.Formatter(FORMAT))
-log.addHandler(handler)
-log.setLevel(logging.getLevelName(config.get('cthulhu', 'log_level')))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
@@ -101,6 +94,7 @@ class ShallowCarbonCache(gevent.Greenlet):
 
 def main():
 
+    log.info('calamari-list: starting')
     complete = gevent.event.Event()
     ceph_argparse = None
     while not ceph_argparse:
@@ -130,7 +124,7 @@ def main():
 
     app = get_internal_wsgi_application()
     wsgi = WSGIServer(('0.0.0.0', 8002), app, **ssl)
-    wsgi.serve_forever()
+    wsgi.start()
 
     def shutdown():
         complete.set()
@@ -139,5 +133,7 @@ def main():
     gevent.signal(signal.SIGINT, shutdown)
 
     while not complete.is_set():
-        # cthulhu.eventer.on_tick()
+        cthulhu.eventer.on_tick()
         complete.wait(timeout=5)
+
+    wsgi.stop()
