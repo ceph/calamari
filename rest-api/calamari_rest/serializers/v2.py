@@ -76,7 +76,7 @@ class PoolSerializer(ValidatingSerializer):
     class Meta:
         fields = ('name', 'id', 'size', 'pg_num', 'crush_ruleset', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                   'pgp_num', 'hashpspool', 'full', 'quota_max_objects', 'quota_max_bytes', 'type', 'erasure_code_profile')
-        create_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
+        create_allowed = ('name', 'pg_num', 'pgp_num', 'crush_ruleset', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',
                           'quota_max_objects', 'quota_max_bytes', 'hashpspool', 'type', 'erasure_code_profile')
         create_required = ('name', 'pg_num')
         modify_allowed = ('name', 'pg_num', 'pgp_num', 'size', 'min_size', 'crash_replay_interval', 'crush_ruleset',

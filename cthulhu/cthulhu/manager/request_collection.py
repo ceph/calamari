@@ -260,10 +260,11 @@ class RequestCollection(object):
         completion so that it can progress.
         """
         with self._lock:
-            result_logging = result  # make result less log-spammy
             sync_type = result.get('type')
             if sync_type in ('osd_map',):
-                del(result_logging['data'])
+                result_logging = {'type': 'osd_map', 'version': result.get('version')}
+            else:
+                result_logging = result  # make result less log-spammy
             log.debug("on_completion: jid=%s success=%s result=%s" % (jid, success, result_logging))
 
             try:
