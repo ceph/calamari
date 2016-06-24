@@ -8,6 +8,7 @@ setup(
     author="Red Hat, Inc.",
     author_email="info@inktank.com",
     license="LGPL2.1 or later",
+    zip_safe=False,
     entry_points={
         'console_scripts': [
             'calamari-lite = calamari_lite.server:main'

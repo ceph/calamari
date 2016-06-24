@@ -27,9 +27,6 @@ class CrushRuleRequestFactory(RequestFactory):
     def create(self, attributes):
         # get the text map
         crush_map = self.osd_map.data['crush_map_text']
-        if 'ruleset' in attributes:
-            attributes.pop('ruleset')  # allow during create so API is the same, but ignore it because it causes a problem
-            # TODO file a bug agains ceph
         merged_map = _merge_rule_and_map(crush_map, attributes)
         commands = [('osd setcrushmap', {'data': merged_map})]
         log.error('setcrushmap {0} {1}'.format(merged_map, attributes))

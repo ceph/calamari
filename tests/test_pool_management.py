@@ -1,4 +1,5 @@
 import logging
+import random
 from nose.exc import SkipTest
 from tests.server_testcase import RequestTestCase
 
@@ -327,7 +328,7 @@ class TestPoolManagement(RequestTestCase):
         self.assertEqual(pool['pg_num'], new_pg_num)
         self.assertEqual(pool['pgp_num'], new_pg_num)
 
-    def XXXtest_create_args_ec(self):
+    def test_honor_crush_ruleset(self):
         """
         Test that when non-default attributes are passed to create, they are
         accepted and reflected on the created erasure coded pool.
@@ -338,8 +339,8 @@ class TestPoolManagement(RequestTestCase):
         crush_rule = {
             "max_size": 1,
             "min_size": 1,
-            "name": "ecruleset",
-            "ruleset": 1,
+            "name": "custom",
+            "ruleset": random.randint(0, 100),
             "steps": [
                 {
                     "num": 5,
@@ -356,28 +357,28 @@ class TestPoolManagement(RequestTestCase):
                 },
                 {
                     "num": 0,
-                    "op": "chooseleaf_indep",
+                    "op": "chooseleaf_firstn",
                     "type": "host"
                 },
                 {
                     "op": "emit",
                 }
             ],
-            "type": "erasure"
+            "type": "replicated"
         }
         r = self.api.post("cluster/%s/crush_rule" % cluster_id, crush_rule)
         self.assertEqual(r.status_code, 202)
         self._wait_for_completion(r)
-        pool_id = self._assert_visible(cluster_id, 'ecruleset', object_type='crush_rule')['id']
+        ruleset = self._assert_visible(cluster_id, 'custom', object_type='crush_rule')['ruleset']
         # TODO validate semantics when crushruleset doesn't exists?
 
         # Some non-default values
         optionals = self._non_default_args(cluster_id)
-        optionals['crush_ruleset'] = 1
-        optionals['type'] = 'erasure'
+        optionals['crush_ruleset'] = ruleset
         optionals['size'] = 1
+        optionals['min_size'] = 1
         pool_name = 'test1'
-        self._create(cluster_id, pool_name, pg_num=64, optionals=optionals)
+        self._create(cluster_id, pool_name, pg_num=12, optionals=optionals)
         pool_id = self._assert_visible(cluster_id, pool_name)['id']
         pool = self.api.get("cluster/%s/pool/%s" %
                             (cluster_id, pool_id)).json()
@@ -392,29 +393,69 @@ class TestPoolManagement(RequestTestCase):
         # remove pool to try next minsize value
         self._delete(cluster_id, pool_id)
 
-    def XXXtest_invalid_args_ec(self):
+    def test_ecpool(self):
         """
-        Test that when invalid attributes are passed to create, they are
-        not accepted
+        Test that when non-default attributes are passed to create, they are
+        accepted and reflected on the created erasure coded pool.
         """
 
         cluster_id = self._wait_for_cluster()
-        return
+
+        crush_rule = {
+            "max_size": 1,
+            "min_size": 1,
+            "name": "custom",
+            "ruleset": random.randint(0, 100),
+            "steps": [
+                {
+                    "num": 5,
+                    "op": "set_chooseleaf_tries",
+                },
+                {
+                    "num": 100,
+                    "op": "set_choose_tries",
+                },
+                {
+                    "item": -1,
+                    "item_name": "default",
+                    "op": "take",
+                },
+                {
+                    "num": -2,
+                    "op": "choose_firstn",
+                    "type": "osd"
+                },
+                {
+                    "op": "emit",
+                }
+            ],
+            "type": "erasure"
+        }
+        r = self.api.post("cluster/%s/crush_rule" % cluster_id, crush_rule)
+        self.assertEqual(r.status_code, 202)
+        self._wait_for_completion(r)
+        ruleset = self._assert_visible(cluster_id, 'custom', object_type='crush_rule')['ruleset']
+        # TODO validate semantics when crushruleset doesn't exists?
 
         # Some non-default values
-        optionals = {}
+        optionals = self._non_default_args(cluster_id)
+        optionals['crush_ruleset'] = ruleset
+        del(optionals['size'])
+        optionals['min_size'] = 1
         optionals['type'] = 'erasure'
-        optionals['size'] = 1
+        optionals['erasure_code_profile'] = 'myprofile'
         pool_name = 'test1'
-        pg_num = 64
-        # Create the pool
-        args = {
-            'name': pool_name,
-            'pg_num': pg_num,
-            'type': 'erasure',
-            'size': 1  # not allowed
-        }
-        r = self.api.post("cluster/%s/pool" % cluster_id, args)
-        self.assertEqual(r.status_code, 400)
-        self.assertEqual(r.text, u'{"size": "Not allowed during POST"}')
-        # TODO are there other fields that can be applied to create or update ??
+        self._create(cluster_id, pool_name, pg_num=12, optionals=optionals)
+        pool_id = self._assert_visible(cluster_id, pool_name)['id']
+        pool = self.api.get("cluster/%s/pool/%s" %
+                            (cluster_id, pool_id)).json()
+        for var, val in optionals.items():
+            # for min_size, the value set may be modified;
+            # use 'expected' rather than exact 'val'
+            self.assertEqual(pool[var], val,
+                             "pool[%s]!=%s (actually %s)" %
+                             (var, val, pool[var]))
+            # TODO: call out to the ceph cluster to check the
+            # value landed
+        # remove pool to try next minsize value
+        self._delete(cluster_id, pool_id)

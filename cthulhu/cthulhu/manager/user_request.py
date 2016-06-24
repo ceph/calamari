@@ -297,6 +297,16 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
         else:
             return {}
 
+    @property
+    def status(self):
+        if self.state != self.COMPLETE:
+            if self._await_version == {PgSummary: None}:
+                return "Waiting for %s PGs to create" % str(self._pg_count)
+            elif self._await_version:
+                return "Waiting for OSD map epoch %s" % self._await_version
+        else:
+            return super(PoolCreatingRequest, self).status
+
     def on_map(self, sync_type, sync_object):
         if self._awaiting_pgs:
             assert sync_type == PgSummary

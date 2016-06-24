@@ -1,5 +1,6 @@
 import logging
 import uuid
+import random
 
 from tests.server_testcase import RequestTestCase
 from django.utils.unittest.case import skipIf
@@ -209,6 +210,7 @@ class TestCrushRuleManagement(RequestTestCase):
             crush = {"name": rule_name,
                      "min_size": 1,
                      "max_size": 1,
+                     "ruleset": x+1,
                      "steps": [
                          {
                              "item": -1,
@@ -257,3 +259,48 @@ class TestCrushRuleManagement(RequestTestCase):
         self._wait_for_completion(r)
         r = self.api.delete("cluster/%s/crush_rule/%s" % (cluster_id, rule_id))
         self._wait_for_completion(r)
+
+    def test_ruleset(self):
+        """
+        Test that we can: set ruleset to something else than id
+         - Create a crush rule
+         - Add some children to it
+         - update it's name, type, and children
+        """
+
+        cluster_id = self._wait_for_cluster()
+
+        r = self.api.get("cluster/%s/crush_rule" % cluster_id).json()
+
+        rulesets = {}  # uuid name to random ruleset id
+        for x in range(3):
+            rule_name = "replicated_ruleset%s" % str(uuid.uuid1())
+            rulesets[rule_name] = random.randint(10, 20)
+            crush = {"name": rule_name,
+                     "min_size": 1,
+                     "max_size": 1,
+                     "ruleset": rulesets[rule_name],
+                     "steps": [
+                         {
+                             "item": -1,
+                             "item_name": "default",
+                             "op": "take",
+                         },
+                         {
+                             "num": 0,
+                             "op": "chooseleaf_firstn",
+                             "type": "rack"
+                         },
+                         {
+                             "op": "emit",
+                         }
+                     ],
+                     "type": "replicated"}
+
+            r = self.api.post("cluster/%s/crush_rule" % cluster_id, crush)
+            self._wait_for_completion(r)
+        r = self.api.get("cluster/%s/crush_rule" % cluster_id).json()
+
+        for rule in r:
+            if rule['name'] in rulesets:
+                self.assertEqual(rule['ruleset'], rulesets[rule['name']])
