@@ -200,6 +200,13 @@ class StepItemSerializer(serializers.Serializer):
         fields = ('op', 'type', 'num', 'item_name', 'item')
 
 
+def less_than(limit):
+    def compare(value):
+        if value > limit:
+            raise serializers.ValidationError('This field must be less than %s.' % str(limit))
+    return compare
+
+
 class CrushRuleSerializer(ValidatingSerializer):
     class Meta:
         fields = ('id', 'name', 'ruleset', 'type', 'min_size', 'max_size', 'steps', 'osd_count')
@@ -210,7 +217,7 @@ class CrushRuleSerializer(ValidatingSerializer):
 
     id = serializers.IntegerField(source='rule_id', required=False)
     name = serializers.CharField(source='rule_name', help_text="Human readable name", required=False)
-    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member", required=False)
+    ruleset = serializers.IntegerField(help_text="ID of the CRUSH ruleset of which this rule is a member", required=False, validators=[less_than(255), ])
     type = fields.EnumField({CRUSH_RULE_TYPE_REPLICATED: 'replicated', CRUSH_RULE_TYPE_ERASURE: 'erasure'}, help_text="Data redundancy type", required=False)
     min_size = serializers.IntegerField(
         help_text="If a pool makes more replicas than this number, CRUSH will NOT select this rule", required=False)
