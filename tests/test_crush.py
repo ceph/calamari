@@ -210,7 +210,7 @@ class TestCrushRuleManagement(RequestTestCase):
             crush = {"name": rule_name,
                      "min_size": 1,
                      "max_size": 1,
-                     "ruleset": x+1,
+                     "ruleset": x + 1,
                      "steps": [
                          {
                              "item": -1,

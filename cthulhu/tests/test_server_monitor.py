@@ -9,7 +9,7 @@ os.environ.setdefault("CALAMARI_CONFIG", os.path.join(os.path.dirname(__file__),
 
 from django.utils.unittest.case import TestCase
 from django.utils.unittest.case import skipIf
-from mock import Mock
+from mock import Mock, patch
 
 from cthulhu.manager.server_monitor import ServerMonitor, ServiceId
 
@@ -274,3 +274,85 @@ class TestServiceDetection(TestCase):
         self.assertListEqual(sm.services.keys(), [
             ServiceId(FSID, 'mds', MDS1_HOSTNAME)
         ])
+
+    def test_get_osd_to_host_mapping_empty(self):
+        """
+        That we get an empty mapping when osd_map contains no data
+        """
+        osd_map = {'tree': {'nodes': []}, 'osds': []}
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({}, sm.get_hostname_to_osds(osd_map))
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_get_osd_to_host_mapping_osd_metadata_absent(self, mocket):
+        """
+        That we get a mapping when osd_map contains osd_metadata no data
+        """
+        mocket.getnameinfo.return_value = [OSD_HOSTNAME]
+        mocket.getfqdn.return_value = OSD_FQDN
+        osd_map = {"osds": [{"cluster_addr": "192.34.58.142:6808/14001122",
+                             "osd": 0}]}
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({('gravel2.rockery', 'gravel2'): [{'cluster_addr': '192.34.58.142:6808/14001122', 'osd': 0}]}, sm.get_hostname_to_osds(osd_map))
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_get_osd_to_host_mapping_osd_metadata_exists(self, mocket):
+        """
+        That we get a mapping when osd_map contains osd_metadata no data
+        """
+        osd_map = {"osds": [{"cluster_addr": "192.34.58.142:6808/14001122",
+                             "osd": 0}],
+                   "osd_metadata": [{
+                       "back_addr": "192.34.58.142:6808/14001122",
+                       "hostname": "gravel2.rockery",
+                       "id": 0,
+                       "hb_back_addr": "192.34.58.142:6809/14001122",
+                       "hb_front_addr": "192.34.58.142:6810/14001122",
+                       "front_addr": "192.34.58.142:6800/1122"}]}
+
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({('gravel2.rockery', 'gravel2'): [{'cluster_addr': '192.34.58.142:6808/14001122', 'osd': 0}]}, sm.get_hostname_to_osds(osd_map))
+
+        self.assertEqual(False, mocket.called)
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_get_osd_to_host_mapping_osd_metadata_exists_contains_hostname(self, mocket):
+        """
+        That we get a mapping when osd_map contains osd_metadata no data
+        """
+        mocket.getnameinfo.return_value = [OSD_HOSTNAME]
+        mocket.getfqdn.return_value = OSD_FQDN
+        osd_map = {"osds": [{"cluster_addr": "192.34.58.142:6808/14001122",
+                             "osd": 0}],
+                   "osd_metadata": [{
+                       "back_addr": "192.34.58.142:6808/14001122",
+                       "hostname": "gravel2",
+                       "id": 0,
+                       "hb_back_addr": "192.34.58.142:6809/14001122",
+                       "hb_front_addr": "192.34.58.142:6810/14001122",
+                       "front_addr": "192.34.58.142:6800/1122"}]}
+
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({('gravel2.rockery', 'gravel2'): [{'cluster_addr': '192.34.58.142:6808/14001122', 'osd': 0}]}, sm.get_hostname_to_osds(osd_map))
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_get_osd_to_host_mapping_osd_metadata_partial_exists(self, mocket):
+        """
+        That we get a mapping when osd_map contains osd_metadata no data
+        """
+        mocket.getnameinfo.return_value = [OSD_HOSTNAME]
+        mocket.getfqdn.return_value = OSD_FQDN
+        osd_map = {"osds": [{"cluster_addr": "192.34.58.142:6808/14001122",
+                             "osd": 0},
+                            {"cluster_addr": "192.34.58.142:6802/17383",
+                             "osd": 1}],
+                   "osd_metadata": [{
+                       "back_addr": "192.34.58.142:6808/14001122",
+                       "hostname": "gravel2",
+                       "id": 0,
+                       "hb_back_addr": "192.34.58.142:6809/14001122",
+                       "hb_front_addr": "192.34.58.142:6810/14001122",
+                       "front_addr": "192.34.58.142:6800/1122"}]}
+
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({('gravel2.rockery', 'gravel2'): [{'cluster_addr': '192.34.58.142:6808/14001122', 'osd': 0}, {'cluster_addr': '192.34.58.142:6802/17383', 'osd': 1}]}, sm.get_hostname_to_osds(osd_map))
