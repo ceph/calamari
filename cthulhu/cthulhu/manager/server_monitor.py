@@ -170,31 +170,12 @@ class ServerMonitor(greenlet.Greenlet):
         In a default Ceph deployment this will indeed be the hostname, but
         a logical server can have multiple CRUSH nodes with arbitrary names.
         """
-        osd_tree = osd_map['tree']
-        nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
-
         host_to_osd = defaultdict(list)
 
         osd_id_to_host = {}
 
-        def find_descendants(cursor, fn):
-            if fn(cursor):
-                return [cursor]
-            else:
-                found = []
-                for child_id in cursor['children']:
-                    found.extend(find_descendants(nodes_by_id[child_id], fn))
-                return found
-
-        osd_metadata = osd_map.get('osd_metadata', [])
-        if not osd_metadata:
-            log.error("get_hostname_to_osds unable to get osd_metadata")
-
-        for osd in osd_metadata:
-            fqdn = osd['hostname']
-            if fqdn.find('.') == -1:
-                # fqdn isn't an fqdn ask socket
-                osd_addr = osd['back_addr']
+        def get_name_info(hostname, osd_addr):
+            if hostname.find('.') == -1:
                 if osd_addr is not None:
                         osd_addr = osd_addr.split('/')[0]  # deal with CIDR notation
                         osd_addr, osd_port = osd_addr.split(':')
@@ -207,8 +188,22 @@ class ServerMonitor(greenlet.Greenlet):
                         hostname = fqdn
                 except socket.gaierror:
                     pass
+            else:
+                fqdn = hostname
+                hostname = fqdn[0:fqdn.index('.')]
 
-                osd_id_to_host[osd['id']] = (fqdn, hostname)
+            return (fqdn, hostname)
+
+        osd_metadata = osd_map.get('osd_metadata', [])
+        if not osd_metadata:
+            log.error("get_hostname_to_osds unable to get osd_metadata")
+
+        for osd in osd_metadata:
+            osd_id_to_host[osd['id']] = get_name_info(osd['hostname'], osd['back_addr'])
+
+        for osd in osd_map['osds']:
+            if osd['osd'] not in osd_id_to_host:
+                osd_id_to_host[osd['osd']] = get_name_info('', osd['cluster_addr'])
 
         for osd in osd_map['osds']:
             try:
