@@ -144,6 +144,12 @@ class Eventer(gevent.greenlet.Greenlet):
             self._manager.persister.save_events(self._events)
             self._events = []
 
+        if EMIT_EVENTS_TO_SALT_EVENT_BUS:
+            log.debug("resetting minion")
+            __opts__ = salt.config.minion_config(MINION_CONFIG)
+            __opts__['file_client'] = 'local'
+            self.caller = salt.client.Caller(mopts=__opts__)
+
     # TODO consume messages about ServiceState from ServerMonitor, so that
     # we can tell people about their services in the absence of up to date
     # cluster map information.
