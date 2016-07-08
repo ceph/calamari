@@ -19,6 +19,10 @@ from gevent.hub import Hub
 config = CalamariConfig()
 
 
+TIMEOUT = 5  # seconds till we tick the cthulhu eventer
+SALT_RESET_PERIOD = 300  # seconds till we teardown/setup our salt_caller. Do this because it's leaking memory
+
+
 def patch_gevent_hub_error_handler():
 
     Hub._origin_handle_error = Hub.handle_error
@@ -156,8 +160,12 @@ def main():
     gevent.signal(signal.SIGTERM, shutdown)
     gevent.signal(signal.SIGINT, shutdown)
 
+    x = 0
     while not complete.is_set():
-        #cthulhu.eventer.on_tick()
-        complete.wait(timeout=5)
-
+        cthulhu.eventer.on_tick()
+        complete.wait(timeout=TIMEOUT)
+        if x > SALT_RESET_PERIOD:
+            cthulhu.eventer.reset_event_sink()
+            x = 0
+        x += TIMEOUT
     wsgi.stop()
