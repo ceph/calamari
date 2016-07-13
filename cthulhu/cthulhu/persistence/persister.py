@@ -45,10 +45,6 @@ class Persister(gevent.greenlet.Greenlet):
 
         self._session = Session()
 
-        # Plumb the sqlalchemy logger into our cthulhu logger's output
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.getLevelName(config.get('cthulhu', 'db_log_level')))
-        for handler in log.handlers:
-            logging.getLogger('sqlalchemy.engine').addHandler(handler)
 
     def __getattribute__(self, item):
         """
