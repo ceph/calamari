@@ -4,18 +4,24 @@ A lightweight server for running a minimal Calamari instance
 in a single process.
 """
 
+from cthulhu.log import log
 from django.core.servers.basehttp import get_internal_wsgi_application
 import gevent.event
 import gevent
+from gevent import monkey
+monkey.patch_all()  # noqa
 import signal
 from gevent.server import StreamServer
 import os
 from gevent.pywsgi import WSGIServer
 import zerorpc
 from calamari_common.config import CalamariConfig
-from cthulhu.log import log
 config = CalamariConfig()
+import objgraph
+import gc
+import manhole
 
+manhole.install(oneshot_on=signal.SIGUSR1)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
 
@@ -134,6 +140,8 @@ def main():
 
     while not complete.is_set():
         cthulhu.eventer.on_tick()
-        complete.wait(timeout=5)
+        complete.wait(timeout=10)
+        objgraph.show_growth(limit=20)
+        objgraph.show_most_common_types()
 
     wsgi.stop()
