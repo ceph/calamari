@@ -6,6 +6,8 @@ from cthulhu.log import log
 from calamari_common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
 
+remote = get_remote()
+
 
 class UserRequestBase(object):
     """
@@ -194,7 +196,7 @@ class RadosRequest(UserRequest):
                                                  self._cluster_name,
                                                  commands))
 
-        self.jid = get_remote().run_job(self._minion_id, 'ceph.rados_commands',
+        self.jid = remote.run_job(self._minion_id, 'ceph.rados_commands',
                                         {'fsid': self.fsid,
                                          'cluster_name': self._cluster_name,
                                          'commands': commands})
@@ -215,7 +217,7 @@ class SaltRequest(UserRequest):
         self._args = args
 
     def _submit(self):
-        self.jid = get_remote().run_job(self._minion_id, self._cmd, self._args)
+        self.jid = remote.run_job(self._minion_id, self._cmd, self._args)
         self.alive_at = now()
 
         self.log.info("Request %s started job %s" % (self.id, self.jid))
