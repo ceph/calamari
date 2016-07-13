@@ -9,7 +9,6 @@ from calamari_common.remote import get_remote, Unavailable
 
 from cthulhu.manager import config
 from cthulhu.gevent_util import nosleep, nosleep_mgr
-from cthulhu.log import log
 from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
 from cthulhu.manager.crush_rule_request_factory import CrushRuleRequestFactory
 from cthulhu.manager.crush_request_factory import CrushRequestFactory
@@ -18,6 +17,9 @@ from cthulhu.manager.pool_request_factory import PoolRequestFactory
 from cthulhu.manager.plugin_monitor import PluginMonitor
 from calamari_common.types import CRUSH_NODE, CRUSH_RULE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap, MonStatus
 from cthulhu.util import now
+import logging
+
+log = logging.getLogger('cthulhu.cluster_monitor')
 
 remote = get_remote()
 

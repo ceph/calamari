@@ -4,7 +4,9 @@ from cthulhu.manager.server_monitor import ServiceId
 from calamari_common.types import OSD, OsdMap, BucketNotEmptyError
 import json
 
-from cthulhu.log import log
+import logging
+
+log = logging.getLogger('cthulhu.crush_node_request_factory')
 
 
 class CrushNodeRequestFactory(RequestFactory):

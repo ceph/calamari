@@ -21,7 +21,8 @@ from cthulhu.persistence.sync_objects import SyncObject
 from cthulhu.persistence.servers import Server, Service
 
 from cthulhu.util import now
-from cthulhu.log import log
+
+log = logging.getLogger('cthulhu.persister')
 
 Session = sessionmaker()
 

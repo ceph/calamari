@@ -22,8 +22,6 @@ except ImportError:
 
 
 from calamari_common.remote import get_remote
-from cthulhu.log import log
-import cthulhu.log
 from cthulhu.util import Ticker
 from cthulhu.manager.cluster_monitor import ClusterMonitor
 from cthulhu.manager.eventer import Eventer
@@ -32,6 +30,8 @@ from cthulhu.manager import request_collection
 from cthulhu.manager.rpc import RpcThread
 from cthulhu.manager import config
 from cthulhu.manager.server_monitor import ServerMonitor, ServerState, ServiceState
+
+log = logging.getLogger('cthulhu.manager')
 
 
 # sqlalchemy is optional: without it, all database writes will

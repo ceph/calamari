@@ -6,15 +6,13 @@ import logging
 from calamari_common.remote import get_remote
 from cthulhu.gevent_util import nosleep
 from cthulhu.manager.user_request import UserRequest
-from cthulhu.log import log as cthulhu_log
 from cthulhu.util import now
+import logging
+
+log = logging.getLogger('cthulhu.request_collection')
 
 
 TICK_PERIOD = 20
-
-
-# getChild isn't in 2.6
-log = logging.getLogger('.'.join((cthulhu_log.name, 'request_collection')))
 
 
 class RequestCollection(object):

@@ -10,9 +10,11 @@ from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, PO
     NotFound, SERVER
 from calamari_common.remote import get_remote
 
-from cthulhu.log import log
 from cthulhu.manager import config
 from cthulhu.manager.user_request import SaltRequest
+import logging
+
+log = logging.getLogger('cthulhu.rpc')
 
 
 class RpcInterface(object):

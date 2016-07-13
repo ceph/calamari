@@ -19,7 +19,6 @@ from calamari_common.types import OsdMap, MonMap, ServiceId
 from calamari_common.remote import get_remote
 
 from cthulhu.gevent_util import nosleep
-from cthulhu.log import log as cthulhu_log
 from cthulhu.manager import config
 from cthulhu.util import now
 
@@ -33,9 +32,7 @@ CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 
 
-# getChild isn't in 2.6
-log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
-
+log = logging.getLogger('cthulhu.server_monitor')
 
 class ServerState(object):
     """

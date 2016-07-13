@@ -5,11 +5,13 @@ import gevent.event
 import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
-from cthulhu.log import log
 from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
+import logging
+
+log = logging.getLogger('cthulhu.eventer')
 
 
 # The tick handler is very cheap (no I/O) so we call

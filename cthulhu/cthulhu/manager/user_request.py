@@ -2,10 +2,11 @@ import logging
 import uuid
 
 from calamari_common.remote import get_remote
-from cthulhu.log import log
 from calamari_common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
 from cthulhu.util import now
+import logging
 
+log = logging.getLogger('cthulhu.user_request')
 remote = get_remote()
 
 

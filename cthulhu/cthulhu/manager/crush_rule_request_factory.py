@@ -1,7 +1,9 @@
 from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.user_request import OsdMapModifyingRequest
 from calamari_common.types import OsdMap
-from cthulhu.log import log
+import logging
+
+log = logging.getLogger('cthulhu.crush_rule_request_factory')
 
 
 class CrushRuleRequestFactory(RequestFactory):
