@@ -1,5 +1,5 @@
 from django.utils.unittest import TestCase
-from mock import MagicMock, patch
+from mock import MagicMock
 
 from cthulhu.manager.osd_request_factory import OsdRequestFactory
 from cthulhu.manager.user_request import RadosRequest
@@ -19,24 +19,6 @@ class TestOSDFactory(TestCase):
 
     def testCreate(self):
         self.assertNotEqual(OsdRequestFactory(0), None, 'Test creating an OSDRequest')
-
-    def testScrub(self):
-        scrub = self.osd_request_factory.scrub(0)
-        self.assertIsInstance(scrub, RadosRequest, 'Testing Scrub')
-
-        remote_mock = MagicMock()
-
-        def get_remote():
-            return remote_mock
-
-        with patch('cthulhu.manager.user_request.get_remote', get_remote):
-            scrub.submit(54321)
-
-        remote_mock.run_job.assert_called_with(54321,
-                                               'ceph.rados_commands',
-                                               {'fsid': 12345,
-                                                'cluster_name': 'I am a fake',
-                                                'commands': [('osd scrub', {'who': '0'})]})
 
     def testDeepScrub(self):
         deep_scrub = self.osd_request_factory.deep_scrub(0)
