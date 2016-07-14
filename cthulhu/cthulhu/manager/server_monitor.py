@@ -175,21 +175,21 @@ class ServerMonitor(greenlet.Greenlet):
         osd_id_to_host = {}
 
         def get_name_info(hostname, osd_addr):
+            fqdn = hostname
             if hostname.find('.') == -1:
                 if osd_addr is not None:
-                        osd_addr = osd_addr.split('/')[0]  # deal with CIDR notation
-                        osd_addr, osd_port = osd_addr.split(':')
-                        osd_socket_addr = (osd_addr, int(osd_port))
-                try:
-                    fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, 0)[0])
+                    osd_addr = osd_addr.split('/')[0]  # deal with CIDR notation
+                    osd_addr, osd_port = osd_addr.split(':')
                     try:
-                        hostname = fqdn[0:fqdn.index('.')]
-                    except ValueError:
-                        hostname = fqdn
-                except socket.gaierror:
-                    pass
+                        osd_socket_addr = (osd_addr, int(osd_port))
+                        fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, 0)[0])
+                        try:
+                            hostname = fqdn[0:fqdn.index('.')]
+                        except ValueError:
+                            hostname = fqdn
+                    except (socket.gaierror, ValueError):
+                        pass
             else:
-                fqdn = hostname
                 hostname = fqdn[0:fqdn.index('.')]
 
             return (fqdn, hostname)
