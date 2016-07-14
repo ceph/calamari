@@ -14,7 +14,35 @@ from gevent.pywsgi import WSGIServer
 import zerorpc
 from calamari_common.config import CalamariConfig
 from cthulhu.log import log
+import sys
+from gevent.hub import Hub
 config = CalamariConfig()
+
+
+TIMEOUT = 5  # seconds till we tick the cthulhu eventer
+SALT_RESET_PERIOD = 300  # seconds till we teardown/setup our salt_caller. Do this because it's leaking memory
+
+
+def patch_gevent_hub_error_handler():
+
+    Hub._origin_handle_error = Hub.handle_error
+
+    def custom_handle_error(self, context, type, value, tb):
+        if not issubclass(type, Hub.SYSTEM_ERROR + Hub.NOT_ERROR):
+            log.error("Uncaught exception", exc_info=(type, value, tb))
+
+        self._origin_handle_error(context, type, value, tb)
+
+    Hub.handle_error = custom_handle_error
+
+
+patch_gevent_hub_error_handler()
+
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
 
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
@@ -132,8 +160,12 @@ def main():
     gevent.signal(signal.SIGTERM, shutdown)
     gevent.signal(signal.SIGINT, shutdown)
 
+    x = 0
     while not complete.is_set():
         cthulhu.eventer.on_tick()
-        complete.wait(timeout=5)
-
+        complete.wait(timeout=TIMEOUT)
+        if x > SALT_RESET_PERIOD:
+            cthulhu.eventer.reset_event_sink()
+            x = 0
+        x += TIMEOUT
     wsgi.stop()

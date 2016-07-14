@@ -356,3 +356,35 @@ class TestServiceDetection(TestCase):
 
         sm = ServerMonitor(Mock(), Mock(), Mock())
         self.assertEqual({('gravel2.rockery', 'gravel2'): [{'cluster_addr': '192.34.58.142:6808/14001122', 'osd': 0}, {'cluster_addr': '192.34.58.142:6802/17383', 'osd': 1}]}, sm.get_hostname_to_osds(osd_map))
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_get_osd_to_host_mapping_osd_down_and_out_from_epoch1(self, mocket):
+        """
+        That we get a mapping when osd_map contains osd_metadata no data
+        """
+        mocket.getnameinfo.return_value = [OSD_HOSTNAME]
+        mocket.getfqdn.return_value = OSD_FQDN
+        osd_map = {"osd_metadata": [],
+                   "osds": [{"cluster_addr": ":/0",
+                             "down_at": 0,
+                             "heartbeat_back_addr": ":/0",
+                             "heartbeat_front_addr": ":/0",
+                             "in": 0,
+                             "last_clean_begin": 0,
+                             "last_clean_end": 0,
+                             "lost_at": 0,
+                             "osd": 0,
+                             "primary_affinity": 1.0,
+                             "public_addr": ":/0",
+                             "state": [
+                                 "exists",
+                                 "new"
+                             ],
+                             "up": 0,
+                             "up_from": 0,
+                             "up_thru": 0,
+                             "uuid": "f53e0a25-d29c-4aa3-9a2e-f6ebee538f8e",
+                             "weight": 0.0}]}
+
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        self.assertEqual({('', ''): [{'heartbeat_back_addr': ':/0', 'uuid': 'f53e0a25-d29c-4aa3-9a2e-f6ebee538f8e', 'weight': 0.0, 'up_from': 0, 'heartbeat_front_addr': ':/0', 'down_at': 0, 'lost_at': 0, 'up': 0, 'primary_affinity': 1.0, 'state': ['exists', 'new'], 'last_clean_begin': 0, 'last_clean_end': 0, 'in': 0, 'public_addr': ':/0', 'up_thru': 0, 'cluster_addr': ':/0', 'osd': 0}]}, sm.get_hostname_to_osds(osd_map))
