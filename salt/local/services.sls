@@ -6,7 +6,7 @@ supervisord:
     - user: root
     - name: systemctl enable supervisord && systemctl start supervisord
 {% else %}
-supervisord:
+supervisor:
   service:
     - running
     - enable: True
