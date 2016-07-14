@@ -14,7 +14,31 @@ from gevent.pywsgi import WSGIServer
 import zerorpc
 from calamari_common.config import CalamariConfig
 from cthulhu.log import log
+import sys
+from gevent.hub import Hub
 config = CalamariConfig()
+
+
+def patch_gevent_hub_error_handler():
+
+    Hub._origin_handle_error = Hub.handle_error
+
+    def custom_handle_error(self, context, type, value, tb):
+        if not issubclass(type, Hub.SYSTEM_ERROR + Hub.NOT_ERROR):
+            log.error("Uncaught exception", exc_info=(type, value, tb))
+
+        self._origin_handle_error(context, type, value, tb)
+
+    Hub.handle_error = custom_handle_error
+
+
+patch_gevent_hub_error_handler()
+
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
 
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "calamari_web.settings")
@@ -133,7 +157,7 @@ def main():
     gevent.signal(signal.SIGINT, shutdown)
 
     while not complete.is_set():
-        cthulhu.eventer.on_tick()
+        #cthulhu.eventer.on_tick()
         complete.wait(timeout=5)
 
     wsgi.stop()
