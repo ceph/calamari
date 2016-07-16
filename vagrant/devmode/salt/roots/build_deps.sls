@@ -9,6 +9,7 @@ build_deps:
       - g++
       - python-cairo
       - python-m2crypto
+      - python-gevent
       - make
       - python-pip
       - libevent-dev

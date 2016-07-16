@@ -8,18 +8,6 @@ virtualenv:
       - git: git_clone
       - pkg: build_deps
 
-# Explicit installation for pyzmq so we can pass --zmq=bundled
-pyzmq:
-  pip.installed:
-    - name: pyzmq == 14.1.1
-    - user: {{ pillar['username'] }}
-    - bin_env: {{ pillar['home'] }}/calamari/env
-    - download_cache: {{ pillar['home'] }}/pip_cache
-    - install_options:
-      - "--zmq=bundled"
-    - require:
-      - virtualenv: virtualenv
-
 pip_pkgs:
   pip:
     - installed
