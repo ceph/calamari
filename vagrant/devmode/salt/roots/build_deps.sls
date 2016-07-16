@@ -1,6 +1,7 @@
 build_deps:
   pkg.installed:
     - pkgs:
+      - supervisor
       - python-virtualenv
       - git
       - python-dev
