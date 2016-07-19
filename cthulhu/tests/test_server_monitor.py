@@ -18,6 +18,9 @@ config = TestConfig()
 
 OSD_MAP = load_fixture('osd_map.json')
 MON_MAP = load_fixture('mon_map.json')
+BAD_MAP = load_fixture('bad_map.json')
+BAD_MAP2 = load_fixture('bad_map2.json')
+BAD_MAP3 = load_fixture('bad_map3.json')
 
 # After migrating osd.1 from gravel2 to gravel1
 OSD_MAP_MIGRATED = load_fixture('osd_map_migrated.json')
@@ -360,7 +363,7 @@ class TestServiceDetection(TestCase):
     @patch('cthulhu.manager.server_monitor.socket')
     def test_get_osd_to_host_mapping_osd_down_and_out_from_epoch1(self, mocket):
         """
-        That we get a mapping when osd_map contains osd_metadata no data
+        That we don't get a mapping when osd_map contains osd_metadata no data
         """
         mocket.getnameinfo.return_value = [OSD_HOSTNAME]
         mocket.getfqdn.return_value = OSD_FQDN
@@ -387,4 +390,26 @@ class TestServiceDetection(TestCase):
                              "weight": 0.0}]}
 
         sm = ServerMonitor(Mock(), Mock(), Mock())
-        self.assertEqual({('', ''): [{'heartbeat_back_addr': ':/0', 'uuid': 'f53e0a25-d29c-4aa3-9a2e-f6ebee538f8e', 'weight': 0.0, 'up_from': 0, 'heartbeat_front_addr': ':/0', 'down_at': 0, 'lost_at': 0, 'up': 0, 'primary_affinity': 1.0, 'state': ['exists', 'new'], 'last_clean_begin': 0, 'last_clean_end': 0, 'in': 0, 'public_addr': ':/0', 'up_thru': 0, 'cluster_addr': ':/0', 'osd': 0}]}, sm.get_hostname_to_osds(osd_map))
+        self.assertEqual({}, sm.get_hostname_to_osds(osd_map))
+
+    @patch('cthulhu.manager.server_monitor.socket')
+    def test_on_osd_map(self, mocket):
+        def get_name_info(addr, _):
+            if addr == ":/0":
+                return ['']
+            else:
+                return [OSD_HOSTNAME]
+
+        def get_fqdn(thing):
+            if thing == [""]:
+                return ''
+            else:
+                return OSD_FQDN
+
+        mocket.getnameinfo = get_name_info
+        mocket.getfqdn = get_fqdn
+
+        sm = ServerMonitor(Mock(), Mock(), Mock())
+        sm.on_osd_map(BAD_MAP)
+        sm.on_osd_map(BAD_MAP2)
+        sm.on_osd_map(BAD_MAP3)

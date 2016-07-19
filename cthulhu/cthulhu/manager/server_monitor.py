@@ -199,11 +199,15 @@ class ServerMonitor(greenlet.Greenlet):
             log.error("get_hostname_to_osds unable to get osd_metadata")
 
         for osd in osd_metadata:
-            osd_id_to_host[osd['id']] = get_name_info(osd['hostname'], osd['back_addr'])
+            name_info = get_name_info(osd['hostname'], osd['back_addr'])
+            if name_info != ('', ''):
+                osd_id_to_host[osd['id']] = name_info
 
         for osd in osd_map['osds']:
             if osd['osd'] not in osd_id_to_host:
-                osd_id_to_host[osd['osd']] = get_name_info('', osd['cluster_addr'])
+                name_info = get_name_info('', osd['cluster_addr'])
+                if name_info != ('', ''):
+                    osd_id_to_host[osd['osd']] = name_info
 
         for osd in osd_map['osds']:
             try:
@@ -225,7 +229,10 @@ class ServerMonitor(greenlet.Greenlet):
         self.servers[server_state.fqdn] = server_state
 
     def inject_service(self, service_state, server_fqdn):
-        server_state = self.servers[server_fqdn]
+        try:
+            server_state = self.servers[server_fqdn]
+        except KeyError:
+            log.error('wrt: bz1349786 unable to get a server_state for %s' % server_fqdn)
         self.services[service_state.id] = service_state
         service_state.set_server(server_state)
         server_state.services[service_state.id] = service_state
