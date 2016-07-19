@@ -1,4 +1,5 @@
 import logging
+logging.captureWarnings(True)
 
 from calamari_common.config import CalamariConfig
 config = CalamariConfig()
