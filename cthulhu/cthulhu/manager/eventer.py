@@ -10,6 +10,7 @@ from calamari_common.types import OsdMap, Health, MonStatus, QuorumStatus, Servi
     RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
 from cthulhu.util import now
+from distutils.util import strtobool
 
 
 # The tick handler is very cheap (no I/O) so we call
@@ -27,7 +28,7 @@ CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
 
 MINION_CONFIG = str(config.get('cthulhu', 'salt_config_path')).replace('master', 'minion')
-EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(config.get('cthulhu', 'emit_events_to_salt_event_bus'))
+EMIT_EVENTS_TO_SALT_EVENT_BUS = bool(strtobool(config.get('cthulhu', 'emit_events_to_salt_event_bus')))
 EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
 
 
