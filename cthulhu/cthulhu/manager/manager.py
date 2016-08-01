@@ -51,9 +51,6 @@ except ImportError:
     manhole = None
 
 
-remote = get_remote()
-
-
 class ProcessMonitorThread(gevent.greenlet.Greenlet):
     CARBON_HOST = "localhost"
     CARBON_PORT = 2003
@@ -126,6 +123,7 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
     def _run(self):
         log.info("%s running" % self.__class__.__name__)
 
+        remote = get_remote()
         remote.listen(self._complete,
                       on_heartbeat=self.on_heartbeat,
                       on_job=self.on_job,

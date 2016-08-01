@@ -1,5 +1,4 @@
 from collections import namedtuple, defaultdict
-from calamari_common.util import memoize
 
 import logging
 
@@ -96,7 +95,6 @@ class OsdMap(VersionedSyncObject):
         return crush_nodes
 
     @property
-    @memoize
     def parent_bucket_by_node_id(self):
         """
         Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
@@ -113,11 +111,10 @@ class OsdMap(VersionedSyncObject):
         return dict(parent_map)
 
     @property
-    @memoize
     def crush_type_by_id(self):
         return dict((n["type_id"], n) for n in self.data['crush']['types'])
 
-    @memoize
+    @property
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
 
@@ -128,7 +125,7 @@ class OsdMap(VersionedSyncObject):
             raise NotFound(CRUSH_NODE, node_id)
 
     def _get_crush_rule_osds(self, rule):
-        nodes_by_id = self.get_tree_nodes_by_id()
+        nodes_by_id = self.get_tree_nodes_by_id
 
         def _gather_leaf_ids(node):
             if node['id'] >= 0:
@@ -186,7 +183,6 @@ class OsdMap(VersionedSyncObject):
         return osds
 
     @property
-    @memoize
     def osds_by_rule_id(self):
         result = {}
         for rule in self.data['crush']['rules']:
@@ -195,7 +191,6 @@ class OsdMap(VersionedSyncObject):
         return result
 
     @property
-    @memoize
     def osds_by_pool(self):
         """
         Get the OSDS which may be used in this pool
@@ -221,7 +216,6 @@ class OsdMap(VersionedSyncObject):
         return result
 
     @property
-    @memoize
     def osd_pools(self):
         """
         A dict of OSD ID to list of pool IDs

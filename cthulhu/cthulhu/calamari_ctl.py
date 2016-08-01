@@ -23,24 +23,43 @@ from calamari_common.db.base import Base
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
 from cthulhu.persistence.servers import Server, Service  # noqa
 from calamari_common.db.event import Event  # noqa
-from cthulhu.log import FORMAT
 
-# The log is very verbose by default, filtered at handler level
-log = logging.getLogger('calamari_ctl')
-log.setLevel(logging.DEBUG)
+import logging.config
 
-# The stream handler is what the user sees: don't be too verbose here
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-handler.setLevel(logging.INFO)
-log.addHandler(handler)
+log = logging.getLogger(__name__)
+
 
 # The buffer handler is what we dump to a file on failures, be very verbose here
-log_buffer = StringIO()
 log_tmp = tempfile.NamedTemporaryFile()
-buffer_handler = logging.FileHandler(log_tmp.name)
-buffer_handler.setFormatter(logging.Formatter(FORMAT))
-log.addHandler(buffer_handler)
+
+logging.config.dictConfig({
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'default': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+        'file_handler': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': log_tmp.name,
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['default', 'file_handler'],
+            'level': 'INFO',
+            'propagate': True
+        }
+    }
+})
 
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
@@ -66,20 +85,24 @@ def quiet():
         sys.stderr = sys.__stderr__
 
 
+def run_cmd(cmd, message=None):
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    if message is not None:
+        log.info(message)
+    log.debug("{message} stdout: {out}".format(message=message, out=out))
+    log.debug("{message} stderr: {err}".format(message=message, err=err))
+    if p.returncode != 0:
+        raise RuntimeError("{command} for {message} failed with rc={rc}".format(command=cmd[0], message=message, rc=p.returncode))
+
+
 def run_local_salt(sls, message):
     # Configure postgres database
     if os.path.exists(sls):
         file_root, state = os.path.split(sls)
         state = state.split('.')[0]
         log.info("Starting/enabling {message}...".format(message=message))
-        p = subprocess.Popen(["salt-call", "--file-root=%s" % file_root, "--local", "state.sls",
-                              state, "concurrent=True"],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        log.debug("{message} salt stdout: {out}".format(message=message, out=out))
-        log.debug("{message} salt stderr: {err}".format(message=message, err=err))
-        if p.returncode != 0:
-            raise RuntimeError("salt-call for {message} failed with rc={rc}".format(message=message, rc=p.returncode))
+        run_cmd(["salt-call", "--file-root=%s" % file_root, "--local", "state.sls", state, "concurrent=True"])
     else:
         # This is the path you take if you're running in a development environment
         log.debug("Skipping {message} configuration, SLS not found".format(message=message))
@@ -169,10 +192,11 @@ def create_admin_users(args):
                 email=args.admin_email
             )
 
-    else:
-        log.info("You have not created an admin account for calamari."
-                 "This can be done later by running sudo calamari-ctl add_user <username>"
-                 "sudo calamari-ctl assign_role <username> --role superuser")
+    elif not user_model.objects.filter(is_superuser=True):
+        log.info('\n'.join(("You have not created an admin account for calamari.",
+                            "This can be done later by running:",
+                            "sudo calamari-ctl add_user <username> --password <password> --email <email>",
+                            "sudo calamari-ctl assign_role <username> --role superuser")))
 
 
 def initialize(args):
@@ -234,20 +258,19 @@ def initialize(args):
     ssl_key = config.get('calamari_web', 'ssl_key')
     ssl_cert = config.get('calamari_web', 'ssl_cert')
     if not os.path.exists(ssl_key):
-        log.info("Generating self-signed SSL certificate...")
-        subprocess.call([
+        run_cmd([
             'openssl', 'req', '-new', '-nodes', '-x509', '-subj',
             "/C=US/ST=Oregon/L=Portland/O=IT/CN=calamari-lite", '-days', '3650',
             '-keyout', ssl_key, '-out',
             ssl_cert, '-extensions', 'v3_ca'
-        ])
+        ], "Generating self-signed SSL certificate...")
         # ensure the bundled crt is readable
         os.chmod(ssl_cert, 0644)
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
     run_local_salt(SERVICES_SLS, message='supervisord')
-    subprocess.call(['supervisorctl', 'restart', 'calamari-lite'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    run_cmd(['supervisorctl', 'restart', 'calamari-lite'])
 
     log.info("Complete.")
 

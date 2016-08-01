@@ -15,6 +15,7 @@ import os
 import msgpack
 import json
 import tempfile
+import weakref
 
 import logging
 log = logging.getLogger('calamari.remote.mon')
@@ -777,7 +778,8 @@ class MsgGenerator(gevent.Greenlet):
 
     def _emit(self, msg_event):
         for instance in self._instances:
-            instance.put(msg_event)
+            if instance.subscribed > 0:  # GMENO theory about memory leak
+                instance.put(msg_event)
 
     def complete(self, jid, event):
         del self._jobs[jid]
@@ -826,11 +828,12 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
             _generator = MsgGenerator()
             _generator.start()
 
-        self._generator = _generator
+        self._generator = weakref.ref(_generator)
 
-        self._generator.register(self)
+        self._generator().register(self)
 
     def __init__(self):
+        self.subscribed = 0
         self._generator = None
 
         self.fqdn = socket.getfqdn()
@@ -858,7 +861,9 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         and return the job ID
         """
         log.info('MonRemote.run_job {0}'.format(str(cmd)))
-        return self._generator.run_job(fqdn, cmd, args)
+        gen = self._generator()
+        if gen is not None:
+            return gen.run_job(fqdn, cmd, args)
 
     def get_local_metadata(self):
         """
@@ -950,6 +955,7 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         :param fsid: Optionally filter heartbeats to one FSID
         """
 
+        self.subscribed += 1
         self.register()
 
         while not completion.is_set():
@@ -974,6 +980,7 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
                 elif ev.kind == RUNNING_JOBS and on_running_jobs:
                     on_running_jobs(self.fqdn, ev.data)
 
+        self.subscribed -= 1
         log.info("listen: complete")
 
 
