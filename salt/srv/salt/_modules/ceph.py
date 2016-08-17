@@ -461,8 +461,14 @@ def get_cluster_object(cluster_name, sync_type, since):
                 argdict.update(kwargs)
                 ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
                                               timeout=RADOS_TIMEOUT)
-                assert ret == 0
-                updated_osd_metadata = json.loads(raw)
+
+                # The command can return non-zero value if the osds are not fully ready,
+                # yet. Ignore this and create a structure containing only the osd id to
+                # avoid getting internal server error (http error 500).
+                if ret == 0:
+                    updated_osd_metadata = json.loads(raw)
+                else:
+                    updated_osd_metadata = {}
                 updated_osd_metadata['osd'] = osd_id
                 data['osd_metadata'].append(updated_osd_metadata)
 
