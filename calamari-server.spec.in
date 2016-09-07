@@ -47,8 +47,8 @@ Requires:       policycoreutils, libselinux-utils
 Requires(post): selinux-policy >= %{_selinux_policy_version}, policycoreutils
 Requires(postun): policycoreutils
 %endif
-Version: 	%{version}
-Release: 	%{?revision}%{?dist}
+Version: 	@VERSION@
+Release: 	@RELEASE@%{?dist}
 License: 	LGPL-2.1+
 URL:     	http://ceph.com/
 Source0: 	%{name}_%{version}.tar.gz
