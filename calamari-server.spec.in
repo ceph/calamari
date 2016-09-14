@@ -43,6 +43,8 @@ Requires:	python-setuptools
 # SELinux deps
 BuildRequires:  checkpolicy
 BuildRequires:  selinux-policy-devel
+BuildRequires:  selinux-policy-targeted
+BuildRequires:  selinux-policy-mls
 BuildRequires:  /usr/share/selinux/devel/policyhelp
 BuildRequires:  hardlink
 Requires:       policycoreutils, libselinux-utils
