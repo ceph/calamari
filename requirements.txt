@@ -1,0 +1,13 @@
+# The order of packages is significant, because pip processes them in the order
+# of appearance. Changing the order has an impact on the overall integration
+# process, which may cause wedges in the gate later.
+
+pbr>=1.6 # Apache-2.0
+
+python-etcd
+python-dateutil==2.2
+gevent>=1.0
+greenlet>=0.3.2
+pytz
+msgpack-python
+oslo.log>=3.15.0 # Apache-2.0

@@ -1,6 +1,0 @@
-python-m2crypto install
-python-yaml install
-python-msgpack install
-python-zmq install
-python-jinja2 install
-python-crypto install

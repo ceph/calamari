@@ -1,0 +1,14 @@
+[bridge]
+
+crush_host_type = host
+crush_osd_type = osd
+cluster_map_retention = 3600
+favorite_timeout_factor = 3
+server_timeout_factor = 3
+cluster_contact_threshold = 60
+etcd_port = 2379
+etcd_connection = 0.0.0.0
+
+[common]
+log_path = /var/log/ceph_bridge/ceph_bridge.log
+log_level = DEBUG

@@ -1,7 +1,0 @@
-/var/log/calamari/*.log {
-    rotate 7
-    daily
-    compress
-    dateext
-    copytruncate
-}

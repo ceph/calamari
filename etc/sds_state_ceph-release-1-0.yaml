@@ -1,0 +1,402 @@
+---
+sds_version: ceph-release-1-0
+valid_objects:
+- auth
+- compact
+- config-key
+- daemon
+- daemonperf
+- df
+- fs
+- fsid
+- health
+- heap
+- injectargs
+- log
+- mds
+- mon
+- mon_status
+- osd
+- pg
+- quorum
+- quorum_status
+- report
+- scrub
+- status
+- rados
+object_details:
+  auth:
+    attrs:
+    - entity
+    - capability
+    - keyring
+    - key
+    entity:
+      datatype: String
+      value: get
+      help: Entities can be any OSDs or Monitors for which auth_keys can be managed
+    capability:
+      datatype: String
+      value: get
+      help: Entities can be any OSDs or Monitors for which auth_keys can be managed
+    keyring:
+      datatype: String
+      value: get
+      help: keyring file stores one or more Ceph authentication keys and possibly
+        an associated capability specification
+    key:
+      datatype: String
+      value: get
+      help: keys which are part of the keyring
+  config-key:
+    attrs:
+    - key
+    key:
+      datatype: String
+      value: None
+      help: Ceph configuration key
+  daemon:
+    attrs:
+    - daemon_name
+    - socket_path
+    - command
+    daemon_name:
+      datatype: String
+      value: None
+    socket_path:
+      datatype: String
+      value: None
+    command:
+      datatype: String
+      value: None
+  daemonperf:
+    attrs:
+    - daemon_name
+    - socket_path
+    - interval
+    - count
+    daemon_name:
+      datatype: String
+      value: None
+    socket_path:
+      datatype: String
+      value: None
+    interval:
+      datatype: Integer
+      value: None
+    count:
+      datatype: Integer
+      value: None
+  fs:
+    attrs:
+    - fs_name
+    - metadata
+    - data
+    - confirm
+    fs_name:
+      datatype: String
+      value: None
+    metadata:
+      datatype: String
+      value: None
+    data:
+      datatype: String
+      value: None
+    confirm:
+      datatype: Boolean
+      value: None
+  injectargs:
+    attrs:
+    - injected_args
+  mds:
+    attrs:
+    - mds_name
+    - pool
+    - confirm
+    - max_mds
+    - max_file_size
+    - allow_new_snaps
+    - inline_data
+    - command
+    mds_name:
+      datatype: String
+      value: None
+    pool:
+      datatype: String
+      value: None
+    confirm:
+      datatype: String
+      value: None
+    max_mds:
+      datatype: String
+      value:
+    max_file_size:
+      datatype: Integer
+      value: None
+    allow_new_snaps:
+      datatype: Boolean
+      value: None
+    inline_data:
+      datatype: String
+      value: None
+    command:
+      datatype: String
+      value: None
+  mon:
+    attrs:
+    - name
+    - connection_string
+    name:
+      datatype: String
+      value: None
+    connection_string:
+      datatype: String
+      value: None
+  osd:
+    attrs:
+    - blacklist_addr
+    - osd_uuid
+    - osd_id
+    - osd_name
+    - crush_weight
+    - pg_num
+    - crush_ruleset
+    - min_size
+    - crash_replay_interval
+    - pgp_num
+    - hashpspool
+    - quota_max_objects
+    - quota_max_bytes
+    - bucket_type
+    - bucket_name
+    - bucket_alg
+    - bucket_hash
+    - straw_calc_version
+    - bucket_src
+    - bucket_dst
+    - pool_type
+    - crush_min_size
+    - crush_max_size
+    - crush_steps
+    - erasure_code_profile
+    - pgid
+    - pool_size
+    - write_fadvise_dontneed
+    - hit_set_type
+    - hit_set_period
+    - hit_set_count
+    - target_max_objects
+    - target_max_bytes
+    - cache_target_dirty_ratio_micro
+    - cache_target_dirty_high_ratio_micro
+    - cache_target_full_ratio_micro
+    - cache_min_flush_age
+    - cache_min_evict_age
+    - hitset_min_read_recency_for_promote
+    - hit_set_grade_decay_rate
+    - hit_set_search_last_n
+    - pool_nodelete
+    - pool_nopgchange
+    - pool_nosizechange
+    - debug_fake_ec_pool
+    - pool_full
+    - osd_noscrub
+    - osd_nodeep_scrub
+    - cache_mode
+    blacklist_addr:
+      datatype: String
+      value: None
+      help: v4 or v6 addr with optional port, syntax validated
+    osd_uuid:
+      datatype: String
+      value: None
+      help: osd uuid
+    osd_id:
+      datatype: String
+      value: None
+      help: osd id
+    osd_name:
+      datatype: String
+      value: None
+      help: osd name
+    crush_weight:
+      datatype: Float
+      value: None
+      help: update crushmap position and weight for <name> to <weight> with location
+        <args>
+    pg_num:
+      datatype: Integer
+      value: None
+    crush_ruleset:
+      datatype: String
+      value: None
+      help: crush placement rule set
+    min_size:
+      datatype: Integer
+      value: None
+      help: number of osds in each pg
+    crash_replay_interval:
+      datatype: Integer
+      value: None
+      help: seconds to allow clients to replay ACKed but unCOMMITted requests
+    pgp_num:
+      datatype: Integer
+      value: None
+      help: number of pgs
+    hashpspool:
+      datatype: Boolean
+      value: None
+      help: hash pg seed and pool together
+    quota_max_objects:
+      datatype: Integer
+      value: None
+      help: maximum number of objects for this pool
+    quota_max_bytes:
+      datatype: Integer
+      value: None
+      help: maximum number of bytes for this pool
+    bucket_type:
+      datatype: String
+      value: None
+      help: crush bucket type
+    bucket_name:
+      datatype: String
+      value: None
+      help: crush bucket name
+    bucket_alg:
+      datatype: String
+      value: None
+      help: crush bucket algorithm uniform|list|tree|straw|straw2
+    bucket_hash:
+      datatype: String
+      value: None
+      help: which hash function to use
+    straw_calc_version:
+      datatype: Integer
+      value: None
+      help: straw calc version
+    bucket_src:
+      datatype: String
+      value: None
+      help: bucket src path
+    bucket_dest:
+      datatype: String
+      value: None
+      help: bucket dest path
+    pool_type:
+      datatype: String
+      value: None
+      help: "The pool type which may either be replicated to recover from lost OSDs by keeping multiple copies of the objects or erasure to get a kind of generalized RAID5 capability"
+    crush_min_size:
+      datatype: Integer
+      value: None
+    crush_max_size:
+      datatype: Integer
+      value: None
+    crush_steps:
+      datatype: Object
+      value: None
+      help: " rule consists of sequence of steps to perform to generate the set of
+        output devices"
+    erasure_code_profile:
+      datatype: String
+      value: None
+      help: " name of the erasure code profile in OSDMap"
+    pgid:
+      datatype: Integer
+      value: None
+      help: " id of the placement group"
+    pool_size:
+      datatype: Integer
+      value: None
+      help: " size of the pool"
+    write_fadvise_dontneed:
+      datatype: Boolean
+      value: None
+      help: " write mode with LIBRADOS_OP_FLAG_FADVISE_DONTNEED"
+    hit_set_type:
+      datatype: String
+      value: None
+      help: " hitset type none|explicit_hash|explicit_object|bloom"
+    hit_set_period:
+      datatype: Integer
+      value: None
+      help: " periodicity of HitSet segments (seconds)"
+    hit_set_count:
+      datatype: Integer
+      value: None
+      help: " number of periods to retain"
+    target_max_objects:
+      datatype: Integer
+      value: None
+      help: " tiering: target max pool size"
+    target_max_bytes:
+      datatype: Integer
+      value: None
+      help: " tiering: target max pool size"
+    cache_target_dirty_ratio_micro:
+      datatype: Integer
+      value: None
+      help: " cache: fraction of target to leave dirty"
+    cache_target_dirty_high_ratio_micro:
+      datatype: Integer
+      value: None
+      help: " cache: fraction of  target to flush with high speed"
+    cache_target_full_ratio_micro:
+      datatype: Integer
+      value: None
+      help: " cache: fraction of target to fill before we evict in earnest"
+    cache_min_flush_age:
+      datatype: Integer
+      value: None
+      help: minimum age (seconds) before we can flush
+    cache_min_evict_age:
+      datatype: Integer
+      value: None
+      help: minimum age (seconds) before we can evict
+    hitset_min_read_recency_for_promote:
+      datatype: Integer
+      value: None
+      help: minimum number of HitSet to check before promote on read
+    hit_set_grade_decay_rate:
+      datatype: Integer
+      value: None
+    hit_set_search_last_n:
+      datatype: Integer
+      value: None
+      help: accumulate atmost N hit_sets for temperature
+    pool_nodelete:
+      datatype: Boolean
+      value: None
+      help: pool can't be deleted
+    pool_nopgchange:
+      datatype: Boolean
+      value: None
+      help: pool's pg and pgp num can't be changed
+    pool_nosizechange:
+      datatype: Boolean
+      value: None
+      help: pool's size and min size can't be changed
+    debug_fake_ec_pool:
+      datatype: Boolean
+      value: None
+      help: require ReplicatedPG to act like an EC pg
+    pool_full:
+      datatype: Boolean
+      value: None
+      help: pool is full
+    osd_noscrub:
+      datatype: Boolean
+      value: None
+      help: block periodic scrub
+    osd_nodeep_scrub:
+      datatype: Boolean
+      value: None
+      help: block periodic deep-scrub
+    cache_mode:
+      datatype: String
+      value: None
+      help: cachemode can be writeback|forward|readonly|readforward|readproxy|proxy
+  pg:
+    attrs:
+    - pgid

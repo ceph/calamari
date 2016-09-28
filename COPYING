@@ -1,8 +1,0 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Contact: calamari@ceph.com
-License: LGPL2.1 or later (see COPYING-LGPL2.1)
-
-Files: *
-Copyright 2013-2014 Red Hat, Inc.
-License: LGPL2.1 or later (see COPYING-LGPL2.1)
-

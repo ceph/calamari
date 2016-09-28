@@ -1,36 +1,8 @@
-
+sudo: false
 language: python
-virtualenv:
-    system_site_packages: true
 python:
     - "2.7"
-before_install:
-    - sudo apt-get -y install python-software-properties
-    - sudo add-apt-repository -y ppa:saltstack/salt
-    - sudo apt-get update
-install:
-    - sudo apt-get -y install salt-master salt-minion salt-common
-    - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/build_deps.sls
-    - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/postgres.sls
-    - pip install pyzmq==14.1.1 --install-option="--zmq=bundled"
-    - pip install -r requirements/2.7/requirements.force.txt
-    - pip install -r requirements/2.7/requirements.txt
-    - pip install carbon --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
-    - pip install git+https://github.com/ceph/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
-    - for m in rest-api minion-sim cthulhu calamari-web calamari-common ; do cd $m ; python setup.py develop ; cd .. ; done
-    - cd dev ; python ./configure.py ; cd ..
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize --admin-username admin --admin-password admin --admin-email admin@admin.com
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode add_user calamari --email cal@mari.com
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role readonly
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role "read/write"
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role superuser
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode add_user calamari --email cal@mari.com || echo "It checks user already exists"
-
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role not_calamari --role readonly || echo "It checks that user exists"
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role not_readonly || echo "It checks that role exists"
-
+install: pip install tox-travis
 script:
-    - "make lint"
-    - "make unit-tests"
-    - "cd doc && make html"
+    - cd $TRAVIS_BUILD_DIR
+    - bash run_travis.sh

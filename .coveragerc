@@ -1,0 +1,6 @@
+[run]
+branch = True
+source = ceph_bridge
+
+[report]
+ignore_errors = True

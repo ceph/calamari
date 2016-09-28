@@ -1,0 +1,436 @@
+---
+sds_version: ceph-release-1-0
+object_details:
+  auth:
+    atoms:
+        add:
+          type: "create"
+        caps:
+          type: "update"
+        del:
+          type: "delete"
+        export:
+          type: "get"
+        get:
+          type: "get"
+        get-key:
+          type: "get"
+        get-or-create-key:
+          type: "create"
+        import:
+          type: "create"
+        list:
+          type: "get"
+        print-key:
+          type: "get"
+  compact:
+    atoms:
+      call:
+        type: "action"
+    call:
+      help: Causes compaction of monitor’s leveldb storage
+      pre_run: []
+      post_run: []
+      provides: []
+      name: compact.call
+      inject: []
+      requires: []
+  config-key:
+    atoms:
+      del:
+        type: "delete"
+      exists:
+        type: "get"
+      get:
+        type: "get"
+      list:
+        type: "list"
+      put:
+        type: "create"
+  daemon:
+    atoms:
+      call:
+        type: "action"
+  daemonperf:
+    atoms:
+      call:
+        type: "action"
+  fs:
+    atoms:
+      ls:
+        type: "get"
+      new:
+        type: "create"
+      reset:
+        type: "action"
+      rm:
+        type: "delete"
+  fsid:
+    atoms:
+      call:
+        type: "action"
+  heap:
+    atoms:
+      dump:
+        type: "action"
+      start_profiler:
+        type: "action"
+      stop_profiler:
+        type: "action"
+      release:
+        type: "action"
+      stats:
+        type: "action"
+  injectargs:
+    atoms:
+      call:
+        type: "action"
+  log:
+    atoms:
+      call:
+        type: "action"
+  mds:
+    atoms:
+      add_data_pool:
+        type: "action"
+      cluster_down:
+        type: "action"
+      cluster_up:
+        type: "action"
+      compat.rm_compat:
+        type: "action"
+      compat.rm_incompat:
+        type: "action"
+      compat.show:
+        type: "get"
+      deactivate:
+        type: "action"
+      dump:
+        type: "get"
+      fail:
+        type: "action"
+      getmap:
+        type: "get"
+      newfs:
+        type: "create"
+      remove_data_pool:
+        type: "delete"
+      rm:
+        type: "delete"
+      rmfailed:
+        type: "delete"
+      set.max_mds:
+        type: "action"
+      set.max_file_size:
+        type: "action"
+      set.allow_new_snaps:
+        type: "action"
+      set.inline_data:
+        type: "action"
+      set_state:
+        type: "action"
+      stat:
+        type: "get"
+      stop:
+        type: "action"
+      tell:
+        type: "action"
+  mon:
+    atoms:
+      add:
+        type: "create"
+      dump:
+        type: "get"
+      getmap:
+        type: "get"
+      remove:
+        type: "delete"
+      stat:
+        type: "get"
+  mon_status:
+    atoms:
+      call:
+        type: "action"
+  osd:
+    atoms:
+      blacklist.add:
+        type: "create"
+      blacklist.ls:
+        type: "get"
+      blacklist.rm:
+        type: "delete"
+      blocked-by:
+        type: "get"
+      create:
+        type: "create"
+      crush.add:
+        type: "update"
+      crush.add-bucket:
+        type: "update"
+      crush.create-or-move:
+        type: "create"
+      crush.dump:
+        type: "get"
+      crush.get-tunable:
+        type: "get"
+      crush.link:
+        type: "action"
+      crush.move:
+        type: "update"
+      crush.remove:
+        type: "delete"
+      crush.rename-bucket:
+        type: "update"
+      crush.reweight:
+        type: "action"
+      crush.reweight-all:
+        type: "action"
+      crush.reweight-subtree:
+        type: "action"
+      crush.rm:
+        type: "delete"
+      crush.rule.create-erasure:
+        type: "create"
+      crush.rule.create-simple:
+        type: "create"
+      crush.rule.dump:
+        type: "get"
+      crush.rule.ls:
+        type: "get"
+      crush.rule.list:
+        type: "get"
+      crush.rule.rm:
+        type: "delete"
+      crush.set:
+        type: "update"
+      crush.set-tunable:
+        type : "update"
+      crush.show-tunables:
+        type: "get"
+      crush.tree:
+        type: "get"
+      crush.tunables:
+        type: "update"
+      crush.unlink:
+        type: "action"
+      df:
+        type: "get"
+      deep-scrub:
+        type: "action"
+      down:
+        type: "update"
+      dump:
+        type: "get"
+      erasure-code-profile.get:
+        type: "get"
+      erasure-code-profile.ls:
+        type: "get"
+      erasure-code-profile.rm:
+        type: "delete"
+      erasure-code-profile.set:
+        type: "update"
+      find:
+        type: "action"
+      getcrushmap:
+        type: "get"
+      getmap:
+        type: "get"
+      getmaxosd:
+        type: "get"
+      in:
+        type: "update"
+      lost:
+        type: "update"
+      ls:
+        type: "get"
+      lspools:
+        type: "get"
+      map:
+        type: "action"
+      metadata:
+        type: "get"
+      out:
+        type: "update"
+      pause:
+        type: "update"
+      perf:
+        type: "get"
+      pg-temp:
+        type: "get"
+      pool.create:
+        type: "create"
+      pool.delete:
+        type: "delete"
+      pool.get:
+        type: "get"
+      pool.get-quota:
+        type: "get"
+      pool.ls:
+        type: "get"
+      pool.mksnap:
+        type: "create"
+      pool.rename:
+        type: "update"
+      pool.rmsnap:
+        type: "delete"
+      pool.set:
+        type: "update"
+      pool.set-quota:
+        type: "update"
+      pool.stats:
+        type: "get"
+      primary-affinity:
+        type: "update"
+      primary-temp:
+        type: "update"
+      repair:
+        type: "action"
+      reweight:
+        type: "update"
+      reweight-by-pg:
+        type: "update"
+      reweight-by-utilization:
+        type: "update"
+      rm:
+        type: "delete"
+      scrub:
+        type: "action"
+      set:
+        type: "update"
+      setcrushmap:
+        type: "update"
+      setmaxosd:
+        type: "update"
+      stat:
+        type: "get"
+      thrash:
+        type: "action"
+      tier.add:
+        type: "create"
+      tier.add-cache:
+        type: "create"
+      tier.cache-mode:
+        type: "update"
+      tier.remove:
+        type: "delete"
+      tier.remove-overlay:
+        type: "delete"
+      tier.set-overlay:
+        type: "update"
+      tree:
+        type: "get"
+      unpause:
+        type: "update"
+      unset:
+        type: "update"
+  pg:
+    atoms:
+      debug:
+        type: "get"
+      deep-scrub:
+        type: "action"
+      dump:
+        type: "get"
+      dump_json:
+        type: "get"
+      dump_pools_json:
+        type: "get"
+      dump_stuck:
+        type: "get"
+      force_create_pg:
+        type: "create"
+      getmap:
+        type: "get"
+      ls:
+        type: "get"
+      ls-by-osd:
+        type: "get"
+      ls-by-pool:
+        type: "get"
+      ls-by-primary:
+        type: "get"
+      map:
+        type: "get"
+      repair:
+        type: "action"
+      scrub:
+        type: "action"
+      set_full_ratio:
+        type: "update"
+      set_nearfull_ratio:
+        type: "update"
+      stat:
+        type: "get"
+  quorum:
+    atoms:
+      enter:
+        type: "action"
+      exit:
+        type: "action"
+
+  quorum_status:
+    atoms:
+      call:
+        type: "action"
+
+  report:
+    atoms:
+      call:
+        type: "action"
+
+  scrub:
+    atoms:
+      call:
+        type: "action"
+
+  status:
+    atoms:
+      call:
+        type: "action"
+
+  rados:
+    atoms:
+      lspools:
+        type: "get"
+      df:
+        type: "get"
+      mkpool:
+        type: "create"
+      rmpool:
+        type: "delete"
+      pool.get:
+        type: "get"
+      pool.put:
+        type: "update"
+      pool.rm:
+        type: "delete"
+      pool.listwatchers:
+        type: "get"
+      pool.ls:
+        type: "get"
+      pool.lssnap:
+        type: "get"
+      pool.clonedata:
+        type: "action"
+      pool.mksnap:
+        type: "create"
+      pool.rmsnap:
+        type: "delete"
+      pool.bench:
+        type: "action"
+      pool.cleanup:
+        type: "action"
+      pool.listomapkeys:
+        type: "get"
+      pool.listomapvals:
+        type: "get"
+      pool.getomapval:
+        type: "get"
+      pool.setomapval:
+        type: "update"
+      pool.rmomapkey:
+        type: "delete"
+      pool.getomapheader:
+        type: "get"
+      pool.setomapheader:
+        type: "update"

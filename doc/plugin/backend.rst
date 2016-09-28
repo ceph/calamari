@@ -1,5 +1,0 @@
-
-Backend Plugin Guide
-====================
-
-*TBD*
