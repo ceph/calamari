@@ -306,7 +306,7 @@ def ceph_command(cluster_name, command_args):
     else:
         args = ["ceph"] + command_args
 
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=open(os.devnull, "r"))
     stdout, stderr = p.communicate()
     status = p.returncode
 
@@ -332,7 +332,7 @@ def rbd_command(command_args, pool_name=None):
     else:
         args = ["rbd"] + command_args
 
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=open(os.devnull, "r"))
     stdout, stderr = p.communicate()
     status = p.returncode
 
@@ -354,7 +354,7 @@ def radosgw_admin_command(command_args):
 
     args = ["radosgw-admin"] + command_args
 
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=open(os.devnull, "r"))
     stdout, stderr = p.communicate()
     status = p.returncode
 
