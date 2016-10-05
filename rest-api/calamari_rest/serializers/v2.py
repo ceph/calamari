@@ -426,3 +426,32 @@ class CliSerializer(serializers.Serializer):
     out = serializers.CharField(help_text="Standard out")
     err = serializers.CharField(help_text="Standard error")
     status = serializers.IntegerField(help_text="Exit code")
+
+
+class ClusterStatsSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('kb', 'num_objects', 'kb_avail', 'kb_used')
+
+    kb = serializers.IntegerField(help_text='total kb')
+    num_objects = serializers.IntegerField(help_text='total number of objects')
+    kb_avail = serializers.IntegerField(help_text='available kb')
+    kb_used = serializers.IntegerField(help_text='used kb')
+
+
+class PoolStatsSerializer(serializers.Serializer):
+    class Meta:
+        fields = ('name', 'num_objects_unfound', 'num_objects_missing_on_primary', 'num_object_clones', 'num_objects', 'num_object_copies', 'num_bytes', 'num_rd_kb', 'num_wr_kb', 'num_kb', 'num_wr', 'num_objects_degraded', 'num_rd')
+
+    name = serializers.CharField()
+    num_objects_unfound = serializers.IntegerField()
+    num_objects_missing_on_primary = serializers.IntegerField()
+    num_object_clones = serializers.IntegerField()
+    num_objects = serializers.IntegerField()
+    num_object_copies = serializers.IntegerField()
+    num_bytes = serializers.IntegerField()
+    num_rd_kb = serializers.IntegerField()
+    num_wr_kb = serializers.IntegerField()
+    num_kb = serializers.IntegerField()
+    num_wr = serializers.IntegerField()
+    num_objects_degraded = serializers.IntegerField()
+    num_rd = serializers.IntegerField()

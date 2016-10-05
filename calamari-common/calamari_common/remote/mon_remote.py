@@ -728,6 +728,14 @@ def run_job(cmd, args):
     elif cmd == "ceph.rbd_command":
         return rbd_command(
             args[0],)
+    elif cmd == "ceph.cluster_stats":
+        return cluster_stats(
+            args[0],)
+    elif cmd == "ceph.pool_stats":
+        return pool_stats(
+            args[0],
+            args[1],
+        )
     else:
         raise NotImplemented(cmd)
 
@@ -1057,3 +1065,37 @@ def tail(subpath, n_lines):
     p = subprocess.Popen(["tail", "-n", str(n_lines), path], stdout=subprocess.PIPE)
     stdout, stderr = p.communicate()
     return stdout
+
+
+def cluster_stats(cluster_name):
+    import rados
+
+    with ClusterHandle(cluster_name) as cluster:
+        result = cluster.get_cluster_stats()
+
+    return result
+
+
+def pool_stats(cluster_name, pool_ids):
+    import rados
+
+    result = []
+    with ClusterHandle(cluster_name) as cluster:
+        if pool_ids:
+            pools = []
+            for pool_id in pool_ids:
+                try:
+                    pools.append(cluster.pool_reverse_lookup(pool_id))
+                except Exception as e:
+                    raise RuntimeError("pool lookup: " + str(e))
+        else:
+            pools = cluster.list_pools()
+
+        for pool in pools:
+            ioctx = cluster.open_ioctx(pool)
+            stats = ioctx.get_stats()
+            ioctx.close()
+            stats['name'] = pool
+            result.append(stats)
+
+    return result

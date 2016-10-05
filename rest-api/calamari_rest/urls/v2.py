@@ -42,7 +42,7 @@ urlpatterns = patterns(
         calamari_rest.views.v2.RequestViewSet.as_view({'get': 'list'}),
         name='cluster-request-list'),
 
-    # OSDs, Pools, CRUSH
+    # OSDs, Pools, CRUSH, stats
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/crush_map$',
         calamari_rest.views.v2.CrushMapViewSet.as_view({'get': 'retrieve', 'post': 'replace'}),
         name='cluster-crush_map'),
@@ -75,6 +75,14 @@ urlpatterns = patterns(
                                                     'patch': 'update',
                                                     'delete': 'destroy'}),
         name='cluster-pool-detail'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/(?P<pool_id>\d+)/stats$',
+        calamari_rest.views.v2.PoolStatsViewSet.as_view({'get': 'retrieve'}),
+        name='cluster-pool-stats'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/stats$',
+        calamari_rest.views.v2.PoolStatsViewSet.as_view({'get': 'list'}),
+        name='cluster-pools-stats'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/stats$',
+        calamari_rest.views.v2.ClusterStatsViewSet.as_view({'get': 'retrieve'})),
 
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$',
         calamari_rest.views.v2.OsdViewSet.as_view({'get': 'list'}),
