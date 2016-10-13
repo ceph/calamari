@@ -292,6 +292,7 @@ CRUSH_NODE = 'crush_node'
 CRUSH_TYPE = 'crush_type'
 CLUSTER = 'cluster'
 SERVER = 'server'
+CACHE_POOL = 'cache_pool'
 
 # The objects that ClusterMonitor keeps copies of from the mon
 SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config]
@@ -303,3 +304,4 @@ USER_REQUEST_SUBMITTED = 'submitted'
 # List of allowable things to send as ceph commands to OSDs
 OSD_IMPLEMENTED_COMMANDS = ('scrub', 'deep_scrub', 'repair')
 OSD_FLAGS = ('pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub')
+CACHE_MOD = ('none', 'writeback', 'forward', 'readonly', 'readforward', 'readproxy')

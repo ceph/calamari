@@ -121,6 +121,23 @@ class PoolSerializer(ValidatingSerializer):
     quota_max_bytes = serializers.IntegerField(required=False,
                                                help_text="Quota limit on usage in bytes (0 is unlimited)")
 
+class CachePoolSerializer(ValidatingSerializer):
+    class Meta:
+        fields = ( 'cache_pool_id', 'cache_pool_name', 'cache_mode')
+        create_allowed = ('cache_pool_id', 'cache_mode')
+        create_required = ('cache_pool_id',)
+        modify_allowed = ('cache_mode',)
+        modify_required = ()
+
+    # Required in creation
+    cache_pool_id = serializers.IntegerField(required=False, help_text="Cache pool id")
+    cache_pool_name = serializers.CharField(required=False, help_text="Pool name of cache pool")
+
+    # Not required in creation, immutable
+    # mode value in range ['none', 'writeback', 'forward', 'readonly']
+    cache_mode = serializers.CharField(required=False,
+                                       help_text="Cache mode of cache pool,value must in "
+                                                "['none', 'writeback', 'forward', 'readonly','readforward', 'readproxy']")
 
 class OsdSerializer(ValidatingSerializer):
     class Meta:

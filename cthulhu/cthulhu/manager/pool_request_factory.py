@@ -52,7 +52,15 @@ class PoolRequestFactory(RequestFactory):
 
     def delete(self, pool_id):
         # Resolve pool ID to name
+        commands=[]
         pool_name = self._resolve_pool(pool_id)['pool_name']
+        master_pool_id = self._resolve_pool(pool_id)['tier_of']
+        if -1 != self._resolve_pool(pool_id)['tier_of']:
+            self._del_cache_pool(master_pool_id, pool_id, commands)
+
+        cache_pools = self._resolve_pool(pool_id)['tiers']
+        for cache_id in cache_pools:
+            self._del_cache_pool(pool_id, cache_id, commands)
 
         # TODO: perhaps the REST API should have something in the body to
         # make it slightly harder to accidentally delete a pool, to respect
@@ -61,10 +69,19 @@ class PoolRequestFactory(RequestFactory):
         # TODO: handle errors in a way that caller can show to a user, e.g.
         # if the name is wrong we should be sending a structured errors dict
         # that they can use to associate the complaint with the 'name' field.
-        commands = [
-            ('osd pool delete', {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'})]
+        commands.append(('osd pool delete',
+                         {'pool': pool_name, 'pool2': pool_name, 'sure': '--yes-i-really-really-mean-it'}))
+
         return OsdMapModifyingRequest("Deleting pool '{name}'".format(name=pool_name),
                                       self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+
+    def _del_cache_pool(self, pool_id, cache_pool_id, commands=[]):
+        pool_name = self._resolve_pool(pool_id)['pool_name']
+        cache_pool = self._resolve_pool(cache_pool_id)['pool_name']
+        mode = self._resolve_pool(cache_pool_id)['cache_mode']
+        if mode == "write_back":
+            commands.append(('osd tier remove-overlay',{'pool':pool_name}))
+        commands.append(('osd tier remove', {'pool': pool_name, 'tierpool': cache_pool}))
 
     def _pool_min_size(self, req_size, req_min_size):
         '''

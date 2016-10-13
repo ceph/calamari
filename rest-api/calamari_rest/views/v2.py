@@ -13,7 +13,7 @@ from calamari_rest.parsers.v2 import CrushMapParser
 from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
-    CliSerializer
+    CliSerializer, CachePoolSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
@@ -24,7 +24,7 @@ from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, CACHE_MOD, CACHE_POOL
 from calamari_common.db.event import Event, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
@@ -524,6 +524,113 @@ but those without static defaults will be set to null.
         if pool_name_to_id.get(data.get('name')) not in (None, pool_id):
             errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
+
+class CachePoolViewSet(RPCViewSet, RequestReturner):
+    """
+Manage Ceph storage cache pools.
+
+    """
+    serializer_class = CachePoolSerializer
+
+    def list(self, request, fsid, pool_id):
+        errors = defaultdict(list)
+        self._check_pool_exit(fsid, pool_id, errors)
+        if errors.items():
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        pool = self.client.get(fsid, POOL, int(pool_id))
+        tires_pools=[]
+        if len(pool['tiers']) is not 0:
+            for elem in pool['tiers']:
+               cache_pool = self.client.get(fsid, POOL, int(elem))
+               cache_pool.update({'cache_pool_name': cache_pool['pool_name'],
+                               'cache_mode': cache_pool['cache_mode'], 'cache_pool_id': int(elem)})
+               tires_pools.append(cache_pool)
+        return Response(CachePoolSerializer([DataObject(o) for o in tires_pools], many=True).data)
+
+    def retrieve(self, request, fsid, pool_id, cache_pool_id):
+        response = self._check_pool_have_cachepool(fsid, pool_id, cache_pool_id)
+        if response is not None:
+            return response
+        pool = self.client.get(fsid, POOL, int(pool_id))
+        if len(pool['tiers']) is not 0:
+            for elem in pool['tiers']:
+               if int(elem) == int(cache_pool_id):
+                  cache_pool = self.client.get(fsid, POOL, int(elem))
+                  cache_pool.update({'cache_pool_name': cache_pool['pool_name'],
+                               'cache_mode': cache_pool['cache_mode'], 'cache_pool_id': int(elem)})
+                  break
+        return Response(CachePoolSerializer(cache_pool).data)
+
+    def create(self, request, fsid, pool_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+            data = serializer.get_data()
+            pool = self.client.get(fsid, POOL, int(pool_id))
+            response = self._validate_semantics(fsid, pool_id, data)
+            if response is not None:
+                return response
+            cache_pool = self.client.get(fsid, POOL, int(data['cache_pool_id']))
+            attributes = {'pool': pool['pool_name'], 'tier_pool': cache_pool['pool_name']}
+            if 'cache_mode' in data:
+                attributes['mode'] = data['cache_mode']
+            create_response = self.client.create(fsid, CACHE_POOL, attributes)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, fsid, pool_id, cache_pool_id):
+        response = self._check_pool_have_cachepool(fsid, pool_id, cache_pool_id)
+        if response is not None:
+                return response
+        attributes = {'pool': int(pool_id), 'tier_pool': int(cache_pool_id)}
+        delete_response = self.client.delete(fsid, CACHE_POOL, attributes,
+                                             status=status.HTTP_202_ACCEPTED)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
+
+    def _check_pool_exit(self, fsid, pool_id, errors):
+        pool = self.client.get(fsid, POOL, int(pool_id))
+        if not pool:
+            errors['pool'].append('pool with id {pool_id} is not exists'.format(pool_id=pool_id))
+
+    def _check_pool_have_cachepool(self,fsid, pool_id, cache_pool_id):
+        errors = defaultdict(list)
+        self._check_pool_exit(fsid, pool_id, errors)
+        pool = self.client.get(fsid, POOL, int(pool_id))
+        if int(cache_pool_id) not in pool['tiers']:
+            errors['pool'].append('pool {pool_id} do not have the cache_pool {cache_pool_id}'.format(
+                pool_id=pool_id, cache_pool_id=cache_pool_id))
+        if errors.items():
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _check_pool_without_cachepool(self,fsid, pool_id, cache_pool_id, errors):
+        self._check_pool_exit(fsid, pool_id, errors)
+        pool = self.client.get(fsid, POOL, int(pool_id))
+        if int(cache_pool_id)  in pool['tiers']:
+            errors['pool'].append('pool {pool_id} already have the cache_pool {cache_pool_id}'.format(
+                pool_id=pool_id, cache_pool_id=cache_pool_id))
+        if errors.items():
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _check_pool_tiers_empty(self, fsid, cache_pool_id, errors):
+        cache_pool = self.client.get(fsid, POOL, int(cache_pool_id))
+        if int(cache_pool['tier_of']) != -1:
+            errors['pool'].append('pool {cache_pool_id} already tiers by pool {pool_id}'.format(
+                cache_pool_id=cache_pool['pool'],pool_id=cache_pool['tier_of']))
+
+    def _validate_semantics(self, fsid, pool_id, data):
+        errors = defaultdict(list)
+        self._check_pool_exit(fsid, pool_id, errors)
+        self._check_pool_exit(fsid, data['cache_pool_id'], errors)
+        self._check_pool_without_cachepool(fsid, pool_id, data['cache_pool_id'], errors)
+        self._check_pool_tiers_empty(fsid, data['cache_pool_id'], errors)
+        self._check_cache_mode_valid(data, errors)
+        if errors.items():
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _check_cache_mode_valid(self, data, errors):
+        if 'cache_mode' in data and data['cache_mode'] not in CACHE_MOD:
+            errors['cache_mode'].append("cachemode({cache_mode}) out of range ('none', 'writeback', 'forward', 'readonly')".format(cache_mode=data['cache_mode']))
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """

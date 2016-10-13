@@ -73,7 +73,12 @@ urlpatterns = patterns(
                                                     'patch': 'update',
                                                     'delete': 'destroy'}),
         name='cluster-pool-detail'),
-
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/(?P<pool_id>\d+)/cache_pool$',
+        calamari_rest.views.v2.CachePoolViewSet.as_view({'get': 'list','post': 'create'}),
+        name='cluster-pool-cache-all-detail'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/pool/(?P<pool_id>\d+)/cache_pool/(?P<cache_pool_id>\d+)$',
+        calamari_rest.views.v2.CachePoolViewSet.as_view({'get': 'retrieve','delete': 'destroy'}),
+        name='cluster-pool-cache-detail'),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd$',
         calamari_rest.views.v2.OsdViewSet.as_view({'get': 'list'}),
         name='cluster-osd-list'),

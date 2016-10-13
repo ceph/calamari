@@ -10,7 +10,7 @@ from calamari_common.salt_wrapper import Key, master_config, LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
-    NotFound, SERVER
+    NotFound, SERVER, CACHE_POOL
 from cthulhu.manager.user_request import SaltRequest
 
 
@@ -203,6 +203,8 @@ class RpcInterface(object):
             return cluster.request_create(POOL, attributes)
         elif object_type == CRUSH_NODE:
             return cluster.request_create(CRUSH_NODE, attributes)
+        elif object_type == CACHE_POOL:
+            return cluster.request_create(CACHE_POOL, attributes)
         else:
             raise NotImplementedError(object_type)
 
@@ -213,6 +215,8 @@ class RpcInterface(object):
             return cluster.request_delete(POOL, object_id)
         elif object_type == CRUSH_NODE:
             return cluster.request_delete(CRUSH_NODE, object_id)
+        elif object_type == CACHE_POOL:
+            return cluster.request_delete(CACHE_POOL, object_id)
         else:
             raise NotImplementedError(object_type)
 
