@@ -16,7 +16,7 @@ from calamari_common.remote import get_remote
 from calamari_rest.serializers.v2 import ErasurePoolSerializer, PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
-    CliSerializer, CrushNodeSerializer, CrushTypeSerializer
+    CliSerializer, CrushNodeSerializer, CrushTypeSerializer, ClusterStatsSerializer, PoolStatsSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
@@ -1207,3 +1207,34 @@ not a problem.
             raise APIException("Remote error: %s" % str(result))
 
         return Response(self.serializer_class(DataObject(result)).data)
+
+
+class ClusterStatsViewSet(RemoteViewSet):
+    """
+Allows retrieval of cluster statistics
+    """
+    serializer_class = ClusterStatsSerializer
+
+    def retrieve(self, request, fsid):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.cluster_stats", [name])
+        return Response(self.serializer_class(DataObject(result)).data)
+
+
+class PoolStatsViewSet(RemoteViewSet):
+    """
+Allows retrieval of pool statistics
+    """
+    serializer_class = PoolStatsSerializer
+
+    def retrieve(self, request, fsid, pool_id):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.pool_stats", [name, [int(pool_id)]])
+        if(len(result) != 1):
+            raise ParseError("pool_stats returned %d pool item(s) for %s" % (len(result), str(pool_id)))
+        return Response(self.serializer_class(result[0]).data)
+
+    def list(self, request, fsid):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.pool_stats", [name, []])
+        return Response(self.serializer_class(result, many=True).data)
