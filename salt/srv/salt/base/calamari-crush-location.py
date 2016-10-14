@@ -19,7 +19,9 @@ def get_last_crush_location(cluster, osd_id):
 
     errors = []
     key = 'daemon-private/osd.%s/v1/calamari/osd_crush_location' % osd_id
-    osd_keyring = '/var/lib/ceph/osd/%(cluster)s-%(osd_id)s/keyring' % {'cluster': cluster, 'osd_id': osd_id}
+    temp = "ceph-conf --name osd.N --show-config-value \'keyring\'"
+    process = subprocess.Popen(temp.split(), stdout=subprocess.PIPE)
+    osd_keyring = process.communicate()[0]
     admin_keyring = '/etc/ceph/%s.client.admin.keyring' % cluster
     commands = (['ceph', '--cluster', cluster, '--name', 'osd.%s' % osd_id, '--keyring', osd_keyring, 'config-key', 'get', key],
                 ['sudo', 'ceph', '--cluster', cluster, '--keyring', admin_keyring, 'config-key', 'get', key],
