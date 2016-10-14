@@ -624,7 +624,16 @@ def cluster_status(cluster_handle, cluster_name):
     fsid = status['fsid']
     mon_epoch = status['monmap']['epoch']
     osd_epoch = status['osdmap']['osdmap']['epoch']
-    mds_epoch = status['mdsmap']['epoch']
+
+    # for ceph version begin from jewel, the 'mdsmap' has been changed to 'fsmap'.
+    ceph_version_str = __salt__['pkg.version']('ceph')  # noqa
+    if ceph_version_str:
+        ceph_version_list = ceph_version_str.split('.')
+
+    if ceph_version_list and int(ceph_version_list[0]) >= 10:
+        mds_epoch = status['fsmap']['epoch']
+    else:
+        mds_epoch = status['mdsmap']['epoch']
 
     # FIXME: even on a healthy system, 'health detail' contains some statistics
     # that change on their own, such as 'last_updated' and the mon space usage.
