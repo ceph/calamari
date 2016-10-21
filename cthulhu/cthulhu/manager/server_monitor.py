@@ -182,7 +182,7 @@ class ServerMonitor(greenlet.Greenlet):
                     osd_addr, osd_port = osd_addr.split(':')
                     try:
                         osd_socket_addr = (osd_addr, int(osd_port))
-                        fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, 0)[0])
+                        fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, socket.NI_NAMEREQ)[0])
                         try:
                             hostname = fqdn[0:fqdn.index('.')]
                         except ValueError:
@@ -351,7 +351,7 @@ class ServerMonitor(greenlet.Greenlet):
                 mon_addr, mon_port = mon_addr.split(':')
                 mon_socket_addr = (mon_addr, int(mon_port))
                 try:
-                    mon_name = socket.getfqdn(socket.getnameinfo(mon_socket_addr, 0)[0])
+                    mon_name = socket.getfqdn(socket.getnameinfo(mon_socket_addr, socket.NI_NAMEREQ)[0])
                 except socket.gaierror:
                     pass
 
