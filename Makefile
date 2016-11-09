@@ -61,13 +61,23 @@ build-venv-carbon: venv
 	@echo "target: $@"
 	set -ex; \
 	(export PYTHONDONTWRITEBYTECODE=1; \
+	export NO_INSTALL="--no-install"; \
+	export NO_DOWNLOAD="--no-download"; \
+	if ! ./bin/python ./bin/pip --help | grep no-install ; then \
+		unset NO_INSTALL; \
+	fi; \
+	if ! ./bin/python ./bin/pip --help | grep no-install ; then \
+		unset NO_DOWNLOAD; \
+	fi; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
-		./bin/python ./bin/pip install --no-install carbon; \
-		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-			build/carbon/setup.py; \
-		./bin/python ./bin/pip install --no-download \
+		./bin/python ./bin/pip install $${NO_INSTALL} carbon; \
+		if [ -e build/carbon/setup.py ] ; then \
+			sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
+				build/carbon/setup.py; \
+		fi; \
+		./bin/python ./bin/pip install $${NO_DOWNLOAD} \
 		  --install-option="--prefix=$(SRC)/venv" \
 		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon; \
 	fi \
