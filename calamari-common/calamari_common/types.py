@@ -56,8 +56,9 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
+            self.crush_rule_by_id = dict([(o['rule_id'], o) for o in data['crush']['rules']])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
-            self.metadata_by_id = self._map_osd_metadata(data.get('osd_metadata', []))
+            self.metadata_by_id = self._map_osd_metadata(data)
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -68,12 +69,14 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
-            self.crush_node_by_id = {}
             self.metadata_by_id = {}
+            self.crush_rule_by_id = {}
+            self.crush_node_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
-    def _map_osd_metadata(self, metadata):
-        osd_id_to_metadata = {}
+    def _map_osd_metadata(self, data):
+        osd_id_to_metadata = dict([(o['osd'], {}) for o in data['osds']])
+        metadata = data.get('osd_metadata', [])
         if len(metadata) == 0:
             log.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
 
@@ -303,3 +306,28 @@ USER_REQUEST_SUBMITTED = 'submitted'
 # List of allowable things to send as ceph commands to OSDs
 OSD_IMPLEMENTED_COMMANDS = ('scrub', 'deep_scrub', 'repair')
 OSD_FLAGS = ('pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub')
+
+# Severity codes for Calamari events
+CRITICAL = 1
+ERROR = 2
+WARNING = 3
+RECOVERY = 4
+INFO = 5
+
+SEVERITIES = {
+    CRITICAL: "CRITICAL",
+    ERROR: "ERROR",
+    WARNING: "WARNING",
+    RECOVERY: "RECOVERY",
+    INFO: "INFO"
+}
+
+STR_TO_SEVERITY = dict([(b, a) for (a, b) in SEVERITIES.items()])
+
+
+def severity_str(severity):
+    return SEVERITIES[severity]
+
+
+def severity_from_str(severitry_str):
+    return STR_TO_SEVERITY[severitry_str]

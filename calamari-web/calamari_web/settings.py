@@ -18,7 +18,14 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': {
+}
+
+try:
+    import sqlalchemy  # noqa
+except ImportError:
+    pass
+else:
+    DATABASES['default'] = {
         'ENGINE': config.get("calamari_web", "db_engine"),
         'NAME': config.get("calamari_web", "db_name"),
         'USER': config.get("calamari_web", "db_user"),
@@ -26,7 +33,6 @@ DATABASES = {
         'HOST': config.get("calamari_web", "db_host"),
         'PORT': config.get("calamari_web", "db_port"),
     }
-}
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
@@ -111,7 +117,8 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'calamari_web.middleware.AngularCSRFRename',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # No authentication ATM
+    # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -123,7 +130,6 @@ ROOT_URLCONF = 'calamari_web.urls'
 WSGI_APPLICATION = 'calamari_web.wsgi.application'
 
 INSTALLED_APPS = (
-    'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.sites',
@@ -131,12 +137,18 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'calamari_web',
     'rest_framework',
-    'calamari_rest',
-    'graphite.render',
-    'graphite.account',
-    'graphite.metrics',
-    'graphite.dashboard'
+    'calamari_rest'
 )
+
+try:
+    import graphite  # noqa
+
+    INSTALLED_APPS = INSTALLED_APPS + ('graphite.render',
+                                       'graphite.account',
+                                       'graphite.metrics',
+                                       'graphite.dashboard')
+except ImportError:
+    graphite = None
 
 try:
     import django_nose  # noqa
@@ -179,20 +191,10 @@ LOGGING = {
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-    ),
-
-    # Use hyperlinked styles by default.
     # Only used if the `serializer_class` attribute is not set on a view.
     'DEFAULT_MODEL_SERIALIZER_CLASS':
     'rest_framework.serializers.HyperlinkedModelSerializer',
 
-    # Use Django's standard `django.contrib.auth` permissions,
-    # or allow read-only access for unauthenticated users.
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated'
-    ],
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'calamari_rest.renderers.CalamariBrowsableAPIRenderer',
@@ -264,7 +266,8 @@ TEMPLATE_DIRS = (os.path.join(config.get('graphite', 'root'),
                               "lib/python2.{pyminor}/site-packages/graphite/templates".format(pyminor=sys.version_info[1])),
                  )
 CONTENT_DIR = os.path.join(config.get('graphite', 'root'), "webapp/content/")
-STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
+if graphite:
+    STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
 
 # <<<
 

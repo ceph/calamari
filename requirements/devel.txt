@@ -1,0 +1,5 @@
+django-nose
+mock
+pytz
+flake8
+psutil

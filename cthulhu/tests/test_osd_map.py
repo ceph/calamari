@@ -478,7 +478,9 @@ class TestCrushType(UnitTestCase):
     def test_shows_non_default_types(self):
         osd_map_data = MagicMock()
         data = {'crush': {'types': [{'type_id': 100, 'name': 'custom_type'}],
-                          'buckets': []}}
+                          'buckets': [],
+                          'rules': [],
+                          }}
 
         osd_map_data.__getitem__.side_effect = lambda x: data[x] if x in data else osd_map_data
         osd_map = OsdMap(None, osd_map_data)

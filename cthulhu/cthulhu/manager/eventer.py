@@ -6,9 +6,9 @@ import gevent.greenlet
 
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log
-from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
+from calamari_common.types import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS, INFO, severity_str, WARNING, \
+    RECOVERY, ERROR, SEVERITIES
 from cthulhu.manager import config
-from calamari_common.db.event import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from cthulhu.util import now
 
 
@@ -25,6 +25,25 @@ GRACE_PERIOD = 30
 # we generate an event?
 CONTACT_THRESHOLD_FACTOR = int(config.get('cthulhu', 'server_timeout_factor'))  # multiple of contact period
 CLUSTER_CONTACT_THRESHOLD = int(config.get('cthulhu', 'cluster_contact_threshold'))  # in seconds
+
+EMIT_EVENTS_TO_SALT_EVENT_BUS = False
+EVENT_TAG_PREFIX = str(config.get('cthulhu', 'event_tag_prefix'))
+
+
+if EMIT_EVENTS_TO_SALT_EVENT_BUS:
+    try:
+        import salt.client
+    except ImportError as e:
+        EMIT_EVENTS_TO_SALT_EVENT_BUS = False
+        log.error("Could not import salt.client: %s. Events cannot be emitted to salt event bus", str(e))
+
+
+class Event(object):
+    def __init__(self, severity, message, **associations):
+        self.severity = severity
+        self.message = message
+        self.associations = associations
+        self.when = now()
 
 
 class Eventer(gevent.greenlet.Greenlet):
@@ -45,6 +64,11 @@ class Eventer(gevent.greenlet.Greenlet):
         self._servers_complained = set()
         self._clusters_complained = set()
 
+        # Check the config to decide if events has to be pushed to salt event bus.
+        # If config is set initialize the salt caller object used to push events.
+        if EMIT_EVENTS_TO_SALT_EVENT_BUS:
+            self.caller = salt.client.Caller()
+
         self._events = []
 
     def stop(self):
@@ -53,6 +77,7 @@ class Eventer(gevent.greenlet.Greenlet):
 
     def _run(self):
         self._emit(INFO, "Calamari server started")
+        self._emit_to_salt_bus(SEVERITIES[INFO], "Calamari server started", "ceph/calamari/started")
         self._flush()
 
         self._complete.wait(GRACE_PERIOD)
@@ -61,6 +86,27 @@ class Eventer(gevent.greenlet.Greenlet):
             self._complete.wait(TICK_SECONDS)
         log.debug("Eventer complete")
 
+    def _emit_to_salt_bus(self, severity, message, tag, **tags):
+        """
+        This function emits events to salt event bus, if the config
+        value "emit_events_to_salt_event_bus" is set to true.
+        """
+        if not EMIT_EVENTS_TO_SALT_EVENT_BUS:
+            return
+
+        res = {}
+        res["message"] = message
+        res["severity"] = severity
+        res["tags"] = tags
+        tag = EVENT_TAG_PREFIX + tag
+
+        log.debug("Eventer._emit_to_salt_bus: Tag:%s | Data: %s" % (str(tag), str(res)))
+
+        self.caller.sminion.functions['event.send'](
+            tag,
+            res
+        )
+
     def _emit(self, severity, message, **associations):
         """
         :param severity: One of the defined serverity values
@@ -68,15 +114,9 @@ class Eventer(gevent.greenlet.Greenlet):
         :param associations: Optional extra attributes to associate
                              the event with a particular cluster/server/service
         """
-        now_utc = now()
-        log.info("Eventer._emit: %s/%s/%s" % (now_utc, severity_str(severity), message))
+        log.info("Eventer._emit: %s/%s" % (severity_str(severity), message))
 
-        self._events.append(Event(
-            when=now_utc,
-            message=message,
-            severity=severity,
-            **associations
-        ))
+        self._events.append(Event(severity, message, **associations))
 
     def on_user_request_begin(self, request):
         self._emit(INFO, "Started: %s" % request.headline, **request.associations)
@@ -141,6 +181,7 @@ class Eventer(gevent.greenlet.Greenlet):
                 for (service_type, count) in counts_by_type.items()])
 
         self._emit(INFO, msg, fqdn=server_state.fqdn, fsid=self._server_fsid(server_state))
+        self._emit_to_salt_bus(SEVERITIES[INFO], msg, "ceph/server/added", fqdn=server_state.fqdn, fsid=self._server_fsid(server_state))
 
     @nosleep
     def on_reboot(self, server_state, expected):
@@ -151,6 +192,13 @@ class Eventer(gevent.greenlet.Greenlet):
                          we told it to reboot).  False indicates spontaneity)
         """
         severity = INFO if expected else WARNING
+        self._emit_to_salt_bus(
+            SEVERITIES[severity],
+            "Server {fqdn} rebooted".format(fqdn=server_state.fqdn),
+            "ceph/server/reboot",
+            fqdn=server_state.fqdn,
+            fsid=self._server_fsid(server_state)
+        )
         self._emit(severity,
                    "Server {fqdn} rebooted".format(fqdn=server_state.fqdn),
                    fqdn=server_state.fqdn,
@@ -167,6 +215,11 @@ class Eventer(gevent.greenlet.Greenlet):
         else:
             msg = "Ceph uninstalled from {fqdn}".format(fqdn=server_state.fqdn)
 
+        self._emit_to_salt_bus(
+            SEVERITIES[INFO], msg, "ceph/server/package/changed",
+            fqdn=server_state.fqdn,
+            fsid=self._server_fsid(server_state)
+        )
         self._emit(INFO, msg,
                    fqdn=server_state.fqdn,
                    fsid=self._server_fsid(server_state))
@@ -198,12 +251,20 @@ class Eventer(gevent.greenlet.Greenlet):
             contact_threshold = CONTACT_THRESHOLD_FACTOR * self._manager.servers.get_contact_period(fqdn)
             if now_utc - server_state.last_contact > datetime.timedelta(seconds=contact_threshold):
                 if fqdn not in self._servers_complained:
+                    self._emit_to_salt_bus(
+                        SEVERITIES[WARNING], "Server {fqdn} is late reporting in, last report at {last}".format(
+                            fqdn=fqdn, last=server_state.last_contact),
+                        "ceph/server/lateReporting", fqdn=fqdn, fsid=fsid
+                    )
                     self._emit(WARNING, "Server {fqdn} is late reporting in, last report at {last}".format(
                         fqdn=fqdn, last=server_state.last_contact
                     ), fqdn=fqdn, fsid=fsid)
                     self._servers_complained.add(fqdn)
             else:
                 if fqdn in self._servers_complained:
+                    self._emit_to_salt_bus(SEVERITIES[RECOVERY], "Server {fqdn} regained contact".format(fqdn=fqdn),
+                                           "ceph/server/regainedContact",
+                                           fqdn=fqdn, fsid=fsid)
                     self._emit(RECOVERY, "Server {fqdn} regained contact".format(fqdn=fqdn),
                                fqdn=fqdn, fsid=fsid)
                     self._servers_complained.discard(fqdn)
@@ -215,10 +276,15 @@ class Eventer(gevent.greenlet.Greenlet):
                     self._clusters_complained.add(fsid)
                     self._emit(WARNING, "Cluster '{name}' is late reporting in".format(name=cluster_monitor.name),
                                fsid=fsid)
+                    self._emit_to_salt_bus(SEVERITIES[WARNING], "Cluster '{name}' is late reporting in".format(name=cluster_monitor.name),
+                                           "ceph/cluster/lateReporting",
+                                           fsid=fsid)
             else:
                 if fsid in self._clusters_complained:
                     self._emit(RECOVERY, "Cluster '{name}' regained contact".format(name=cluster_monitor.name),
                                fsid=fsid)
+                    self._emit_to_salt_bus(SEVERITIES[RECOVERY], "Cluster '{name}' regained contact".format(name=cluster_monitor.name),
+                                           "ceph/cluster/regainedContact", fsid=fsid)
                     self._clusters_complained.discard(fsid)
 
         self._flush()
@@ -249,7 +315,21 @@ class Eventer(gevent.greenlet.Greenlet):
         deleted_osds = old_osd_ids - new_osd_ids
         created_osds = new_osd_ids - old_osd_ids
 
-        def osd_event(severity, msg, osd_id):
+        def osd_event(severity, msg, osd_id, osd_uuid):
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    name=self._manager.clusters[fsid].name,
+                    id=osd_id,
+                    on_server=self._get_on_server(fsid, 'osd', osd_id)
+                ), "ceph/osd/propertyChanged",
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'osd', osd_id),
+                service_type='osd',
+                service_id=str(osd_id),
+                osd_uuid=osd_uuid
+            )
+
             self._emit(
                 severity,
                 msg.format(
@@ -264,11 +344,11 @@ class Eventer(gevent.greenlet.Greenlet):
 
         # Generate events for removed OSDs
         for osd_id in deleted_osds:
-            osd_event(INFO, "OSD {name}.{id}{on_server} removed from the cluster map", osd_id)
+            osd_event(INFO, "OSD {name}.{id}{on_server} removed from the cluster map", osd_id, old.osds_by_id[osd_id]['uuid'])
 
         # Generate events for added OSDs
         for osd_id in created_osds:
-            osd_event(INFO, "OSD {name}.{id}{on_server} added to the cluster map", osd_id)
+            osd_event(INFO, "OSD {name}.{id}{on_server} added to the cluster map", osd_id, new.osds_by_id[osd_id]['uuid'])
 
         # Generate events for changed OSDs
         for osd_id in old_osd_ids & new_osd_ids:
@@ -276,9 +356,9 @@ class Eventer(gevent.greenlet.Greenlet):
             new_osd = new.osds_by_id[osd_id]
             if old_osd['up'] != new_osd['up']:
                 if bool(new_osd['up']):
-                    osd_event(RECOVERY, "OSD {name}.{id} came up{on_server}", osd_id)
+                    osd_event(RECOVERY, "OSD {name}.{id} came up{on_server}", osd_id, new.osds_by_id[osd_id]['uuid'])
                 else:
-                    osd_event(WARNING, "OSD {name}.{id} went down{on_server}", osd_id)
+                    osd_event(WARNING, "OSD {name}.{id} went down{on_server}", osd_id, new.osds_by_id[osd_id]['uuid'])
 
                     # TODO: aggregate OSD notifications by server so that we can say things
                     # like "all the OSDs on server X went down" or "2/3 OSDs on server X went down"
@@ -296,6 +376,17 @@ class Eventer(gevent.greenlet.Greenlet):
 
         def _mon_event(severity, msg, mon_rank):
             name = new.mons_by_rank[mon_rank]['name']
+            self._emit_to_salt_bus(
+                SEVERITIES[severity],
+                msg.format(
+                    cluster_name=self._manager.clusters[fsid].name,
+                    mon_name=name,
+                    on_server=self._get_on_server(fsid, 'mon', name)
+                ), "ceph/mon/propertyChanged",
+                fsid=fsid,
+                fqdn=self._get_fqdn(fsid, 'mon', name)
+            )
+
             self._emit(severity,
                        msg.format(
                            cluster_name=self._manager.clusters[fsid].name,
@@ -337,6 +428,7 @@ class Eventer(gevent.greenlet.Greenlet):
                 # which will soon be stale
                 pass
                 # msg += " (%s)" % (new.data['summary'][0]['summary'])
+            self._emit_to_salt_bus(SEVERITIES[event_sev], msg, "ceph/cluster/health/changed", fsid=fsid)
             self._emit(event_sev, msg, fsid=fsid)
 
     @nosleep

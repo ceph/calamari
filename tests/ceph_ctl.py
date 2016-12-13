@@ -6,13 +6,14 @@ import time
 import psutil
 from itertools import chain
 import yaml
-from subprocess import Popen, PIPE
 from utils import scalable_wait_until_true, run_once
 import json
 import urllib2
 
 from nose.exc import SkipTest
 from tests.config import TestConfig
+import gevent.monkey
+gevent.monkey.patch_all(subprocess=True)
 
 config = TestConfig()
 log = logging.getLogger("ceph_ctl")
@@ -170,6 +171,7 @@ class ExternalCephControl(CephControl):
             self.cluster_distro = config.get('testing', 'cluster_distro')
 
     def _run_command(self, target, command):
+        from subprocess import Popen, PIPE
         log.debug(target)
         log.debug(command)
         user_at_host = next(t for t in self.config['cluster'].iterkeys() if t.split('@')[1] == target)

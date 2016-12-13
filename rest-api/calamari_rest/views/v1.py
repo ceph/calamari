@@ -13,7 +13,7 @@ from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import logout as auth_logout
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
@@ -21,6 +21,8 @@ from rest_framework.views import APIView
 
 # Suppress warning from graphite's use of old django API
 import warnings
+import zerorpc
+
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message="django.conf.urls.defaults is deprecated")
 
@@ -32,10 +34,9 @@ else:
     from graphite.render.attime import parseATTime
     from graphite.render.datalib import fetchData
 
-from calamari_rest.views.rpc_view import DataObject, RPCViewSet
 from calamari_rest.viewsets import RoleLimitedViewSet
+from calamari_common.remote import get_remote
 from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
-from calamari_rest.views.server_metadata import get_local_grains
 
 try:
     from calamari_rest.version import VERSION
@@ -43,7 +44,7 @@ except ImportError:
     # could create version here if we wanted to be fancier
     VERSION = 'dev'
 
-
+from calamari_rest.views.rpc_view import DataObject, RPCViewSet
 from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
     PoolSerializer, ServerSerializer, InfoSerializer
@@ -94,7 +95,14 @@ def get_latest_graphite(metric):
     if graphite is not None:
         return _get_latest_graphite(metric)
     else:
-        return None
+        # In the absence of graphite, talk to a ShallowCarbonCache instance
+        client = zerorpc.Client()
+        try:
+            client.connect("tcp://127.0.0.1:5051")
+
+            return client.get_latest([metric])[metric]
+        finally:
+            client.close()
 
 
 class Space(RPCViewSet):
@@ -523,28 +531,6 @@ as follows:
 If authentication is successful, 200 is returned, if it is unsuccessful
 then 401 is returend.
     """
-    if request.method == 'POST':
-        username = request.DATA.get('username', None)
-        password = request.DATA.get('password', None)
-        msg = {}
-        if not username:
-            msg['username'] = 'This field is required'
-        if not password:
-            msg['password'] = 'This field is required'
-        if len(msg) > 0:
-            return Response(msg, status=status.HTTP_400_BAD_REQUEST)
-        user = authenticate(username=username, password=password)
-        if not user:
-            return Response({
-                'message': 'User authentication failed'
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        auth_login(request, user)
-        if request.session.test_cookie_worked():
-            request.session.delete_test_cookie()
-        return Response({})
-    else:
-        pass
-    request.session.set_test_cookie()
     return Response({})
 
 
@@ -567,7 +553,7 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = get_local_grains()
+        grains = get_remote().get_local_metadata()
 
         try:
             ipaddr = socket.gethostbyname(grains['fqdn'])

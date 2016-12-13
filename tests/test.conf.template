@@ -1,12 +1,13 @@
 
 [testing]
 
-calamari_control = embedded
-ceph_control = embedded
+calamari_control = external
+ceph_control = converged
+bootstrap = False
 
 cluster_distro = ubuntu
 
-api_url = http://localhost:8000/api/v2/
+api_url = http://localhost:8002/api/v2/
 api_username = admin
 api_password = admin
 

@@ -23,4 +23,3 @@ build_deps:
       - redhat-lsb-core
       - hardlink
       - httpd
-      - selinux-policy-core
