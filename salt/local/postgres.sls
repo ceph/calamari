@@ -8,6 +8,7 @@ postgresql_initdb:
     cmd:
         - run
         - name: postgresql-setup initdb
+        - creates: /var/lib/pgsql/data/pg_hba.conf
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:
