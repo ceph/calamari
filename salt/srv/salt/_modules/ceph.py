@@ -622,9 +622,9 @@ def cluster_status(cluster_handle, cluster_name):
     status = rados_command(cluster_handle, "status")
 
     fsid = status['fsid']
-    mon_epoch = status['monmap']['epoch']
-    osd_epoch = status['osdmap']['osdmap']['epoch']
-    mds_epoch = status['mdsmap']['epoch']
+    mon_epoch = status.get('monmap', {}).get('epoch')
+    osd_epoch = status.get('osdmap', {}).get('osdmap', {}).get('epoch')
+    mds_epoch = status.get('fsmap', status.get('mdsmap', {})).get('epoch')
 
     # FIXME: even on a healthy system, 'health detail' contains some statistics
     # that change on their own, such as 'last_updated' and the mon space usage.
