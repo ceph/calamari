@@ -1,17 +1,22 @@
-
+sudo: required
+dist: trusty
 language: python
 virtualenv:
     system_site_packages: true
+
+services:
+  - postgresql
+
 python:
     - "2.7"
 before_install:
-    - sudo apt-get -y install python-software-properties
+    - sudo apt-get -y install software-properties-common
     - sudo add-apt-repository -y ppa:saltstack/salt
     - sudo apt-get update
 install:
     - sudo apt-get -y install salt-master salt-minion salt-common
     - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/build_deps.sls
-    - sudo salt-call --retcode-passthrough --local state.template vagrant/devmode/salt/roots/postgres.sls
+    - sudo salt-call --retcode-passthrough --local state.template salt/local/postgres.sls
     - pip install pyzmq==14.1.1 --install-option="--zmq=bundled"
     - pip install -r requirements/2.7/requirements.force.txt
     - pip install -r requirements/2.7/requirements.txt

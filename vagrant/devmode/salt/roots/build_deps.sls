@@ -10,7 +10,6 @@ build_deps:
       - python-cairo
       - python-m2crypto
       - make
-      - postgresql
       - postgresql-server-dev-all
       - python-pip
       - libevent-dev

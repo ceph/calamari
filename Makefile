@@ -260,7 +260,7 @@ docs: rest-api-generated
 
 unit-tests: dev/calamari.conf
 	@echo "target: $@"
-	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test rest-api/tests cthulhu/tests
+	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test --noinput rest-api/tests cthulhu/tests
 
 lint:
 	@echo "target: $@"
