@@ -1,5 +1,5 @@
 
-module calamari 1.0;
+module calamari-server 1.0;
 
 require {
 	type var_log_t;
