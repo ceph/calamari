@@ -95,6 +95,7 @@ browser.
 %{_sysconfdir}/salt/master.d/calamari.conf
 %{_sysconfdir}/graphite/
 %{_sysconfdir}/supervisor/conf.d/calamari.conf
+%{_sysconfdir}/supervisord.d/calamari.ini
 %{_sysconfdir}/logrotate.d/calamari
 %{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/calamari/
@@ -134,15 +135,6 @@ calamari_selinux()
 calamari_selinux
 %endif
 
-calamari_httpd()
-{
-	# concatenate our config chunk with supervisord.conf
-	echo "### START calamari-server ###" >> /etc/supervisord.conf
-	cat /etc/supervisor/conf.d/calamari.conf >> /etc/supervisord.conf
-	echo "### END calamari-server ###" >> /etc/supervisord.conf
-}
-
-calamari_httpd
 
 # Prompt the user to proceed with the final script-driven
 # part of the installation process

@@ -160,6 +160,9 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
 	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
 		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
+	@$(INSTALL) -d $(DESTDIR)/etc/supervisord.d
+	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
+		$(DESTDIR)/etc/supervisord.d/calamari.ini
 	@$(INSTALL) -d $(DESTDIR)/etc/salt/master.d
 	@$(INSTALL) -D -m 0644 conf/salt.master.conf \
 		$(DESTDIR)/etc/salt/master.d/calamari.conf
