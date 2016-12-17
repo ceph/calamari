@@ -34,6 +34,7 @@ build-lsb: version
 		rest-api \
 		calamari-web \
 		cthulhu \
+		rlyeh \
 		calamari-lite \
 	; do \
 		cd $$p ; \
@@ -101,6 +102,8 @@ build-venv-reqs: venv
 	cd ../calamari-web ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../cthulhu ; \
+	../venv/bin/python ./setup.py install && \
+	cd ../rlyeh ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../calamari-lite ; \
 	../venv/bin/python ./setup.py install && \
@@ -179,6 +182,7 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/lib/graphite/whisper
 	@$(INSTALL) -d $(DESTDIR)/var/lib/calamari
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
+	@$(INSTALL) -d $(DESTDIR)/var/lib/rlyeh
 
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari/ssl/certs
@@ -237,7 +241,7 @@ clean:
 # want in sources.
 
 FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
-FIND_RECURSE = "find alembic calamari-common calamari-lite calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-lite calamari-web conf cthulhu rlyeh doc requirements repobuild rest-api salt tests webapp selinux -print0"
 
 dist:
 	@echo "target: $@"
@@ -281,6 +285,7 @@ lint:
 	@echo "target: $@"
 	echo "Checking code style:" && \
 		flake8 cthulhu/ --ignore=E501,E402,E731 &&\
+		flake8 rlyeh/ --ignore=E501,E402,E731 &&\
 		flake8 rest-api/ --ignore=E501,E402,E731 &&\
 		flake8 calamari-common/ --ignore=E501,E402,E731 &&\
 		flake8 calamari-web/ --ignore=E501,E402,E731 &&\
