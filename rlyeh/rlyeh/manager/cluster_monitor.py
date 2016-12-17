@@ -177,14 +177,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._sync_objects = SyncObjects(self.name)
 
         self._request_factories = {
-            CRUSH_MAP: CrushRequestFactory,
-            CRUSH_NODE: CrushNodeRequestFactory,
-            CRUSH_RULE: CrushRuleRequestFactory,
-            OSD: OsdRequestFactory,
-            POOL: PoolRequestFactory
         }
 
-        self._plugin_monitor = PluginMonitor(servers)
         self._ready = gevent.event.Event()
 
     def ready(self):
@@ -234,7 +228,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             log.warning("Unexpected function '%s' (%s)" % (cmd, cmd))
 
     def _run(self):
-        self._plugin_monitor.start()
 
         self._ready.set()
         log.debug("ClusterMonitor._run: ready")
@@ -245,8 +238,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                       on_job=self.on_job_complete)
 
         log.info("%s complete" % self.__class__.__name__)
-        self._plugin_monitor.stop()
-        self._plugin_monitor.join()
         self.done.set()
 
     def _is_favorite(self, minion_id):
@@ -270,7 +261,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             # Consider whether this minion should become my new favourite: has it been
             # too long since my current favourite reported in?
             time_since = t_now - self._last_heartbeat[self._favorite_mon]
-            favorite_timeout_s = self._servers.get_contact_period(self._favorite_mon) * FAVORITE_TIMEOUT_FACTOR
             if time_since > datetime.timedelta(seconds=favorite_timeout_s):
                 log.debug("My old favourite, %s, has not sent a heartbeat for %s: %s is my new favourite" % (
                     self._favorite_mon, time_since, minion_id
@@ -311,17 +301,6 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         sync_type = SYNC_OBJECT_STR_TYPE[sync_type]
         old_object = self._sync_objects.get(sync_type)
         new_object = self._sync_objects.on_fetch_complete(minion_id, sync_type, version, data)
-
-        if new_object:
-            # The ServerMonitor is interested in cluster maps
-            if sync_type == OsdMap:
-                self._servers.on_osd_map(data)
-            elif sync_type == MonMap:
-                self._servers.on_mon_map(data, self.get_sync_object_data(MonStatus))
-            elif sync_type == MdsMap:
-                self._servers.on_mds_map(self.fsid, data)
-
-            self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
 
         return new_object
 

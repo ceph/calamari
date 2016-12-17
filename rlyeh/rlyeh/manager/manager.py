@@ -26,12 +26,10 @@ from rlyeh.log import log
 import rlyeh.log
 from rlyeh.util import Ticker
 from rlyeh.manager.cluster_monitor import ClusterMonitor
-from rlyeh.manager.eventer import Eventer
 from rlyeh.manager.request_collection import RequestCollection
 from rlyeh.manager import request_collection
 from rlyeh.manager.rpc import RpcThread
 from rlyeh.manager import config
-from rlyeh.manager.server_monitor import ServerMonitor, ServerState, ServiceState
 
 
 # sqlalchemy is optional: without it, all database writes will
@@ -190,12 +188,6 @@ class Manager(object):
         # FSID to ClusterMonitor
         self.clusters = {}
 
-        # Generate events on state changes
-        self.eventer = Eventer(self)
-
-        # Handle all ceph/server messages
-        self.servers = ServerMonitor(self.persister, self.eventer, self.requests)
-
     def delete_cluster(self, fs_id):
         """
         Note that the cluster will pop right back again if it's
@@ -215,7 +207,6 @@ class Manager(object):
         self._rpc_thread.stop()
         self._discovery_thread.stop()
         self._process_monitor.stop()
-        self.eventer.stop()
         self._request_ticker.stop()
 
     def _expunge(self, fsid):
@@ -230,37 +221,12 @@ class Manager(object):
             return
 
         session = Session()
-        for server in session.query(Server).all():
-            log.debug("Recovered server %s" % server.fqdn)
-            assert server.boot_time is None or server.boot_time.tzinfo is not None  # expect timezone-aware DB backend
-            self.servers.inject_server(ServerState(
-                fqdn=server.fqdn,
-                hostname=server.hostname,
-                managed=server.managed,
-                last_contact=server.last_contact,
-                boot_time=server.boot_time,
-                ceph_version=server.ceph_version
-            ))
-
-        for service in session.query(Service).all():
-            if service.server:
-                server = session.query(Server).get(service.server)
-            else:
-                server = None
-            log.debug("Recovered service %s/%s/%s on %s" % (
-                service.fsid, service.service_type, service.service_id, server.fqdn if server else None
-            ))
-            self.servers.inject_service(ServiceState(
-                fsid=service.fsid,
-                service_type=service.service_type,
-                service_id=service.service_id
-            ), server.fqdn if server else None)
 
         # I want the most recent version of every sync_object
         fsids = [(row[0], row[1]) for row in session.query(SyncObject.fsid, SyncObject.cluster_name).distinct(SyncObject.fsid)]
         for fsid, name in fsids:
-            cluster_monitor = ClusterMonitor(fsid, name, self.persister, self.servers,
-                                             self.eventer, self.requests)
+            cluster_monitor = ClusterMonitor(fsid, name, self.persister, None, 
+                                             None, self.requests)
             self.clusters[fsid] = cluster_monitor
 
             object_types = [row[0] for row in session.query(SyncObject.sync_type).filter_by(fsid=fsid).distinct()]
@@ -301,10 +267,8 @@ class Manager(object):
         self._discovery_thread.start()
         self._process_monitor.start()
         self.persister.start()
-        self.eventer.start()
         self._request_ticker.start()
 
-        self.servers.start()
         return True
 
     def join(self):
@@ -313,16 +277,14 @@ class Manager(object):
         self._discovery_thread.join()
         self._process_monitor.join()
         self.persister.join()
-        self.eventer.join()
         self._request_ticker.join()
-        self.servers.join()
         for monitor in self.clusters.values():
             monitor.join()
 
     def on_discovery(self, minion_id, heartbeat_data):
         log.info("on_discovery: {0}/{1}".format(minion_id, heartbeat_data['fsid']))
         cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
-                                         self.persister, self.servers, self.eventer, self.requests)
+                                         self.persister, None, None, self.requests)
         self.clusters[heartbeat_data['fsid']] = cluster_monitor
 
         # Run before passing on the heartbeat, because otherwise the
