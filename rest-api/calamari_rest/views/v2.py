@@ -27,7 +27,7 @@ from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, severity_from_str, SEVERITIES
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, severity_from_str, SEVERITIES, RBD
 
 from django.views.decorators.csrf import csrf_exempt
 
@@ -594,6 +594,29 @@ but those without static defaults will be set to null.
         if pool_name_to_id.get(data.get('name')) not in (None, pool_id):
             errors['name'].append('Pool with name {name} already exists'.format(name=data['name']))
 
+
+class RbdViewSet(RPCViewSet, RequestReturner):
+    """
+Doc String Goes here...
+    """
+    def __init__(self, *args, **kwargs):
+        self.rpc_url = config.get('rlyeh', 'rpc_url')
+        super(RbdViewSet, self).__init__(*args, **kwargs)
+
+    def create(self, request, fsid):
+        return Response({})
+    def list(self, request, fsid):
+        rbds = self.client.list(fsid, RBD, None, async=True)
+        rbds = rbds.get()
+        # return Response(self.serializer_class([DataObject(r) for r in rbds], many=True).data)
+        return Response([DataObject(r) for r in rbds])
+
+    def retrieve(self, request, fsid, rbd_id):
+        return Response({})
+    def update(self, request, fsid, osd_id):
+        return Response({})
+    def destroy(self, request, fsid, rbd_id):
+        return Response({})
 
 class OsdViewSet(RPCViewSet, RequestReturner):
     """

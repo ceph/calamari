@@ -99,7 +99,11 @@ urlpatterns = patterns(
         calamari_rest.views.v2.OsdViewSet.as_view({'get': 'validate_command', 'post': 'apply'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/osd_config$',
         calamari_rest.views.v2.OsdConfigViewSet.as_view({'get': 'osd_config', 'patch': 'update'})),
-
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/rbd$',
+        calamari_rest.views.v2.RbdViewSet.as_view({'get': 'list'}),
+        name='cluster-rbd-list'),
+    url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/rbd/(?P<rbd_id>\d+)$',
+        calamari_rest.views.v2.RbdViewSet.as_view({'get': 'retrieve', 'patch': 'update'})),
     url(r'^cluster/(?P<fsid>[a-zA-Z0-9-]+)/mon$',
         calamari_rest.views.v2.MonViewSet.as_view({'get': 'list'}),
         name='cluster-mon-list'),

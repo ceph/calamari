@@ -284,6 +284,7 @@ class BucketNotEmptyError(Exception):
 
 MON = 'mon'
 OSD = 'osd'
+RBD = 'rbd'
 MDS = 'mds'
 POOL = 'pool'
 OSD_MAP = 'osd_map'

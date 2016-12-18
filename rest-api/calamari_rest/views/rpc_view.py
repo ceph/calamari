@@ -76,16 +76,19 @@ else:
 class RPCViewSet(RoleLimitedViewSet):
     serializer_class = None
     log = logging.getLogger('django.request.profile')
+    rpc_url = None
 
     def __init__(self, *args, **kwargs):
         if zerorpc is None:
             raise RuntimeError("Cannot run without zerorpc")
+        if self.rpc_url is None:
+            self.rpc_url = config.get('cthulhu', 'rpc_url')
 
         super(RPCViewSet, self).__init__(*args, **kwargs)
         self.client = ProfiledRpcClient()
 
     def dispatch(self, request, *args, **kwargs):
-        self.client.connect(config.get('cthulhu', 'rpc_url'))
+        self.client.connect(self.rpc_url)
         a = time.time()
         try:
             return super(RPCViewSet, self).dispatch(request, *args, **kwargs)
