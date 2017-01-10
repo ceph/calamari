@@ -63,7 +63,6 @@ logging.config.dictConfig({
 
 ALEMBIC_TABLE = 'alembic_version'
 POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
-SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
 
 class CalamariUserError(Exception):
@@ -95,6 +94,17 @@ def run_cmd(cmd, message=None):
     if p.returncode != 0:
         raise RuntimeError("{command} for {message} failed with rc={rc}".format(command=cmd[0], message=message, rc=p.returncode))
 
+
+def setup_supervisor():
+    # if we're running RHEL or centos the service is called 
+    if 1:
+        service = 'supervisord.service'
+    else:
+        service = 'supervisor.service'
+    run_cmd('systemctl enable {service}'.format(service=service).split())
+
+    run_cmd('systemctl restart {service}'.format(service=service).split())
+    run_cmd('systemctl set-property {service} MemoryLimit=300M'.format(service=service).split())
 
 def run_local_salt(sls, message):
     # Configure postgres database
@@ -269,7 +279,7 @@ def initialize(args):
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
-    run_local_salt(SERVICES_SLS, message='supervisord')
+    setup_supervisor()
     run_cmd(['supervisorctl', 'restart', 'calamari-lite'])
 
     log.info("Complete.")
