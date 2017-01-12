@@ -193,8 +193,6 @@ install-conf: $(CONFFILES)
 
 install-salt:
 	@echo "target: $@"
-	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
-	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt-local
 	cp -rp salt/local/*.sls $(DESTDIR)/opt/calamari/salt-local
 
@@ -285,7 +283,6 @@ lint:
 		flake8 calamari-common/ --ignore=E501,E402,E731 &&\
 		flake8 calamari-web/ --ignore=E501,E402,E731 &&\
 		flake8 tests/ --ignore=E501,E402,E731 &&\
-		flake8 salt/srv/salt/ --ignore=E501,E402,E731 &&\
 		echo "OK"
 
 check: unit-tests lint
