@@ -88,7 +88,6 @@ browser.
 %files -n calamari-server
 /opt/calamari/alembic
 /opt/calamari/conf
-/opt/calamari/salt
 /opt/calamari/salt-local
 /opt/calamari/venv
 %attr (-, apache, apache) /opt/calamari/webapp/calamari
