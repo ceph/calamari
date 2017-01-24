@@ -15,8 +15,6 @@ setuptools
 cython
 gevent==1.1.0
 greenlet
-psycogreen==1.0
-psycopg2==2.5.2
 manhole==0.6.0
 
 Twisted==11.1.0
