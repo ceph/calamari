@@ -62,7 +62,6 @@ logging.config.dictConfig({
 })
 
 ALEMBIC_TABLE = 'alembic_version'
-POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
 
 
 class CalamariUserError(Exception):
@@ -105,17 +104,6 @@ def setup_supervisor():
 
     run_cmd('systemctl restart {service}'.format(service=service).split())
     run_cmd('systemctl set-property {service} MemoryLimit=300M'.format(service=service).split())
-
-def run_local_salt(sls, message):
-    # Configure postgres database
-    if os.path.exists(sls):
-        file_root, state = os.path.split(sls)
-        state = state.split('.')[0]
-        log.info("Starting/enabling {message}...".format(message=message))
-        run_cmd(["salt-call", "--file-root=%s" % file_root, "--local", "state.sls", state, "concurrent=True"])
-    else:
-        # This is the path you take if you're running in a development environment
-        log.debug("Skipping {message} configuration, SLS not found".format(message=message))
 
 
 def create_default_roles():
@@ -227,8 +215,6 @@ def initialize(args):
     if not os.path.exists(config.get('calamari_web', 'secret_key_path')):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
-
-    run_local_salt(sls=POSTGRES_SLS, message='postgres')
 
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')
