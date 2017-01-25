@@ -95,11 +95,7 @@ def run_cmd(cmd, message=None):
 
 
 def setup_supervisor():
-    # if we're running RHEL or centos the service is called 
-    if 1:
-        service = 'supervisord.service'
-    else:
-        service = 'supervisor.service'
+    service = 'calamari.service'
     run_cmd('systemctl enable {service}'.format(service=service).split())
 
     run_cmd('systemctl restart {service}'.format(service=service).split())
@@ -266,7 +262,6 @@ def initialize(args):
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
     setup_supervisor()
-    run_cmd(['supervisorctl', 'restart', 'calamari-lite'])
 
     log.info("Complete.")
 
