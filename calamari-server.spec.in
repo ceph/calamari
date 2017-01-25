@@ -26,7 +26,6 @@ BuildRequires:  redhat-lsb-core
 Requires:       cairo
 Requires:       pycairo
 Requires:	logrotate
-Requires:       supervisor
 Requires:       redhat-lsb-core
 Requires:	openssl
 Requires:	sqlite
@@ -84,16 +83,10 @@ browser.
 /opt/calamari/conf
 /opt/calamari/venv
 %attr (-, apache, apache) /opt/calamari/webapp/calamari
-%{_sysconfdir}/salt/master.d/calamari.conf
 %{_sysconfdir}/graphite/
-%{_sysconfdir}/supervisor/conf.d/calamari.conf
-%{_sysconfdir}/supervisord.d/calamari.ini
 %{_sysconfdir}/logrotate.d/calamari
-%{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/calamari/
 /usr/bin/calamari-ctl
-%dir %attr (755, apache, apache) /var/log/calamari
-%dir %attr (755, apache, apache) /var/log/graphite
 %dir /var/lib/calamari
 %dir /var/lib/cthulhu
 %dir %attr (755, apache, apache) /var/log/calamari
@@ -105,6 +98,7 @@ browser.
 %if 0%{?fedora} || 0%{?rhel}
 %doc selinux/*
 %{_datadir}/selinux/*/calamari-server.pp
+%{_exec_prefix}/lib/systemd/system/calamari.service
 %endif
 
 %post -n calamari-server

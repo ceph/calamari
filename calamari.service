@@ -1,0 +1,10 @@
+[Unit]
+Description=Monitoring and Managment API for Ceph
+After=rc-local.service
+
+[Service]
+Type=simple
+ExecStart=/opt/calamari/venv/bin/calamari-lite
+
+[Install]
+WantedBy=multi-user.target
