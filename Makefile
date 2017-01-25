@@ -133,10 +133,10 @@ dpkg: set_deb_version
 	@echo "target: $@"
 	dpkg-buildpackage -b -us -uc
 
-install-common: install-conf install-venv install-salt install-alembic install-scripts
+install-common: install-conf install-venv install-alembic install-scripts
 	@echo "target: $@"
 
-install-rpm: build install-common install-rh-conf
+install-rpm: build install-common
 	@echo "target: $@"
 
 install-lsb: build-lsb install-conf
@@ -150,22 +150,15 @@ install: build
 	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
 		else $(MAKE) install_real ; fi
 
-install_real: build install-common install-deb-conf
+install_real: build install-common
 	@echo "target: $@"
 
 install-conf: $(CONFFILES)
 	@echo "target: $@"
+	@$(INSTALL) -D -m 0644 calamari.service \
+		$(DESTDIR)/usr/lib/systemd/system/calamari.service
 	@$(INSTALL) -D -m 0644 conf/calamari.wsgi \
 		$(DESTDIR)/opt/calamari/conf/calamari.wsgi
-	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
-	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
-		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
-	@$(INSTALL) -d $(DESTDIR)/etc/supervisord.d
-	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
-		$(DESTDIR)/etc/supervisord.d/calamari.ini
-	@$(INSTALL) -d $(DESTDIR)/etc/salt/master.d
-	@$(INSTALL) -D -m 0644 conf/salt.master.conf \
-		$(DESTDIR)/etc/salt/master.d/calamari.conf
 	@$(INSTALL) -d $(DESTDIR)/etc/graphite
 	@$(INSTALL) -D -m 0644 conf/carbon/carbon.conf \
 		$(DESTDIR)/etc/graphite/carbon.conf
@@ -191,28 +184,10 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -D -m 0644 conf/logrotate.d/calamari \
 	    $(DESTDIR)/etc/logrotate.d/calamari
 
-install-salt:
-	@echo "target: $@"
-	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt-local
-	cp -rp salt/local/*.sls $(DESTDIR)/opt/calamari/salt-local
-
 install-alembic:
 	@echo "target: $@"
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/alembic
 	cp -rp alembic/* $(DESTDIR)/opt/calamari/alembic
-
-install-deb-conf:
-	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/calamari.conf \
-		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
-
-install-rh-conf:
-	@echo "target: $@"
-	# add WSGISocketPrefix, see:
-	# http://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGISocketPrefix
-	@$(INSTALL) -D conf/httpd/calamari.conf \
-		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
-	@sed -i '1iWSGISocketPrefix run/wsgi' $(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:
 	@echo "target: $@"

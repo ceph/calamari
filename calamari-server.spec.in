@@ -26,7 +26,6 @@ BuildRequires:  redhat-lsb-core
 Requires:       cairo
 Requires:       pycairo
 Requires:	logrotate
-Requires:       supervisor
 Requires:       redhat-lsb-core
 Requires:	openssl
 Requires:	sqlite
@@ -85,12 +84,8 @@ browser.
 /opt/calamari/salt-local
 /opt/calamari/venv
 %attr (-, apache, apache) /opt/calamari/webapp/calamari
-%{_sysconfdir}/salt/master.d/calamari.conf
 %{_sysconfdir}/graphite/
-%{_sysconfdir}/supervisor/conf.d/calamari.conf
-%{_sysconfdir}/supervisord.d/calamari.ini
 %{_sysconfdir}/logrotate.d/calamari
-%{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/calamari/
 /usr/bin/calamari-ctl
 %dir %attr (755, apache, apache) /var/log/calamari
