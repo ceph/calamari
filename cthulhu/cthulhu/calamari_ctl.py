@@ -96,10 +96,10 @@ def run_cmd(cmd, message=None):
 
 def setup_supervisor():
     try:
-        run_cmd('systemctl stop supervisord')
-        run_cmd('systemctl disable supervisord')
-        run_cmd('systemctl stop supervisor')
-        run_cmd('systemctl disable supervisor')
+        run_cmd('systemctl stop supervisord'.split())
+        run_cmd('systemctl disable supervisord'.split())
+        run_cmd('systemctl stop supervisor'.split())
+        run_cmd('systemctl disable supervisor'.split())
     except RuntimeError:
         pass # RHEL has one Ubuntu has the other
     service = 'calamari.service'
