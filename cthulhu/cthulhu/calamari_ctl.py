@@ -62,8 +62,6 @@ logging.config.dictConfig({
 })
 
 ALEMBIC_TABLE = 'alembic_version'
-POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
-SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
 
 
 class CalamariUserError(Exception):
@@ -96,16 +94,19 @@ def run_cmd(cmd, message=None):
         raise RuntimeError("{command} for {message} failed with rc={rc}".format(command=cmd[0], message=message, rc=p.returncode))
 
 
-def run_local_salt(sls, message):
-    # Configure postgres database
-    if os.path.exists(sls):
-        file_root, state = os.path.split(sls)
-        state = state.split('.')[0]
-        log.info("Starting/enabling {message}...".format(message=message))
-        run_cmd(["salt-call", "--file-root=%s" % file_root, "--local", "state.sls", state, "concurrent=True"])
-    else:
-        # This is the path you take if you're running in a development environment
-        log.debug("Skipping {message} configuration, SLS not found".format(message=message))
+def setup_supervisor():
+    try:
+        run_cmd('systemctl stop supervisord'.split())
+        run_cmd('systemctl disable supervisord'.split())
+        run_cmd('systemctl stop supervisor'.split())
+        run_cmd('systemctl disable supervisor'.split())
+    except RuntimeError:
+        pass # RHEL has one Ubuntu has the other
+    service = 'calamari.service'
+    run_cmd('systemctl enable {service}'.format(service=service).split())
+
+    run_cmd('systemctl restart {service}'.format(service=service).split())
+    run_cmd('systemctl set-property {service} MemoryLimit=300M'.format(service=service).split())
 
 
 def create_default_roles():
@@ -218,8 +219,6 @@ def initialize(args):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
 
-    run_local_salt(sls=POSTGRES_SLS, message='postgres')
-
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')
     engine = create_engine(db_path)
@@ -269,8 +268,7 @@ def initialize(args):
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
-    run_local_salt(SERVICES_SLS, message='supervisord')
-    run_cmd(['supervisorctl', 'restart', 'calamari-lite'])
+    setup_supervisor()
 
     log.info("Complete.")
 

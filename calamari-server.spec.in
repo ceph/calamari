@@ -20,23 +20,16 @@
 Name:		calamari-server
 Summary:        Manage and monitor Ceph with a REST API
 Group:   	System/Filesystems
-BuildRequires:  postgresql-devel
 BuildRequires:  python-setuptools
 BuildRequires:  python-virtualenv
 BuildRequires:  redhat-lsb-core
-BuildRequires:  httpd
-BuildRequires:  postgresql-libs
 Requires:       cairo
 Requires:       pycairo
 Requires:	logrotate
-Requires:       supervisor
 Requires:       redhat-lsb-core
-Requires:	postgresql
-Requires:	postgresql-libs
 Requires:	openssl
-Requires:	postgresql-server
+Requires:	sqlite
 Requires:	python-setuptools
-Requires:       salt-minion
 %if 0%{?rhel} || 0%{?fedora}
 # SELinux deps
 BuildRequires:  checkpolicy
@@ -88,20 +81,12 @@ browser.
 %files -n calamari-server
 /opt/calamari/alembic
 /opt/calamari/conf
-/opt/calamari/salt
-/opt/calamari/salt-local
 /opt/calamari/venv
 %attr (-, apache, apache) /opt/calamari/webapp/calamari
-%{_sysconfdir}/salt/master.d/calamari.conf
 %{_sysconfdir}/graphite/
-%{_sysconfdir}/supervisor/conf.d/calamari.conf
-%{_sysconfdir}/supervisord.d/calamari.ini
 %{_sysconfdir}/logrotate.d/calamari
-%{_sysconfdir}/httpd/conf.d/calamari.conf
 %{_sysconfdir}/calamari/
 /usr/bin/calamari-ctl
-%dir %attr (755, apache, apache) /var/log/calamari
-%dir %attr (755, apache, apache) /var/log/graphite
 %dir /var/lib/calamari
 %dir /var/lib/cthulhu
 %dir %attr (755, apache, apache) /var/log/calamari
@@ -113,6 +98,7 @@ browser.
 %if 0%{?fedora} || 0%{?rhel}
 %doc selinux/*
 %{_datadir}/selinux/*/calamari-server.pp
+%{_exec_prefix}/lib/systemd/system/calamari.service
 %endif
 
 %post -n calamari-server

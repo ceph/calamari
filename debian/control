@@ -16,16 +16,12 @@ Build-Depends: debhelper (>= 9),
 
 Package: calamari-server
 Architecture: any
-Depends: apache2,
-         libapache2-mod-wsgi,
-         libcairo2,
+Depends: libcairo2,
          libpq5,
          logrotate,
          openssl,
-         postgresql,
          python-cairo,
-         supervisor,
-         salt-minion,
+         sqlite3,
          ${misc:Depends},
          ${python:Depends}
 Description: Inktank package containing the Calamari management server

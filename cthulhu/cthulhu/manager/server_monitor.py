@@ -175,22 +175,21 @@ class ServerMonitor(greenlet.Greenlet):
         osd_id_to_host = {}
 
         def get_name_info(hostname, osd_addr):
+            # let fqdn default to hostname
             fqdn = hostname
-            if hostname.find('.') == -1:
-                if osd_addr is not None:
-                    osd_addr = osd_addr.split('/')[0]  # deal with CIDR notation
-                    osd_addr, osd_port = osd_addr.split(':')
-                    try:
-                        osd_socket_addr = (osd_addr, int(osd_port))
-                        fqdn = socket.getfqdn(socket.getnameinfo(osd_socket_addr, 0)[0])
-                        try:
-                            hostname = fqdn[0:fqdn.index('.')]
-                        except ValueError:
-                            hostname = fqdn
-                    except (socket.gaierror, ValueError):
-                        pass
-            else:
-                hostname = fqdn[0:fqdn.index('.')]
+
+            # use osd address to query for fqdn/hostname if it was given
+            if osd_addr:
+                osd_addr = osd_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
+                try:
+                    fqdn = socket.getfqdn(osd_addr)
+                    hostname = socket.gethostbyaddr(osd_addr)[0]
+                except (socket.gaierror, ValueError):
+                    pass
+
+            # remove the bit after last . for hostname if it is same as fqdn
+            if fqdn == hostname and hostname.find('.') != -1:
+                hostname = ".".join(fqdn.split('.')[:-1])
 
             return (fqdn, hostname)
 
@@ -347,11 +346,9 @@ class ServerMonitor(greenlet.Greenlet):
             mon_addr = mon.get('addr')
             mon_name = mon['name']
             if mon_addr is not None:
-                mon_addr = mon_addr.split('/')[0]  # deal with CIDR notation
-                mon_addr, mon_port = mon_addr.split(':')
-                mon_socket_addr = (mon_addr, int(mon_port))
+                mon_addr = mon_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
                 try:
-                    mon_name = socket.getfqdn(socket.getnameinfo(mon_socket_addr, 0)[0])
+                    mon_name = socket.getfqdn(mon_addr)
                 except socket.gaierror:
                     pass
 

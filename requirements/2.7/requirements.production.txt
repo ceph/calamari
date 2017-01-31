@@ -11,11 +11,10 @@ djangorestframework==2.3.12
 wsgiref==0.1.2
 sqlalchemy==0.8.3
 alembic==0.6.3
-cython==0.19.2
-gevent>=1.1
-greenlet==0.4.9
-psycogreen==1.0
-psycopg2==2.5.2
+setuptools
+cython
+gevent==1.1.0
+greenlet
 manhole==0.6.0
 
 Twisted==11.1.0
