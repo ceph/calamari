@@ -21,6 +21,7 @@ Depends: libcairo2,
          logrotate,
          openssl,
          python-cairo,
+         sqlite3,
          ${misc:Depends},
          ${python:Depends}
 Description: Inktank package containing the Calamari management server
