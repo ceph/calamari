@@ -591,7 +591,7 @@ def service_status(socket_path):
     """
     Given an admin socket path, learn all we can about that service
     """
-    match = re.match("^(.*)-(.*)\.(.*).asok$", os.path.basename(socket_path))
+    match = re.match("^(.*)-([^\.]*)\.(.*).asok$", os.path.basename(socket_path))
     if match:
         cluster_name, service_type, service_id = match.groups()
     else:
