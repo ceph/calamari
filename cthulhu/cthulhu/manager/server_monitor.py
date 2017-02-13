@@ -183,7 +183,11 @@ class ServerMonitor(greenlet.Greenlet):
                 osd_addr = osd_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
                 try:
                     fqdn = socket.getfqdn(osd_addr)
-                    hostname = socket.gethostbyaddr(osd_addr)[0]
+                    # Fall back to fqdn for hostname if gethostbyaddr fails
+                    try:
+                        hostname = socket.gethostbyaddr(osd_addr)[0]
+                    except:
+                        hostname = fqdn
                 except (socket.gaierror, ValueError):
                     pass
 
