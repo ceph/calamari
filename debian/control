@@ -22,8 +22,12 @@ Depends: libcairo2,
          openssl,
          python-cairo,
          sqlite3,
-         ${misc:Depends},
-         ${python:Depends}
+         python:any,
+         python-twisted,
+         python-txamqp,
+         python-pkg-resources,
+         python-six,
+         ${misc:Depends}
 Description: Inktank package containing the Calamari management server
  Calamari is a webapp to monitor and control a Ceph cluster via a web
  browser.
