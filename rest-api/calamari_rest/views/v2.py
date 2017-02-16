@@ -10,10 +10,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 
 from calamari_rest.parsers.v2 import CrushMapParser
-from calamari_rest.serializers.v2 import PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, CrushNodeSerializer, CrushTypeSerializer,\
+
+from calamari_common.remote import get_remote
+
+from calamari_rest.serializers.v2 import ErasurePoolSerializer, PoolSerializer, CrushRuleSetSerializer, CrushRuleSerializer, \
     ServerSerializer, SimpleServerSerializer, SaltKeySerializer, RequestSerializer, \
     ClusterSerializer, EventSerializer, LogTailSerializer, OsdSerializer, ConfigSettingSerializer, MonSerializer, OsdConfigSerializer, \
-    CliSerializer
+    CliSerializer, CrushNodeSerializer, CrushTypeSerializer, ClusterStatsSerializer, PoolStatsSerializer
 from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
@@ -24,16 +27,23 @@ from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
 from calamari_common.config import CalamariConfig
 from calamari_common.types import CRUSH_MAP, CRUSH_RULE, CRUSH_NODE, CRUSH_TYPE, POOL, OSD, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED, \
-    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId
-from calamari_common.db.event import Event, severity_from_str, SEVERITIES
+    OSD_IMPLEMENTED_COMMANDS, MON, OSD_MAP, SYNC_OBJECT_TYPES, ServiceId, severity_from_str, SEVERITIES
 
 from django.views.decorators.csrf import csrf_exempt
-from calamari_rest.views.server_metadata import get_local_grains, get_remote_grains
+
+try:
+    from calamari_common.db.event import Event
+except ImportError:
+    # No database available
+    class Event(object):
+        pass
+
+
+remote = get_remote()
 
 config = CalamariConfig()
 
 log = logging.getLogger('django.request')
-
 
 if log.level <= logging.DEBUG:
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
@@ -51,7 +61,7 @@ from Saltstack that tell us useful properties of the host.
 The fields in this resource are passed through verbatim from SaltStack, see
 the examples for which fields are available.
     """
-    return Response(get_local_grains())
+    return Response(remote.get_local_metadata())
 
 
 class RequestViewSet(RPCViewSet, PaginatedMixin):
@@ -166,6 +176,56 @@ together to a pool.
         for rule in rules:
             rule['osd_count'] = len(osds_by_rule_id[rule['rule_id']])
         return Response(CrushRuleSerializer([DataObject(r) for r in rules], many=True).data)
+
+    def retrieve(self, request, fsid, rule_id):
+        crush_rule = self.client.get(fsid, CRUSH_RULE, int(rule_id))
+        osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+        crush_rule['osd_count'] = len(osds_by_rule_id[crush_rule['rule_id']])
+        return Response(self.serializer_class(DataObject(crush_rule)).data)
+
+    def create(self, request, fsid):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            rule_data = serializer.get_data()
+            rule_data['steps'] = request.DATA['steps']
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.create(fsid, CRUSH_RULE, rule_data)
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, fsid, rule_id):
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid(request.method):
+
+            rule_data = serializer.get_data()
+            # TODO should we allow name to be changed?
+            osds_by_rule_id = self.client.get_sync_object(fsid, 'osd_map', ['osds_by_rule_id'])
+            crush_rule = self.client.get(fsid, CRUSH_RULE, int(rule_id))
+            crush_rule['osd_count'] = len(osds_by_rule_id[crush_rule['rule_id']])
+            defaults = self.serializer_class(DataObject(crush_rule)).data
+            rule_data['steps'] = request.DATA['steps']
+            defaults.update(rule_data)
+            # TODO semantic validation
+            # type exists, name and id are unique
+            create_response = self.client.update(fsid, CRUSH_RULE, int(rule_id), defaults)
+            # TODO: handle case where the creation is rejected for some reason (should
+            # be passed an errors dict for a clean failure, or a zerorpc exception
+            # for a dirty failure)
+            assert 'request_id' in create_response
+            return Response(create_response, status=status.HTTP_202_ACCEPTED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, fsid, rule_id):
+        delete_response = self.client.delete(fsid, CRUSH_RULE, rule_id, status=status.HTTP_202_ACCEPTED)
+        return Response(delete_response, status=status.HTTP_202_ACCEPTED)
 
 
 class CrushRuleSetViewSet(RPCViewSet):
@@ -448,7 +508,12 @@ but those without static defaults will be set to null.
         return Response(PoolSerializer(pool).data)
 
     def create(self, request, fsid):
-        serializer = self.serializer_class(data=request.DATA)
+        erasure = request.DATA.get('type') == 'erasure'
+        if erasure:
+            serializer = ErasurePoolSerializer(data=request.DATA)
+        else:
+            serializer = self.serializer_class(data=request.DATA)
+
         if serializer.is_valid(request.method):
             response = self._validate_semantics(fsid, None, serializer.get_data())
             if response is not None:
@@ -465,7 +530,12 @@ but those without static defaults will be set to null.
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, fsid, pool_id):
-        serializer = self.serializer_class(data=request.DATA)
+        erasure = request.DATA.get('type') == 'erasure'
+        if erasure:
+            serializer = ErasurePoolSerializer(data=request.DATA)
+        else:
+            serializer = self.serializer_class(data=request.DATA)
+
         if serializer.is_valid(request.method):
             response = self._validate_semantics(fsid, pool_id, serializer.get_data())
             if response is not None:
@@ -610,6 +680,14 @@ Filtering is available on this resource:
                 o['backend_partition_path'] = osd_metadata[o['osd']]['backend_filestore_partition_path']
             except KeyError:
                 o['backend_partition_path'] = None
+            try:
+                o['osd_data'] = osd_metadata[o['osd']]['osd_data']
+            except KeyError:
+                o['osd_data'] = None
+            try:
+                o['osd_journal'] = osd_metadata[o['osd']]['osd_journal']
+            except KeyError:
+                o['osd_journal'] = None
             o.update(osd_commands[o['osd']])
             o.update({'crush_node_ancestry': lookup_ancestry(o['osd'], parent_map)})
 
@@ -634,6 +712,14 @@ Filtering is available on this resource:
             osd['backend_partition_path'] = osd_metadata['backend_filestore_partition_path']
         except KeyError:
             osd['backend_partition_path'] = None
+        try:
+            osd['osd_data'] = osd_metadata['osd_data']
+        except KeyError:
+            osd['osd_data'] = None
+        try:
+            osd['osd_journal'] = osd_metadata['osd_journal']
+        except KeyError:
+            osd['osd_journal'] = None
 
         osd_commands = self.client.get_valid_commands(fsid, OSD, [int(osd_id)])
         osd.update(osd_commands[int(osd_id)])
@@ -756,7 +842,7 @@ all record of it from any/all clusters).
         by cthulhu via Ceph) to network interfaces (known by salt from its
         grains).
         """
-        server_to_grains = get_remote_grains([s['fqdn'] for s in servers])
+        server_to_grains = remote.get_remote_metadata([s['fqdn'] for s in servers])
 
         for server in servers:
             fqdn = server['fqdn']
@@ -802,7 +888,7 @@ server then the FQDN will be modified to its correct value.
     serializer_class = SimpleServerSerializer
 
     def retrieve_grains(self, request, fqdn):
-        grains = get_remote_grains([fqdn])[fqdn]
+        grains = remote.get_remote_metadata([fqdn])[fqdn]
         if not grains:
             return Response(status=status.HTTP_404_NOT_FOUND)
         else:
@@ -954,6 +1040,8 @@ useful to show users data from the /status sub-url, which returns the
 
     def _get_mons(self, fsid):
         mon_status = self.client.get_sync_object(fsid, 'mon_status')
+        quorum_status = self.client.get_sync_object(fsid, 'quorum_status')
+        quorum_leader_name = quorum_status.get('quorum_leader_name')
         if not mon_status:
             raise Http404("No mon data available")
 
@@ -1025,6 +1113,12 @@ useful to show users data from the /status sub-url, which returns the
             # I think the cluster map is lying about there being a quorum at all
             for m in mons:
                 m['in_quorum'] = False
+        else:  # describe that one of the mons is the leader
+            for m in mons:
+                if m.get('name') == quorum_leader_name:
+                    m['leader'] = True
+                else:
+                    m['leader'] = False
 
         return mons
 
@@ -1113,3 +1207,34 @@ not a problem.
             raise APIException("Remote error: %s" % str(result))
 
         return Response(self.serializer_class(DataObject(result)).data)
+
+
+class ClusterStatsViewSet(RemoteViewSet):
+    """
+Allows retrieval of cluster statistics
+    """
+    serializer_class = ClusterStatsSerializer
+
+    def retrieve(self, request, fsid):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.cluster_stats", [name])
+        return Response(self.serializer_class(DataObject(result)).data)
+
+
+class PoolStatsViewSet(RemoteViewSet):
+    """
+Allows retrieval of pool statistics
+    """
+    serializer_class = PoolStatsSerializer
+
+    def retrieve(self, request, fsid, pool_id):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.pool_stats", [name, [int(pool_id)]])
+        if(len(result) != 1):
+            raise ParseError("pool_stats returned %d pool item(s) for %s" % (len(result), str(pool_id)))
+        return Response(self.serializer_class(result[0]).data)
+
+    def list(self, request, fsid):
+        name = self.client.get_cluster(fsid)['name']
+        result = self.run_mon_job(fsid, "ceph.pool_stats", [name, []])
+        return Response(self.serializer_class(result, many=True).data)

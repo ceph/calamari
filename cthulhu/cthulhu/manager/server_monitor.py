@@ -7,23 +7,24 @@ individual hosts with no regard to the relations between them.
 from collections import defaultdict
 import json
 import datetime
+import traceback
 from dateutil import tz
 import logging
+import socket
 
 from gevent import greenlet
 from gevent import event
 
+from calamari_common.types import OsdMap, MonMap, ServiceId
+from calamari_common.remote import get_remote
+
 from cthulhu.gevent_util import nosleep
 from cthulhu.log import log as cthulhu_log
-from cthulhu.manager import salt_config, config
+from cthulhu.manager import config
+from cthulhu.util import now
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
-from calamari_common.types import OsdMap, MonMap, ServiceId
-from calamari_common.salt_wrapper import SaltEventSource, MasterPillarUtil
-from cthulhu.persistence.servers import Server, Service
-from cthulhu.util import now
-
 CRUSH_HOST_TYPE = config.get('cthulhu', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('cthulhu', 'crush_osd_type')
 
@@ -34,10 +35,6 @@ REBOOT_THRESHOLD = datetime.timedelta(seconds=10)
 
 # getChild isn't in 2.6
 log = logging.getLogger('.'.join((cthulhu_log.name, 'server_monitor')))
-
-
-class GrainsNotFound(Exception):
-    pass
 
 
 class ServerState(object):
@@ -141,29 +138,17 @@ class ServerMonitor(greenlet.Greenlet):
         # Cache things we look up from pillar to avoid hitting disk repeatedly
         self._contact_period_cache = {}
 
+        self.remote = get_remote()
+
     def _run(self):
         log.info("Starting %s" % self.__class__.__name__)
 
-        subscription = SaltEventSource(log, salt_config)
-
-        while not self._complete.is_set():
-            # No salt tag filtering: https://github.com/saltstack/salt/issues/11582
-            ev = subscription.get_event(full=True)
-
-            if ev is not None and ev['tag'].startswith("ceph/server"):
-                data = ev['data']
-                log.debug("ServerMonitor got ceph/server message from %s" % data['id'])
-                try:
-                    # NB assumption that FQDN==minion_id is true unless
-                    # someone has modded their salt minion config.
-                    self.on_server_heartbeat(data['id'], data['data'])
-                except:
-                    log.debug("Message detail: %s" % json.dumps(ev))
-                    log.exception("Error handling ceph/server message from %s" % data['id'])
-            if ev is not None and ev['tag'].startswith("salt/presen"):
-                # so these exist but i'm not convinced they work, I started a minion
-                # and then saw several messages indicating no mininions were present
-                log.debug("ServerMonitor: presence %s" % ev['data'])
+        try:
+            self.remote.listen(self._complete, on_server_heartbeat=self.on_server_heartbeat)
+        except:
+            log.error("Unhandled exception")
+            log.error(traceback.format_exc())
+            raise
 
         log.info("Completed %s" % self.__class__.__name__)
 
@@ -175,62 +160,57 @@ class ServerMonitor(greenlet.Greenlet):
         try:
             return self._contact_period_cache[fqdn]
         except KeyError:
-            result = self._contact_period_cache[fqdn] = self._get_contact_period(fqdn)
+            result = self._contact_period_cache[fqdn] = self.remote.get_heartbeat_period(fqdn)
             return result
-
-    def _get_contact_period(self, fqdn):
-        pillar_util = MasterPillarUtil([fqdn], 'list',
-                                       grains_fallback=False,
-                                       pillar_fallback=False,
-                                       opts=salt_config)
-
-        try:
-            heartbeat_s = pillar_util.get_minion_pillar()[fqdn]['schedule']['ceph.heartbeat']['seconds']
-        except KeyError:
-            # Just in case salt pillar is unavailable for some reason, a somewhat sensible
-            # guess.  It's really an error, but I don't want to break the world in this case.
-            fallback_contact_period = 60
-            log.warn("Missing period in minion '{0}' pillar".format(fqdn))
-            return fallback_contact_period
-
-        return heartbeat_s
 
     def get_hostname_to_osds(self, osd_map):
         """
-        Map 'hostname' to OSD: hostname in this context actually means
-        CRUSH node name where node is of type 'host'.
+        Map ('fqdn', 'hostname') to OSD
 
         In a default Ceph deployment this will indeed be the hostname, but
         a logical server can have multiple CRUSH nodes with arbitrary names.
         """
-        osd_tree = osd_map['tree']
-        nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
-
         host_to_osd = defaultdict(list)
 
         osd_id_to_host = {}
 
-        def find_descendants(cursor, fn):
-            if fn(cursor):
-                return [cursor]
-            else:
-                found = []
-                for child_id in cursor['children']:
-                    found.extend(find_descendants(nodes_by_id[child_id], fn))
-                return found
+        def get_name_info(hostname, osd_addr):
+            # let fqdn default to hostname
+            fqdn = hostname
 
-        # This assumes that:
-        # - The host and OSD types exist and have the names set
-        #   in CRUSH_HOST_TYPE and CRUSH_OSD_TYPE
-        # - That OSDs are descendents of hosts
-        # - That hosts have the 'name' attribute set to their hostname
-        # - That OSDs have the 'name' attribute set to osd.<osd id>
-        # - That OSDs are not descendents of OSDs
-        for node in osd_tree["nodes"]:
-            if node["type"] == CRUSH_HOST_TYPE:
-                host = node["name"]
-                for osd in find_descendants(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
-                    osd_id_to_host[osd["id"]] = host
+            # use osd address to query for fqdn/hostname if it was given
+            if osd_addr:
+                osd_addr = osd_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
+                try:
+                    fqdn = socket.getfqdn(osd_addr)
+                    # Fall back to fqdn for hostname if gethostbyaddr fails
+                    try:
+                        hostname = socket.gethostbyaddr(osd_addr)[0]
+                    except:
+                        hostname = fqdn
+                except (socket.gaierror, ValueError):
+                    pass
+
+            # remove the bit after last . for hostname if it is same as fqdn
+            if fqdn == hostname and hostname.find('.') != -1:
+                hostname = ".".join(fqdn.split('.')[:-1])
+
+            return (fqdn, hostname)
+
+        osd_metadata = osd_map.get('osd_metadata', [])
+        if not osd_metadata:
+            log.error("get_hostname_to_osds unable to get osd_metadata")
+
+        for osd in osd_metadata:
+            name_info = get_name_info(osd['hostname'], osd['back_addr'])
+            if name_info != ('', ''):
+                osd_id_to_host[osd['id']] = name_info
+
+        for osd in osd_map['osds']:
+            if osd['osd'] not in osd_id_to_host:
+                name_info = get_name_info('', osd['cluster_addr'])
+                if name_info != ('', ''):
+                    osd_id_to_host[osd['osd']] = name_info
 
         for osd in osd_map['osds']:
             try:
@@ -252,7 +232,10 @@ class ServerMonitor(greenlet.Greenlet):
         self.servers[server_state.fqdn] = server_state
 
     def inject_service(self, service_state, server_fqdn):
-        server_state = self.servers[server_fqdn]
+        try:
+            server_state = self.servers[server_fqdn]
+        except KeyError:
+            log.error('wrt: bz1349786 unable to get a server_state for %s' % server_fqdn)
         self.services[service_state.id] = service_state
         service_state.set_server(server_state)
         server_state.services[service_state.id] = service_state
@@ -281,7 +264,7 @@ class ServerMonitor(greenlet.Greenlet):
         log.debug("ServerMonitor.on_osd_map: got service data for %s servers" % len(hostname_to_osds))
 
         osds_in_map = set()
-        for hostname, osds in hostname_to_osds.items():
+        for (fqdn, hostname), osds in hostname_to_osds.items():
             id_to_osd = dict([(ServiceId(osd_map['fsid'], 'osd', str(o['osd'])), o) for o in osds])
             osds_in_map |= set(id_to_osd.keys())
 
@@ -307,13 +290,13 @@ class ServerMonitor(greenlet.Greenlet):
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
-                server_state = ServerState(hostname, hostname, managed=False,
+                server_state = ServerState(fqdn, hostname, managed=False,
                                            last_contact=None, boot_time=None, ceph_version=None)
                 self.inject_server(server_state)
-                self._persister.create_server(Server(
+                self._persister.create_server(
                     fqdn=server_state.fqdn,
                     hostname=server_state.hostname,
-                    managed=server_state.managed))
+                    managed=server_state.managed)
 
             # Register all the OSDs reported under this hostname with the ServerState
             for service_id, osd in id_to_osd.items():
@@ -345,28 +328,46 @@ class ServerMonitor(greenlet.Greenlet):
             self.forget_service(self.services[stale_mds_id])
 
     @nosleep
-    def on_mon_map(self, mon_map):
+    def on_mon_map(self, mon_map, mon_status):
         """
         When a new mon map is received, use it to eliminate any mon
         ServiceState records that no longer exist in the real world.
         """
+        log.debug("ServerMonitor.on_mon_map: %s" % str([m['name'] for m in mon_map['mons']]))
+        # We're no longer getting these via salt so we fake them
+        # based on what we know in the mon_map
+        if mon_status is None:
+            mon_status = {}
+
+        for mon in mon_map['mons']:
+            services = {mon['name']: {'fsid':
+                                      mon_map['fsid'],
+                                      'type': 'mon',
+                                      'status': {'election_epoch': mon_status.get('election_epoch'),
+                                                 'quorum': mon_map['quorum'],
+                                                 'rank': mon['rank']},
+                                      'id': mon['name']}}
+            mon_addr = mon.get('addr')
+            mon_name = mon['name']
+            if mon_addr is not None:
+                mon_addr = mon_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
+                try:
+                    mon_name = socket.getfqdn(mon_addr)
+                except socket.gaierror:
+                    pass
+
+            self.on_server_heartbeat(mon_name, {'boot_time': 0,
+                                                'ceph_version': None,
+                                                'services': services})
+
         map_mons = set([ServiceId(mon_map['fsid'], 'mon', m['name']) for m in mon_map['mons']])
         known_mons = set([
             s.id
             for s in self.fsid_services[mon_map['fsid']] if s.service_type == 'mon'
         ])
+
         for stale_mon_id in known_mons - map_mons:
             self.forget_service(self.services[stale_mon_id])
-
-    def _get_grains(self, fqdn):
-        pillar_util = MasterPillarUtil(fqdn, 'glob',
-                                       use_cached_grains=True,
-                                       grains_fallback=False,
-                                       opts=salt_config)
-        try:
-            return pillar_util.get_minion_grains()[fqdn]
-        except KeyError:
-            raise GrainsNotFound(fqdn)
 
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):
@@ -386,7 +387,7 @@ class ServerMonitor(greenlet.Greenlet):
         except KeyError:
             # Look up the grains for this server, we need to know its hostname in order
             # to resolve this vs. the OSD map.
-            hostname = self._get_grains(fqdn)['host']
+            hostname = self.remote.get_remote_metadata([fqdn])[fqdn].get('host', fqdn)
 
             if hostname in self.hostname_to_server:
                 server_state = self.hostname_to_server[hostname]
@@ -417,19 +418,27 @@ class ServerMonitor(greenlet.Greenlet):
                 self._persister.update_server(server_state.fqdn, managed=True)
                 log.info("Server %s went from unmanaged to managed" % fqdn)
 
-        boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
+        try:
+            boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
+        except TypeError:
+            boot_time = None
+
         if new_server:
-            hostname = self._get_grains(fqdn)['host']
+            hostname = self.remote.get_remote_metadata([fqdn])[fqdn].get('host', fqdn)
+            try:
+                hostname = fqdn[0:fqdn.index('.')]
+            except ValueError:
+                hostname = fqdn
             server_state = ServerState(fqdn, hostname, managed=True,
                                        last_contact=now(), boot_time=boot_time,
                                        ceph_version=server_heartbeat['ceph_version'])
             self.inject_server(server_state)
-            self._persister.create_server(Server(
+            self._persister.create_server(
                 fqdn=server_state.fqdn,
                 hostname=server_state.hostname,
                 managed=server_state.managed,
                 last_contact=server_state.last_contact
-            ))
+            )
             log.info("Saw server %s for the first time" % server_state)
 
         server_state.last_contact = now()
@@ -495,12 +504,11 @@ class ServerMonitor(greenlet.Greenlet):
             service_state = ServiceState(*service_id)
             self.inject_service(service_state, server_state.fqdn)
 
-            self._persister.create_service(Service(
-                fsid=service_state.fsid,
-                service_type=service_state.service_type,
-                service_id=service_state.service_id,
-                status=json.dumps(status)
-            ), associate_fqdn=server_state.fqdn)
+            self._persister.create_service(server_state.fqdn,
+                                           fsid=service_state.fsid,
+                                           service_type=service_state.service_type,
+                                           service_id=service_state.service_id,
+                                           status=json.dumps(status))
 
         if running != service_state.running:
             if running:

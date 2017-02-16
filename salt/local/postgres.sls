@@ -1,13 +1,22 @@
 
 {% if grains['os_family'] == 'RedHat' %}
 
-{% if grains['osrelease'].startswith('7') %}
+{% if grains['osrelease'].startswith('7') or grains['osfullname'] == 'Fedora' %}
 # work around https://github.com/saltstack/salt/pull/12316; use new
 # command postgresql-setup anyway
+{% if grains['osrelease'].startswith('7') %}
 postgresql_initdb:
     cmd:
         - run
         - name: postgresql-setup initdb
+        - creates: /var/lib/pgsql/data/pg_hba.conf
+{% else %}
+postgresql_initdb:
+    cmd:
+        - run
+        - name: postgresql-setup --initdb
+        - creates: /var/lib/pgsql/data/pg_hba.conf
+{% endif %}
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:
@@ -51,6 +60,7 @@ postgresql_initdb:
     cmd:
         - run
         - name: service postgresql initdb
+        - creates: /var/lib/pgsql/data/pg_hba.conf
 
 # change 'host' auth to 'md5' for local hashed-password authorization
 /var/lib/pgsql/data/pg_hba.conf:

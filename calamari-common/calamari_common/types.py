@@ -1,5 +1,4 @@
 from collections import namedtuple, defaultdict
-from calamari_common.util import memoize
 
 import logging
 
@@ -56,8 +55,9 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
             self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
+            self.crush_rule_by_id = dict([(o['rule_id'], o) for o in data['crush']['rules']])
             self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
-            self.metadata_by_id = self._map_osd_metadata(data.get('osd_metadata', []))
+            self.metadata_by_id = self._map_osd_metadata(data)
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -68,12 +68,14 @@ class OsdMap(VersionedSyncObject):
             self.osds_by_id = {}
             self.pools_by_id = {}
             self.osd_tree_node_by_id = {}
-            self.crush_node_by_id = {}
             self.metadata_by_id = {}
+            self.crush_rule_by_id = {}
+            self.crush_node_by_id = {}
             self.flags = dict([(x, False) for x in OSD_FLAGS])
 
-    def _map_osd_metadata(self, metadata):
-        osd_id_to_metadata = {}
+    def _map_osd_metadata(self, data):
+        osd_id_to_metadata = dict([(o['osd'], {}) for o in data['osds']])
+        metadata = data.get('osd_metadata', [])
         if len(metadata) == 0:
             log.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
 
@@ -93,7 +95,6 @@ class OsdMap(VersionedSyncObject):
         return crush_nodes
 
     @property
-    @memoize
     def parent_bucket_by_node_id(self):
         """
         Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
@@ -110,11 +111,10 @@ class OsdMap(VersionedSyncObject):
         return dict(parent_map)
 
     @property
-    @memoize
     def crush_type_by_id(self):
         return dict((n["type_id"], n) for n in self.data['crush']['types'])
 
-    @memoize
+    @property
     def get_tree_nodes_by_id(self):
         return dict((n["id"], n) for n in self.data['tree']["nodes"])
 
@@ -125,7 +125,7 @@ class OsdMap(VersionedSyncObject):
             raise NotFound(CRUSH_NODE, node_id)
 
     def _get_crush_rule_osds(self, rule):
-        nodes_by_id = self.get_tree_nodes_by_id()
+        nodes_by_id = self.get_tree_nodes_by_id
 
         def _gather_leaf_ids(node):
             if node['id'] >= 0:
@@ -183,7 +183,6 @@ class OsdMap(VersionedSyncObject):
         return osds
 
     @property
-    @memoize
     def osds_by_rule_id(self):
         result = {}
         for rule in self.data['crush']['rules']:
@@ -192,7 +191,6 @@ class OsdMap(VersionedSyncObject):
         return result
 
     @property
-    @memoize
     def osds_by_pool(self):
         """
         Get the OSDS which may be used in this pool
@@ -218,7 +216,6 @@ class OsdMap(VersionedSyncObject):
         return result
 
     @property
-    @memoize
     def osd_pools(self):
         """
         A dict of OSD ID to list of pool IDs
@@ -240,6 +237,10 @@ class MdsMap(VersionedSyncObject):
 
 class MonMap(VersionedSyncObject):
     str = 'mon_map'
+
+
+class QuorumStatus(VersionedSyncObject):
+    str = 'quorum_status'
 
 
 class MonStatus(VersionedSyncObject):
@@ -294,7 +295,7 @@ CLUSTER = 'cluster'
 SERVER = 'server'
 
 # The objects that ClusterMonitor keeps copies of from the mon
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config]
+SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, QuorumStatus, PgSummary, Health, Config]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
 USER_REQUEST_COMPLETE = 'complete'
@@ -303,3 +304,28 @@ USER_REQUEST_SUBMITTED = 'submitted'
 # List of allowable things to send as ceph commands to OSDs
 OSD_IMPLEMENTED_COMMANDS = ('scrub', 'deep_scrub', 'repair')
 OSD_FLAGS = ('pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub')
+
+# Severity codes for Calamari events
+CRITICAL = 1
+ERROR = 2
+WARNING = 3
+RECOVERY = 4
+INFO = 5
+
+SEVERITIES = {
+    CRITICAL: "CRITICAL",
+    ERROR: "ERROR",
+    WARNING: "WARNING",
+    RECOVERY: "RECOVERY",
+    INFO: "INFO"
+}
+
+STR_TO_SEVERITY = dict([(b, a) for (a, b) in SEVERITIES.items()])
+
+
+def severity_str(severity):
+    return SEVERITIES[severity]
+
+
+def severity_from_str(severitry_str):
+    return STR_TO_SEVERITY[severitry_str]

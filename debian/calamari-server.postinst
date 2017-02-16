@@ -9,38 +9,14 @@ calamari_httpd()
     # www-data shouldn't need to write, but it does because graphite creates index on read
     chown -R www-data:www-data /var/lib/graphite
 
-    # Redirect the a2* output to /dev/null because it advises
-    # user to restart apache, which we already do for them.
-    a2dissite 000-default > /dev/null
-    a2ensite calamari.conf > /dev/null
-    a2enmod wsgi > /dev/null
-    # stunningly, precise does not enable this by default
-    a2enmod version > /dev/null
     chown -R www-data:www-data /var/log/calamari
     cd $d
 
-    # Load our salt config
-    # see https://github.com/saltstack/salt/issues/12248 for why this
-    # is not a simple restart; remove this when that issue is resolved
-    # service salt-master restart
-    service salt-master stop
-    killall salt-master
-    service salt-master start
-
-    # Load our supervisor config
-    # NB 'service supervisor restart' is broken on precise
-    service supervisor stop
-    sleep 3
-    service supervisor start
 }
 
 case "$1" in
     configure)
         calamari_httpd
-
-        # Restart apache (without trusting 'restart' to work properly)
-        service apache2 stop || true
-        service apache2 start
 
         # Prompt the user to proceed with the final script-driven
         # part of the installation process

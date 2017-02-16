@@ -1,0 +1,11 @@
+rule ecruleset {
+    ruleset 2
+    type erasure
+    min_size 3
+    max_size 3
+    step set_chooseleaf_tries 5
+    step set_choose_tries 100
+    step take default
+    step chooseleaf indep 0 type host
+    step emit
+}

@@ -18,15 +18,17 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': {
+}
+
+try:
+    import sqlalchemy  # noqa
+except ImportError:
+    pass
+else:
+    DATABASES['default'] = {
         'ENGINE': config.get("calamari_web", "db_engine"),
         'NAME': config.get("calamari_web", "db_name"),
-        'USER': config.get("calamari_web", "db_user"),
-        'PASSWORD': config.get("calamari_web", "db_password"),
-        'HOST': config.get("calamari_web", "db_host"),
-        'PORT': config.get("calamari_web", "db_port"),
     }
-}
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
@@ -111,6 +113,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'calamari_web.middleware.AngularCSRFRename',
     'django.middleware.csrf.CsrfViewMiddleware',
+    # No authentication ATM
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
@@ -131,12 +134,18 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'calamari_web',
     'rest_framework',
-    'calamari_rest',
-    'graphite.render',
-    'graphite.account',
-    'graphite.metrics',
-    'graphite.dashboard'
+    'calamari_rest'
 )
+
+try:
+    import graphite  # noqa
+
+    INSTALLED_APPS = INSTALLED_APPS + ('graphite.render',
+                                       'graphite.account',
+                                       'graphite.metrics',
+                                       'graphite.dashboard')
+except ImportError:
+    graphite = None
 
 try:
     import django_nose  # noqa
@@ -264,7 +273,8 @@ TEMPLATE_DIRS = (os.path.join(config.get('graphite', 'root'),
                               "lib/python2.{pyminor}/site-packages/graphite/templates".format(pyminor=sys.version_info[1])),
                  )
 CONTENT_DIR = os.path.join(config.get('graphite', 'root'), "webapp/content/")
-STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
+if graphite:
+    STATICFILES_DIRS = STATICFILES_DIRS + (os.path.join(config.get('graphite', 'root'), "webapp/content/"),)
 
 # <<<
 

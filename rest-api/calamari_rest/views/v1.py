@@ -21,6 +21,8 @@ from rest_framework.views import APIView
 
 # Suppress warning from graphite's use of old django API
 import warnings
+import zerorpc
+
 warnings.filterwarnings("ignore", category=DeprecationWarning,
                         message="django.conf.urls.defaults is deprecated")
 
@@ -32,10 +34,8 @@ else:
     from graphite.render.attime import parseATTime
     from graphite.render.datalib import fetchData
 
-from calamari_rest.views.rpc_view import DataObject, RPCViewSet
-from calamari_rest.viewsets import RoleLimitedViewSet
-from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus
-from calamari_rest.views.server_metadata import get_local_grains
+from calamari_rest.viewsets import RoleLimitedViewSet  # noqa
+from calamari_common.types import POOL, OSD, ServiceId, OsdMap, PgSummary, MdsMap, MonStatus  # noqa
 
 try:
     from calamari_rest.version import VERSION
@@ -43,11 +43,11 @@ except ImportError:
     # could create version here if we wanted to be fancier
     VERSION = 'dev'
 
-
+from calamari_rest.views.rpc_view import DataObject, RPCViewSet  # noqa
 from calamari_rest.serializers.v1 import ClusterSpaceSerializer, ClusterHealthSerializer, UserSerializer, \
     ClusterSerializer, OSDDetailSerializer, OSDListSerializer, ClusterHealthCountersSerializer, \
-    PoolSerializer, ServerSerializer, InfoSerializer
-from calamari_common.config import CalamariConfig
+    PoolSerializer, ServerSerializer, InfoSerializer  # noqa
+from calamari_common.config import CalamariConfig  # noqa
 
 
 config = CalamariConfig()
@@ -94,7 +94,14 @@ def get_latest_graphite(metric):
     if graphite is not None:
         return _get_latest_graphite(metric)
     else:
-        return None
+        # In the absence of graphite, talk to a ShallowCarbonCache instance
+        client = zerorpc.Client()
+        try:
+            client.connect("tcp://127.0.0.1:5051")
+
+            return client.get_latest([metric])[metric]
+        finally:
+            client.close()
 
 
 class Space(RPCViewSet):
@@ -107,7 +114,7 @@ class Space(RPCViewSet):
             else:
                 return None
 
-        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)
+        df_path = lambda stat_name: "ceph.cluster.{0}.df.{1}".format(fsid, stat_name)  # noqa
         # Check for old vs. new stats (changed in Ceph Firefly)
         # see Ceph commit ee2dbdb0f5e54fe6f9c5999c032063b084424c4c
         # Old:          New:
@@ -219,7 +226,7 @@ class HealthCounters(RPCViewSet):
         pgs_by_state = pg_summary['all']
         ok, warn, crit = [[0, defaultdict(int)] for _ in range(3)]
         for state_name, count in pgs_by_state.items():
-            states = map(lambda s: s.lower(), state_name.split("+"))
+            states = map(lambda s: s.lower(), state_name.split("+"))  # noqa
             if cls._pg_counter_helper(states, cls.CRIT_STATES, count, crit):
                 pass
             elif cls._pg_counter_helper(states, cls.WARN_STATES, count, warn):
@@ -342,7 +349,7 @@ class OSDList(RPCViewSet):
         anything like a .save() on this instance; it's just a vehicle for the
         filtered OSDs.
         """
-        pg_states = set(map(lambda s: s.lower(), pg_states.split(",")))
+        pg_states = set(map(lambda s: s.lower(), pg_states.split(",")))  # noqa
         target_osds = set([])
         for state, state_osds in osds_by_pg_state.iteritems():
             if state in pg_states:
@@ -353,11 +360,11 @@ class OSDList(RPCViewSet):
         fqdn_to_server = dict([(s['fqdn'], s) for s in servers])
 
         # map osd id to pg states
-        pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))
+        pg_states_by_osd = defaultdict(lambda: defaultdict(lambda: 0))  # noqa
         # map osd id to set of pools
-        pools_by_osd = defaultdict(lambda: set([]))
+        pools_by_osd = defaultdict(lambda: set([]))  # noqa
         # map pg state to osd ids
-        osds_by_pg_state = defaultdict(lambda: set([]))
+        osds_by_pg_state = defaultdict(lambda: set([]))  # noqa
 
         # get the list of pools
         pools_by_id = dict((p_id, p['pool_name']) for (p_id, p) in osd_map.pools_by_id.items())
@@ -567,18 +574,19 @@ Provides metadata about the installation of Calamari server in use
     serializer_class = InfoSerializer
 
     def get(self, request):
-        grains = get_local_grains()
-
         try:
-            ipaddr = socket.gethostbyname(grains['fqdn'])
+            hostname = socket.getfqdn()
+            fqdn = socket.gethostname()
+            ipaddr = socket.gethostbyname(hostname)
         except socket.gaierror:
             # It is annoying, but not rare, to have a host
             # that cannot resolve its own name.
             # From a dict of interface name to list of addresses,
             # we pick the first address from the first interface
             # which has some addresses and isn't a loopback.
-            ipaddr = [addrs for name, addrs in grains['ip_interfaces'].items() if
-                      name not in ['lo', 'lo0'] and addrs][0][0]
+            ipaddr = None
+            hostname = None
+            fqdn = None
 
         proto = "https" if request.is_secure() else "http"
         bootstrap_url = "{0}://{1}{2}".format(proto, request.META['HTTP_HOST'], reverse('bootstrap'))
@@ -589,8 +597,8 @@ Provides metadata about the installation of Calamari server in use
             "version": str(VERSION),
             "license": "N/A",
             "registered": "N/A",
-            "hostname": grains['host'],
-            "fqdn": grains['fqdn'],
+            "hostname": hostname,
+            "fqdn": fqdn,
             "ipaddr": ipaddr,
             "bootstrap_url": bootstrap_url,
             "bootstrap_ubuntu": BOOTSTRAP_UBUNTU.format(url=bootstrap_url),

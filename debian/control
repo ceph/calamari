@@ -12,22 +12,22 @@ Build-Depends: debhelper (>= 9),
                lsb-release,
                python-dev,
                python-pip,
-               python-virtualenv
+               virtualenv | python-virtualenv
 
 Package: calamari-server
 Architecture: any
-Depends: apache2,
-         libapache2-mod-wsgi,
-         libcairo2,
+Depends: libcairo2,
          libpq5,
          logrotate,
-         postgresql,
+         openssl,
          python-cairo,
-         salt-master,
-         salt-minion,
-         supervisor,
-         ${misc:Depends},
-         ${python:Depends}
+         sqlite3,
+         python:any,
+         python-twisted,
+         python-txamqp,
+         python-pkg-resources,
+         python-six,
+         ${misc:Depends}
 Description: Inktank package containing the Calamari management server
  Calamari is a webapp to monitor and control a Ceph cluster via a web
  browser.

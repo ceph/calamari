@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitoring and Managment API for Ceph
+After=rc-local.service
+
+[Service]
+Type=simple
+ExecStart=/opt/calamari/venv/bin/calamari-lite
+Restart=on-failure
+RestartSec=30
+
+
+[Install]
+WantedBy=multi-user.target
