@@ -147,7 +147,8 @@ class Manager(object):
         self._discovery_thread = TopLevelEvents(self)
         self._process_monitor = ProcessMonitorThread()
 
-        if sqlalchemy is not None:
+        db_path = config.get('cthulhu', 'db_path')
+        if sqlalchemy is not None and db_path:
             try:
                 # Prepare persistence
                 engine = create_engine(config.get('cthulhu', 'db_path'))  # noqa
