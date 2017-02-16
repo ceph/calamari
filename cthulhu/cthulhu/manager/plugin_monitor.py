@@ -4,8 +4,6 @@ import importlib
 import os
 import time
 
-from calamari_common.salt_wrapper import LocalClient
-from calamari_common.util import memoize
 from cthulhu.manager import config
 from cthulhu.log import log
 
@@ -21,11 +19,6 @@ class PluginMonitor(gevent.greenlet.Greenlet):
         self.plugin_results = {}
         self._complete = event.Event()
         self._servers = servers
-
-    @property
-    @memoize
-    def salt_client(self):
-        return LocalClient(config.get('cthulhu', 'salt_config_path'))
 
     def load_plugins(self):
 
@@ -72,12 +65,10 @@ class PluginMonitor(gevent.greenlet.Greenlet):
         while not self._complete.is_set():
             start = int(time.time())
             timeout_at = start + period
-            # TODO get list of servers from server_monitor
             servers = [s.fqdn for s in self._servers.get_all()]
-            check_data = self.filter_errors(self.salt_client.cmd(servers,
-                                                                 salt_name,
-                                                                 timeout=check_timeout,
-                                                                 expr_form='list'),
+            check_data = self.filter_errors(self._remote_run_cmd_async(servers,
+                                                                       salt_name,
+                                                                       timeout=check_timeout),
                                             salt_name)
 
             self.plugin_results[plugin_name] = status_processor(check_data)

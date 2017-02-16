@@ -2,11 +2,9 @@ from cthulhu.manager.request_factory import RequestFactory
 from cthulhu.manager.user_request import OsdMapModifyingRequest
 from cthulhu.manager.server_monitor import ServiceId
 from calamari_common.types import OSD, OsdMap, BucketNotEmptyError
-import logging
 import json
 
-
-log = logging.getLogger('cthulhu.crush_node_factory')
+from cthulhu.log import log
 
 
 class CrushNodeRequestFactory(RequestFactory):
@@ -35,7 +33,9 @@ class CrushNodeRequestFactory(RequestFactory):
 
         to_remove = [item for item in current_node['items'] if item not in items]
         commands += self._remove_items(name, bucket_type, to_remove)
-        commands += self._add_items(name, bucket_type, items)
+        for c in self._add_items(name, bucket_type, items):
+                if c not in commands:
+                        commands.append(c)
 
         if name != current_node['name'] or bucket_type != current_node['type_name']:
             commands.append(remove_bucket(current_node['name'], None))
@@ -84,8 +84,12 @@ class CrushNodeRequestFactory(RequestFactory):
                 hostname = self._get_hostname_where_osd_runs(id)
 
                 child = 'osd.{id}'.format(id=id)
-                commands.append(reweight_osd(child, 0.0))
-                commands.append(remove_bucket(child, None))
+                reweight = reweight_osd(child, 0.0)
+                if reweight not in commands:
+                    commands.append(reweight_osd(child, 0.0))
+                remove = remove_bucket(child, None)
+                if remove not in commands:
+                    commands.append(remove_bucket(child, None))
                 commands += move_osd(hostname, id, name, bucket_type)
                 commands.append(reweight_osd(child, item['weight']))
         return commands

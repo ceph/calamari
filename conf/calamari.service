@@ -1,0 +1,12 @@
+[Unit]
+Description=Calamari REST API
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/calamari-lite
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

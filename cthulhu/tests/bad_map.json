@@ -1,0 +1,746 @@
+{
+    "blacklist": {},
+    "cluster_snapshot": "",
+    "created": "2016-07-15 16:21:42.957136",
+    "crush": {
+        "buckets": [
+            {
+                "alg": "straw",
+                "hash": "rjenkins1",
+                "id": -1,
+                "items": [
+                    {
+                        "id": -2,
+                        "pos": 0,
+                        "weight": 0.01959228515625
+                    },
+                    {
+                        "id": -3,
+                        "pos": 1,
+                        "weight": 0.01959228515625
+                    },
+                    {
+                        "id": -4,
+                        "pos": 2,
+                        "weight": 0.01959228515625
+                    }
+                ],
+                "name": "default",
+                "type_id": 10,
+                "type_name": "root",
+                "weight": 0.05877685546875
+            },
+            {
+                "alg": "straw",
+                "hash": "rjenkins1",
+                "id": -2,
+                "items": [
+                    {
+                        "id": 0,
+                        "pos": 0,
+                        "weight": 0.009796142578125
+                    },
+                    {
+                        "id": 1,
+                        "pos": 1,
+                        "weight": 0.009796142578125
+                    }
+                ],
+                "name": "dhcp41-173",
+                "type_id": 1,
+                "type_name": "host",
+                "weight": 0.01959228515625
+            },
+            {
+                "alg": "straw",
+                "hash": "rjenkins1",
+                "id": -3,
+                "items": [
+                    {
+                        "id": 2,
+                        "pos": 0,
+                        "weight": 0.009796142578125
+                    },
+                    {
+                        "id": 3,
+                        "pos": 1,
+                        "weight": 0.009796142578125
+                    }
+                ],
+                "name": "dhcp41-177",
+                "type_id": 1,
+                "type_name": "host",
+                "weight": 0.01959228515625
+            },
+            {
+                "alg": "straw",
+                "hash": "rjenkins1",
+                "id": -4,
+                "items": [
+                    {
+                        "id": 4,
+                        "pos": 0,
+                        "weight": 0.009796142578125
+                    },
+                    {
+                        "id": 5,
+                        "pos": 1,
+                        "weight": 0.009796142578125
+                    }
+                ],
+                "name": "dhcp41-194",
+                "type_id": 1,
+                "type_name": "host",
+                "weight": 0.01959228515625
+            }
+        ],
+        "devices": [
+            {
+                "id": 0,
+                "name": "osd.0"
+            },
+            {
+                "id": 1,
+                "name": "osd.1"
+            },
+            {
+                "id": 2,
+                "name": "osd.2"
+            },
+            {
+                "id": 3,
+                "name": "osd.3"
+            },
+            {
+                "id": 4,
+                "name": "osd.4"
+            },
+            {
+                "id": 5,
+                "name": "osd.5"
+            }
+        ],
+        "rules": [
+            {
+                "max_size": 10,
+                "min_size": 1,
+                "rule_id": 0,
+                "rule_name": "replicated_ruleset",
+                "ruleset": 0,
+                "steps": [
+                    {
+                        "item": -1,
+                        "item_name": "default",
+                        "op": "take"
+                    },
+                    {
+                        "num": 0,
+                        "op": "chooseleaf_firstn",
+                        "type": "host"
+                    },
+                    {
+                        "op": "emit"
+                    }
+                ],
+                "type": 1
+            }
+        ],
+        "tunables": {
+            "allowed_bucket_algs": 22,
+            "choose_local_fallback_tries": 0,
+            "choose_local_tries": 0,
+            "choose_total_tries": 50,
+            "chooseleaf_descend_once": 1,
+            "chooseleaf_stable": 0,
+            "chooseleaf_vary_r": 1,
+            "has_v2_rules": 0,
+            "has_v3_rules": 0,
+            "has_v4_buckets": 0,
+            "has_v5_rules": 0,
+            "legacy_tunables": 0,
+            "minimum_required_version": "firefly",
+            "optimal_tunables": 0,
+            "profile": "firefly",
+            "require_feature_tunables": 1,
+            "require_feature_tunables2": 1,
+            "require_feature_tunables3": 1,
+            "require_feature_tunables5": 0,
+            "straw_calc_version": 1
+        },
+        "types": [
+            {
+                "name": "osd",
+                "type_id": 0
+            },
+            {
+                "name": "host",
+                "type_id": 1
+            },
+            {
+                "name": "chassis",
+                "type_id": 2
+            },
+            {
+                "name": "rack",
+                "type_id": 3
+            },
+            {
+                "name": "row",
+                "type_id": 4
+            },
+            {
+                "name": "pdu",
+                "type_id": 5
+            },
+            {
+                "name": "pod",
+                "type_id": 6
+            },
+            {
+                "name": "room",
+                "type_id": 7
+            },
+            {
+                "name": "datacenter",
+                "type_id": 8
+            },
+            {
+                "name": "region",
+                "type_id": 9
+            },
+            {
+                "name": "root",
+                "type_id": 10
+            }
+        ]
+    },
+    "crush_map_text": "# begin crush map\ntunable choose_local_tries 0\ntunable choose_local_fallback_tries 0\ntunable choose_total_tries 50\ntunable chooseleaf_descend_once 1\ntunable chooseleaf_vary_r 1\ntunable straw_calc_version 1\n\n# devices\ndevice 0 osd.0\ndevice 1 osd.1\ndevice 2 osd.2\ndevice 3 osd.3\ndevice 4 osd.4\ndevice 5 osd.5\n\n# types\ntype 0 osd\ntype 1 host\ntype 2 chassis\ntype 3 rack\ntype 4 row\ntype 5 pdu\ntype 6 pod\ntype 7 room\ntype 8 datacenter\ntype 9 region\ntype 10 root\n\n# buckets\nhost dhcp41-173 {\n\tid -2\t\t# do not change unnecessarily\n\t# weight 0.020\n\talg straw\n\thash 0\t# rjenkins1\n\titem osd.0 weight 0.010\n\titem osd.1 weight 0.010\n}\nhost dhcp41-177 {\n\tid -3\t\t# do not change unnecessarily\n\t# weight 0.020\n\talg straw\n\thash 0\t# rjenkins1\n\titem osd.2 weight 0.010\n\titem osd.3 weight 0.010\n}\nhost dhcp41-194 {\n\tid -4\t\t# do not change unnecessarily\n\t# weight 0.020\n\talg straw\n\thash 0\t# rjenkins1\n\titem osd.4 weight 0.010\n\titem osd.5 weight 0.010\n}\nroot default {\n\tid -1\t\t# do not change unnecessarily\n\t# weight 0.059\n\talg straw\n\thash 0\t# rjenkins1\n\titem dhcp41-173 weight 0.020\n\titem dhcp41-177 weight 0.020\n\titem dhcp41-194 weight 0.020\n}\n\n# rules\nrule replicated_ruleset {\n\truleset 0\n\ttype replicated\n\tmin_size 1\n\tmax_size 10\n\tstep take default\n\tstep chooseleaf firstn 0 type host\n\tstep emit\n}\n\n# end crush map\n",
+    "epoch": 39,
+    "erasure_code_profiles": {
+        "default": {
+            "k": "2",
+            "m": "1",
+            "plugin": "jerasure",
+            "technique": "reed_sol_van"
+        },
+        "k4m2": {
+            "jerasure-per-chunk-alignment": "false",
+            "k": "4",
+            "m": "2",
+            "plugin": "jerasure",
+            "ruleset-failure-domain": "host",
+            "ruleset-root": "default",
+            "technique": "reed_sol_van",
+            "w": "8"
+        },
+        "k6m3": {
+            "jerasure-per-chunk-alignment": "false",
+            "k": "6",
+            "m": "3",
+            "plugin": "jerasure",
+            "ruleset-failure-domain": "host",
+            "ruleset-root": "default",
+            "technique": "reed_sol_van",
+            "w": "8"
+        },
+        "k8m4": {
+            "jerasure-per-chunk-alignment": "false",
+            "k": "8",
+            "m": "4",
+            "plugin": "jerasure",
+            "ruleset-failure-domain": "host",
+            "ruleset-root": "default",
+            "technique": "reed_sol_van",
+            "w": "8"
+        }
+    },
+    "flags": "sortbitwise",
+    "fsid": "13e30a46-7e28-4f4a-a45b-de876f80fac9",
+    "max_osd": 7,
+    "modified": "2016-07-15 17:01:38.751725",
+    "osd_metadata": [
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.173:6805/2659",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.173:6804/2659",
+            "hb_back_addr": "10.70.41.173:6806/2659",
+            "hb_front_addr": "10.70.41.173:6807/2659",
+            "hostname": "dhcp41-173.lab.eng.blr.redhat.com",
+            "id": 0,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "1572860",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 0,
+            "osd_data": "/var/lib/ceph/osd/ceph-0",
+            "osd_journal": "/var/lib/ceph/osd/ceph-0/journal",
+            "osd_objectstore": "filestore"
+        },
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.173:6801/1069",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.173:6800/1069",
+            "hb_back_addr": "10.70.41.173:6802/1069",
+            "hb_front_addr": "10.70.41.173:6803/1069",
+            "hostname": "dhcp41-173.lab.eng.blr.redhat.com",
+            "id": 1,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "1572860",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 1,
+            "osd_data": "/var/lib/ceph/osd/ceph-1",
+            "osd_journal": "/var/lib/ceph/osd/ceph-1/journal",
+            "osd_objectstore": "filestore"
+        },
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.177:6801/1052",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.177:6800/1052",
+            "hb_back_addr": "10.70.41.177:6802/1052",
+            "hb_front_addr": "10.70.41.177:6803/1052",
+            "hostname": "dhcp41-177.lab.eng.blr.redhat.com",
+            "id": 2,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "1572860",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 2,
+            "osd_data": "/var/lib/ceph/osd/ceph-2",
+            "osd_journal": "/var/lib/ceph/osd/ceph-2/journal",
+            "osd_objectstore": "filestore"
+        },
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.177:6805/2447",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.177:6804/2447",
+            "hb_back_addr": "10.70.41.177:6806/2447",
+            "hb_front_addr": "10.70.41.177:6807/2447",
+            "hostname": "dhcp41-177.lab.eng.blr.redhat.com",
+            "id": 3,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "1572860",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 3,
+            "osd_data": "/var/lib/ceph/osd/ceph-3",
+            "osd_journal": "/var/lib/ceph/osd/ceph-3/journal",
+            "osd_objectstore": "filestore"
+        },
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.194:6801/23664",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.194:6800/23664",
+            "hb_back_addr": "10.70.41.194:6802/23664",
+            "hb_front_addr": "10.70.41.194:6803/23664",
+            "hostname": "dhcp41-194.lab.eng.blr.redhat.com",
+            "id": 4,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "0",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 4,
+            "osd_data": "/var/lib/ceph/osd/ceph-4",
+            "osd_journal": "/var/lib/ceph/osd/ceph-4/journal",
+            "osd_objectstore": "filestore"
+        },
+        {
+            "arch": "x86_64",
+            "back_addr": "10.70.41.194:6805/26218",
+            "backend_filestore_dev_node": "unknown",
+            "backend_filestore_partition_path": "unknown",
+            "ceph_version": "ceph version 10.2.2-21.el7cp (d06518f91ef88a8a7263dfa9c6ee51d5f9163abc)",
+            "cpu": "Intel Xeon E312xx (Sandy Bridge)",
+            "distro": "RedHatEnterpriseServer",
+            "distro_codename": "Maipo",
+            "distro_description": "Red Hat Enterprise Linux Server release 7.2 (Maipo)",
+            "distro_version": "7.2",
+            "filestore_backend": "xfs",
+            "filestore_f_type": "0x58465342",
+            "front_addr": "10.70.41.194:6804/26218",
+            "hb_back_addr": "10.70.41.194:6806/26218",
+            "hb_front_addr": "10.70.41.194:6807/26218",
+            "hostname": "dhcp41-194.lab.eng.blr.redhat.com",
+            "id": 5,
+            "kernel_description": "#1 SMP Thu Oct 29 17:29:29 EDT 2015",
+            "kernel_version": "3.10.0-327.el7.x86_64",
+            "mem_swap_kb": "0",
+            "mem_total_kb": "1015016",
+            "os": "Linux",
+            "osd": 5,
+            "osd_data": "/var/lib/ceph/osd/ceph-5",
+            "osd_journal": "/var/lib/ceph/osd/ceph-5/journal",
+            "osd_objectstore": "filestore"
+        }
+    ],
+    "osd_xinfo": [
+        {
+            "down_stamp": "2016-07-15 16:33:50.519582",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 0
+        },
+        {
+            "down_stamp": "2016-07-15 16:33:43.983969",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 1
+        },
+        {
+            "down_stamp": "2016-07-15 16:33:39.661584",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 2
+        },
+        {
+            "down_stamp": "2016-07-15 16:33:40.874386",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 3
+        },
+        {
+            "down_stamp": "0.000000",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 4
+        },
+        {
+            "down_stamp": "0.000000",
+            "features": 576460752032874495,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 5
+        },
+        {
+            "down_stamp": "0.000000",
+            "features": 0,
+            "laggy_interval": 0,
+            "laggy_probability": 0.0,
+            "old_weight": 0,
+            "osd": 6
+        }
+    ],
+    "osds": [
+        {
+            "cluster_addr": "10.70.41.173:6805/2659",
+            "down_at": 31,
+            "heartbeat_back_addr": "10.70.41.173:6806/2659",
+            "heartbeat_front_addr": "10.70.41.173:6807/2659",
+            "in": 1,
+            "last_clean_begin": 4,
+            "last_clean_end": 25,
+            "lost_at": 0,
+            "osd": 0,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.173:6804/2659",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 32,
+            "up_thru": 20,
+            "uuid": "363de655-a7fc-4a56-b003-6122505540ed",
+            "weight": 1.0
+        },
+        {
+            "cluster_addr": "10.70.41.173:6801/1069",
+            "down_at": 29,
+            "heartbeat_back_addr": "10.70.41.173:6802/1069",
+            "heartbeat_front_addr": "10.70.41.173:6803/1069",
+            "in": 1,
+            "last_clean_begin": 8,
+            "last_clean_end": 25,
+            "lost_at": 0,
+            "osd": 1,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.173:6800/1069",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 30,
+            "up_thru": 20,
+            "uuid": "d8d1443e-4f54-4053-a722-8fa11bf15c24",
+            "weight": 1.0
+        },
+        {
+            "cluster_addr": "10.70.41.177:6801/1052",
+            "down_at": 26,
+            "heartbeat_back_addr": "10.70.41.177:6802/1052",
+            "heartbeat_front_addr": "10.70.41.177:6803/1052",
+            "in": 1,
+            "last_clean_begin": 13,
+            "last_clean_end": 25,
+            "lost_at": 0,
+            "osd": 2,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.177:6800/1052",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 27,
+            "up_thru": 19,
+            "uuid": "bf00544f-b1a4-48ca-8246-398a0bbddb95",
+            "weight": 1.0
+        },
+        {
+            "cluster_addr": "10.70.41.177:6805/2447",
+            "down_at": 27,
+            "heartbeat_back_addr": "10.70.41.177:6806/2447",
+            "heartbeat_front_addr": "10.70.41.177:6807/2447",
+            "in": 1,
+            "last_clean_begin": 19,
+            "last_clean_end": 25,
+            "lost_at": 0,
+            "osd": 3,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.177:6804/2447",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 28,
+            "up_thru": 20,
+            "uuid": "058bbfa7-3c56-486d-ab09-313768ac29a2",
+            "weight": 1.0
+        },
+        {
+            "cluster_addr": "10.70.41.194:6801/23664",
+            "down_at": 0,
+            "heartbeat_back_addr": "10.70.41.194:6802/23664",
+            "heartbeat_front_addr": "10.70.41.194:6803/23664",
+            "in": 1,
+            "last_clean_begin": 0,
+            "last_clean_end": 0,
+            "lost_at": 0,
+            "osd": 4,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.194:6800/23664",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 35,
+            "up_thru": 0,
+            "uuid": "e3714380-0b41-41e0-857f-bc7fd9743d63",
+            "weight": 1.0
+        },
+        {
+            "cluster_addr": "10.70.41.194:6805/26218",
+            "down_at": 0,
+            "heartbeat_back_addr": "10.70.41.194:6806/26218",
+            "heartbeat_front_addr": "10.70.41.194:6807/26218",
+            "in": 1,
+            "last_clean_begin": 0,
+            "last_clean_end": 0,
+            "lost_at": 0,
+            "osd": 5,
+            "primary_affinity": 1.0,
+            "public_addr": "10.70.41.194:6804/26218",
+            "state": [
+                "exists",
+                "up"
+            ],
+            "up": 1,
+            "up_from": 38,
+            "up_thru": 0,
+            "uuid": "29ae07df-cfbd-46a5-8fd8-9872656ef6ba",
+            "weight": 1.0
+        }
+    ],
+    "pg_temp": [],
+    "pool_max": 0,
+    "pools": [],
+    "primary_temp": [],
+    "tree": {
+        "nodes": [
+            {
+                "children": [
+                    -4,
+                    -3,
+                    -2
+                ],
+                "id": -1,
+                "name": "default",
+                "type": "root",
+                "type_id": 10
+            },
+            {
+                "children": [
+                    1,
+                    0
+                ],
+                "id": -2,
+                "name": "dhcp41-173",
+                "type": "host",
+                "type_id": 1
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 0,
+                "name": "osd.0",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 1,
+                "name": "osd.1",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            },
+            {
+                "children": [
+                    3,
+                    2
+                ],
+                "id": -3,
+                "name": "dhcp41-177",
+                "type": "host",
+                "type_id": 1
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 2,
+                "name": "osd.2",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 3,
+                "name": "osd.3",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            },
+            {
+                "children": [
+                    5,
+                    4
+                ],
+                "id": -4,
+                "name": "dhcp41-194",
+                "type": "host",
+                "type_id": 1
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 4,
+                "name": "osd.4",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            },
+            {
+                "crush_weight": 0.009796,
+                "depth": 2,
+                "exists": 1,
+                "id": 5,
+                "name": "osd.5",
+                "primary_affinity": 1.0,
+                "reweight": 1.0,
+                "status": "up",
+                "type": "osd",
+                "type_id": 0
+            }
+        ],
+        "stray": [
+        ]
+    }
+}

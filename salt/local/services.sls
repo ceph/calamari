@@ -1,44 +1,20 @@
-{% if grains['os_family'] == 'RedHat' %}
-  {% set apache_service = 'httpd' %}
+{% if grains['os_family'] == 'RedHat' and grains['osrelease'].startswith('7') %}
+  {% set supervisor_service = 'supervisord.service' %}
 {% else %}
-  {% set apache_service = 'apache' %}
+  {% set supervisor_service = 'supervisor.service' %}
 {% endif %}
 
-{% if grains['os'] == 'RedHat' and grains['osrelease'].startswith('7') %}
 # Work around https://github.com/saltstack/salt/pull/12316
-{{ apache_service }}:
+{{supervisor_service}}:
   cmd:
     - run
     - user: root
-    - name: systemctl enable {{ apache_service }} && systemctl start {{ apache_service }}
+    - name: systemctl enable {{supervisor_service}} && systemctl start {{supervisor_service}}
 
-supervisord:
+limit-memory:
   cmd:
     - run
     - user: root
-    - name: systemctl enable supervisord && systemctl start supervisord
-
-salt-master:
-  cmd:
-    - run
-    - user: root
-    - name: systemctl enable salt-master && systemctl start salt-master
-
-{% else %}
-
-{{ apache_service }}:
-  service:
-    - running
-    - enable: True
-
-supervisord:
-  service:
-    - running
-    - enable: True
-
-salt-master:
-  service:
-    - running
-    - enable: True
-
-{% endif %}
+    - name: systemctl set-property {{supervisor_service}} MemoryLimit=300M
+    - require:
+        - cmd: {{supervisor_service}}

@@ -25,6 +25,22 @@ all: build
 
 build: version build-venv
 
+# Similar to the set in build-venv-reqs, but installs to the global python
+# site dir, not inside a venv.  This allows using distro-supplied dependencies
+# instead of embedding everything
+build-lsb: version
+	for p in \
+		calamari-common \
+		rest-api \
+		calamari-web \
+		cthulhu \
+		calamari-lite \
+	; do \
+		cd $$p ; \
+		python setup.py install --prefix=/usr --root=$(DESTDIR) ; \
+		cd .. ; \
+	done
+
 DATESTR=$(shell /bin/echo -n "built on "; date)
 set_deb_version:
 	@echo "target: $@"
@@ -64,12 +80,9 @@ build-venv-carbon: venv
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
-		./bin/python ./bin/pip install --no-install carbon; \
-		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
-			build/carbon/setup.py; \
-		./bin/python ./bin/pip install --no-download \
+		./bin/python ./bin/pip install \
 		  --install-option="--prefix=$(SRC)/venv" \
-		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon; \
+		  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" carbon==0.9.15; \
 	fi \
 	)
 
@@ -79,19 +92,8 @@ build-venv-reqs: venv
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
-	./bin/python ./bin/pip install \
-	  --install-option="--zmq=bundled" \
-	  'pyzmq==14.2.0' && \
-	./bin/python ./bin/pip install \
-	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
 	./bin/python ./bin/pip install -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
-	./bin/python ./bin/pip install -I -r \
-	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
-	./bin/python ./bin/pip install \
-	  --install-option="--prefix=$(SRC)/venv" \
-	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
-	  https://github.com/ceph/graphite-web/tarball/calamari && \
+	           $(SRC)/requirements/$${pyver}/requirements.production.txt && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
@@ -99,6 +101,8 @@ build-venv-reqs: venv
 	cd ../calamari-web ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../cthulhu ; \
+	../venv/bin/python ./setup.py install && \
+	cd ../calamari-lite ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../venv ; )
 
@@ -121,6 +125,7 @@ fixup-venv: build-venv-carbon build-venv-reqs
 			ln -s /opt/calamari/venv/$$p local/$$p; \
 		done; \
 	fi
+	find venv/ -path "*gevent*" -name _socket3.py -delete
 
 # when this repo contained the Javascript code, it was difficult to make
 # source packages work right; it might be easier now
@@ -128,11 +133,16 @@ dpkg: set_deb_version
 	@echo "target: $@"
 	dpkg-buildpackage -b -us -uc
 
-install-common: install-conf install-venv install-salt install-alembic install-scripts
+install-common: install-conf install-venv install-alembic install-scripts
 	@echo "target: $@"
 
-install-rpm: build install-common install-rh-conf
+install-rpm: build install-common
 	@echo "target: $@"
+
+install-lsb: build-lsb install-conf
+	@echo "target: $@"
+	$(INSTALL) -D -m 0644 conf/calamari.service \
+		$(DESTDIR)/usr/lib/systemd/system/calamari.service
 
 # for deb
 install: build
@@ -140,19 +150,15 @@ install: build
 	@if [ -z "$(DESTDIR)" ] ; then echo "must set DESTDIR"; exit 1; \
 		else $(MAKE) install_real ; fi
 
-install_real: build install-common install-deb-conf
+install_real: build install-common
 	@echo "target: $@"
 
 install-conf: $(CONFFILES)
 	@echo "target: $@"
+	@$(INSTALL) -D -m 0644 calamari.service \
+		$(DESTDIR)/usr/lib/systemd/system/calamari.service
 	@$(INSTALL) -D -m 0644 conf/calamari.wsgi \
 		$(DESTDIR)/opt/calamari/conf/calamari.wsgi
-	@$(INSTALL) -d $(DESTDIR)/etc/supervisor/conf.d
-	@$(INSTALL) -D -m 0644 conf/supervisord.production.conf \
-		$(DESTDIR)/etc/supervisor/conf.d/calamari.conf
-	@$(INSTALL) -d $(DESTDIR)/etc/salt/master.d
-	@$(INSTALL) -D -m 0644 conf/salt.master.conf \
-		$(DESTDIR)/etc/salt/master.d/calamari.conf
 	@$(INSTALL) -d $(DESTDIR)/etc/graphite
 	@$(INSTALL) -D -m 0644 conf/carbon/carbon.conf \
 		$(DESTDIR)/etc/graphite/carbon.conf
@@ -168,6 +174,8 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -d $(DESTDIR)/var/lib/cthulhu
 
 	@$(INSTALL) -d $(DESTDIR)/etc/calamari
+	@$(INSTALL) -d $(DESTDIR)/etc/calamari/ssl/certs
+	@$(INSTALL) -d -m 0700 $(DESTDIR)/etc/calamari/ssl/private
 	@$(INSTALL) -D -m 0644 conf/calamari/$(FLAVOR)/calamari.conf \
 		$(DESTDIR)/etc/calamari/calamari.conf
 	@$(INSTALL) -D -m 0644 conf/alembic.ini \
@@ -176,30 +184,10 @@ install-conf: $(CONFFILES)
 	@$(INSTALL) -D -m 0644 conf/logrotate.d/calamari \
 	    $(DESTDIR)/etc/logrotate.d/calamari
 
-install-salt:
-	@echo "target: $@"
-	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt
-	cp -rp salt/srv/* $(DESTDIR)/opt/calamari/salt/
-	@$(INSTALL) -d $(DESTDIR)/opt/calamari/salt-local
-	cp -rp salt/local/*.sls $(DESTDIR)/opt/calamari/salt-local
-
 install-alembic:
 	@echo "target: $@"
 	@$(INSTALL) -d $(DESTDIR)/opt/calamari/alembic
 	cp -rp alembic/* $(DESTDIR)/opt/calamari/alembic
-
-install-deb-conf:
-	@echo "target: $@"
-	@$(INSTALL) -D conf/httpd/calamari.conf \
-		$(DESTDIR)/etc/apache2/sites-available/calamari.conf
-
-install-rh-conf:
-	@echo "target: $@"
-	# add WSGISocketPrefix, see:
-	# http://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGISocketPrefix
-	@$(INSTALL) -D conf/httpd/calamari.conf \
-		$(DESTDIR)/etc/httpd/conf.d/calamari.conf
-	@sed -i '1iWSGISocketPrefix run/wsgi' $(DESTDIR)/etc/httpd/conf.d/calamari.conf
 
 install-venv:
 	@echo "target: $@"
@@ -222,7 +210,7 @@ clean:
 # want in sources.
 
 FIND_TOPLEVEL = "find . -maxdepth 1 -type f -not -name .gitignore -print0"
-FIND_RECURSE = "find alembic calamari-common calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
+FIND_RECURSE = "find alembic calamari-common calamari-lite calamari-web conf cthulhu doc requirements repobuild rest-api salt tests webapp selinux -print0"
 
 dist:
 	@echo "target: $@"
@@ -260,7 +248,7 @@ docs: rest-api-generated
 
 unit-tests: dev/calamari.conf
 	@echo "target: $@"
-	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test rest-api/tests cthulhu/tests
+	CALAMARI_CONFIG=dev/calamari.conf python webapp/calamari/manage.py test cthulhu/tests
 
 lint:
 	@echo "target: $@"
@@ -270,7 +258,6 @@ lint:
 		flake8 calamari-common/ --ignore=E501,E402,E731 &&\
 		flake8 calamari-web/ --ignore=E501,E402,E731 &&\
 		flake8 tests/ --ignore=E501,E402,E731 &&\
-		flake8 salt/srv/salt/ --ignore=E501,E402,E731 &&\
 		echo "OK"
 
 check: unit-tests lint

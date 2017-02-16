@@ -23,29 +23,45 @@ from calamari_common.db.base import Base
 from cthulhu.persistence.sync_objects import SyncObject  # noqa
 from cthulhu.persistence.servers import Server, Service  # noqa
 from calamari_common.db.event import Event  # noqa
-from cthulhu.log import FORMAT
 
-# The log is very verbose by default, filtered at handler level
-log = logging.getLogger('calamari_ctl')
-log.setLevel(logging.DEBUG)
+import logging.config
 
-# The stream handler is what the user sees: don't be too verbose here
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-handler.setLevel(logging.INFO)
-log.addHandler(handler)
+log = logging.getLogger(__name__)
+
 
 # The buffer handler is what we dump to a file on failures, be very verbose here
-log_buffer = StringIO()
 log_tmp = tempfile.NamedTemporaryFile()
-buffer_handler = logging.FileHandler(log_tmp.name)
-buffer_handler.setFormatter(logging.Formatter(FORMAT))
-log.addHandler(buffer_handler)
+
+logging.config.dictConfig({
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'default': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+        'file_handler': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': log_tmp.name,
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['default', 'file_handler'],
+            'level': 'INFO',
+            'propagate': True
+        }
+    }
+})
 
 ALEMBIC_TABLE = 'alembic_version'
-POSTGRES_SLS = "/opt/calamari/salt-local/postgres.sls"
-SERVICES_SLS = "/opt/calamari/salt-local/services.sls"
-RELAX_SALT_PERMS_SLS = "/opt/calamari/salt-local/relax_salt_perms.sls"
 
 
 class CalamariUserError(Exception):
@@ -67,21 +83,30 @@ def quiet():
         sys.stderr = sys.__stderr__
 
 
-def run_local_salt(sls, message):
-    # Configure postgres database
-    if os.path.exists(sls):
-        log.info("Starting/enabling {message}...".format(message=message))
-        p = subprocess.Popen(["salt-call", "--local", "state.template",
-                              sls],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        log.debug("{message} salt stdout: {out}".format(message=message, out=out))
-        log.debug("{message} salt stderr: {err}".format(message=message, err=err))
-        if p.returncode != 0:
-            raise RuntimeError("salt-call for {message} failed with rc={rc}".format(message=message, rc=p.returncode))
-    else:
-        # This is the path you take if you're running in a development environment
-        log.debug("Skipping {message} configuration, SLS not found".format(message=message))
+def run_cmd(cmd, message=None):
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    if message is not None:
+        log.info(message)
+    log.debug("{message} stdout: {out}".format(message=message, out=out))
+    log.debug("{message} stderr: {err}".format(message=message, err=err))
+    if p.returncode != 0:
+        raise RuntimeError("{command} for {message} failed with rc={rc}".format(command=cmd[0], message=message, rc=p.returncode))
+
+
+def setup_supervisor():
+    try:
+        run_cmd('systemctl stop supervisord'.split())
+        run_cmd('systemctl disable supervisord'.split())
+        run_cmd('systemctl stop supervisor'.split())
+        run_cmd('systemctl disable supervisor'.split())
+    except RuntimeError:
+        pass # RHEL has one Ubuntu has the other
+    service = 'calamari.service'
+    run_cmd('systemctl enable {service}'.format(service=service).split())
+
+    run_cmd('systemctl restart {service}'.format(service=service).split())
+    run_cmd('systemctl set-property {service} MemoryLimit=300M'.format(service=service).split())
 
 
 def create_default_roles():
@@ -167,33 +192,12 @@ def create_admin_users(args):
                 password=args.admin_password,
                 email=args.admin_email
             )
-    else:
-        if not user_model.objects.filter(is_superuser=True).count():
-            # When prompting for details, it's good to let the user know what the account
-            # is (especially that's a web UI one, not a linux system one)
-            log.info("You will now be prompted for login details for the administrative "
-                     "user account.  This is the account you will use to log into the web interface "
-                     "once setup is complete.")
-            # Prompt for user details
-            execute_from_command_line(["", "createsuperuser"])
 
-
-def update_connected_minions():
-    from cthulhu.manager import config
-    from calamari_common.salt_wrapper import Key, master_config
-    if len(Key(master_config(config.get('cthulhu', 'salt_config_path'))).list_keys()['minions']) == 0:
-        # no minions to update
-        return
-
-    message = "Updating already connected nodes."
-    log.info(message)
-    p = subprocess.Popen(["salt", "*", "state.highstate"],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    log.debug("{message} salt stdout: {out}".format(message=message, out=out))
-    log.debug("{message} salt stderr: {err}".format(message=message, err=err))
-    if p.returncode != 0:
-        raise RuntimeError("{message} failed with rc={rc}".format(message=message, rc=p.returncode))
+    elif not user_model.objects.filter(is_superuser=True):
+        log.info('\n'.join(("You have not created an admin account for calamari.",
+                            "This can be done later by running:",
+                            "sudo calamari-ctl add_user <username> --password <password> --email <email>",
+                            "sudo calamari-ctl assign_role <username> --role superuser")))
 
 
 def initialize(args):
@@ -214,9 +218,6 @@ def initialize(args):
     if not os.path.exists(config.get('calamari_web', 'secret_key_path')):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         open(config.get('calamari_web', 'secret_key_path'), 'w').write(get_random_string(50, chars))
-
-    run_local_salt(sls=RELAX_SALT_PERMS_SLS, message='salt')
-    run_local_salt(sls=POSTGRES_SLS, message='postgres')
 
     # Cthulhu's database
     db_path = config.get('cthulhu', 'db_path')
@@ -252,21 +253,23 @@ def initialize(args):
     apache_user = pwd.getpwnam(config.get('calamari_web', 'username'))
     os.chown(config.get('calamari_web', 'log_path'), apache_user.pw_uid, apache_user.pw_gid)
 
-    # Handle SQLite case, otherwise no chown is needed
-    if config.get('calamari_web', 'db_engine').endswith("sqlite3"):
-        os.chown(config.get('calamari_web', 'db_name'), apache_user.pw_uid, apache_user.pw_gid)
-
-    # Start services, configure to run on boot
-    run_local_salt(sls=SERVICES_SLS, message='services')
-
-    # During an upgrade: update minions that were connected previously
-    update_connected_minions()
+    # Create self-signed SSL certs only if they do not exist
+    ssl_key = config.get('calamari_web', 'ssl_key')
+    ssl_cert = config.get('calamari_web', 'ssl_cert')
+    if not os.path.exists(ssl_key):
+        run_cmd([
+            'openssl', 'req', '-new', '-nodes', '-x509', '-subj',
+            "/C=US/ST=Oregon/L=Portland/O=IT/CN=calamari-lite", '-days', '3650',
+            '-keyout', ssl_key, '-out',
+            ssl_cert, '-extensions', 'v3_ca'
+        ], "Generating self-signed SSL certificate...")
+        # ensure the bundled crt is readable
+        os.chmod(ssl_cert, 0644)
 
     # Signal supervisor to restart cthulhu as we have created its database
     log.info("Restarting services...")
-    subprocess.call(['supervisorctl', 'restart', 'cthulhu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    setup_supervisor()
 
-    # TODO: optionally generate or install HTTPS certs + hand to apache
     log.info("Complete.")
 
 
