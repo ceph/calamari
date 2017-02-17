@@ -907,7 +907,7 @@ A ``Remote`` implementation that runs directly on a Ceph mon or
         Send a request to discover which job IDs are running on
         the specified hosts.  Wait for the response with listen()
         """
-        raise NotImplementedError()
+        self.put(MsgEvent(RUNNING_JOBS, [{'id': fqdn} for fqdn in fqdns]))
 
     def cancel(self, fqdn, jid):
         """
