@@ -178,9 +178,11 @@ class ServerMonitor(greenlet.Greenlet):
             # let fqdn default to hostname
             fqdn = hostname
 
+            # deal with CIDR notation
+            osd_addr = osd_addr.split('/')[0].split(':')[0]
+
             # use osd address to query for fqdn/hostname if it was given
             if osd_addr:
-                osd_addr = osd_addr.split('/')[0].split(':')[0]  # deal with CIDR notation
                 try:
                     fqdn = socket.getfqdn(osd_addr)
                     # Fall back to fqdn for hostname if gethostbyaddr fails
