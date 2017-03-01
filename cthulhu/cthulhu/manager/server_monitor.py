@@ -300,10 +300,7 @@ class ServerMonitor(greenlet.Greenlet):
 
             # Register all the OSDs reported under this hostname with the ServerState
             for service_id, osd in id_to_osd.items():
-                if not server_state.managed:
-                    # Only pay attention to these services for unmanaged servers,
-                    # for managed servers rely on ceph/server salt messages
-                    self._register_service(server_state, service_id, bool(osd['up']), None)
+                self._register_service(server_state, service_id, bool(osd['up']), None)
 
         # Remove ServiceState for any OSDs for this FSID which are not
         # mentioned in hostname_to_osds
