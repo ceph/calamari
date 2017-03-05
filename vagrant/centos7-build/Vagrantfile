@@ -29,5 +29,5 @@ config.vm.box = "boxcutter/centos73"
     "en0: Wi-Fi (AirPort)",  # without this `vagrant up` will pause for interface selection
   ]
 
-  config.vm.hostname = 'vagrant-ubuntu-trusty-64'
+  config.vm.hostname = 'vagrant-centos-7'
 end
