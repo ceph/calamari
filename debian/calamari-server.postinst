@@ -1,32 +1,13 @@
 #!/bin/bash
 
-calamari_httpd()
-{
-    d=$(pwd)
-    # allow apache access to all
-    chown -R www-data:www-data /opt/calamari/webapp/calamari
-
-    # www-data shouldn't need to write, but it does because graphite creates index on read
-    chown -R www-data:www-data /var/lib/graphite
-
-    chown -R www-data:www-data /var/log/calamari
-    cd $d
-
-}
-
 case "$1" in
     configure)
-        calamari_httpd
-
         # Prompt the user to proceed with the final script-driven
         # part of the installation process
         echo "Thank you for installing Calamari."
         echo ""
         echo "Please run 'sudo calamari-ctl initialize' to complete the installation."
 
-        # rpm/centos
-        # service httpd restart
-        # chkconfig httpd on
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
