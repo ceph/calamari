@@ -82,19 +82,19 @@ browser.
 /opt/calamari/alembic
 /opt/calamari/conf
 /opt/calamari/venv
-%attr (-, apache, apache) /opt/calamari/webapp/calamari
+/opt/calamari/webapp/calamari
 %{_sysconfdir}/graphite/
 %{_sysconfdir}/logrotate.d/calamari
 %{_sysconfdir}/calamari/
 /usr/bin/calamari-ctl
 %dir /var/lib/calamari
 %dir /var/lib/cthulhu
-%dir %attr (755, apache, apache) /var/log/calamari
-%dir %attr (755, apache, apache) /var/log/graphite
-%dir %attr(-, apache, apache) /var/lib/graphite
-%dir %attr(-, apache, apache) /var/lib/graphite/log
-%dir %attr(-, apache, apache) /var/lib/graphite/log/webapp
-%dir %attr(-, apache, apache) /var/lib/graphite/whisper
+%dir %attr (755, root, root) /var/log/calamari
+%dir %attr (755, root, root) /var/log/graphite
+%dir /var/lib/graphite
+%dir /var/lib/graphite/log
+%dir /var/lib/graphite/log/webapp
+%dir /var/lib/graphite/whisper
 %if 0%{?fedora} || 0%{?rhel}
 %doc selinux/*
 %{_datadir}/selinux/*/calamari-server.pp
