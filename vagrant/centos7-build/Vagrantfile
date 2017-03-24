@@ -5,7 +5,7 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-config.vm.box = "boxcutter/centos71"
+config.vm.box = "boxcutter/centos73"
 
   config.vm.provider "virtualbox" do |v|
     v.memory = 1024
@@ -29,5 +29,5 @@ config.vm.box = "boxcutter/centos71"
     "en0: Wi-Fi (AirPort)",  # without this `vagrant up` will pause for interface selection
   ]
 
-  config.vm.hostname = 'vagrant-ubuntu-trusty-64'
+  config.vm.hostname = 'vagrant-centos-7'
 end
