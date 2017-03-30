@@ -204,13 +204,13 @@ class ServerMonitor(greenlet.Greenlet):
             log.error("get_hostname_to_osds unable to get osd_metadata")
 
         for osd in osd_metadata:
-            name_info = get_name_info(osd['hostname'], osd['back_addr'])
+            name_info = get_name_info(osd['hostname'], osd['front_addr'])
             if name_info != ('', ''):
                 osd_id_to_host[osd['id']] = name_info
 
         for osd in osd_map['osds']:
             if osd['osd'] not in osd_id_to_host:
-                name_info = get_name_info('', osd['cluster_addr'])
+                name_info = get_name_info('', osd['public_addr'])
                 if name_info != ('', ''):
                     osd_id_to_host[osd['osd']] = name_info
 
