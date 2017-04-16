@@ -1,5 +1,5 @@
-VERSION ?= $(shell ./get-versions.sh VERSION)
-REVISION ?= $(shell ./get-versions.sh REVISION)
+VERSION ?= 1.2.1
+REVISION ?= 56_gc09e8ed
 DIST ?= unstable
 DCH_VERSION=$(shell git describe | sed 's/^v//')
 PACKAGE_VERSION ?= 1
@@ -64,7 +64,7 @@ build-venv-carbon: venv
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
 	if ! ./bin/python ./bin/pip freeze | grep -s -q carbon ; then \
-		./bin/python ./bin/pip install --no-install carbon; \
+		./bin/python ./bin/pip install -f $(SRC)/pkgs --no-install carbon; \
 		sed -i 's/== .redhat./== "DONTDOTHISredhat"/' \
 			build/carbon/setup.py; \
 		./bin/python ./bin/pip install --no-download \
@@ -79,19 +79,19 @@ build-venv-reqs: venv
 	(export PYTHONDONTWRITEBYTECODE=1; \
 	cd venv; \
 	pyver=$$(./bin/python -c 'import sys; print "{0}.{1}".format(sys.version_info[0], sys.version_info[1])') ; \
-	./bin/python ./bin/pip install \
+	./bin/python ./bin/pip install -f $(SRC)/pkgs \
 	  --install-option="--zmq=bundled" \
 	  'pyzmq==14.2.0' && \
 	./bin/python ./bin/pip install \
-	  https://github.com/graphite-project/whisper/tarball/a6e2176e && \
-	./bin/python ./bin/pip install -r \
+	  $(SRC)/pkgs/graphite-project-whisper-0.9.11-pre1-56-ga6e2176.tar.gz && \
+	./bin/python ./bin/pip install -f $(SRC)/pkgs -r \
 	  $(SRC)/requirements/$${pyver}/requirements.production.txt && \
-	./bin/python ./bin/pip install -I -r \
+	./bin/python ./bin/pip install -f $(SRC)/pkgs -I -r \
 	  $(SRC)/requirements/$${pyver}/requirements.production.force.txt && \
 	./bin/python ./bin/pip install \
 	  --install-option="--prefix=$(SRC)/venv" \
 	  --install-option="--install-lib=$(SRC)/venv/lib/python$${pyver}/site-packages" \
-	  https://github.com/ceph/graphite-web/tarball/calamari && \
+	  $(SRC)/pkgs/ceph-graphite-web-0.9.11-57-g6f23d36.tar.gz && \
 	cd ../calamari-common ; \
 	../venv/bin/python ./setup.py install && \
 	cd ../rest-api ; \
