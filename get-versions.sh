@@ -12,7 +12,7 @@ RPM='n'
 if [ "$1" == "-r" ] ; then RPM='y' ; shift ; fi
 
 # GITVER is the version from the current git branch, less the first char ('v')
-GITVER=$(git describe | cut -c 2-)
+GITVER=$(git describe --tags | cut -c 2-)
 
 # if GITVER contains a '-', separate at the first one into version and revision
 if [[ $GITVER == *-* ]]; then
