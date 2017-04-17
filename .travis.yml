@@ -19,7 +19,7 @@ install:
     - pip install git+https://github.com/ceph/graphite-web.git@calamari --install-option="--prefix=$VIRTUAL_ENV" --install-option="--install-lib=$VIRTUAL_ENV/lib/python2.7/site-packages"
     - for m in rest-api minion-sim cthulhu calamari-web calamari-common ; do cd $m ; python setup.py develop ; cd .. ; done
     - cd dev ; python ./configure.py ; cd ..
-    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize --admin-username admin --admin-password admin --admin-email admin@admin.com
+    - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode initialize --admin-username admin --admin-password admin --admin-email no.dots@no-dashes.com
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode add_user calamari --email cal@mari.com
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role readonly
     - CALAMARI_CONFIG=dev/calamari.conf calamari-ctl --devmode assign_role calamari --role "read/write"
