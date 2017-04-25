@@ -575,8 +575,8 @@ Provides metadata about the installation of Calamari server in use
 
     def get(self, request):
         try:
-            hostname = socket.getfqdn()
-            fqdn = socket.gethostname()
+            fqdn = socket.getfqdn()
+            hostname = socket.gethostname()
             ipaddr = socket.gethostbyname(hostname)
         except socket.gaierror:
             # It is annoying, but not rare, to have a host
