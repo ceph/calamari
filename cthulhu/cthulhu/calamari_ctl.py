@@ -94,6 +94,28 @@ def run_cmd(cmd, message=None):
         raise RuntimeError("{command} for {message} failed with rc={rc}".format(command=cmd[0], message=message, rc=p.returncode))
 
 
+def total_mem_KB():
+    try:
+        # Read the file with stats
+        memfile = open("/proc/meminfo", "r")
+        # Filter out the MemTotal stat
+        line = filter(
+            lambda x: x.startswith("MemTotal"),
+            memfile.readlines()
+        )
+        line = line[0]
+
+        # Divide and filter out spaces
+        parts = filter(
+            lambda x: x,
+            line.split(' '),
+        )
+
+        return int(parts[1])
+    except:
+        return -1
+
+
 def setup_supervisor():
     try:
         run_cmd('systemctl stop supervisord'.split())
@@ -105,8 +127,10 @@ def setup_supervisor():
     service = 'calamari.service'
     run_cmd('systemctl enable {service}'.format(service=service).split())
 
+    memory = total_mem_KB()/2
+    if memory > 0:
+        run_cmd('systemctl set-property {service} MemoryLimit={memory}K'.format(service=service, memory=memory).split())
     run_cmd('systemctl restart {service}'.format(service=service).split())
-    run_cmd('systemctl set-property {service} MemoryLimit=300M'.format(service=service).split())
 
 
 def create_default_roles():
