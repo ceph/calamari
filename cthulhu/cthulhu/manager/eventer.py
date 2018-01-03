@@ -167,7 +167,7 @@ class Eventer(gevent.greenlet.Greenlet):
         }
         return "{count} {human_service}{pluralize}".format(
             count=service_count,
-            human_service=human_singular[service_type],
+            human_service=human_singular.get(service_type, service_type),
             pluralize="s" if service_count > 1 else ""
         )
 
