@@ -16,6 +16,7 @@ from calamari_common.config import CalamariConfig
 from cthulhu.log import log
 import sys
 from gevent.hub import Hub
+import ssl as _ssl
 config = CalamariConfig()
 
 
@@ -52,6 +53,9 @@ ssl = {
     'keyfile': config.get('calamari_web', 'ssl_key')
 }
 
+# Force TLS if calamari is configured to do so
+if config.get('calamari_web', 'force_tls'):
+    ssl['ssl_version'] = _ssl.PROTOCOL_TLSv1
 
 class ShallowCarbonCache(gevent.Greenlet):
     def __init__(self):

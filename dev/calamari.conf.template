@@ -33,6 +33,7 @@ username = {{calamari_user}}
 static_root = {{calamari_root}}/webapp/content/
 ssl_key = {{calamari_root}}/dev/calamari-lite.key
 ssl_cert = {{calamari_root}}/dev/calamari-lite-bundled.crt
+force_tls = False
 
 [graphite]
 
