@@ -357,11 +357,6 @@ def main():
         handler.setFormatter(logging.Formatter(cthulhu.log.FORMAT))
         log.addHandler(handler)
 
-    # Instruct salt to use the gevent version of ZMQ
-    import zmq.green
-    import salt.utils.event
-    salt.utils.event.zmq = zmq.green
-
     if sqlalchemy is not None:
         # Set up gevent compatibility in psycopg2
         import psycogreen.gevent
