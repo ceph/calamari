@@ -64,7 +64,7 @@ cd selinux
 for selinuxvariant in %{selinux_variants}
 do
 make NAME=${selinuxvariant} -f /usr/share/selinux/devel/Makefile
-mv calamari-server.pp calamari-server.pp.${selinuxvariant}
+mv calamari.pp calamari.pp.${selinuxvariant}
 make NAME=${selinuxvariant} -f /usr/share/selinux/devel/Makefile clean
 done
 cd -
@@ -77,8 +77,8 @@ make DESTDIR=${RPM_BUILD_ROOT} install-rpm
 for selinuxvariant in %{selinux_variants}
 do
 	install -d %{buildroot}%{_datadir}/selinux/${selinuxvariant}
-	install -p -m 644 selinux/calamari-server.pp.${selinuxvariant} \
-	%{buildroot}%{_datadir}/selinux/${selinuxvariant}/calamari-server.pp
+	install -p -m 644 selinux/calamari.pp.${selinuxvariant} \
+	%{buildroot}%{_datadir}/selinux/${selinuxvariant}/calamari.pp
 done
 /usr/sbin/hardlink -cv %{buildroot}%{_datadir}/selinux
 %endif
@@ -113,7 +113,7 @@ browser.
 %dir %attr(-, apache, apache) /var/lib/graphite/whisper
 %if 0%{?fedora} || 0%{?rhel}
 %doc selinux/*
-%{_datadir}/selinux/*/calamari-server.pp
+%{_datadir}/selinux/*/calamari.pp
 %endif
 
 %post -n calamari-server
@@ -129,7 +129,7 @@ calamari_selinux()
 	for selinuxvariant in %{selinux_variants}
 	do
 		/usr/sbin/semodule -s ${selinuxvariant} -i \
-		%{_datadir}/selinux/${selinuxvariant}/calamari-server.pp &> /dev/null || :
+		%{_datadir}/selinux/${selinuxvariant}/calamari.pp &> /dev/null || :
 	done
 }
 
