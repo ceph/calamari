@@ -28,7 +28,9 @@ def get_last_crush_location(cluster, osd_id):
         proc = Popen(c, stdout=PIPE, stderr=PIPE)
         out, err = proc.communicate()
         if proc.returncode != 0:
-            if "ENOENT" not in err:     # ENOENT means key doesn't exist, which is fine.
+            if "ENOENT" in err:     # ENOENT means key doesn't exist, which is fine, quit trying
+                return
+            else:
                 errors.append("Error {0} running {1}:'{2}'".format(
                     proc.returncode, 'ceph config-key get', err.strip()
                 ))
@@ -36,7 +38,7 @@ def get_last_crush_location(cluster, osd_id):
             return json.loads(out.strip())
 
     for e in errors:
-        log.error(e)
+        log.info(e)
 
 
 def get_osd_location(cluster, osd_id):
