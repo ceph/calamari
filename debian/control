@@ -26,8 +26,21 @@ Depends: apache2,
          salt-master,
          salt-minion,
          supervisor,
-         ${misc:Depends},
-         ${python:Depends}
+         python-cairo,
+         python-gevent,
+         python-greenlet,
+         python-mako,
+         python-markupsafe,
+         python-msgpack,
+         python-pkg-resources,
+         python-six,
+         python-sqlalchemy,
+         python-twisted,
+         python-txamqp,
+         python-zmq,
+         python-zope.interface,
+         python:any,
+         ${misc:Depends}
 Description: Inktank package containing the Calamari management server
  Calamari is a webapp to monitor and control a Ceph cluster via a web
  browser.
