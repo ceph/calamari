@@ -18,7 +18,6 @@ from calamari_rest.views.database_view_set import DatabaseViewSet
 from calamari_rest.views.exceptions import ServiceUnavailable
 from calamari_rest.views.paginated_mixin import PaginatedMixin
 from rest_framework.permissions import IsAuthenticated
-from calamari_rest.views.remote_view_set import RemoteViewSet
 from calamari_rest.views.rpc_view import RPCViewSet, DataObject
 from calamari_rest.permissions import IsRoleAllowed
 from calamari_rest.views.crush_node import lookup_ancestry
@@ -871,7 +870,7 @@ in a GET, such as ``?severity=RECOVERY`` to show everything but INFO.
         return Response(self._paginate(request, self._filter_by_severity(request, self.queryset.filter_by(fqdn=fqdn))))
 
 
-class LogTailViewSet(RemoteViewSet):
+class LogTailViewSet(RPCViewSet):
     """
 A primitive remote log viewer.
 
@@ -1048,7 +1047,7 @@ useful to show users data from the /status sub-url, which returns the
         return Response(self.serializer_class([DataObject(m) for m in self._get_mons(fsid)], many=True).data)
 
 
-class CliViewSet(RemoteViewSet):
+class CliViewSet(RPCViewSet):
     """
 Access the `ceph`, `rbd`, and `radosgw-admin` CLI tools remotely.
 
@@ -1094,15 +1093,15 @@ not a problem.
         try:
             if principle == 'ceph':
                 command.pop(0)
-                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+                result = self.client.run_mon_job(fsid, "ceph.ceph_command", [name, command])
             elif principle == 'rbd':
                 command.pop(0)
-                result = self.run_mon_job(fsid, "ceph.rbd_command", [command])
+                result = self.client.run_mon_job(fsid, "ceph.rbd_command", [command])
             elif principle == 'radosgw-admin':
                 raise APIException("radosgw-admin calls are not yet supported %s" % str(result))
             else:
                 # Try the default 'ceph' target to maintain backwards compatibility
-                result = self.run_mon_job(fsid, "ceph.ceph_command", [name, command])
+                result = self.client.run_mon_job(fsid, "ceph.ceph_command", [name, command])
         except Exception as ex:
             raise APIException("Error in cli command: %s" % ex)
 

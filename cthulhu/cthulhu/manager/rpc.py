@@ -10,8 +10,9 @@ from calamari_common.salt_wrapper import Key, master_config, LocalClient
 from cthulhu.manager import config
 from cthulhu.log import log
 from calamari_common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
-    NotFound, SERVER
+    NotFound, SERVER, MON
 from cthulhu.manager.user_request import SaltRequest
+from dateutil.parser import parse as dateutil_parse
 
 
 class RpcInterface(object):
@@ -428,6 +429,59 @@ class RpcInterface(object):
         result = self._manager.servers.get_services([ServiceId(*s) for s in services])
         return [({'running': ss.running, 'server': ss.server_state.fqdn, 'status': ss.status} if ss else None)
                 for ss in result]
+
+    def _get_up_mon_servers(self, fsid):
+        # Resolve FSID to list of mon FQDNs
+        servers = self.server_list_cluster(fsid)
+        # Sort to get most recently contacted server first; drop any
+        # for whom last_contact is None
+        servers = [s for s in servers if s['last_contact']]
+        servers = sorted(servers,
+                         key=lambda t: dateutil_parse(t['last_contact']),
+                         reverse=True)
+        mon_fqdns = []
+        for server in servers:
+            for service in server['services']:
+                service_id = ServiceId(*(service['id']))
+                if service['running'] and service_id.service_type == MON and service_id.fsid == fsid:
+                    mon_fqdns.append(server['fqdn'])
+
+        return mon_fqdns
+
+    def run_mon_job(self, fsid, job_cmd, job_args):
+        """
+        Attempt to run a Salt job on a mon server, trying each until we find one
+        where the job runs (where running includes running and returning an error)
+        """
+
+        # TODO: in order to support radosgw-admin commands we might need to be able to identify running RGW services
+        # alternatively it may be possible to run radosgw-admin on a mon node that isn't running the RGW service
+        mon_fqdns = self._get_up_mon_servers(fsid)
+
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        log.debug("run_mon_job: mons for %s are %s" % (fsid, mon_fqdns))
+        # For each mon FQDN, try to go get ceph/$cluster.log, if we succeed return it, if we fail try the next one
+        # NB this path is actually customizable in ceph as `mon_cluster_log_file` but we assume user hasn't done that.
+        for mon_fqdn in mon_fqdns:
+            results = client.cmd(mon_fqdn, job_cmd, job_args)
+            if results:
+                return results[mon_fqdn]
+            else:
+                log.info("Failed execute mon command on %s" % mon_fqdn)
+
+        # If none of the mons gave us what we wanted, return a 503 service unavailable
+        raise RuntimeError("No mon servers are responding")
+
+    def run_job(self, fqdn, job_cmd, job_args):
+        """
+        Attempt to run a Salt job on a specific server.
+        """
+        client = LocalClient(config.get('cthulhu', 'salt_config_path'))
+        results = client.cmd(fqdn, job_cmd, job_args)
+        if not results:
+            raise RuntimeError("Server '{0}' not responding".format(fqdn))
+        else:
+            return results[fqdn]
 
 
 class RpcThread(gevent.greenlet.Greenlet):
